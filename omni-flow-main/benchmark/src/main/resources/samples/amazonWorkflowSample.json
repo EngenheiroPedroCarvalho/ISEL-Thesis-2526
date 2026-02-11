@@ -1,0 +1,65 @@
+{
+  "Comment": "Calling APIGW REST Endpoint",
+  "StartAt": "Add Pet to Store",
+  "States": {
+    "Add Pet to Store": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "Parameters": {
+        "ApiEndpoint": "petstore.execute-api.us-east-1.amazonaws.com",
+        "Method": "POST",
+        "Path": "/pets",
+        "RequestBody": {
+          "Payload": "$.NewPet"
+        },
+        "AuthType": "IAM_ROLE"
+      },
+      "Next": "Pet was Added Successfully?",
+      "ResultSelector": {
+        "ResponseBody.$": "$.ResponseBody"
+      }
+    },
+    "Pet was Added Successfully?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.StatusCode",
+          "NumericEquals": 200,
+          "Next": "Retrieve Pet Store Data"
+        }
+      ],
+      "Default": "Notify Result"
+    },
+    "Retrieve Pet Store Data": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "Parameters": {
+        "ApiEndpoint": "petstore.execute-api.us-east-1.amazonaws.com",
+        "Method": "GET",
+        "Path": "/pets",
+        "AuthType": "IAM_ROLE"
+      },
+      "Next": "Notify Result",
+      "ResultSelector": {
+        "Pets.$": "$.ResponseBody"
+      }
+    },
+    "Notify Result": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "Parameters": {
+        "ApiEndpoint": "notifyApp.execute-api.us-east-1.amazonaws.com",
+        "Method": "POST",
+        "Path": "/",
+        "RequestBody": {
+          "Payload": "Add pet to store status code - $.StatusCode"
+        },
+        "AuthType": "IAM_ROLE"
+      },
+      "End": true,
+      "ResultSelector": {
+        "Notification.$": "$.NotificationStatus"
+      }
+    }
+  }
+}

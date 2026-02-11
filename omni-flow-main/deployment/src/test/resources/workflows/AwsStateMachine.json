@@ -1,0 +1,59 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "Increment1",
+  "States": {
+    "Increment1": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "Parameters": {
+        "ApiEndpoint": "ak7u4tmof2.execute-api.us-east-1.amazonaws.com",
+        "Method": "GET",
+        "Path": "/default/increment",
+        "QueryParameters": {
+          "increment.$": "States.Array(States.Format('{}', $.number))"
+        },
+        "AuthType": "IAM_ROLE"
+      },
+      "ResultSelector": {
+        "number.$": "$.ResponseBody"
+      },
+      "Next": "Increment2"
+    },
+    "Increment2": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "InputPath": "$.number",
+      "Parameters": {
+        "ApiEndpoint": "ak7u4tmof2.execute-api.us-east-1.amazonaws.com",
+        "Method": "GET",
+        "Path": "/default/increment",
+        "QueryParameters": {
+          "increment.$": "States.Array(States.Format('{}', $))"
+        },
+        "AuthType": "IAM_ROLE"
+      },
+      "ResultSelector": {
+        "number.$": "$.ResponseBody"
+      },
+      "Next": "Increment3"
+    },
+    "Increment3": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "InputPath": "$.number",
+      "Parameters": {
+        "ApiEndpoint": "ak7u4tmof2.execute-api.us-east-1.amazonaws.com",
+        "Method": "GET",
+        "Path": "/default/increment",
+        "QueryParameters": {
+          "increment.$": "States.Array(States.Format('{}', $))"
+        },
+        "AuthType": "IAM_ROLE"
+      },
+      "ResultSelector": {
+        "number.$": "$.ResponseBody"
+      },
+      "End": true
+    }
+  }
+}

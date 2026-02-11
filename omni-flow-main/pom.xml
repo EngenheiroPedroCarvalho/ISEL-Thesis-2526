@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>omni-flow</artifactId>
+    <groupId>costaber.com.github</groupId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>OmniFlow</name>
+    <packaging>pom</packaging>
+    <description>OmniFlow</description>
+
+    <modules>
+        <module>deployment</module>
+        <module>benchmark</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <kotlin.code.style>official</kotlin.code.style>
+        <java.version>17</java.version>
+        <kotlin.compiler.jvmTarget>17</kotlin.compiler.jvmTarget>
+
+        <!-- Plugin versions -->
+        <kotlin-maven-plugin.version>2.1.10</kotlin-maven-plugin.version>
+        <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>2.22.2</maven-failsafe-plugin.version>
+
+        <!-- - -->
+        <kotlin-stdlib.version>2.1.10</kotlin-stdlib.version>
+        <google-cloud-workflows.version>2.12.0</google-cloud-workflows.version>
+        <aws-sdk.version>2.9.14</aws-sdk.version>
+        <kotlin-logging-jvm.version>2.0.11</kotlin-logging-jvm.version>
+        <logback-classic.version>1.2.9</logback-classic.version>
+        <jackson-dataformat-yaml.version>2.19.1</jackson-dataformat-yaml.version>
+        <jackson-datatype-jsr310.version>2.19.1</jackson-datatype-jsr310.version>
+
+        <!-- Testing -->
+        <mockk-jvm.version>1.14.3</mockk-jvm.version>
+        <strikt-core.version>0.35.1</strikt-core.version>
+        <junit-jupiter-api.version>5.13.3</junit-jupiter-api.version>
+        <kotlin-test-junit.version>2.1.10</kotlin-test-junit.version>
+    </properties>
+    <build>
+        <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
+        <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
+
+        <plugins>
+            <plugin>
+                <groupId>org.jetbrains.kotlin</groupId>
+                <artifactId>kotlin-maven-plugin</artifactId>
+                <version>${kotlin-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>test-compile</phase>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <languageVersion>2.0</languageVersion>
+                    <apiVersion>2.0</apiVersion>
+                    <jvmTarget>${kotlin.compiler.jvmTarget}</jvmTarget>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+            </plugin>
+            <plugin>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven-failsafe-plugin.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

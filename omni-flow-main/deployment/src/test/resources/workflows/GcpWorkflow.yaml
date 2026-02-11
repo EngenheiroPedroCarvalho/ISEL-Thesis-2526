@@ -1,0 +1,26 @@
+main:
+  params: [ input ]
+  steps:
+    - increment1:
+        call: http.get
+        args:
+          url: https://us-central1-function-test-366510.cloudfunctions.net/function-1
+          query:
+            increment: ${input.number}
+        result: result1
+    - increment2:
+        call: http.get
+        args:
+          url: https://us-central1-function-test-366510.cloudfunctions.net/function-1
+          query:
+            increment: ${result1.body}
+        result: result2
+    - increment3:
+        call: http.get
+        args:
+          url: https://us-central1-function-test-366510.cloudfunctions.net/function-1
+          query:
+            increment: ${result2.body}
+        result: result3
+    - returnOutput:
+        return: ${result3.body}
