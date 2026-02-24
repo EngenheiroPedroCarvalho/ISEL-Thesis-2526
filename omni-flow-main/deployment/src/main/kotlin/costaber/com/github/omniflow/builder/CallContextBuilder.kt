@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.type.TypeFactory
 import costaber.com.github.omniflow.jackson.OmniflowObjectMapper
 import costaber.com.github.omniflow.model.*
+import costaber.com.github.omniflow.registry.*
 
 
 class CallContextBuilder : ContextBuilder {

@@ -1,0 +1,13 @@
+{
+  "updatedAt" : "2026-02-19T17:37:41.211059300Z",
+  "functions" : {
+    "fraud-check" : {
+      "host" : "fraud.internal.example",
+      "path" : "/v1/fraud-check"
+    },
+    "risk-score" : {
+      "host" : "risk.internal.example",
+      "path" : "/v1/risk-score"
+    }
+  }
+}

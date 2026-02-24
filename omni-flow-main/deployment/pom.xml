@@ -59,6 +59,7 @@
             <artifactId>jackson-datatype-jsr310</artifactId>
             <version>${jackson-datatype-jsr310.version}</version>
         </dependency>
+
         <!-- Logger -->
         <dependency>
             <groupId>io.github.microutils</groupId>
