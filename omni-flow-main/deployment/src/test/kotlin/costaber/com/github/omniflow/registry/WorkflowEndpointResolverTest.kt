@@ -15,7 +15,7 @@ class WorkflowEndpointResolverTest {
         assertEquals("fraud-check.host", FunctionEndpointKeys.hostKey("fraud-check"))
         assertEquals("fraud-check.path", FunctionEndpointKeys.pathKey("fraud-check"))
 
-        val (h, p) = WorkflowEndpointResolver.registryKeys("risk-score")
+        val (h, p) = WorkflowInternalEndpointResolver.registryKeys("risk-score")
         assertEquals("risk-score.host", h)
         assertEquals("risk-score.path", p)
     }
@@ -26,7 +26,7 @@ class WorkflowEndpointResolverTest {
         val store = FunctionRegistryStore(registryFile)
         store.upsert("fraud-check", host = "fraud.internal.example", path = "/v1/fraud-check")
 
-        val (resolvedHost, resolvedPath) = WorkflowEndpointResolver.resolveHostAndPath(
+        val (resolvedHost, resolvedPath) = WorkflowInternalEndpointResolver.resolveHostAndPath(
             host = "fraud-check.host",
             path = "fraud-check.path",
             registryFile = registryFile
@@ -40,7 +40,7 @@ class WorkflowEndpointResolverTest {
     fun `resolveHostAndPath leaves external call unchanged when host and path are literal`() {
         val registryFile = tempDir.resolve("function-registry.json")
 
-        val (resolvedHost, resolvedPath) = WorkflowEndpointResolver.resolveHostAndPath(
+        val (resolvedHost, resolvedPath) = WorkflowInternalEndpointResolver.resolveHostAndPath(
             host = "api.partner.example",
             path = "/v1/risk-score",
             registryFile = registryFile
@@ -54,7 +54,7 @@ class WorkflowEndpointResolverTest {
     fun `resolveHostAndPath leaves call unchanged when registry key pair is inconsistent`() {
         val registryFile = tempDir.resolve("function-registry.json")
 
-        val (resolvedHost, resolvedPath) = WorkflowEndpointResolver.resolveHostAndPath(
+        val (resolvedHost, resolvedPath) = WorkflowInternalEndpointResolver.resolveHostAndPath(
             host = "fraud-check.host",
             path = "risk-score.path",
             registryFile = registryFile
@@ -71,7 +71,7 @@ class WorkflowEndpointResolverTest {
         val store = FunctionRegistryStore(registryFile)
         store.upsert("risk-score", host = "risk.internal.example", path = "/v1/risk-score")
 
-        val (resolvedHost, resolvedPath) = WorkflowEndpointResolver.resolveHostAndPath(
+        val (resolvedHost, resolvedPath) = WorkflowInternalEndpointResolver.resolveHostAndPath(
             host = "ignored-host.example",
             path = "/ignored",
             registryFile = registryFile,

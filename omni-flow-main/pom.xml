@@ -16,6 +16,18 @@
         <module>benchmark</module>
     </modules>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>26.78.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kotlin.code.style>official</kotlin.code.style>
@@ -29,7 +41,8 @@
 
         <!-- - -->
         <kotlin-stdlib.version>2.1.10</kotlin-stdlib.version>
-        <google-cloud-workflows.version>2.12.0</google-cloud-workflows.version>
+        <!--<google-cloud-workflows.version>2.12.0</google-cloud-workflows.version> -->
+        <google-cloud-bom.version>26.78.0</google-cloud-bom.version>
         <aws-sdk.version>2.9.14</aws-sdk.version>
         <kotlin-logging-jvm.version>2.0.11</kotlin-logging-jvm.version>
         <logback-classic.version>1.2.9</logback-classic.version>

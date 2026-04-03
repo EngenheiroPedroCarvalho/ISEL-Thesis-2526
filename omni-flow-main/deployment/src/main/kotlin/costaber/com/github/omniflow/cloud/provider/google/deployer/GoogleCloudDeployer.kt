@@ -3,11 +3,15 @@ package costaber.com.github.omniflow.cloud.provider.google.deployer
 import costaber.com.github.omniflow.cloud.provider.google.provider.GoogleDefaultStrategyDeciderProvider.createNodeRendererStrategyDecider
 import costaber.com.github.omniflow.cloud.provider.google.renderer.GoogleRenderingContext
 import costaber.com.github.omniflow.cloud.provider.google.renderer.GoogleTermContext
+import costaber.com.github.omniflow.cloud.provider.google.service.CloudRunV2RestCatalog
+import costaber.com.github.omniflow.cloud.provider.google.service.CloudRunV2ServiceInspector
 import costaber.com.github.omniflow.cloud.provider.google.service.GoogleWorkflowService
 import costaber.com.github.omniflow.deployer.CloudDeployer
+import costaber.com.github.omniflow.internalfunction.WorkflowInternalFunctionResolver
 import costaber.com.github.omniflow.model.*
+import costaber.com.github.omniflow.registry.FunctionRegistryBootstrapper
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowEndpointResolver
+import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import costaber.com.github.omniflow.resource.util.joinToStringNewLines
 import costaber.com.github.omniflow.traversor.DepthFirstNodeVisitorTraversor
 import costaber.com.github.omniflow.visitor.NodeContextVisitor
@@ -18,7 +22,8 @@ class GoogleCloudDeployer internal constructor(
     private val nodeTraversor: DepthFirstNodeVisitorTraversor,
     private val contextVisitor: NodeContextVisitor,
     private val googleWorkflowService: GoogleWorkflowService,
-    private val functionRegistryFile: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json")
+    private val registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json"),
+    private val functionsCatalog: CloudRunV2RestCatalog = CloudRunV2RestCatalog()
 ) : CloudDeployer<GoogleDeployContext> {
 
     private companion object {
@@ -26,13 +31,23 @@ class GoogleCloudDeployer internal constructor(
     }
 
     override fun deploy(workflow: Workflow, deployContext: GoogleDeployContext) {
-        logger.info { "Starting to convert Workflow into a Workflow" }
-        val workflow = resolveInternalEndpoints(workflow)
+        logger.info {"Starting to convert Workflow into a Workflow" }
+
+        bootstrapFunctionRegisterIfMissing(deployContext.projectId)
+
+        val resolvedWorkflow = WorkflowInternalFunctionResolver(
+            projectId = deployContext.projectId,
+            preferredRegion = deployContext.zone,
+            registry = FunctionRegistryStore(registryPath),
+            inspector = CloudRunV2ServiceInspector()
+        ).resolve(workflow)
 
         val renderingContext = GoogleRenderingContext(termContext = GoogleTermContext())
-        val content = nodeTraversor.traverse(contextVisitor, workflow, renderingContext)
+        val content = nodeTraversor.traverse(contextVisitor, resolvedWorkflow, renderingContext)
             .filterNot(String::isEmpty)
             .joinToStringNewLines()
+
+
         googleWorkflowService.deploy(
             projectId = deployContext.projectId,
             zone = deployContext.zone,
@@ -44,99 +59,40 @@ class GoogleCloudDeployer internal constructor(
         )
     }
 
-    private fun resolveInternalEndpoints(workflow: Workflow): Workflow {
-        val functionRefs = collectFunctionRefs(workflow.steps)
+    private fun bootstrapFunctionRegisterIfMissing(projectId: String){
+        val store = FunctionRegistryStore(registryPath)
 
-        //Ensure registry exists + placeholders for all refs used by this workflow
-        if (functionRefs.isNotEmpty()) {
-            FunctionRegistryStore(functionRegistryFile).ensurePlaceholders(functionRefs)
+        if(store.exists()){
+            logger.info { "Function Registry found at '$registryPath' (skipping bootstrap). "}
+            return
         }
 
-        val resolvedSteps = resolveSteps(workflow.steps.toList())
-        return workflow.copy(steps = resolvedSteps)
+        logger.warn{
+            "Function Registry not found at 'registryPath'. Boothstrapping registry from Cloud Functions APIs for project '$projectId'... "
+        }
+
+        FunctionRegistryBootstrapper(
+            store = store,
+            catalog = functionsCatalog
+        ).bootstrapIfMissing(projectId)
+
+        logger.info { "Function Registry created and populated at '$registryPath'." }
     }
 
-    private fun collectFunctionRefs(steps: Collection<Step>): Set<String>{
-        val refs = mutableSetOf<String>()
-
-        fun walkSteps(list: List<Step>){
-            list.forEach { step ->
-                when(val ctx = step.context){
-                    is CallContext -> {
-                        WorkflowEndpointResolver.inferFunctionRefFromregistryKeys(ctx.host, ctx.path)
-                            ?.let {refs.add(it)}
-                    }
-
-                    is BranchContext -> walkSteps(ctx.steps)
-                    is IterationContext -> walkSteps(ctx.steps)
-
-                    is ParallelBranchContext -> ctx.branches.forEach { b -> walkSteps(b.steps)}
-                    is ParallelIterationContext -> walkSteps(ctx.iterationContext.steps)
-
-                    else -> {/* AssignContext, ConditionalContext, etc -> nothing to resolve*/}
-                }
-            }
-        }
-        walkSteps(steps.toList())
-        return refs
-    }
-
-    private fun resolveSteps(steps: List<Step>): List<Step> =
-        steps.map { step ->
-            when (val ctx = step.context){
-                is CallContext -> {
-                    val (host, path) = WorkflowEndpointResolver.resolveHostAndPath(
-                        host = ctx.host,
-                        path = ctx.path,
-                        registryFile = functionRegistryFile
-                    )
-                    if (host == ctx.host && path == ctx.path) step
-                    else step.copy(context = ctx.copy(host = host, path = path))
-                }
-
-                is BranchContext -> {
-                    val updated = ctx.copy(steps = resolveSteps(ctx.steps))
-                    step.copy(context = updated)
-                }
-
-                is IterationRangeContext -> {
-                    val updated = ctx.copy(steps = resolveSteps(ctx.steps))
-                    step.copy(context = updated)
-                }
-
-                is IterationForEachContext -> {
-                    val updated = ctx.copy(steps = resolveSteps(ctx.steps))
-                    step.copy(context = updated)
-                }
-
-                is IterationContext -> {
-                    val updated = IterationContext(ctx.value, resolveSteps(ctx.steps))
-                    step.copy(context = updated)
-                }
-
-                is ParallelIterationContext -> {
-                    val itCtx = ctx.iterationContext
-                    val updatedIteration = when (itCtx) {
-                        is IterationRangeContext -> itCtx.copy(steps = resolveSteps(itCtx.steps))
-                        is IterationForEachContext -> itCtx.copy(steps = resolveSteps(itCtx.steps))
-                        else -> IterationContext(itCtx.value, resolveSteps(itCtx.steps))
-                    }
-                    step.copy(context = ctx.copy(iterationContext = updatedIteration))
-                }
-                else -> step
-            }
-        }
 
 
     class Builder {
-        private var functionRegistryFile: Path = Path.of("function-registry.json")
+        private var registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json")
+        private var functionsCatalog: CloudRunV2RestCatalog = CloudRunV2RestCatalog()
 
-        fun functionRegistryFile(path: Path) = apply { this.functionRegistryFile = path }
+        fun registryPath(path: Path) = apply { this.registryPath = path }
+
         fun build() = GoogleCloudDeployer(
             nodeTraversor = DepthFirstNodeVisitorTraversor(),
             contextVisitor = NodeContextVisitor(createNodeRendererStrategyDecider()),
             googleWorkflowService = GoogleWorkflowService(),
-            functionRegistryFile = functionRegistryFile,
+            registryPath = registryPath,
+            functionsCatalog = functionsCatalog
         )
     }
 }

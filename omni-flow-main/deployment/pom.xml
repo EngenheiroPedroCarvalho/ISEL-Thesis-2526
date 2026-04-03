@@ -46,7 +46,10 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-workflows</artifactId>
-            <version>${google-cloud-workflows.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-functions</artifactId>
         </dependency>
         <!-- - -->
         <dependency>

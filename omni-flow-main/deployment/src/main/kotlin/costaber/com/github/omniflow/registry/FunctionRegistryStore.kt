@@ -2,157 +2,176 @@ package costaber.com.github.omniflow.registry
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import costaber.com.github.omniflow.registry.FunctionRegistrySnapshot
+import com.google.api.client.util.Key
+import costaber.com.github.omniflow.jackson.OmniflowObjectMapper
+import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.sql.Ref
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import kotlin.io.path.createDirectories
 
-/**
- * Registry store: creates, loads and updates the JSON function registry file.
- *
- * Notes:
- * - This is intentionally dependency-free (no Jackson/kotlinx-serialization),
- *   so it can be used inside the deployment module with minimal friction.
- * - The parser is intentionally minimal and only extracts the fields we need:
- *   updatedAt, and for each function: host + path.
- */
 class FunctionRegistryStore(
-    private val registryFile: Path,
+    private val file: Path,
     private val mapper: ObjectMapper = ObjectMapper()
 ) {
+    fun exists(): Boolean = Files.exists(file)
 
-    //fun loadOrCreate(): FunctionRegistry = FunctionRegistryIO.loadOrCreate(registryFile)
+    @Synchronized
+    fun writeNew(functions: Map<String, FunctionInvocationMetadata>){
+        file.parent?.let { Files.createDirectories(it) }
 
-    fun loadOrCreate(): FunctionRegistrySnapshot{
-        if (!Files.exists(registryFile)){
-            writeRoot(createEmptyRoot())
+        val root = mapper.createObjectNode()
+        root.put("updatedAt", Instant.now().toString())
+
+        val functionsNode = root.putObject("functions")
+        functions.forEach { (name, meta) ->
+            val fn = functionsNode.putObject(name)
+            fn.put("serviceName", meta.serviceName)
+            fn.put("url", meta.url)
         }
-        return readSnapshot()
+
+        Files.writeString(file, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root))
     }
 
-    fun resolve(functionRef: String): FunctionInvocationMetadata {
-        val registry = loadOrCreate()
-        return registry.functions[functionRef]
-            ?: error(
-                "Missing registry entry for functionRef='$functionRef'. " +
-                        "Expected file '$registryFile' to contain functions['$functionRef'] with host/path."
+    /**
+     * Reads all the registry
+     */
+    @Synchronized
+    fun readAll(): Map<String, FunctionInvocationMetadata> {
+        if (!exists()) return emptyMap()
+
+        val json = mapper.readTree(Files.readString(file))
+        val functionsNode = json.path("functions")
+        if (!functionsNode.isObject) return emptyMap()
+
+        val out = linkedMapOf<String, FunctionInvocationMetadata>()
+
+        val names = functionsNode.fieldNames()
+        while (names.hasNext()){
+            val key = names.next()
+            val value = functionsNode.get(key)
+
+            val serviceName = value.path("serviceName").asText("").trim()
+
+            val url = value.path("url").asText().trim()
+
+            out[key] = FunctionInvocationMetadata(
+                serviceName = serviceName,
+                url = url
             )
-    }
+        }
 
-    /*/**
-     * Upsert a registry entry and persist it to disk.
-     */
-    fun upsert(functionRef: String, host: String, path: String) {
-        val registry = loadOrCreate()
-        registry.functions[functionRef] = FunctionInvocationMetadata(host = host, path = path)
-        registry.updatedAt = nowIso()
-        FunctionRegistryIO.save(registryFile, registry)
-    }*/
-
-    /**
-     * Create or update an entry for a given functionRef.
-     */
-    fun upsert(functionRef: String, host: String, path: String): FunctionRegistrySnapshot{
-        val root = readOrCreateRoot()
-        val functions = root.withObject("functions")
-        val entry = functions.withObject("functionRef")
-
-        entry.put("host", host)
-        entry.put("path", path)
-
-        root.put("updatedAt", nowIsoInstant())
-        writeRoot(root)
-
-        return readSnapshot()
+        return out
     }
 
     /**
-     * Ensure entries exist for a set of functionRefs.
+     *Resolves a function reference to a registry entry without throwing when missing
      *
-     * If missing, creates placeholder entries (host/path empty) so the file is populated
-     * and easy to fill later.
+     * Resolution rules:
+     * - exact match: functionRef
+     * - suffix match: "region/functionRef"
      */
-    fun ensurePlaceholders(functionRefs: Set<String>): FunctionRegistrySnapshot {
-        val root = readOrCreateRoot()
-        val functions = root.withObject("functions")
+    @Synchronized
+    fun tryResolveEntry(functionRef: String): Pair<String, FunctionInvocationMetadata>? {
+        val all = readAll()
 
-        var changed = false
+        all[functionRef]?.let { return functionRef to it }
 
-        for (ref in functionRefs) {
-            if (!functions.has(ref)) {
-                val entry = functions.putObject(ref)
-                entry.put("host", "")
-                entry.put("path", "")
-                changed = true
-            }
+        val matches = all.filterKeys { it.endsWith("/$functionRef") }
+        return when (matches.size){
+            1 -> matches.entries.first().let { it.key to it.value }
+            0 -> null
+            else -> throw IllegalStateException(
+                "Internal function '$functionRef' is ambiguous in function-registry at '$file'." +
+                        "Use fully-qualified key like 'region/$functionRef'."
+            )
         }
-
-        if (changed) {
-            root.put("updatedAt", nowIsoInstant())
-            writeRoot(root)
-        }
-
-        return readSnapshot()
     }
 
+    @Synchronized
+    fun resolveEntry(functionRef: String): Pair<String, FunctionInvocationMetadata> =
+        tryResolveEntry(functionRef)
+            ?: throw java.lang.IllegalStateException(
+                "Internal function '$functionRef' not found in function-registry at '$file'"
+            )
 
-    private fun readSnapshot(): FunctionRegistrySnapshot {
-        val root = readOrCreateRoot()
+    @Synchronized
+    fun put(key: String, meta: FunctionInvocationMetadata){
+        val root = readRootOrNew()
+        root.put("updatedAt", Instant.now().toString())
 
-        val updatedAt = root.path("updatedAt").asText(nowIsoInstant())
-        val functionsNode = root.withObject("functions")
+        val functionsNode = root.withObjectProperty("functions")
+        val fn = functionsNode.putObject(key)
+        fn.put("serviceName", meta.serviceName)
+        fn.put("url", meta.url)
 
-        val functions = mutableMapOf<String, FunctionInvocationMetadata>()
-        val fields = functionsNode.fields()
 
-        while (fields.hasNext()) {
-            val (key, node) = fields.next()
-            val host = node.path("host").asText("")
-            val path = node.path("path").asText("")
-            functions[key] = FunctionInvocationMetadata(host = host, path = path)
-        }
-        return FunctionRegistrySnapshot(updatedAt = updatedAt, functions = functions)
+        writeRoot(root)
     }
 
-    private fun readOrCreateRoot(): ObjectNode {
-        if (!Files.exists(registryFile)){
-            val root = createEmptyRoot()
-            writeRoot(root)
+    @Synchronized
+    fun remove(key: String){
+        if (!exists()) return
+
+        val root = readRootOrNew()
+        root.put("updatedAt", Instant.now().toString())
+
+        val functionsNode = ensureObject(root, "functions")
+        functionsNode.remove(key)
+
+        writeRoot(root)
+    }
+    private fun readRootOrNew(): ObjectNode{
+        if(!exists()){
+            val root = mapper.createObjectNode()
+            root.put("updatedAt", Instant.now().toString())
+            root.putObject("functions")
             return root
         }
-        return readRoot()
-    }
 
-    private fun readRoot(): ObjectNode {
-        val tree = mapper.readTree(registryFile.toFile())
-        if (tree !is ObjectNode){
-            throw IllegalStateException("Registry file is not a JSON object: $registryFile")
+        val node = mapper.readTree(Files.readString(file))
+        if (node is ObjectNode) {
+            if (!node.has("updateAt")) node.put("updateAt", Instant.now().toString())
+            return node
         }
-        return tree
-    }
 
-    private fun createEmptyRoot(): ObjectNode {
         val root = mapper.createObjectNode()
-        root.put("updatedAt", nowIsoInstant())
+        root.put("updatedAt", Instant.now().toString())
         root.putObject("functions")
         return root
     }
 
-    private fun writeRoot(root: ObjectNode) {
-        registryFile.parent?.createDirectories()
-        mapper
-            .writerWithDefaultPrettyPrinter()
-            .writeValue(registryFile.toFile(), root)
+    private fun writeRoot(root: ObjectNode){
+        file.parent?.let { Files.createDirectories(it) }
+        Files.writeString(file, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root))
     }
 
-    companion object{
-        fun nowIsoInstant(): String = Instant.now().toString()
+    private fun ensureObject(root: ObjectNode, field: String): ObjectNode{
+        val existing = root.get(field)
+        return if (existing is ObjectNode) existing else root.putObject(field)
     }
+    fun resolveUrl(functionName: String): String {
+        val all = readAll()
 
-    private fun nowIso(): String = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
+        all[functionName]?.url?.let { return it }
+        val matches = all.filterKeys { it.endsWith("/$functionName") }.values.map { it.url }
+        return when (matches.size){
+            1 -> matches[0]
+            0 -> throw IllegalStateException(
+                "Internal Function '$functionName' not found in function-registry at '$file'." +
+                        "Deploy it first."
+            )
+            else -> throw IllegalStateException(
+                "Internal Function '$functionName' is ambiguous in function-registry at '$file'." +
+                        "(found multiple regional entries)."
+            )
+        }
+    }
 }
+
+
 
 

@@ -42,15 +42,14 @@ fun deployAmazon(){
 
 fun deployGoogle(){
     val deployer = GoogleCloudDeployer.Builder()
-        .functionRegistryFile(Path.of("function-registry.json"))
         .build()
     val googleDeployContext = GoogleDeployContext(
         projectId = "workflow-test-omniflow",
         zone = "us-east1",
         serviceAccount = "projects/workflow-test-omniflow/serviceAccounts/" +
                 "workflow-test@workflow-test-omniflow.iam.gserviceaccount.com",
-        workflowId = "TestWorkflow3",
-        workflowDescription = "Faz um MapReduce num texto",
+        workflowId = "TestWorkflow0",
+        workflowDescription = "Chamada de uma função interna",
         workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow"),
     )
     deployer.deploy(TestWorkflow0, googleDeployContext)
@@ -58,16 +57,15 @@ fun deployGoogle(){
 
 private val TestWorkflow0 = workflow {
     name("TestWorkflow")
-    description("This is a test of the workflow. Call to an external function")
+    description("This is a test of the workflow. Call to an internal function")
     steps(
         step {
             name("HTTP call")
-            description("Function exists")
+            description("Internal Function Test")
             context(
                 call {
                     method(GET)
-                    host("http://test.com")
-                    path("")
+                    internalFunction("svc-upper")
                     result("result")
                     resultType(ResultType.BODY)
                 }

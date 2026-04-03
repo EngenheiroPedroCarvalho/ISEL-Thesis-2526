@@ -9,7 +9,7 @@ import costaber.com.github.omniflow.model.*
 import costaber.com.github.omniflow.registry.*
 
 
-class CallContextBuilder : ContextBuilder {
+class  CallContextBuilder : ContextBuilder {
 
     private val objectMapper: ObjectMapper
     private val typeFactory: TypeFactory = TypeFactory.defaultInstance()
@@ -21,9 +21,14 @@ class CallContextBuilder : ContextBuilder {
 
     // mandatory
     private lateinit var method: HttpMethod
-    private lateinit var host: String
-    private lateinit var path: String
     private lateinit var result: String
+
+    //external fields (optional if internalFunction is used)
+    private  var host: String? = null
+    private  var path: String? = null
+
+    //internal field
+    private var internalFunction: InternalFunction? = null
 
     // optional
     private var resultType: ResultType = ResultType.BODY
@@ -34,9 +39,42 @@ class CallContextBuilder : ContextBuilder {
     private var authenticationBuilder: AuthenticationBuilder? = null
     private var timeout: Long? = null
 
-    fun host(value: String) = apply { this.host = value }
+    /**
+     * External call only.
+     */
+    fun host(value: String) = apply {
+        check(internalFunction == null){
+            "Invalid call(): host() cannot be used when internalFunction(...) is set."
+        }
+        this.host = value
+    }
+    /**
+     * External call only.
+     */
+    fun path(value: String) = apply {
+        check(internalFunction == null){
+            "Invalid call(): path() cannot be used when internalFunction(...) is set."
+        }
+        this.path = value
+    }
 
-    fun path(value: String) = apply { this.path = value }
+    /**
+     * Internal Call:
+     * - host/path must not be set
+     * - host/path will be resolved from Function Registry before render/deploy
+     */
+    fun internalFunction(name: String, deploymentDescriptorPath: String? = null) = apply {
+        check(host == null && path == null){
+            "Invalid call(): internalFunction(...) cannot be used if host/path were already set."
+        }
+        this.internalFunction = InternalFunction(name = name, deploymentDescriptorPath = deploymentDescriptorPath)
+    }
+    /*fun functionRef(value: String) = apply {
+        check(host == null  && path == null){
+            "Invalid CallContext: functionRef('$value') cannot be used when host/path are already set"
+        }
+        this.functionRef = value.trim()
+    }*/
 
     fun method(value: HttpMethod) = apply { this.method = value }
 
@@ -121,17 +159,45 @@ class CallContextBuilder : ContextBuilder {
 
     override fun stepType() = StepType.CALL
 
-    override fun build() = CallContext(
-        host = host,
-        path = path,
-        method = method,
-        header = header,
-        query = query,
-        body = body,
-        bodyRaw = bodyRaw ?: "",
-        authentication = authenticationBuilder?.build(),
-        timeoutInSeconds = timeout,
-        result = result,
-        resultType = resultType
-    )
+    override fun build(): CallContext {
+        //INTERNAL call
+        internalFunction?.let { internal ->
+            return CallContext(
+                host = "",
+                path = "",
+                method = method,
+                header = header,
+                query = query,
+                body = body,
+                bodyRaw = bodyRaw ?: "",
+                authentication = authenticationBuilder?.build(),
+                timeoutInSeconds = timeout,
+                result = result,
+                resultType = resultType,
+                internalFunction = internal
+            )
+        }
+
+        //EXTERNAL call
+        val finalHost = host ?: throw IllegalStateException(
+            "Invalid call(): host() is mandatory for external calls (when internalFunction is not set)"
+        )
+
+        val finalPath = path ?: ""
+
+        return CallContext(
+            host = finalHost,
+            path = finalPath,
+            method = method,
+            header = header,
+            query = query,
+            body = body,
+            bodyRaw = bodyRaw ?: "",
+            authentication = authenticationBuilder?.build(),
+            timeoutInSeconds = timeout,
+            result = result,
+            resultType = resultType,
+            internalFunction = null
+        )
+    }
 }
