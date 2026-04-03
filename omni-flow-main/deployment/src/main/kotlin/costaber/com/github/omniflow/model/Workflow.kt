@@ -1,5 +1,6 @@
 package costaber.com.github.omniflow.model
 
+
 data class Workflow(
     val name: String,
     val description: String? = null,
@@ -11,4 +12,5 @@ data class Workflow(
     override fun childNodes(): List<Node> {
         return steps.toList()
     }
+
 }

@@ -7,6 +7,7 @@ import costaber.com.github.omniflow.dsl.*
 import costaber.com.github.omniflow.model.HttpMethod
 import costaber.com.github.omniflow.model.HttpMethod.*
 import java.util.Scanner
+import java.nio.file.Path
 
 
 fun main() {
@@ -40,18 +41,119 @@ fun deployAmazon(){
 }
 
 fun deployGoogle(){
-    val deployer = GoogleCloudDeployer.Builder().build()
+    val deployer = GoogleCloudDeployer.Builder()
+        .build()
     val googleDeployContext = GoogleDeployContext(
         projectId = "workflow-test-omniflow",
         zone = "us-east1",
         serviceAccount = "projects/workflow-test-omniflow/serviceAccounts/" +
                 "workflow-test@workflow-test-omniflow.iam.gserviceaccount.com",
-        workflowId = "MapReduceWorkflow",
-        workflowDescription = "Faz um MapReduce num texto",
+        workflowId = "TestWorkflow0",
+        workflowDescription = "Chamada de uma função interna",
         workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow"),
     )
-    deployer.deploy(MapReduceWorkflow, googleDeployContext)
+    deployer.deploy(TestWorkflow0, googleDeployContext)
 }
+
+private val TestWorkflow0 = workflow {
+    name("TestWorkflow")
+    description("This is a test of the workflow. Call to an internal function")
+    steps(
+        step {
+            name("HTTP call")
+            description("Internal Function Test")
+            context(
+                call {
+                    method(GET)
+                    internalFunction("svc-upper")
+                    result("result")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("result")
+}
+
+private val TestWorkflow1 = workflow {
+    name("TestWorkflow")
+    description("This is a test of the workflow. Call to an internal function that isn't in the registry (Not deployed)")
+    steps(
+        step {
+            name("HTTP call")
+            description("Function exists")
+            context(
+                call {
+                    method(GET)
+                    host("test.host")
+                    path("test.path")
+                    result("result")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("result")
+}
+
+private val TestWorkflow2 = workflow {
+    name("TestWorkflow")
+    description("This is a test of the workflow. 2 calls to 2 internal functions")
+    steps(
+        step {
+            name("HTTP call1")
+            description("Function exists")
+            context(
+                call {
+                    method(GET)
+                    host("fraud-check.host")
+                    path("fraud-check.path")
+                    result("result")
+                    resultType(ResultType.BODY)
+                }
+            )
+        },
+        step {
+            name("HTTP call2")
+            description("Function exists")
+            context(
+                call {
+                    method(GET)
+                    host("risk-score.host")
+                    path("risk-score.path")
+                    result("result")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("result")
+}
+
+private val TestWorkflow3 = workflow {
+    name("TestWorkflow")
+    description("This is a test of the workflow. Call to an internal function that isn't in the registry (Not deployed)")
+    steps(
+        step {
+            name("HTTP call")
+            description("Function exists")
+            context(
+                call {
+                    method(GET)
+                    host("test.host")
+                    path("Ola.path")
+                    result("result")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("result")
+}
+
+
+
+
 
 
 //"text": "Hello World, Hello Omniflow"

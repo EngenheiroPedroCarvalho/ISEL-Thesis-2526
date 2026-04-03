@@ -1,0 +1,33 @@
+{
+  "updatedAt" : "2026-03-31T16:46:38.719020900Z",
+  "functions" : {
+    "count-words" : {
+      "serviceName" : "projects/workflow-test-omniflow/locations/europe-west1/services/count-words",
+      "url" : "https://count-words-nlk77zqmeq-ew.a.run.app"
+    },
+    "splitter" : {
+      "serviceName" : "projects/workflow-test-omniflow/locations/europe-west1/services/splitter",
+      "url" : "https://splitter-nlk77zqmeq-ew.a.run.app"
+    },
+    "reduce" : {
+      "serviceName" : "projects/workflow-test-omniflow/locations/europe-west1/services/reduce",
+      "url" : "https://reduce-nlk77zqmeq-ew.a.run.app"
+    },
+    "map" : {
+      "serviceName" : "projects/workflow-test-omniflow/locations/europe-west1/services/map",
+      "url" : "https://map-nlk77zqmeq-ew.a.run.app"
+    },
+    "svc-filter1" : {
+      "serviceName" : "projects/workflow-test-omniflow/locations/europe-west4/services/svc-filter1",
+      "url" : "https://svc-filter1-nlk77zqmeq-ez.a.run.app"
+    },
+    "europe-west1/svc-upper" : {
+      "serviceName" : "projects/workflow-test-omniflow/locations/europe-west1/services/svc-upper",
+      "url" : "https://svc-upper-nlk77zqmeq-ew.a.run.app"
+    },
+    "europe-west9/svc-upper" : {
+      "serviceName" : "projects/workflow-test-omniflow/locations/europe-west9/services/svc-upper",
+      "url" : "https://svc-upper-nlk77zqmeq-od.a.run.app"
+    }
+  }
+}
