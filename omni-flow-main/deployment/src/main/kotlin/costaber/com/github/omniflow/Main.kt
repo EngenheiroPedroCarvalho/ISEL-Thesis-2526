@@ -42,14 +42,24 @@ fun getSelectedProvider(scan: Scanner): Int {
 
 
 fun deployGoogleWithQuickFaaS() {
-    val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
-        ?: throw IllegalStateException(
-            "QUICKFAAS_JAR_PATH environment variable is not set. " +
-                    "Set it to the path of QuickFaaS-Deployment-1.0-fat.jar"
-        )
+    val scan = Scanner(System.`in`)
 
-    val projectId = "workflow-test-omniflow"
-    val region = "europe-west1"
+    val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
+        ?: run {
+            print("Enter the path to QuickFaaS-Deployment JAR: ")
+            scan.nextLine().trim()
+        }
+
+    val jarFile = Path.of(quickFaasJarPath).toFile()
+    require(jarFile.exists()) {
+        "QuickFaaS JAR not found at '$quickFaasJarPath'"
+    }
+
+    print("Enter GCP Project ID [workflow-test-omniflow]: ")
+    val projectId = scan.nextLine().trim().ifEmpty { "workflow-test-omniflow" }
+
+    print("Enter GCP region [europe-west1]: ")
+    val region = scan.nextLine().trim().ifEmpty { "europe-west1" }
 
     val deployer = GoogleCloudDeployer.Builder()
         .internalFunctionDeployer(
@@ -61,20 +71,25 @@ fun deployGoogleWithQuickFaaS() {
         )
         .build()
 
+    print("Enter service account email [workflow-test@$projectId.iam.gserviceaccount.com]: ")
+    val serviceAccountEmail = scan.nextLine().trim().ifEmpty { "workflow-test@$projectId.iam.gserviceaccount.com" }
+
     val googleDeployContext = GoogleDeployContext(
         projectId = projectId,
         zone = region,
-        serviceAccount = "projects/$projectId/serviceAccounts/" +
-                "workflow-test@$projectId.iam.gserviceaccount.com",
+        serviceAccount = "projects/$projectId/serviceAccounts/$serviceAccountEmail",
         workflowId = "QuickFaasIntegrationTest",
         workflowDescription = "E2E test: auto-deploy internal function via QuickFaaS",
         workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow", "test" to "quickfaas-integration"),
     )
 
+    println()
     println("Deploying workflow with QuickFaaS auto-deploy enabled...")
     println("  Project: $projectId")
     println("  Region: $region")
+    println("  Service Account: $serviceAccountEmail")
     println("  QuickFaaS JAR: $quickFaasJarPath")
+    println()
 
     deployer.deploy(QuickFaasTestWorkflow, googleDeployContext)
 
