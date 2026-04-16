@@ -6,7 +6,7 @@
     "name": "quickfaas-test-fn",
     "location": "europe-west1",
     "bucket": "<REPLACE_WITH_YOUR_GCS_BUCKET>",
-    "runtime": "java17",
+    "runtime": "java11",
     "trigger": {
       "type": "http"
     }

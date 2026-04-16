@@ -11,6 +11,8 @@ class QuickFaasDescriptorLoader {
         private val logger = KotlinLogging.logger {}
         private val mapper = ObjectMapper()
 
+        private val GCP_VALID_RUNTIMES = setOf("java11", "nodejs14")
+
         fun load(path: Path): QuickFaasDescriptor {
             require(Files.exists(path)) {
                 "QuickFaaS deployment descriptor not found at '$path'"
@@ -38,9 +40,18 @@ class QuickFaasDescriptorLoader {
                 "QuickFaaS descriptor is missing 'function.name'"
             }
 
+            val runtime = descriptor.function?.runtime
+            if (provider.equals("gcp", ignoreCase = true) && runtime != null) {
+                require(runtime in GCP_VALID_RUNTIMES) {
+                    "Invalid runtime '$runtime' for GCP. " +
+                            "QuickFaaS supports: ${GCP_VALID_RUNTIMES.joinToString(", ")}"
+                }
+            }
+
             logger.info {
                 "Descriptor validated: provider=$provider, " +
                         "function=${descriptor.function?.name}, " +
+                        "runtime=${descriptor.function?.runtime}, " +
                         "location=${descriptor.function?.location}"
             }
         }
