@@ -10,14 +10,18 @@ import java.net.URI
 
 
 /**
- * Resolves CallContext.internalFunction using function-registry.json and Cloud Run APIs
+ * Resolves CallContext.internalFunction using function-registry.json and Cloud Run APIs.
+ *
+ * When a function is not found in the registry or Cloud Run, and its [InternalFunction.deploymentDescriptorPath]
+ * is set, the [internalFunctionDeployer] is invoked to deploy the function via QuickFaaS before continuing.
  */
 class WorkflowInternalFunctionResolver(
     private val projectId: String,
     private val preferredRegion: String?,
     private val registry: FunctionRegistryStore,
     private val inspector: CloudRunV2ServiceInspector,
-    private val locationsClient: CloudRunLocationsV1RestClient = CloudRunLocationsV1RestClient()
+    private val locationsClient: CloudRunLocationsV1RestClient = CloudRunLocationsV1RestClient(),
+    private val internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
 ) {
     private companion object {
         private val logger = KotlinLogging.logger {}
@@ -78,7 +82,7 @@ class WorkflowInternalFunctionResolver(
                         "Remove host/path from this call step."
             )
         }
-        val resolvedUrl = resolveOrDiscoverInternal(functionRef)
+        val resolvedUrl = resolveOrDiscoverInternal(functionRef, internal)
 
         val (host, path) = splitUrl(resolvedUrl)
 
@@ -92,7 +96,7 @@ class WorkflowInternalFunctionResolver(
     private fun extractFunctionRef(internal: InternalFunction): String = internal.name
 
 
-    private fun resolveOrDiscoverInternal(functionRef: String): String{
+    private fun resolveOrDiscoverInternal(functionRef: String, internal: InternalFunction): String{
         //1) If registry has entry -> validate against Cloud Run get(serviceName)
         val existing = registry.tryResolveEntry(functionRef)
 
@@ -133,6 +137,16 @@ class WorkflowInternalFunctionResolver(
         }
         //2) Missing in registry -> confirm via Cloud Run APIs and auto-populate
         val found = discoverServiceForRef(functionRef)
+
+        //3) Not found in Cloud Run and descriptor path is provided -> deploy via QuickFaaS
+        if (found.isEmpty() && internal.deploymentDescriptorPath != null) {
+            logger.info { "Function '$functionRef' not deployed. Triggering QuickFaaS deployment..." }
+            val meta = internalFunctionDeployer.deployOrUpdate(functionRef, internal.deploymentDescriptorPath)
+            registry.put(functionRef, meta)
+            logger.info { "Function '$functionRef' deployed and registered (url=${meta.url})" }
+            return meta.url
+        }
+
         val chosen = chooseSingleOrFail(functionRef, found)
 
         registry.put(functionRef, FunctionInvocationMetadata(serviceName = chosen.serviceName, url = chosen.url))
