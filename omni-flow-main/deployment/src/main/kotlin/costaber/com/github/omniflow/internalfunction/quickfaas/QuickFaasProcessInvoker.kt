@@ -13,6 +13,7 @@ class QuickFaasProcessInvoker(
     private companion object {
         private val logger = KotlinLogging.logger {}
         private const val DESCRIPTOR_FILENAME = "func-deployment.json"
+        private const val FUNCTION_DEPLOYMENT_DIR = "function-deployment"
     }
 
     fun invoke(descriptorPath: Path) {
@@ -23,6 +24,14 @@ class QuickFaasProcessInvoker(
 
         val jarDir = jarPath.parent
             ?: throw IllegalStateException("JAR path '$jarPath' has no parent directory")
+
+        require(jarDir.resolve(FUNCTION_DEPLOYMENT_DIR).toFile().isDirectory) {
+            "QuickFaaS requires a '$FUNCTION_DEPLOYMENT_DIR' directory in the same location as the JAR. " +
+                    "Expected at: '${jarDir.resolve(FUNCTION_DEPLOYMENT_DIR)}'. " +
+                    "Either point QUICKFAAS_JAR_PATH to the JAR inside the QuickFaaS project directory " +
+                    "(where '$FUNCTION_DEPLOYMENT_DIR' already exists), or copy the '$FUNCTION_DEPLOYMENT_DIR' " +
+                    "directory from the QuickFaaS project to '${jarDir}'."
+        }
         val descriptorDir = descriptorPath.toAbsolutePath().parent
             ?: throw IllegalStateException("Descriptor path '$descriptorPath' has no parent directory")
 
