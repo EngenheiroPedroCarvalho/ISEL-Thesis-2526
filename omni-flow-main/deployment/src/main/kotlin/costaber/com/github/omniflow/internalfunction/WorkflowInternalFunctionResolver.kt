@@ -136,7 +136,16 @@ class WorkflowInternalFunctionResolver(
             }
         }
         //2) Missing in registry -> confirm via Cloud Run APIs and auto-populate
-        val found = discoverServiceForRef(functionRef)
+        val found = try {
+            discoverServiceForRef(functionRef)
+        } catch (e: IllegalStateException) {
+            if (internal.deploymentDescriptorPath != null) {
+                logger.info { "Cloud Run discovery failed for '$functionRef', but deployment descriptor is available. Proceeding to QuickFaaS deployment." }
+                emptyList()
+            } else {
+                throw e
+            }
+        }
 
         //3) Not found in Cloud Run and descriptor path is provided -> deploy via QuickFaaS
         if (found.isEmpty() && internal.deploymentDescriptorPath != null) {
