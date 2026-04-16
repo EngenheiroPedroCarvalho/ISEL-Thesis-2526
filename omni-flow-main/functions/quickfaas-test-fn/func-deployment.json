@@ -1,0 +1,15 @@
+{
+  "cloudProvider": "gcp",
+  "accessToken": "<REPLACE_WITH_OAUTH_TOKEN_FROM_QUICKFAAS_AUTH>",
+  "projectName": "workflow-test-omniflow",
+  "function": {
+    "name": "quickfaas-test-fn",
+    "location": "europe-west1",
+    "bucket": "<REPLACE_WITH_YOUR_GCS_BUCKET>",
+    "runtimeVersion": "java17",
+    "trigger": {
+      "type": "http"
+    }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}

@@ -4,6 +4,7 @@ import costaber.com.github.omniflow.builder.ResultType
 import costaber.com.github.omniflow.cloud.provider.google.deployer.GoogleCloudDeployer
 import costaber.com.github.omniflow.cloud.provider.google.deployer.GoogleDeployContext
 import costaber.com.github.omniflow.dsl.*
+import costaber.com.github.omniflow.internalfunction.quickfaas.QuickFaasDeployer
 import costaber.com.github.omniflow.model.HttpMethod
 import costaber.com.github.omniflow.model.HttpMethod.*
 import java.util.Scanner
@@ -20,6 +21,9 @@ fun main() {
     if (option == 1){
         deployGoogle()
     }
+    if (option == 2){
+        deployGoogleWithQuickFaaS()
+    }
 }
 
 fun getSelectedProvider(scan: Scanner): Int {
@@ -28,13 +32,54 @@ fun getSelectedProvider(scan: Scanner): Int {
     do {
         println(" 0: Amazon Web Service")
         println(" 1: Google Cloud Platform")
+        println(" 2: Google Cloud Platform (with QuickFaaS auto-deploy)")
         println("99: Exit")
         print("Choose an option:")
         option = scan.nextInt()
-    } while (!((option in 0..1) || option == 99));
+    } while (!((option in 0..2) || option == 99));
     return option
 }
 
+
+fun deployGoogleWithQuickFaaS() {
+    val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
+        ?: throw IllegalStateException(
+            "QUICKFAAS_JAR_PATH environment variable is not set. " +
+                    "Set it to the path of QuickFaaS-Deployment-1.0-fat.jar"
+        )
+
+    val projectId = "workflow-test-omniflow"
+    val region = "europe-west1"
+
+    val deployer = GoogleCloudDeployer.Builder()
+        .internalFunctionDeployer(
+            QuickFaasDeployer(
+                quickFaasJarPath = Path.of(quickFaasJarPath),
+                projectId = projectId,
+                region = region
+            )
+        )
+        .build()
+
+    val googleDeployContext = GoogleDeployContext(
+        projectId = projectId,
+        zone = region,
+        serviceAccount = "projects/$projectId/serviceAccounts/" +
+                "workflow-test@$projectId.iam.gserviceaccount.com",
+        workflowId = "QuickFaasIntegrationTest",
+        workflowDescription = "E2E test: auto-deploy internal function via QuickFaaS",
+        workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow", "test" to "quickfaas-integration"),
+    )
+
+    println("Deploying workflow with QuickFaaS auto-deploy enabled...")
+    println("  Project: $projectId")
+    println("  Region: $region")
+    println("  QuickFaaS JAR: $quickFaasJarPath")
+
+    deployer.deploy(QuickFaasTestWorkflow, googleDeployContext)
+
+    println("Deployment completed successfully!")
+}
 
 fun deployAmazon(){
 
@@ -66,6 +111,45 @@ private val TestWorkflow0 = workflow {
                 call {
                     method(GET)
                     internalFunction("svc-upper")
+                    result("result")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("result")
+}
+
+/**
+ * E2E test workflow for QuickFaaS integration.
+ *
+ * References an internal function with a deploymentDescriptorPath.
+ * When the function is not yet deployed, OmniFlow triggers QuickFaaS
+ * to deploy it automatically before deploying the workflow.
+ *
+ * Prerequisites:
+ *   - GOOGLE_APPLICATION_CREDENTIALS env var set to a service account JSON key
+ *   - QUICKFAAS_JAR_PATH env var set to the QuickFaaS-Deployment-1.0-fat.jar path
+ *   - A valid func-deployment.json at the path specified in deploymentDescriptorPath
+ *     (relative to the project root, e.g. ./functions/quickfaas-test-fn/func-deployment.json)
+ *   - The function source code referenced in the descriptor's functionFile field
+ *
+ * To run: select option 2 in the CLI menu.
+ */
+private val QuickFaasTestWorkflow = workflow {
+    name("QuickFaasIntegrationTest")
+    description("E2E test: workflow that auto-deploys an internal function via QuickFaaS")
+    steps(
+        step {
+            name("call-auto-deployed-function")
+            description("Calls a function that QuickFaaS will deploy if not already running")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "quickfaas-test-fn",
+                        deploymentDescriptorPath = "./functions/quickfaas-test-fn/func-deployment.json"
+                    )
                     result("result")
                     resultType(ResultType.BODY)
                 }
