@@ -41,12 +41,37 @@ fun getSelectedProvider(scan: Scanner): Int {
 }
 
 
+/**
+ * Deploy a Google Cloud Workflow with QuickFaaS auto-deployment for internal functions.
+ *
+ * Environment variables (all optional — prompts interactively if missing):
+ *   GOOGLE_APPLICATION_CREDENTIALS - Path to GCP service account JSON key (MUST be set before JVM start)
+ *   QUICKFAAS_JAR_PATH             - Path to QuickFaaS-Deployment-1.0-fat.jar
+ *   GOOGLE_PROJECT_ID              - GCP project ID
+ *   GOOGLE_ZONE                    - GCP region (e.g. europe-west1)
+ *   GOOGLE_SERVICE_ACCOUNT         - Service account email
+ */
 fun deployGoogleWithQuickFaaS() {
     val scan = Scanner(System.`in`)
 
+    val googleCredentials = System.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if (googleCredentials.isNullOrBlank()) {
+        println("WARNING: GOOGLE_APPLICATION_CREDENTIALS is not set.")
+        println("Google Cloud SDK requires this env var to be set BEFORE starting the JVM.")
+        println("Set it and restart:")
+        println("  Linux/Mac: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa-key.json")
+        println("  Windows:   set GOOGLE_APPLICATION_CREDENTIALS=C:\\path\\to\\sa-key.json")
+        println()
+        print("Continue anyway? (y/N): ")
+        val answer = scan.nextLine().trim()
+        if (!answer.equals("y", ignoreCase = true)) return
+    } else {
+        println("GOOGLE_APPLICATION_CREDENTIALS: $googleCredentials")
+    }
+
     val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
         ?: run {
-            print("Enter the path to QuickFaaS-Deployment JAR: ")
+            print("Enter the path to QuickFaaS-Deployment JAR (QUICKFAAS_JAR_PATH): ")
             scan.nextLine().trim()
         }
 
@@ -55,11 +80,23 @@ fun deployGoogleWithQuickFaaS() {
         "QuickFaaS JAR not found at '$quickFaasJarPath'"
     }
 
-    print("Enter GCP Project ID [workflow-test-omniflow]: ")
-    val projectId = scan.nextLine().trim().ifEmpty { "workflow-test-omniflow" }
+    val projectId = System.getenv("GOOGLE_PROJECT_ID")
+        ?: run {
+            print("Enter GCP Project ID (GOOGLE_PROJECT_ID) [workflow-test-omniflow]: ")
+            scan.nextLine().trim().ifEmpty { "workflow-test-omniflow" }
+        }
 
-    print("Enter GCP region [europe-west1]: ")
-    val region = scan.nextLine().trim().ifEmpty { "europe-west1" }
+    val region = System.getenv("GOOGLE_ZONE")
+        ?: run {
+            print("Enter GCP region (GOOGLE_ZONE) [europe-west1]: ")
+            scan.nextLine().trim().ifEmpty { "europe-west1" }
+        }
+
+    val serviceAccountEmail = System.getenv("GOOGLE_SERVICE_ACCOUNT")
+        ?: run {
+            print("Enter service account email (GOOGLE_SERVICE_ACCOUNT) [workflow-test@$projectId.iam.gserviceaccount.com]: ")
+            scan.nextLine().trim().ifEmpty { "workflow-test@$projectId.iam.gserviceaccount.com" }
+        }
 
     val deployer = GoogleCloudDeployer.Builder()
         .internalFunctionDeployer(
@@ -70,9 +107,6 @@ fun deployGoogleWithQuickFaaS() {
             )
         )
         .build()
-
-    print("Enter service account email [workflow-test@$projectId.iam.gserviceaccount.com]: ")
-    val serviceAccountEmail = scan.nextLine().trim().ifEmpty { "workflow-test@$projectId.iam.gserviceaccount.com" }
 
     val googleDeployContext = GoogleDeployContext(
         projectId = projectId,
@@ -85,10 +119,11 @@ fun deployGoogleWithQuickFaaS() {
 
     println()
     println("Deploying workflow with QuickFaaS auto-deploy enabled...")
-    println("  Project: $projectId")
-    println("  Region: $region")
-    println("  Service Account: $serviceAccountEmail")
-    println("  QuickFaaS JAR: $quickFaasJarPath")
+    println("  GOOGLE_APPLICATION_CREDENTIALS: ${googleCredentials ?: "(not set)"}")
+    println("  QUICKFAAS_JAR_PATH: $quickFaasJarPath")
+    println("  GOOGLE_PROJECT_ID: $projectId")
+    println("  GOOGLE_ZONE: $region")
+    println("  GOOGLE_SERVICE_ACCOUNT: $serviceAccountEmail")
     println()
 
     deployer.deploy(QuickFaasTestWorkflow, googleDeployContext)
