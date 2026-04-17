@@ -11,7 +11,7 @@ class QuickFaasDescriptorLoader {
         private val logger = KotlinLogging.logger {}
         private val mapper = ObjectMapper()
 
-        private val GCP_VALID_RUNTIMES = setOf("java11", "nodejs14")
+        private val GCP_VALID_RUNTIMES = setOf("java11", "java17", "java21", "nodejs14", "nodejs20", "nodejs22")
 
         fun load(path: Path): QuickFaasDescriptor {
             require(Files.exists(path)) {
