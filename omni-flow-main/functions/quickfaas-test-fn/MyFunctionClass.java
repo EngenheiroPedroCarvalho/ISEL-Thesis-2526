@@ -1,15 +1,12 @@
-import com.google.cloud.functions.HttpFunction;
-import com.google.cloud.functions.HttpRequest;
-import com.google.cloud.functions.HttpResponse;
-import java.io.BufferedWriter;
+import quickfaas.triggers.http.HttpRequestQf;
+import quickfaas.triggers.http.HttpResponseQf;
 
-public class MyFunctionClass implements HttpFunction {
-    @Override
-    public void service(HttpRequest request, HttpResponse response) throws Exception {
-        String name = request.getFirstQueryParameter("name").orElse("World");
-
-        response.setContentType("application/json");
-        BufferedWriter writer = response.getWriter();
-        writer.write("{\"message\": \"Hello, " + name + "! Deployed via QuickFaaS from OmniFlow.\"}");
+public class MyFunctionClass {
+    public void myFunction(HttpRequestQf req, HttpResponseQf res) {
+        String name = req.getParameter("name");
+        if (name == null || name.isEmpty()) {
+            name = "World";
+        }
+        res.write("{\"message\": \"Hello, " + name + "! Deployed via QuickFaaS from OmniFlow.\"}");
     }
 }
