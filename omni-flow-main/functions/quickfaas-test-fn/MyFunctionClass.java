@@ -3,10 +3,10 @@ import quickfaas.triggers.http.HttpResponseQf;
 
 public class MyFunctionClass {
     public void myFunction(HttpRequestQf req, HttpResponseQf res) {
-        String name = req.getParameter("name");
+        String name = req.getQueryParameter("name");
         if (name == null || name.isEmpty()) {
             name = "World";
         }
-        res.write("{\"message\": \"Hello, " + name + "! Deployed via QuickFaaS from OmniFlow.\"}");
+        res.send(200, "{\"message\": \"Hello, " + name + "! Deployed via QuickFaaS from OmniFlow.\"}");
     }
 }
