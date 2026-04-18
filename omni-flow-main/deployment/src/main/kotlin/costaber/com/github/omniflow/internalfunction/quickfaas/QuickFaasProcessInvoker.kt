@@ -14,6 +14,7 @@ class QuickFaasProcessInvoker(
         private val logger = KotlinLogging.logger {}
         private const val DESCRIPTOR_FILENAME = "func-deployment.json"
         private const val FUNCTION_DEPLOYMENT_DIR = "function-deployment"
+        private const val SUCCESS_MARKER = "Deployment finished successfully!"
     }
 
     fun invoke(descriptorPath: Path) {
@@ -71,13 +72,22 @@ class QuickFaasProcessInvoker(
             }
 
             val exitCode = process.exitValue()
-            if (exitCode != 0) {
+            val deploymentSucceeded = output.contains(SUCCESS_MARKER)
+
+            if (exitCode != 0 && !deploymentSucceeded) {
                 throw IllegalStateException(
                     "QuickFaaS deployment failed (exit code $exitCode). Output:\n$output"
                 )
             }
 
-            logger.info { "QuickFaaS process exited successfully (code=0)" }
+            if (exitCode != 0) {
+                logger.warn {
+                    "QuickFaaS exited with code $exitCode but deployment marker was found; " +
+                            "treating as success (QuickFaaS bug: doesn't wait for async Cloud Functions operation)."
+                }
+            } else {
+                logger.info { "QuickFaaS process exited successfully (code=0)" }
+            }
             logger.debug { "QuickFaaS output:\n$output" }
         } finally {
             copiedFiles.forEach { file ->
