@@ -24,6 +24,9 @@ fun main() {
     if (option == 2){
         deployGoogleWithQuickFaaS()
     }
+    if (option == 3){
+        deployGoogleGreetingWithQuickFaaS()
+    }
 }
 
 fun getSelectedProvider(scan: Scanner): Int {
@@ -33,10 +36,11 @@ fun getSelectedProvider(scan: Scanner): Int {
         println(" 0: Amazon Web Service")
         println(" 1: Google Cloud Platform")
         println(" 2: Google Cloud Platform (with QuickFaaS auto-deploy)")
+        println(" 3: Google Cloud Platform (Greeting workflow with QuickFaaS)")
         println("99: Exit")
         print("Choose an option:")
         option = scan.nextInt()
-    } while (!((option in 0..2) || option == 99));
+    } while (!((option in 0..3) || option == 99));
     return option
 }
 
@@ -131,6 +135,72 @@ fun deployGoogleWithQuickFaaS() {
     println("Deployment completed successfully!")
 }
 
+fun deployGoogleGreetingWithQuickFaaS() {
+    val scan = Scanner(System.`in`)
+
+    val googleCredentials = System.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if (googleCredentials.isNullOrBlank()) {
+        println("WARNING: GOOGLE_APPLICATION_CREDENTIALS is not set.")
+        println("Set it and restart. See option 2 for details.")
+        return
+    }
+
+    val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
+        ?: run {
+            print("Enter the path to QuickFaaS-Deployment JAR (QUICKFAAS_JAR_PATH): ")
+            scan.nextLine().trim()
+        }
+
+    val jarFile = Path.of(quickFaasJarPath).toFile()
+    require(jarFile.exists()) { "QuickFaaS JAR not found at '$quickFaasJarPath'" }
+
+    val projectId = System.getenv("GOOGLE_PROJECT_ID")
+        ?: run {
+            print("Enter GCP Project ID [workflow-test-omniflow]: ")
+            scan.nextLine().trim().ifEmpty { "workflow-test-omniflow" }
+        }
+
+    val region = System.getenv("GOOGLE_ZONE")
+        ?: run {
+            print("Enter GCP region [europe-west1]: ")
+            scan.nextLine().trim().ifEmpty { "europe-west1" }
+        }
+
+    val serviceAccountEmail = System.getenv("GOOGLE_SERVICE_ACCOUNT")
+        ?: run {
+            print("Enter service account email [workflow-test@$projectId.iam.gserviceaccount.com]: ")
+            scan.nextLine().trim().ifEmpty { "workflow-test@$projectId.iam.gserviceaccount.com" }
+        }
+
+    val deployer = GoogleCloudDeployer.Builder()
+        .internalFunctionDeployer(
+            QuickFaasDeployer(
+                quickFaasJarPath = Path.of(quickFaasJarPath),
+                projectId = projectId,
+                region = region
+            )
+        )
+        .build()
+
+    val googleDeployContext = GoogleDeployContext(
+        projectId = projectId,
+        zone = region,
+        serviceAccount = "projects/$projectId/serviceAccounts/$serviceAccountEmail",
+        workflowId = "GreetingWorkflow",
+        workflowDescription = "Multilingual greeting via QuickFaaS auto-deploy",
+        workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow", "test" to "greeting-quickfaas"),
+    )
+
+    println()
+    println("Deploying Greeting workflow with QuickFaaS auto-deploy...")
+    println("  Project: $projectId | Region: $region")
+    println()
+
+    deployer.deploy(GreetingWorkflow, googleDeployContext)
+
+    println("Greeting workflow deployed successfully!")
+}
+
 fun deployAmazon(){
 
 }
@@ -207,6 +277,34 @@ private val QuickFaasTestWorkflow = workflow {
         }
     )
     result("result")
+}
+
+/**
+ * Greeting workflow: auto-deploys a multilingual greeting function via QuickFaaS,
+ * then calls it with ?lang=pt to get a Portuguese greeting.
+ */
+private val GreetingWorkflow = workflow {
+    name("GreetingWorkflow")
+    description("Auto-deploys a greeting function via QuickFaaS and calls it")
+    steps(
+        step {
+            name("greet-portuguese")
+            description("Call the greeting function with lang=pt")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "greeting-fn",
+                        deploymentDescriptorPath = "./functions/greeting-fn/func-deployment.json"
+                    )
+                    query("lang" to value("pt"))
+                    result("greetingResult")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("greetingResult")
 }
 
 private val TestWorkflow1 = workflow {
