@@ -5,260 +5,132 @@ import costaber.com.github.omniflow.cloud.provider.google.deployer.GoogleCloudDe
 import costaber.com.github.omniflow.cloud.provider.google.deployer.GoogleDeployContext
 import costaber.com.github.omniflow.dsl.*
 import costaber.com.github.omniflow.internalfunction.quickfaas.QuickFaasDeployer
-import costaber.com.github.omniflow.model.HttpMethod
 import costaber.com.github.omniflow.model.HttpMethod.*
-import java.util.Scanner
 import java.nio.file.Path
+import java.util.Scanner
 
+// ---------------------------------------------------------------------------
+//  Main entry-point — interactive menu
+// ---------------------------------------------------------------------------
 
 fun main() {
     val scan = Scanner(System.`in`)
-    val option = getSelectedProvider(scan)
-    if (option == 0) {
-        deployAmazon()
-        scan.next()
-    }
-    if (option == 1){
-        deployGoogle()
-    }
-    if (option == 2){
-        deployGoogleWithQuickFaaS()
-    }
-    if (option == 3){
-        deployGoogleGreetingWithQuickFaaS()
+    when (getSelectedOption(scan)) {
+        2 -> deployQuickFaasAutoDeployExample(scan)
+        3 -> deployGreetingExample(scan)
+        4 -> deployOrderValidationExample(scan)
+        5 -> deployMapReduceExample(scan)
     }
 }
 
-fun getSelectedProvider(scan: Scanner): Int {
-    println("In which cloud provider would you like to deploy?")
+fun getSelectedOption(scan: Scanner): Int {
+    println()
+    println("=== OmniFlow + QuickFaaS — Example Workflows ===")
+    println()
     var option: Int
     do {
-        println(" 0: Amazon Web Service")
-        println(" 1: Google Cloud Platform")
-        println(" 2: Google Cloud Platform (with QuickFaaS auto-deploy)")
-        println(" 3: Google Cloud Platform (Greeting workflow with QuickFaaS)")
+        println(" 2: Example 2 — QuickFaaS auto-deploy (single function)")
+        println(" 3: Example 3 — Greeting with query parameters (QuickFaaS)")
+        println(" 4: Example 4 — Order validation with conditional branching (QuickFaaS)")
+        println(" 5: Example 5 — MapReduce with parallel iteration (registry functions)")
         println("99: Exit")
-        print("Choose an option:")
+        print("Choose an option: ")
         option = scan.nextInt()
-    } while (!((option in 0..3) || option == 99));
+    } while (option !in listOf(2, 3, 4, 5, 99))
     return option
 }
 
+// ---------------------------------------------------------------------------
+//  Shared helpers — collect GCP config from env vars / interactive prompts
+// ---------------------------------------------------------------------------
 
-/**
- * Deploy a Google Cloud Workflow with QuickFaaS auto-deployment for internal functions.
- *
- * Environment variables (all optional — prompts interactively if missing):
- *   GOOGLE_APPLICATION_CREDENTIALS - Path to GCP service account JSON key (MUST be set before JVM start)
- *   QUICKFAAS_JAR_PATH             - Path to QuickFaaS-Deployment-1.0-fat.jar
- *   GOOGLE_PROJECT_ID              - GCP project ID
- *   GOOGLE_ZONE                    - GCP region (e.g. europe-west1)
- *   GOOGLE_SERVICE_ACCOUNT         - Service account email
- */
-fun deployGoogleWithQuickFaaS() {
-    val scan = Scanner(System.`in`)
+data class GcpConfig(
+    val quickFaasJarPath: String,
+    val projectId: String,
+    val region: String,
+    val serviceAccountEmail: String,
+)
 
+private fun collectGcpConfig(scan: Scanner): GcpConfig? {
     val googleCredentials = System.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     if (googleCredentials.isNullOrBlank()) {
         println("WARNING: GOOGLE_APPLICATION_CREDENTIALS is not set.")
-        println("Google Cloud SDK requires this env var to be set BEFORE starting the JVM.")
-        println("Set it and restart:")
+        println("Google Cloud SDK requires this env var BEFORE starting the JVM.")
         println("  Linux/Mac: export GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa-key.json")
         println("  Windows:   set GOOGLE_APPLICATION_CREDENTIALS=C:\\path\\to\\sa-key.json")
         println()
         print("Continue anyway? (y/N): ")
-        val answer = scan.nextLine().trim()
-        if (!answer.equals("y", ignoreCase = true)) return
+        if (!scan.next().trim().equals("y", ignoreCase = true)) return null
     } else {
         println("GOOGLE_APPLICATION_CREDENTIALS: $googleCredentials")
     }
 
     val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
         ?: run {
-            print("Enter the path to QuickFaaS-Deployment JAR (QUICKFAAS_JAR_PATH): ")
-            scan.nextLine().trim()
+            print("Enter path to QuickFaaS-Deployment JAR (QUICKFAAS_JAR_PATH): ")
+            scan.next().trim()
         }
-
-    val jarFile = Path.of(quickFaasJarPath).toFile()
-    require(jarFile.exists()) {
+    require(Path.of(quickFaasJarPath).toFile().exists()) {
         "QuickFaaS JAR not found at '$quickFaasJarPath'"
     }
 
     val projectId = System.getenv("GOOGLE_PROJECT_ID")
         ?: run {
-            print("Enter GCP Project ID (GOOGLE_PROJECT_ID) [workflow-test-omniflow]: ")
-            scan.nextLine().trim().ifEmpty { "workflow-test-omniflow" }
-        }
-
-    val region = System.getenv("GOOGLE_ZONE")
-        ?: run {
-            print("Enter GCP region (GOOGLE_ZONE) [europe-west1]: ")
-            scan.nextLine().trim().ifEmpty { "europe-west1" }
-        }
-
-    val serviceAccountEmail = System.getenv("GOOGLE_SERVICE_ACCOUNT")
-        ?: run {
-            print("Enter service account email (GOOGLE_SERVICE_ACCOUNT) [workflow-test@$projectId.iam.gserviceaccount.com]: ")
-            scan.nextLine().trim().ifEmpty { "workflow-test@$projectId.iam.gserviceaccount.com" }
-        }
-
-    val deployer = GoogleCloudDeployer.Builder()
-        .internalFunctionDeployer(
-            QuickFaasDeployer(
-                quickFaasJarPath = Path.of(quickFaasJarPath),
-                projectId = projectId,
-                region = region
-            )
-        )
-        .build()
-
-    val googleDeployContext = GoogleDeployContext(
-        projectId = projectId,
-        zone = region,
-        serviceAccount = "projects/$projectId/serviceAccounts/$serviceAccountEmail",
-        workflowId = "QuickFaasIntegrationTest",
-        workflowDescription = "E2E test: auto-deploy internal function via QuickFaaS",
-        workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow", "test" to "quickfaas-integration"),
-    )
-
-    println()
-    println("Deploying workflow with QuickFaaS auto-deploy enabled...")
-    println("  GOOGLE_APPLICATION_CREDENTIALS: ${googleCredentials ?: "(not set)"}")
-    println("  QUICKFAAS_JAR_PATH: $quickFaasJarPath")
-    println("  GOOGLE_PROJECT_ID: $projectId")
-    println("  GOOGLE_ZONE: $region")
-    println("  GOOGLE_SERVICE_ACCOUNT: $serviceAccountEmail")
-    println()
-
-    deployer.deploy(QuickFaasTestWorkflow, googleDeployContext)
-
-    println("Deployment completed successfully!")
-}
-
-fun deployGoogleGreetingWithQuickFaaS() {
-    val scan = Scanner(System.`in`)
-
-    val googleCredentials = System.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-    if (googleCredentials.isNullOrBlank()) {
-        println("WARNING: GOOGLE_APPLICATION_CREDENTIALS is not set.")
-        println("Set it and restart. See option 2 for details.")
-        return
-    }
-
-    val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
-        ?: run {
-            print("Enter the path to QuickFaaS-Deployment JAR (QUICKFAAS_JAR_PATH): ")
-            scan.nextLine().trim()
-        }
-
-    val jarFile = Path.of(quickFaasJarPath).toFile()
-    require(jarFile.exists()) { "QuickFaaS JAR not found at '$quickFaasJarPath'" }
-
-    val projectId = System.getenv("GOOGLE_PROJECT_ID")
-        ?: run {
             print("Enter GCP Project ID [workflow-test-omniflow]: ")
-            scan.nextLine().trim().ifEmpty { "workflow-test-omniflow" }
+            scan.next().trim().ifEmpty { "workflow-test-omniflow" }
         }
 
     val region = System.getenv("GOOGLE_ZONE")
         ?: run {
             print("Enter GCP region [europe-west1]: ")
-            scan.nextLine().trim().ifEmpty { "europe-west1" }
+            scan.next().trim().ifEmpty { "europe-west1" }
         }
 
     val serviceAccountEmail = System.getenv("GOOGLE_SERVICE_ACCOUNT")
         ?: run {
             print("Enter service account email [workflow-test@$projectId.iam.gserviceaccount.com]: ")
-            scan.nextLine().trim().ifEmpty { "workflow-test@$projectId.iam.gserviceaccount.com" }
+            scan.next().trim().ifEmpty { "workflow-test@$projectId.iam.gserviceaccount.com" }
         }
 
-    val deployer = GoogleCloudDeployer.Builder()
+    return GcpConfig(quickFaasJarPath, projectId, region, serviceAccountEmail)
+}
+
+private fun buildQuickFaasDeployer(config: GcpConfig): GoogleCloudDeployer =
+    GoogleCloudDeployer.Builder()
         .internalFunctionDeployer(
             QuickFaasDeployer(
-                quickFaasJarPath = Path.of(quickFaasJarPath),
-                projectId = projectId,
-                region = region
+                quickFaasJarPath = Path.of(config.quickFaasJarPath),
+                projectId = config.projectId,
+                region = config.region,
             )
         )
         .build()
 
-    val googleDeployContext = GoogleDeployContext(
-        projectId = projectId,
-        zone = region,
-        serviceAccount = "projects/$projectId/serviceAccounts/$serviceAccountEmail",
-        workflowId = "GreetingWorkflow",
-        workflowDescription = "Multilingual greeting via QuickFaaS auto-deploy",
-        workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow", "test" to "greeting-quickfaas"),
-    )
+private fun buildDeployContext(
+    config: GcpConfig,
+    workflowId: String,
+    workflowDescription: String,
+    extraLabels: Map<String, String> = emptyMap(),
+): GoogleDeployContext = GoogleDeployContext(
+    projectId = config.projectId,
+    zone = config.region,
+    serviceAccount = "projects/${config.projectId}/serviceAccounts/${config.serviceAccountEmail}",
+    workflowId = workflowId,
+    workflowDescription = workflowDescription,
+    workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow") + extraLabels,
+)
 
-    println()
-    println("Deploying Greeting workflow with QuickFaaS auto-deploy...")
-    println("  Project: $projectId | Region: $region")
-    println()
+// ===========================================================================
+//  Example 2 — QuickFaaS auto-deploy (single function)
+//
+//  The function "quickfaas-test-fn" does NOT exist yet. OmniFlow triggers
+//  QuickFaaS to compile, upload, and deploy it as a Cloud Function before
+//  deploying the workflow.
+// ===========================================================================
 
-    deployer.deploy(GreetingWorkflow, googleDeployContext)
-
-    println("Greeting workflow deployed successfully!")
-}
-
-fun deployAmazon(){
-
-}
-
-fun deployGoogle(){
-    val deployer = GoogleCloudDeployer.Builder()
-        .build()
-    val googleDeployContext = GoogleDeployContext(
-        projectId = "workflow-test-omniflow",
-        zone = "us-east1",
-        serviceAccount = "projects/workflow-test-omniflow/serviceAccounts/" +
-                "workflow-test@workflow-test-omniflow.iam.gserviceaccount.com",
-        workflowId = "TestWorkflow0",
-        workflowDescription = "Chamada de uma função interna",
-        workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow"),
-    )
-    deployer.deploy(TestWorkflow0, googleDeployContext)
-}
-
-private val TestWorkflow0 = workflow {
-    name("TestWorkflow")
-    description("This is a test of the workflow. Call to an internal function")
-    steps(
-        step {
-            name("HTTP call")
-            description("Internal Function Test")
-            context(
-                call {
-                    method(GET)
-                    internalFunction("svc-upper")
-                    result("result")
-                    resultType(ResultType.BODY)
-                }
-            )
-        }
-    )
-    result("result")
-}
-
-/**
- * E2E test workflow for QuickFaaS integration.
- *
- * References an internal function with a deploymentDescriptorPath.
- * When the function is not yet deployed, OmniFlow triggers QuickFaaS
- * to deploy it automatically before deploying the workflow.
- *
- * Prerequisites:
- *   - GOOGLE_APPLICATION_CREDENTIALS env var set to a service account JSON key
- *   - QUICKFAAS_JAR_PATH env var set to the QuickFaaS-Deployment-1.0-fat.jar path
- *   - A valid func-deployment.json at the path specified in deploymentDescriptorPath
- *     (relative to the project root, e.g. ./functions/quickfaas-test-fn/func-deployment.json)
- *   - The function source code referenced in the descriptor's functionFile field
- *
- * To run: select option 2 in the CLI menu.
- */
-private val QuickFaasTestWorkflow = workflow {
-    name("QuickFaasIntegrationTest")
-    description("E2E test: workflow that auto-deploys an internal function via QuickFaaS")
+private val Example2Workflow = workflow {
+    name("QuickFaasAutoDeployExample")
+    description("Auto-deploys an internal function via QuickFaaS, then calls it")
     steps(
         step {
             name("call-auto-deployed-function")
@@ -279,13 +151,32 @@ private val QuickFaasTestWorkflow = workflow {
     result("result")
 }
 
-/**
- * Greeting workflow: auto-deploys a multilingual greeting function via QuickFaaS,
- * then calls it with ?lang=pt to get a Portuguese greeting.
- */
-private val GreetingWorkflow = workflow {
+fun deployQuickFaasAutoDeployExample(scan: Scanner) {
+    println()
+    println("--- Example 2: QuickFaaS Auto-Deploy ---")
+    println("Deploys a single Cloud Function via QuickFaaS, then deploys a workflow that calls it.")
+    println()
+
+    val config = collectGcpConfig(scan) ?: return
+    val deployer = buildQuickFaasDeployer(config)
+    val context = buildDeployContext(config, "QuickFaasAutoDeployExample", "Example 2: auto-deploy via QuickFaaS")
+
+    println()
+    println("Deploying...")
+    deployer.deploy(Example2Workflow, context)
+    println("Example 2 deployed successfully!")
+}
+
+// ===========================================================================
+//  Example 3 — Greeting with query parameters (QuickFaaS)
+//
+//  Auto-deploys a multilingual greeting function, then calls it with
+//  ?lang=pt to get a Portuguese greeting.
+// ===========================================================================
+
+private val Example3Workflow = workflow {
     name("GreetingWorkflow")
-    description("Auto-deploys a greeting function via QuickFaaS and calls it")
+    description("Auto-deploys a greeting function via QuickFaaS and calls it with a query parameter")
     steps(
         step {
             name("greet-portuguese")
@@ -307,139 +198,185 @@ private val GreetingWorkflow = workflow {
     result("greetingResult")
 }
 
-private val TestWorkflow1 = workflow {
-    name("TestWorkflow")
-    description("This is a test of the workflow. Call to an internal function that isn't in the registry (Not deployed)")
-    steps(
-        step {
-            name("HTTP call")
-            description("Function exists")
-            context(
-                call {
-                    method(GET)
-                    host("test.host")
-                    path("test.path")
-                    result("result")
-                    resultType(ResultType.BODY)
-                }
-            )
-        }
-    )
-    result("result")
+fun deployGreetingExample(scan: Scanner) {
+    println()
+    println("--- Example 3: Greeting with Query Parameters ---")
+    println("Auto-deploys a multilingual greeting function, calls it with ?lang=pt.")
+    println()
+
+    val config = collectGcpConfig(scan) ?: return
+    val deployer = buildQuickFaasDeployer(config)
+    val context = buildDeployContext(config, "GreetingWorkflow", "Example 3: greeting with query params")
+
+    println()
+    println("Deploying...")
+    deployer.deploy(Example3Workflow, context)
+    println("Example 3 deployed successfully!")
 }
 
-private val TestWorkflow2 = workflow {
-    name("TestWorkflow")
-    description("This is a test of the workflow. 2 calls to 2 internal functions")
-    steps(
-        step {
-            name("HTTP call1")
-            description("Function exists")
-            context(
-                call {
-                    method(GET)
-                    host("fraud-check.host")
-                    path("fraud-check.path")
-                    result("result")
-                    resultType(ResultType.BODY)
-                }
-            )
-        },
-        step {
-            name("HTTP call2")
-            description("Function exists")
-            context(
-                call {
-                    method(GET)
-                    host("risk-score.host")
-                    path("risk-score.path")
-                    result("result")
-                    resultType(ResultType.BODY)
-                }
-            )
-        }
-    )
-    result("result")
-}
+// ===========================================================================
+//  Example 4 — Order validation with conditional branching (QuickFaaS)
+//
+//  Auto-deploys a validation function. The workflow:
+//    1. init       — set orderStatus = "pending"
+//    2. validate   — call validate-order-fn with ?amount=<input>
+//    3. check      — switch: if valid → approve, else → reject
+//    4. approve    — set orderStatus = "approved", jump to done
+//    5. reject     — set orderStatus = "rejected"
+//    6. done       — return orderStatus
+// ===========================================================================
 
-private val TestWorkflow3 = workflow {
-    name("TestWorkflow")
-    description("This is a test of the workflow. Call to an internal function that isn't in the registry (Not deployed)")
-    steps(
-        step {
-            name("HTTP call")
-            description("Function exists")
-            context(
-                call {
-                    method(GET)
-                    host("test.host")
-                    path("Ola.path")
-                    result("result")
-                    resultType(ResultType.BODY)
-                }
-            )
-        }
-    )
-    result("result")
-}
-
-
-
-
-
-
-//"text": "Hello World, Hello Omniflow"
-//TODO Map Reduce
-private val MapReduceWorkflow = workflow {
-    name("MapReduce")
-    description("MapReduce in a text")
+private val Example4Workflow = workflow {
+    name("OrderValidationWorkflow")
+    description("Validates an order amount via auto-deployed function, branches on the result")
     params("input")
     steps(
         step {
             name("init")
-            description("Init variables")
+            description("Initialize variables")
             context(
                 assign {
                     variables(
-                        variable("splitResult") equalTo value(listOf<String>()) //fazer um call step à função Splitt
-                    )
-                    variables(
-                        variable("lengths") equalTo value(mapOf<String,Int>())
+                        variable("orderStatus") equalTo value("pending")
                     )
                 }
             )
         },
-
         step {
-            name("call_split")
-            description("Calls the Split function")
+            name("validate-order")
+            description("Call the validation function with the order amount")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "validate-order-fn",
+                        deploymentDescriptorPath = "./functions/validate-order-fn/func-deployment.json"
+                    )
+                    query("amount" to variable("input.amount"))
+                    result("validationResult")
+                    resultType(ResultType.BODY)
+                }
+            )
+        },
+        step {
+            name("check-validation")
+            description("Branch based on validation result")
+            context(
+                switch {
+                    conditions(
+                        condition {
+                            match(variable("validationResult.body.valid") equalTo value(true))
+                            jump("approve-order")
+                        }
+                    )
+                    default("reject-order")
+                }
+            )
+        },
+        step {
+            name("approve-order")
+            description("Mark order as approved")
+            context(
+                assign {
+                    variables(
+                        variable("orderStatus") equalTo value("approved")
+                    )
+                }
+            )
+            next("done")
+        },
+        step {
+            name("reject-order")
+            description("Mark order as rejected")
+            context(
+                assign {
+                    variables(
+                        variable("orderStatus") equalTo value("rejected")
+                    )
+                }
+            )
+        },
+        step {
+            name("done")
+            description("Return final status")
+            context(
+                assign {
+                    variables(
+                        variable("finalResult") equalTo variable("orderStatus")
+                    )
+                }
+            )
+        }
+    )
+    result("finalResult")
+}
+
+fun deployOrderValidationExample(scan: Scanner) {
+    println()
+    println("--- Example 4: Order Validation with Conditional Branching ---")
+    println("Auto-deploys a validation function. Workflow branches based on amount validity.")
+    println("  Input:  {\"amount\": 500}   -> approved")
+    println("  Input:  {\"amount\": 99999} -> rejected")
+    println()
+
+    val config = collectGcpConfig(scan) ?: return
+    val deployer = buildQuickFaasDeployer(config)
+    val context = buildDeployContext(config, "OrderValidationWorkflow", "Example 4: order validation + branching")
+
+    println()
+    println("Deploying...")
+    deployer.deploy(Example4Workflow, context)
+    println("Example 4 deployed successfully!")
+}
+
+// ===========================================================================
+//  Example 5 — MapReduce with parallel iteration (registry functions)
+//
+//  Uses three already-deployed Cloud Run functions from function-registry.json:
+//    - splitter: splits input text into words
+//    - map:      returns the length of a word
+//    - reduce:   sums all lengths
+//
+//  The workflow:
+//    1. init         — initialize empty lengths map
+//    2. call_split   — POST to splitter with input text
+//    3. parallel_map — iterate words in parallel, call map for each
+//    4. callReduce   — POST to reduce with the collected lengths
+// ===========================================================================
+
+private val Example5Workflow = workflow {
+    name("MapReduceWorkflow")
+    description("MapReduce: split text, map word lengths in parallel, reduce to total")
+    params("input")
+    steps(
+        step {
+            name("init")
+            description("Initialize variables")
+            context(
+                assign {
+                    variables(
+                        variable("lengths") equalTo value(mapOf<String, Int>())
+                    )
+                }
+            )
+        },
+        step {
+            name("call-split")
+            description("Split input text into words")
             context(
                 call {
                     method(POST)
-                    host("https://splitter-592487988123.europe-west1.run.app")
-                    path("")
-                    header(
-                        "Content-Type" to value("application/json"),
-                    )
+                    internalFunction("splitter")
+                    header("Content-Type" to value("application/json"))
                     body(mapOf("text" to variable("input.text")))
                     result("splitResult")
                     resultType(ResultType.BODY)
                 }
             )
         },
-        /*
-        {
-          "words": [
-            "Hello2",
-            "World,",
-            "Omniflow"
-          ]
-        }
-        */
-
         step {
-            name("call_map")
-            description("Calls the Map function")
+            name("parallel-map")
+            description("Map each word to its length in parallel")
             context(
                 parallel {
                     iteration {
@@ -448,15 +385,12 @@ private val MapReduceWorkflow = workflow {
                         steps(
                             step {
                                 name("callMap")
-                                description("Call Map function")
+                                description("Get word length")
                                 context(
                                     call {
-                                        method(HttpMethod.POST)
-                                        host("https://map-592487988123.europe-west1.run.app")
-                                        path("")
-                                        header(
-                                            "Content-Type" to value("application/json"),
-                                        )
+                                        method(POST)
+                                        internalFunction("map")
+                                        header("Content-Type" to value("application/json"))
                                         body(mapOf("name" to variable("word")))
                                         result("mapResult")
                                         resultType(ResultType.BODY)
@@ -464,8 +398,8 @@ private val MapReduceWorkflow = workflow {
                                 )
                             },
                             step {
-                                name("extract_length")
-                                description("Extract the length")
+                                name("store-length")
+                                description("Store the word length")
                                 context(
                                     assign {
                                         variables(
@@ -480,16 +414,13 @@ private val MapReduceWorkflow = workflow {
             )
         },
         step {
-            name("callReduce")
-            description("Call Reduce function")
+            name("call-reduce")
+            description("Sum all word lengths")
             context(
                 call {
-                    method(HttpMethod.POST)
-                    host("https://reduce-592487988123.europe-west1.run.app")
-                    path("")
-                    header(
-                        "Content-Type" to value("application/json"),
-                    )
+                    method(POST)
+                    internalFunction("reduce")
+                    header("Content-Type" to value("application/json"))
                     body(mapOf("lengths" to variable("lengths")))
                     result("sumResult")
                     resultType(ResultType.BODY)
@@ -500,78 +431,21 @@ private val MapReduceWorkflow = workflow {
     result("sumResult")
 }
 
-        /*step {
-            name("firstWord")
-            description("Assign first word")
-            context(
-                iteration {
-                    key("word")
-                    forEach(variable("text"))
-                    steps(
-                        step {
-                            name("checkIfExists")
-                            description("Checks if the word already exists")
-                            context(
-                                switch {
-                                    conditions(
-                                        condition {
-                                            match(
-                                                variable("mappedResults").withKey("word") greaterThanOrEqual value(1)
-                                            )
-                                            jump("addAnotherValue")
-                                        }
-                                    )
-                                    default("addWord")
-                                }
-                            )
-                        },
-                        step {
-                            name("addWord")
-                            description("Assign word")
-                            context(
-                                assign {
-                                    variables(
-                                        variable("mappedResults").withKey("word") equalTo value(1)
-                                    )
-                                }
-                            )
-                            next("Continue")
-                        },
+fun deployMapReduceExample(scan: Scanner) {
+    println()
+    println("--- Example 5: MapReduce with Parallel Iteration ---")
+    println("Uses already-deployed Cloud Run functions (splitter, map, reduce).")
+    println("  Input: {\"text\": \"Hello World Omniflow\"}")
+    println("  Flow:  split -> parallel map (word lengths) -> reduce (sum)")
+    println()
 
-                        step {
-                            name("addAnotherValue")
-                            description("Add value")
-                            context(
-                                assign {
-                                    variables(
-                                        variable("mappedResults").withKey("word") equalTo value(2)
-                                    )
-                                }
-                            )
-                        },
+    val config = collectGcpConfig(scan) ?: return
 
-                        step {
-                            name("Continue")
-                            description("Continue")
-                            context(
-                                assign {
-                                    variables(
-                                        variable("ok") equalTo value("ok")
-                                    )
-                                }
-                            )
-                        }
-                assign {
-                    variables(
-                        variable("mappedResults").withKey("text[0]") equalTo value(1)
-                    )
-                    variables(
-                        variable("list").withKey("text[0]") equalTo value(vari)
-                    )
-                }
-                    )
-                },
-            )
-        },*/
+    val deployer = GoogleCloudDeployer.Builder().build()
+    val context = buildDeployContext(config, "MapReduceWorkflow", "Example 5: MapReduce parallel iteration")
 
-
+    println()
+    println("Deploying...")
+    deployer.deploy(Example5Workflow, context)
+    println("Example 5 deployed successfully!")
+}
