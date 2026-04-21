@@ -110,14 +110,13 @@ private fun buildDeployContext(
     config: GcpConfig,
     workflowId: String,
     workflowDescription: String,
-    extraLabels: Map<String, String> = emptyMap(),
 ): GoogleDeployContext = GoogleDeployContext(
     projectId = config.projectId,
     zone = config.region,
     serviceAccount = "projects/${config.projectId}/serviceAccounts/${config.serviceAccountEmail}",
     workflowId = workflowId,
     workflowDescription = workflowDescription,
-    workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow") + extraLabels,
+    workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow"),
 )
 
 // ===========================================================================
