@@ -141,6 +141,7 @@ private val Example2Workflow = workflow {
                         "quickfaas-test-fn",
                         deploymentDescriptorPath = "./functions/quickfaas-test-fn/func-deployment.json"
                     )
+                    authentication(authentication { type("OIDC") })
                     result("result")
                     resultType(ResultType.BODY)
                 }
@@ -188,6 +189,7 @@ private val Example3Workflow = workflow {
                         deploymentDescriptorPath = "./functions/greeting-fn/func-deployment.json"
                     )
                     query("lang" to value("pt"))
+                    authentication(authentication { type("OIDC") })
                     result("greetingResult")
                     resultType(ResultType.BODY)
                 }
@@ -252,6 +254,7 @@ private val Example4Workflow = workflow {
                         deploymentDescriptorPath = "./functions/validate-order-fn/func-deployment.json"
                     )
                     query("amount" to variable("input.amount"))
+                    authentication(authentication { type("OIDC") })
                     result("validationResult")
                     resultType(ResultType.BODY)
                 }
