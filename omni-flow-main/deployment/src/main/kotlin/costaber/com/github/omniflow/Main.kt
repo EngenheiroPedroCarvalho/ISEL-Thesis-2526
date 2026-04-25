@@ -261,13 +261,24 @@ private val Example4Workflow = workflow {
             )
         },
         step {
+            name("parse-validation")
+            description("Parse the JSON response body into a dictionary")
+            context(
+                assign {
+                    variables(
+                        variable("validation") equalTo variable("json.decode(validationResult.body)")
+                    )
+                }
+            )
+        },
+        step {
             name("check-validation")
             description("Branch based on validation result")
             context(
                 switch {
                     conditions(
                         condition {
-                            match(variable("validationResult.body.valid") equalTo value(true))
+                            match(variable("validation.valid") equalTo value(true))
                             jump("approve-order")
                         }
                     )
