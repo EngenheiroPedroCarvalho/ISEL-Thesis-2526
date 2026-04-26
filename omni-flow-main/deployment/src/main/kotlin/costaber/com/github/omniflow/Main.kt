@@ -450,17 +450,16 @@ fun deployLoanApprovalExample(scan: Scanner) {
 //  Example 5 — Text Analysis with parallel iteration (QuickFaaS auto-deploy)
 //
 //  All three functions are auto-deployed via QuickFaaS:
-//    - splitter-fn:    GET ?text=...     → {"words": [...]}
-//    - word-length-fn: GET ?word=...     → {"word": "...", "length": N}
-//    - word-count-fn:  GET ?values=5,3,8 → {"totalLength": 16, "wordCount": 3, ...}
+//    - splitter-fn:    GET ?text=...  → {"words": [...]}
+//    - word-length-fn: GET ?word=...  → {"word": "...", "length": N}
+//    - word-count-fn:  GET ?text=...  → {"totalLength": N, "wordCount": N, "averageLength": N}
 //
 //  Workflow:
 //    1. call-split       — split input text into words
 //    2. parse-split      — json.decode the response
 //    3. parallel-map     — for each word, call word-length-fn in parallel
-//    4. build-values     — concatenate lengths into comma-separated string
-//    5. call-reduce      — call word-count-fn with the values string
-//    6. parse-reduce     — json.decode the response
+//    4. call-reduce      — call word-count-fn with the original text
+//    5. parse-reduce     — json.decode the response
 // ===========================================================================
 
 private val Example5Workflow = workflow {
@@ -561,19 +560,8 @@ private val Example5Workflow = workflow {
             )
         },
         step {
-            name("build-values")
-            description("Build a comma-separated string of lengths for the reduce function")
-            context(
-                assign {
-                    variables(
-                        variable("valuesStr") equalTo variable("text.join(\",\", map.values(lengths))")
-                    )
-                }
-            )
-        },
-        step {
             name("call-reduce")
-            description("Call the reduce function with the accumulated lengths")
+            description("Call the reduce function with the original text")
             context(
                 call {
                     method(GET)
@@ -581,7 +569,7 @@ private val Example5Workflow = workflow {
                         "word-count-fn",
                         deploymentDescriptorPath = "./functions/word-count-fn/func-deployment.json"
                     )
-                    query("values" to variable("valuesStr"))
+                    query("text" to variable("input.text"))
                     authentication(authentication { type("OIDC") })
                     result("reduceResult")
                     resultType(ResultType.BODY)

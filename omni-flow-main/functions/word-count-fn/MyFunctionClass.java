@@ -3,34 +3,28 @@ import quickfaas.triggers.http.HttpResponseQf;
 
 public class MyFunctionClass {
     public void myFunction(HttpRequestQf req, HttpResponseQf res) {
-        String valuesStr;
+        String text;
         try {
-            valuesStr = req.getQueryParameter("values");
+            text = req.getQueryParameter("text");
         } catch (Exception e) {
-            res.send(200, "{\"totalLength\": 0, \"wordCount\": 0, \"error\": \"missing values parameter\"}");
+            res.send(200, "{\"totalLength\": 0, \"wordCount\": 0, \"averageLength\": 0}");
             return;
         }
-        if (valuesStr == null || valuesStr.isEmpty()) {
-            res.send(200, "{\"totalLength\": 0, \"wordCount\": 0, \"error\": \"empty values\"}");
+        if (text == null || text.isEmpty()) {
+            res.send(200, "{\"totalLength\": 0, \"wordCount\": 0, \"averageLength\": 0}");
             return;
         }
 
-        String[] parts = valuesStr.split(",");
-        int total = 0;
-        int count = 0;
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                try {
-                    total += Integer.parseInt(trimmed);
-                    count++;
-                } catch (NumberFormatException ignored) {
-                }
-            }
+        String[] words = text.trim().split("\\s+");
+        int totalLength = 0;
+        for (String word : words) {
+            totalLength += word.length();
         }
+        int wordCount = words.length;
+        double avg = wordCount > 0 ? (double) totalLength / wordCount : 0;
 
-        res.send(200, "{\"totalLength\": " + total + ", \"wordCount\": " + count
-                + ", \"averageLength\": " + (count > 0 ? String.format("%.1f", (double) total / count) : "0")
-                + "}");
+        res.send(200, "{\"totalLength\": " + totalLength
+                + ", \"wordCount\": " + wordCount
+                + ", \"averageLength\": " + String.format("%.1f", avg) + "}");
     }
 }

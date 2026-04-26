@@ -43,7 +43,8 @@ class GoogleWorkflowService {
                 .setWorkflow(workflow)
                 .build()
             val workflowCreationResult = workflowsClient.createWorkflowAsync(createWorkflowRequest)
-            logger.info { "Workflow creation result ${workflowCreationResult.get()}" }
+            val result = workflowCreationResult.get()
+            logger.info { "Workflow creation result $result" }
             logger.info { "Metadata: ${workflowCreationResult.metadata}" }
             workflowsClient.shutdown()
             workflowsClient.awaitTermination(5000, TimeUnit.MILLISECONDS)
