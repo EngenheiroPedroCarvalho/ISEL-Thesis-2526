@@ -80,7 +80,7 @@ fun getSelectedOption(scan: Scanner): Int {
         println("  ${C.CYAN}2${C.RESET}: QuickFaaS auto-deploy (single function)")
         println("  ${C.CYAN}3${C.RESET}: Greeting with query parameters (QuickFaaS)")
         println("  ${C.CYAN}4${C.RESET}: Loan approval with conditional branching (QuickFaaS)")
-        println("  ${C.CYAN}5${C.RESET}: MapReduce with parallel iteration (registry functions)")
+        println("  ${C.CYAN}5${C.RESET}: Text analysis with parallel iteration (QuickFaaS — 3 functions)")
         println(" ${C.RED}99${C.RESET}: Exit")
         println()
         print("  ${C.BOLD}Choose an option:${C.RESET} ")
@@ -447,12 +447,25 @@ fun deployLoanApprovalExample(scan: Scanner) {
 }
 
 // ===========================================================================
-//  Example 5 — MapReduce with parallel iteration (registry functions)
+//  Example 5 — Text Analysis with parallel iteration (QuickFaaS auto-deploy)
+//
+//  All three functions are auto-deployed via QuickFaaS:
+//    - splitter-fn:    GET ?text=...     → {"words": [...]}
+//    - word-length-fn: GET ?word=...     → {"word": "...", "length": N}
+//    - word-count-fn:  GET ?values=5,3,8 → {"totalLength": 16, "wordCount": 3, ...}
+//
+//  Workflow:
+//    1. call-split       — split input text into words
+//    2. parse-split      — json.decode the response
+//    3. parallel-map     — for each word, call word-length-fn in parallel
+//    4. build-values     — concatenate lengths into comma-separated string
+//    5. call-reduce      — call word-count-fn with the values string
+//    6. parse-reduce     — json.decode the response
 // ===========================================================================
 
 private val Example5Workflow = workflow {
-    name("MapReduceWorkflow")
-    description("MapReduce: split text, map word lengths in parallel, reduce to total")
+    name("TextAnalysisWorkflow")
+    description("Split text, map word lengths in parallel, reduce to summary — all via QuickFaaS")
     params("input")
     steps(
         step {
@@ -471,12 +484,26 @@ private val Example5Workflow = workflow {
             description("Split input text into words")
             context(
                 call {
-                    method(POST)
-                    internalFunction("splitter")
-                    header("Content-Type" to value("application/json"))
-                    body(mapOf("text" to variable("input.text")))
+                    method(GET)
+                    internalFunction(
+                        "splitter-fn",
+                        deploymentDescriptorPath = "./functions/splitter-fn/func-deployment.json"
+                    )
+                    query("text" to variable("input.text"))
+                    authentication(authentication { type("OIDC") })
                     result("splitResult")
                     resultType(ResultType.BODY)
+                }
+            )
+        },
+        step {
+            name("parse-split")
+            description("Parse the split response body")
+            context(
+                assign {
+                    variables(
+                        variable("splitData") equalTo variable("json.decode(splitResult.body)")
+                    )
                 }
             )
         },
@@ -487,19 +514,33 @@ private val Example5Workflow = workflow {
                 parallel {
                     iteration {
                         key("word")
-                        forEach(variable("splitResult.body.words"))
+                        forEach(variable("splitData.words"))
                         steps(
                             step {
-                                name("callMap")
+                                name("call-word-length")
                                 description("Get word length")
                                 context(
                                     call {
-                                        method(POST)
-                                        internalFunction("map")
-                                        header("Content-Type" to value("application/json"))
-                                        body(mapOf("name" to variable("word")))
-                                        result("mapResult")
+                                        method(GET)
+                                        internalFunction(
+                                            "word-length-fn",
+                                            deploymentDescriptorPath = "./functions/word-length-fn/func-deployment.json"
+                                        )
+                                        query("word" to variable("word"))
+                                        authentication(authentication { type("OIDC") })
+                                        result("lengthResult")
                                         resultType(ResultType.BODY)
+                                    }
+                                )
+                            },
+                            step {
+                                name("parse-length")
+                                description("Parse the length response")
+                                context(
+                                    assign {
+                                        variables(
+                                            variable("parsedLength") equalTo variable("json.decode(lengthResult.body)")
+                                        )
                                     }
                                 )
                             },
@@ -509,7 +550,7 @@ private val Example5Workflow = workflow {
                                 context(
                                     assign {
                                         variables(
-                                            variable("lengths").withKey("word") equalTo variable("mapResult.length")
+                                            variable("lengths").withKey("word") equalTo variable("parsedLength.length")
                                         )
                                     }
                                 )
@@ -520,54 +561,78 @@ private val Example5Workflow = workflow {
             )
         },
         step {
+            name("build-values")
+            description("Build a comma-separated string of lengths for the reduce function")
+            context(
+                assign {
+                    variables(
+                        variable("valuesStr") equalTo variable("text.join(\",\", map.values(lengths))")
+                    )
+                }
+            )
+        },
+        step {
             name("call-reduce")
-            description("Sum all word lengths")
+            description("Call the reduce function with the accumulated lengths")
             context(
                 call {
-                    method(POST)
-                    internalFunction("reduce")
-                    header("Content-Type" to value("application/json"))
-                    body(mapOf("lengths" to variable("lengths")))
-                    result("sumResult")
+                    method(GET)
+                    internalFunction(
+                        "word-count-fn",
+                        deploymentDescriptorPath = "./functions/word-count-fn/func-deployment.json"
+                    )
+                    query("values" to variable("valuesStr"))
+                    authentication(authentication { type("OIDC") })
+                    result("reduceResult")
                     resultType(ResultType.BODY)
+                }
+            )
+        },
+        step {
+            name("parse-reduce")
+            description("Parse the reduce response")
+            context(
+                assign {
+                    variables(
+                        variable("summary") equalTo variable("json.decode(reduceResult.body)")
+                    )
                 }
             )
         }
     )
-    result("sumResult")
+    result("summary")
 }
 
 fun deployMapReduceExample(scan: Scanner) {
     val stages = 3
-    C.banner("Example 5 — MapReduce with Parallel Iteration")
-    C.info("Uses already-deployed Cloud Run functions from the registry:")
-    C.detail("${C.BOLD}splitter${C.RESET} — splits input text into words")
-    C.detail("${C.BOLD}map${C.RESET}      — returns the length of a word")
-    C.detail("${C.BOLD}reduce${C.RESET}   — sums all lengths")
+    C.banner("Example 5 — Text Analysis with Parallel Iteration")
+    C.info("All functions auto-deployed via QuickFaaS:")
+    C.detail("${C.BOLD}splitter-fn${C.RESET}    — splits input text into words")
+    C.detail("${C.BOLD}word-length-fn${C.RESET} — returns the length of a word")
+    C.detail("${C.BOLD}word-count-fn${C.RESET}  — sums lengths and computes average")
     println()
     C.separator()
-    println("  ${C.YELLOW}Flow:${C.RESET}  split → parallel map (word lengths) → reduce (sum)")
+    println("  ${C.YELLOW}Flow:${C.RESET}  split → parallel map (word lengths) → reduce (summary)")
     C.separator()
     println()
 
     val config = collectGcpConfig(scan, stages) ?: return
 
-    C.stage(2, stages, "Workflow resolution + Rendering")
-    C.info("Resolving ${C.BOLD}splitter${C.RESET}, ${C.BOLD}map${C.RESET}, ${C.BOLD}reduce${C.RESET} from function-registry.json...")
-    C.info("No QuickFaaS deployment needed — functions already on Cloud Run")
-    C.info("Rendering workflow YAML...")
+    C.stage(2, stages, "Function deployment + Workflow resolution")
+    C.info("Deploying ${C.BOLD}splitter-fn${C.RESET}, ${C.BOLD}word-length-fn${C.RESET}, ${C.BOLD}word-count-fn${C.RESET} via QuickFaaS...")
+    C.info("Resolving internal functions and rendering workflow YAML...")
 
-    val deployer = GoogleCloudDeployer.Builder().build()
-    val context = buildDeployContext(config, "MapReduceWorkflow", "Example 5: MapReduce parallel iteration")
+    val deployer = buildQuickFaasDeployer(config)
+    val context = buildDeployContext(config, "TextAnalysisWorkflow", "Example 5: text analysis with parallel iteration")
     deployer.deploy(Example5Workflow, context)
 
-    C.ok("Workflow rendered and deployed")
+    C.ok("All functions deployed and workflow rendered")
     println()
 
     C.stage(3, stages, "Complete")
-    C.success("MapReduce Workflow deployed successfully!")
+    C.success("Text Analysis Workflow deployed successfully!")
     C.separator()
-    C.detail("Workflow ID: ${C.BOLD}MapReduceWorkflow${C.RESET}")
+    C.detail("Workflow ID: ${C.BOLD}TextAnalysisWorkflow${C.RESET}")
     C.detail("Execute with: {\"text\": \"Hello World Omniflow\"}")
     C.separator()
 }
