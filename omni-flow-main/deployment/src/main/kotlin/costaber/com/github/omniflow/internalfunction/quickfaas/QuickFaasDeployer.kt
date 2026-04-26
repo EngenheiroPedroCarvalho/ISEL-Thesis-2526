@@ -158,15 +158,7 @@ class QuickFaasDeployer(
 
     private fun getIamPolicy(resource: String): com.fasterxml.jackson.databind.JsonNode {
         val url = "https://cloudfunctions.googleapis.com/v1/$resource:getIamPolicy"
-        val token = tokenProvider.getTokenValue()
-        val request = HttpRequest.newBuilder()
-            .uri(URI(url))
-            .header("Authorization", "Bearer $token")
-            .header("Accept", "application/json")
-            .POST(HttpRequest.BodyPublishers.noBody())
-            .build()
-
-        val response = http.send(request, HttpResponse.BodyHandlers.ofString())
+        val response = authenticatedGet(url)
         if (response.statusCode() !in 200..299) {
             throw IllegalStateException(
                 "Failed to get IAM policy for '$resource' (${response.statusCode()}): ${response.body()}"
