@@ -117,7 +117,13 @@ class QuickFaasDeployer(
 
         logger.info { "Granting $INVOKER_ROLE to '$serviceAccountEmail' on '$functionName'..." }
 
-        val currentPolicy = getIamPolicy(resource)
+        val currentPolicy = try {
+            getIamPolicy(resource)
+        } catch (e: Exception) {
+            logManualIamCommand(functionName, region, serviceAccountEmail, e)
+            return
+        }
+
         val bindings = currentPolicy.path("bindings")
 
         val alreadyGranted = bindings?.any { binding ->
@@ -149,11 +155,31 @@ class QuickFaasDeployer(
 
         val policyBody = mapOf("policy" to mapOf("bindings" to updatedBindings))
 
-        setIamPolicy(resource, policyBody)
+        try {
+            setIamPolicy(resource, policyBody)
+        } catch (e: Exception) {
+            logManualIamCommand(functionName, region, serviceAccountEmail, e)
+            return
+        }
 
         logger.info { "Granted $INVOKER_ROLE to '$serviceAccountEmail' on '$functionName'. Waiting for IAM propagation..." }
         Thread.sleep(10_000)
         logger.info { "IAM propagation wait complete." }
+    }
+
+    private fun logManualIamCommand(
+        functionName: String,
+        region: String,
+        serviceAccountEmail: String,
+        cause: Exception
+    ) {
+        logger.warn {
+            "Could not auto-grant invoker permission: ${cause.message}\n" +
+                    "  Run this command manually before executing the workflow:\n" +
+                    "  gcloud functions add-invoker-policy-binding $functionName \\\n" +
+                    "    --region=$region \\\n" +
+                    "    --member=\"serviceAccount:$serviceAccountEmail\""
+        }
     }
 
     private fun getIamPolicy(resource: String): com.fasterxml.jackson.databind.JsonNode {
