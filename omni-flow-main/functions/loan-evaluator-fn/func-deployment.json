@@ -3,7 +3,7 @@
   "accessToken": "<REPLACE_WITH_OAUTH_TOKEN>",
   "project": "workflow-test-omniflow",
   "function": {
-    "name": "validate-order-fn",
+    "name": "loan-evaluator-fn",
     "location": "europe-west1",
     "bucket": "<REPLACE_WITH_YOUR_GCS_BUCKET>",
     "runtime": "java17",
