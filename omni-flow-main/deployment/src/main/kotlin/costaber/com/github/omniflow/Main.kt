@@ -158,6 +158,7 @@ private fun buildQuickFaasDeployer(config: GcpConfig): GoogleCloudDeployer =
                 quickFaasJarPath = Path.of(config.quickFaasJarPath),
                 projectId = config.projectId,
                 region = config.region,
+                invokerServiceAccount = config.serviceAccountEmail,
             )
         )
         .build()
