@@ -31,12 +31,22 @@ class GoogleCloudDeployer internal constructor(
 
     private companion object {
         private val logger = KotlinLogging.logger { }
+        private const val RESET   = "[0m"
+        private const val BOLD    = "[1m"
+        private const val GREEN   = "[32m"
+        private const val YELLOW  = "[33m"
+        private const val CYAN    = "[36m"
     }
 
     override fun deploy(workflow: Workflow, deployContext: GoogleDeployContext) {
         logger.info {"Starting to convert Workflow into a Workflow" }
 
+        println("$CYAN$BOLD[DEPLOY]$RESET Checking if function-registry exists at '$registryPath'...")
         bootstrapFunctionRegisterIfMissing(deployContext.projectId)
+
+        val internalCount = countInternalFunctions(workflow)
+        println("$CYAN$BOLD[DEPLOY]$RESET Detected $BOLD$internalCount$RESET internal function(s) in workflow definition")
+        println("$CYAN$BOLD[DEPLOY]$RESET Resolving internal functions (registry lookup → Cloud Run discovery → QuickFaaS deploy)...")
 
         val resolvedWorkflow = WorkflowInternalFunctionResolver(
             projectId = deployContext.projectId,
@@ -46,11 +56,16 @@ class GoogleCloudDeployer internal constructor(
             internalFunctionDeployer = internalFunctionDeployer
         ).resolve(workflow)
 
+        println("$GREEN  ✓$RESET All internal functions resolved to live URLs")
+        println("$CYAN$BOLD[DEPLOY]$RESET Rendering workflow DSL to Google Workflows YAML...")
+
         val renderingContext = GoogleRenderingContext(termContext = GoogleTermContext())
         val content = nodeTraversor.traverse(contextVisitor, resolvedWorkflow, renderingContext)
             .filterNot(String::isEmpty)
             .joinToStringNewLines()
 
+        println("$GREEN  ✓$RESET Workflow YAML generated (${content.lines().size} lines)")
+        println("$CYAN$BOLD[DEPLOY]$RESET Deploying workflow '${deployContext.workflowId}' to Google Cloud Workflows...")
 
         googleWorkflowService.deploy(
             projectId = deployContext.projectId,
@@ -61,16 +76,41 @@ class GoogleCloudDeployer internal constructor(
             workflowLabels = deployContext.workflowLabels,
             workflowSourceContents = content,
         )
+
+        println("$GREEN  ✓$RESET Workflow '${deployContext.workflowId}' deployed successfully to Google Cloud Workflows")
+    }
+
+    private fun countInternalFunctions(workflow: Workflow): Int {
+        var count = 0
+        fun countInSteps(steps: Collection<Step>) {
+            for (step in steps) {
+                val ctx = step.context
+                when (ctx) {
+                    is CallContext -> if (ctx.internalFunction != null) count++
+                    is BranchContext -> countInSteps(ctx.steps)
+                    is IterationRangeContext -> countInSteps(ctx.steps)
+                    is IterationForEachContext -> countInSteps(ctx.steps)
+                    is IterationContext -> countInSteps(ctx.steps)
+                    is ParallelBranchContext -> ctx.branches.forEach { countInSteps(it.steps) }
+                    is ParallelIterationContext -> countInSteps(ctx.iterationContext.steps)
+                    else -> Unit
+                }
+            }
+        }
+        countInSteps(workflow.steps)
+        return count
     }
 
     private fun bootstrapFunctionRegisterIfMissing(projectId: String){
         val store = FunctionRegistryStore(registryPath)
 
         if(store.exists()){
+            println("$GREEN  ✓$RESET Function-registry found at '$registryPath' (skipping bootstrap)")
             logger.info { "Function Registry found at '$registryPath' (skipping bootstrap). "}
             return
         }
 
+        println("$YELLOW  !$RESET Function-registry not found — bootstrapping from Cloud Run APIs for project '$projectId'...")
         logger.warn{
             "Function Registry not found at 'registryPath'. Boothstrapping registry from Cloud Functions APIs for project '$projectId'... "
         }
@@ -80,6 +120,7 @@ class GoogleCloudDeployer internal constructor(
             catalog = functionsCatalog
         ).bootstrapIfMissing(projectId)
 
+        println("$GREEN  ✓$RESET Function-registry created and populated at '$registryPath'")
         logger.info { "Function Registry created and populated at '$registryPath'." }
     }
 

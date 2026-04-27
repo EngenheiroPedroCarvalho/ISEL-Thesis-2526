@@ -24,6 +24,13 @@ class QuickFaasDeployer(
     private companion object {
         private val logger = KotlinLogging.logger {}
         private const val INVOKER_ROLE = "roles/cloudfunctions.invoker"
+        private const val RESET   = "[0m"
+        private const val BOLD    = "[1m"
+        private const val GREEN   = "[32m"
+        private const val YELLOW  = "[33m"
+        private const val BLUE    = "[34m"
+        private const val CYAN    = "[36m"
+        private const val RED     = "[31m"
     }
 
     private val http: HttpClient = HttpClient.newHttpClient()
@@ -38,19 +45,26 @@ class QuickFaasDeployer(
 
         logger.info { "Deploying internal function '$functionName' via QuickFaaS (descriptor=$descriptorPath)" }
 
+        println("$BLUE  →$RESET Loading deployment descriptor from '$descriptorPath'...")
         val descriptor = QuickFaasDescriptorLoader.load(descriptorPath)
         QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "gcp")
+        println("$GREEN  ✓$RESET Descriptor validated (provider=${descriptor.cloudProvider}, runtime=${descriptor.function?.runtime})")
 
+        println("$BLUE  →$RESET Invoking QuickFaaS subprocess to deploy '$BOLD$functionName$RESET'...")
         val invoker = QuickFaasProcessInvoker(quickFaasJarPath)
         invoker.invoke(descriptorPath)
+        println("$GREEN  ✓$RESET QuickFaaS subprocess completed for '$functionName'")
 
         val resolvedProject = descriptor.project ?: projectId
         val resolvedRegion = descriptor.function?.location ?: region
         val url = buildFirstGenFunctionUrl(resolvedRegion, resolvedProject, functionName)
 
+        println("$BLUE  →$RESET Polling Cloud Functions API — waiting for '$functionName' to become ACTIVE...")
         waitForFunctionReady(resolvedProject, resolvedRegion, functionName)
+        println("$GREEN  ✓$RESET Function '$functionName' is ACTIVE")
 
         if (invokerServiceAccount != null) {
+            println("$BLUE  →$RESET Granting $INVOKER_ROLE to service account on '$functionName'...")
             grantInvokerPermission(resolvedProject, resolvedRegion, functionName, invokerServiceAccount)
         }
 
@@ -132,6 +146,7 @@ class QuickFaasDeployer(
         } ?: false
 
         if (alreadyGranted) {
+            println("$GREEN  ✓$RESET Service account already has $INVOKER_ROLE on '$functionName' — skipping")
             logger.info { "Service account already has $INVOKER_ROLE on '$functionName' — skipping." }
             return
         }
@@ -162,8 +177,11 @@ class QuickFaasDeployer(
             return
         }
 
+        println("$GREEN  ✓$RESET Granted $INVOKER_ROLE to service account on '$functionName'")
+        println("$BLUE  →$RESET Waiting 10s for IAM propagation...")
         logger.info { "Granted $INVOKER_ROLE to '$serviceAccountEmail' on '$functionName'. Waiting for IAM propagation..." }
         Thread.sleep(10_000)
+        println("$GREEN  ✓$RESET IAM propagation wait complete")
         logger.info { "IAM propagation wait complete." }
     }
 
@@ -173,6 +191,11 @@ class QuickFaasDeployer(
         serviceAccountEmail: String,
         cause: Exception
     ) {
+        println("$YELLOW  !$RESET Could not auto-grant invoker permission: ${cause.message}")
+        println("$YELLOW  !$RESET Run this command manually before executing the workflow:")
+        println("    gcloud functions add-invoker-policy-binding $functionName \\")
+        println("      --region=$region \\")
+        println("      --member=\"serviceAccount:$serviceAccountEmail\"")
         logger.warn {
             "Could not auto-grant invoker permission: ${cause.message}\n" +
                     "  Run this command manually before executing the workflow:\n" +

@@ -15,6 +15,11 @@ class QuickFaasProcessInvoker(
         private const val DESCRIPTOR_FILENAME = "func-deployment.json"
         private const val FUNCTION_DEPLOYMENT_DIR = "function-deployment"
         private const val SUCCESS_MARKER = "Deployment finished successfully!"
+        private const val RESET   = "[0m"
+        private const val BOLD    = "[1m"
+        private const val GREEN   = "[32m"
+        private const val YELLOW  = "[33m"
+        private const val BLUE    = "[34m"
     }
 
     fun invoke(descriptorPath: Path) {
@@ -38,6 +43,7 @@ class QuickFaasProcessInvoker(
 
         val copiedFiles = mutableListOf<Path>()
         try {
+            println("$BLUE  →$RESET Copying deployment descriptor to QuickFaaS JAR directory...")
             val targetDescriptor = jarDir.resolve(DESCRIPTOR_FILENAME)
             Files.copy(descriptorPath.toAbsolutePath(), targetDescriptor, StandardCopyOption.REPLACE_EXISTING)
             copiedFiles.add(targetDescriptor)
@@ -49,11 +55,13 @@ class QuickFaasProcessInvoker(
                     val targetFile = jarDir.resolve(Path.of(relFunctionFile).fileName)
                     Files.copy(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING)
                     copiedFiles.add(targetFile)
+                    println("$BLUE  →$RESET Copying function source '${sourceFile.fileName}' to JAR directory...")
                     logger.info { "Copied function file '${sourceFile.fileName}' to JAR directory" }
                 }
             }
 
             val command = listOf("java", "-jar", jarPath.toAbsolutePath().toString())
+            println("$BLUE  →$RESET Starting QuickFaaS process: ${BOLD}java -jar ${jarPath.fileName}$RESET")
             logger.info { "Invoking QuickFaaS: ${command.joinToString(" ")} (workDir=$jarDir)" }
 
             val process = ProcessBuilder(command)
@@ -81,11 +89,13 @@ class QuickFaasProcessInvoker(
             }
 
             if (exitCode != 0) {
+                println("$YELLOW  !$RESET QuickFaaS exited with code $exitCode but deployment marker found — treating as success")
                 logger.warn {
                     "QuickFaaS exited with code $exitCode but deployment marker was found; " +
                             "treating as success (QuickFaaS bug: doesn't wait for async Cloud Functions operation)."
                 }
             } else {
+                println("$GREEN  ✓$RESET QuickFaaS process finished successfully (exit code 0)")
                 logger.info { "QuickFaaS process exited successfully (code=0)" }
             }
             logger.debug { "QuickFaaS output:\n$output" }
