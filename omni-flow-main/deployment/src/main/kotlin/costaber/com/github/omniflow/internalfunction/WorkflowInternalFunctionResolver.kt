@@ -10,17 +10,27 @@ import java.net.URI
 
 
 /**
- * Resolves CallContext.internalFunction using function-registry.json and Cloud Run APIs
+ * Resolves CallContext.internalFunction using function-registry.json and Cloud Run APIs.
+ *
+ * When a function is not found in the registry or Cloud Run, and its [InternalFunction.deploymentDescriptorPath]
+ * is set, the [internalFunctionDeployer] is invoked to deploy the function via QuickFaaS before continuing.
  */
 class WorkflowInternalFunctionResolver(
     private val projectId: String,
     private val preferredRegion: String?,
     private val registry: FunctionRegistryStore,
     private val inspector: CloudRunV2ServiceInspector,
-    private val locationsClient: CloudRunLocationsV1RestClient = CloudRunLocationsV1RestClient()
+    private val locationsClient: CloudRunLocationsV1RestClient = CloudRunLocationsV1RestClient(),
+    private val internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
 ) {
     private companion object {
         private val logger = KotlinLogging.logger {}
+        private const val RESET   = "[0m"
+        private const val BOLD    = "[1m"
+        private const val GREEN   = "[32m"
+        private const val YELLOW  = "[33m"
+        private const val BLUE    = "[34m"
+        private const val CYAN    = "[36m"
     }
 
     private data class FoundService(
@@ -78,7 +88,7 @@ class WorkflowInternalFunctionResolver(
                         "Remove host/path from this call step."
             )
         }
-        val resolvedUrl = resolveOrDiscoverInternal(functionRef)
+        val resolvedUrl = resolveOrDiscoverInternal(functionRef, internal)
 
         val (host, path) = splitUrl(resolvedUrl)
 
@@ -92,12 +102,20 @@ class WorkflowInternalFunctionResolver(
     private fun extractFunctionRef(internal: InternalFunction): String = internal.name
 
 
-    private fun resolveOrDiscoverInternal(functionRef: String): String{
+    private fun resolveOrDiscoverInternal(functionRef: String, internal: InternalFunction): String{
         //1) If registry has entry -> validate against Cloud Run get(serviceName)
+        println("$BLUE  →$RESET Resolving internal function '$BOLD$functionRef$RESET'...")
+        println("$BLUE  →$RESET Checking function-registry for '$functionRef'...")
         val existing = registry.tryResolveEntry(functionRef)
 
         if (existing != null) {
             val (key, meta) = existing
+
+            if (isFirstGenCloudFunction(meta.url)) {
+                println("$GREEN  ✓$RESET Function '$BOLD$key$RESET' found in registry (1st gen Cloud Function) → ${meta.url}")
+                logger.info { "Registry hit for '$key' (1st gen Cloud Function) — skipping Cloud Run validation" }
+                return meta.url
+            }
 
             return when (val r = inspector.lookupByServiceName(meta.serviceName)){
                 is CloudRunV2ServiceInspector.LookupResult.Found -> {
@@ -132,9 +150,33 @@ class WorkflowInternalFunctionResolver(
             }
         }
         //2) Missing in registry -> confirm via Cloud Run APIs and auto-populate
-        val found = discoverServiceForRef(functionRef)
+        println("$YELLOW  !$RESET Function '$functionRef' not in registry — searching Cloud Run services...")
+        val found = try {
+            discoverServiceForRef(functionRef)
+        } catch (e: IllegalStateException) {
+            if (internal.deploymentDescriptorPath != null) {
+                println("$YELLOW  !$RESET Cloud Run discovery failed for '$functionRef' — deployment descriptor available")
+                logger.info { "Cloud Run discovery failed for '$functionRef', but deployment descriptor is available. Proceeding to QuickFaaS deployment." }
+                emptyList()
+            } else {
+                throw e
+            }
+        }
+
+        //3) Not found in Cloud Run and descriptor path is provided -> deploy via QuickFaaS
+        if (found.isEmpty() && internal.deploymentDescriptorPath != null) {
+            println("$CYAN$BOLD[QUICKFAAS]$RESET Function '$BOLD$functionRef$RESET' not deployed — using QuickFaaS to deploy function...")
+            logger.info { "Function '$functionRef' not deployed. Triggering QuickFaaS deployment..." }
+            val meta = internalFunctionDeployer.deployOrUpdate(functionRef, internal.deploymentDescriptorPath)
+            registry.put(functionRef, meta)
+            println("$GREEN  ✓$RESET Function '$BOLD$functionRef$RESET' deployed and registered → ${meta.url}")
+            logger.info { "Function '$functionRef' deployed and registered (url=${meta.url})" }
+            return meta.url
+        }
+
         val chosen = chooseSingleOrFail(functionRef, found)
 
+        println("$GREEN  ✓$RESET Function '$BOLD$functionRef$RESET' found in Cloud Run (${chosen.region}) → ${chosen.url}")
         registry.put(functionRef, FunctionInvocationMetadata(serviceName = chosen.serviceName, url = chosen.url))
         logger.info("Added '$functionRef' to function-registry (region=${chosen.region})")
         return chosen.url
@@ -211,6 +253,9 @@ class WorkflowInternalFunctionResolver(
         }
 
 
+
+    private fun isFirstGenCloudFunction(url: String): Boolean =
+        url.contains(".cloudfunctions.net")
 
     private fun splitUrl(url: String): Pair<String, String> {
         val uri = try {

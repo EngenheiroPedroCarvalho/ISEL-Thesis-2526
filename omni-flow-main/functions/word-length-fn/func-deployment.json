@@ -1,0 +1,15 @@
+{
+  "cloudProvider": "gcp",
+  "accessToken": "<REPLACE_WITH_OAUTH_TOKEN>",
+  "project": "workflow-test-omniflow",
+  "function": {
+    "name": "word-length-fn",
+    "location": "europe-west1",
+    "bucket": "<REPLACE_WITH_YOUR_GCS_BUCKET>",
+    "runtime": "java17",
+    "trigger": {
+      "type": "http"
+    }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}

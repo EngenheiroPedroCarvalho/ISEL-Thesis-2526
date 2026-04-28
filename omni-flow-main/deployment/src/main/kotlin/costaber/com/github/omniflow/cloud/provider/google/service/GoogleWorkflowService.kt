@@ -12,6 +12,10 @@ class GoogleWorkflowService {
 
     private companion object {
         private val logger = KotlinLogging.logger { }
+        private const val RESET   = "[0m"
+        private const val BOLD    = "[1m"
+        private const val GREEN   = "[32m"
+        private const val BLUE    = "[34m"
     }
 
     /**
@@ -27,10 +31,12 @@ class GoogleWorkflowService {
         workflowLabels: Map<String, String> = emptyMap(),
         workflowSourceContents: String,
     ) {
+        println("$BLUE  →$RESET Creating Google Workflows client...")
         logger.info { "Creating deployment request for Workflow $workflowId" }
         val workflowsClient = WorkflowsClient.create()
         try {
             val projectLocation = LocationName.of(projectId, zone).toString()
+            println("$BLUE  →$RESET Building workflow definition (project=$projectId, zone=$zone)...")
             val workflow = Workflow.newBuilder()
                 .setDescription(workflowDescription)
                 .setSourceContents(workflowSourceContents)
@@ -42,8 +48,12 @@ class GoogleWorkflowService {
                 .setWorkflowId(workflowId)
                 .setWorkflow(workflow)
                 .build()
+            println("$BLUE  →$RESET Sending workflow '${BOLD}$workflowId${RESET}' to Google Cloud Workflows API (async)...")
             val workflowCreationResult = workflowsClient.createWorkflowAsync(createWorkflowRequest)
-            logger.info { "Workflow creation result ${workflowCreationResult.get()}" }
+            println("$BLUE  →$RESET Waiting for workflow creation to complete...")
+            val result = workflowCreationResult.get()
+            println("$GREEN  ✓$RESET Workflow '${BOLD}$workflowId${RESET}' created successfully on Google Cloud")
+            logger.info { "Workflow creation result $result" }
             logger.info { "Metadata: ${workflowCreationResult.metadata}" }
             workflowsClient.shutdown()
             workflowsClient.awaitTermination(5000, TimeUnit.MILLISECONDS)
