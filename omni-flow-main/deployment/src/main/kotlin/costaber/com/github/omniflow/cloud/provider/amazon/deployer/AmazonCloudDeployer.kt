@@ -28,15 +28,14 @@ class AmazonCloudDeployer internal constructor(
     }
 
     override fun deploy(workflow: Workflow, deployContext: AmazonDeployContext) {
-        val registryPath = Path.of(System.getProperty("user.dir")).resolve("function-registry.json")
-        val registryStore = FunctionRegistryStore(registryPath)
-
-
-
-        
         val content = nodeTraversor.traverse(contextVisitor, workflow, AmazonRenderingContext())
             .filterNot(String::isEmpty)
             .joinToStringNewLines()
+
+        println("\n--- Generated State Machine JSON ---")
+        println(content)
+        println("--- End JSON ---\n")
+
         amazonStateMachineService.createStateMachine(
             roleArn = deployContext.roleArn,
             region = deployContext.region,
