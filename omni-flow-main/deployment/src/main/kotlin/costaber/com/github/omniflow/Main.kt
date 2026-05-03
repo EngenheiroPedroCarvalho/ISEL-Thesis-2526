@@ -708,7 +708,7 @@ private fun buildAwsGreetingWorkflow(config: AwsConfig) = workflow {
             context(
                 call {
                     method(GET)
-                    host("https://${config.apiGatewayHost}")
+                    host(config.apiGatewayHost)
                     path(config.apiStagePath)
                     query("lang" to value("pt"))
                     authentication(authentication { type("IAM_ROLE") })
