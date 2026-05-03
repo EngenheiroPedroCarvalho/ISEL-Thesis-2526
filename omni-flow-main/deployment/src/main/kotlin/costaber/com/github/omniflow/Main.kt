@@ -191,7 +191,7 @@ private fun buildDeployContext(
 data class AwsConfig(
     val region: String,
     val roleArn: String,
-    val apiGatewayEndpoint: String,
+    val apiGatewayHost: String,
     val apiStagePath: String,
 )
 
@@ -222,22 +222,22 @@ private fun collectAwsConfig(scan: Scanner, stageTotal: Int): AwsConfig? {
 
     print("  Enter Step Functions IAM Role ARN: ")
     val roleArn = scan.next().trim()
-    require(roleArn.startsWith("arn:aws:iam::")) {
-        "Invalid IAM Role ARN: '$roleArn'. Expected format: arn:aws:iam::<account>:role/<name>"
-    }
 
-    print("  Enter API Gateway endpoint (e.g. abc123.execute-api.$region.amazonaws.com): ")
-    val apiGatewayEndpoint = scan.next().trim()
+    print("  Enter API Gateway Invoke URL (e.g. https://abc123.execute-api.$region.amazonaws.com/prod/greeting): ")
+    val rawUrl = scan.next().trim()
+        .removePrefix("https://")
+        .removePrefix("http://")
 
-    print("  Enter API stage/path (e.g. /prod/greeting) [/prod/greeting]: ")
-    val apiStagePath = scan.next().trim().ifEmpty { "/prod/greeting" }
+    val endpointHost = rawUrl.substringBefore("/")
+    val apiStagePath = "/" + rawUrl.substringAfter("/", "")
 
     C.ok("Region:   ${C.BOLD}$region${C.RESET}")
     C.ok("Role:     ${C.BOLD}$roleArn${C.RESET}")
-    C.ok("Endpoint: ${C.BOLD}$apiGatewayEndpoint$apiStagePath${C.RESET}")
+    C.ok("Endpoint: ${C.BOLD}$endpointHost${C.RESET}")
+    C.ok("Path:     ${C.BOLD}$apiStagePath${C.RESET}")
     println()
 
-    return AwsConfig(region, roleArn, apiGatewayEndpoint, apiStagePath)
+    return AwsConfig(region, roleArn, endpointHost, apiStagePath)
 }
 
 // ===========================================================================
@@ -708,7 +708,7 @@ private fun buildAwsGreetingWorkflow(config: AwsConfig) = workflow {
             context(
                 call {
                     method(GET)
-                    host("https://${config.apiGatewayEndpoint}")
+                    host("https://${config.apiGatewayHost}")
                     path(config.apiStagePath)
                     query("lang" to value("pt"))
                     authentication(authentication { type("IAM_ROLE") })
