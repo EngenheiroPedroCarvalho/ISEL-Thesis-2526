@@ -1,5 +1,7 @@
 package costaber.com.github.omniflow.internalfunction.quickfaas
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import mu.KotlinLogging
 import java.nio.file.Files
 import java.nio.file.Path
@@ -22,7 +24,7 @@ class QuickFaasProcessInvoker(
         private const val BLUE    = "[34m"
     }
 
-    fun invoke(descriptorPath: Path) {
+    fun invoke(descriptorPath: Path, accessToken: String? = null) {
         require(jarPath.toFile().exists()) {
             "QuickFaaS JAR not found at '$jarPath'. " +
                     "Set the QUICKFAAS_JAR_PATH environment variable or system property to the correct path."
@@ -47,6 +49,10 @@ class QuickFaasProcessInvoker(
             val targetDescriptor = jarDir.resolve(DESCRIPTOR_FILENAME)
             Files.copy(descriptorPath.toAbsolutePath(), targetDescriptor, StandardCopyOption.REPLACE_EXISTING)
             copiedFiles.add(targetDescriptor)
+
+            if (!accessToken.isNullOrBlank()) {
+                enrichDescriptorWithToken(targetDescriptor, accessToken)
+            }
 
             val descriptor = QuickFaasDescriptorLoader.load(descriptorPath.toAbsolutePath())
             descriptor.functionFile?.let { relFunctionFile ->
@@ -108,5 +114,14 @@ class QuickFaasProcessInvoker(
                 }
             }
         }
+    }
+
+    private fun enrichDescriptorWithToken(descriptorFile: Path, token: String) {
+        val mapper = ObjectMapper()
+        val root = mapper.readTree(Files.readString(descriptorFile)) as ObjectNode
+        root.put("accessToken", token)
+        Files.writeString(descriptorFile, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root))
+        println("$GREEN  ✓$RESET Injected fresh OAuth token into descriptor copy")
+        logger.info { "Injected fresh OAuth token into descriptor copy" }
     }
 }

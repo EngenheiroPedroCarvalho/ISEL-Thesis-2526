@@ -1,0 +1,6 @@
+{
+  "cloudProvider": "gcp",
+  "function": {
+    "name": "my-function"
+  }
+}

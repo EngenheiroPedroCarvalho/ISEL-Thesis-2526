@@ -1,0 +1,7 @@
+{
+  "cloudProvider": "gcp",
+  "function": {
+    "location": "europe-west1",
+    "runtime": "java17"
+  }
+}

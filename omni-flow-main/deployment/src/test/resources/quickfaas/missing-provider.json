@@ -1,0 +1,7 @@
+{
+  "function": {
+    "name": "greeting-fn",
+    "location": "europe-west1",
+    "runtime": "java17"
+  }
+}
