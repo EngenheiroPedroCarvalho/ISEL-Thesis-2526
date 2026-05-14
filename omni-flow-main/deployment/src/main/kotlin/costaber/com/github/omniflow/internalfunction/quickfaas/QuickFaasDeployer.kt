@@ -50,9 +50,17 @@ class QuickFaasDeployer(
         QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "gcp")
         println("$GREEN  ✓$RESET Descriptor validated (provider=${descriptor.cloudProvider}, runtime=${descriptor.function?.runtime})")
 
+        val freshToken = try {
+            tokenProvider.getTokenValue()
+        } catch (e: Exception) {
+            println("$YELLOW  !$RESET Could not obtain ADC token: ${e.message}. QuickFaaS will use descriptor token.")
+            logger.warn { "Could not obtain ADC token: ${e.message}. QuickFaaS will use whatever is in the descriptor." }
+            null
+        }
+
         println("$BLUE  →$RESET Invoking QuickFaaS subprocess to deploy '$BOLD$functionName$RESET'...")
         val invoker = QuickFaasProcessInvoker(quickFaasJarPath)
-        invoker.invoke(descriptorPath)
+        invoker.invoke(descriptorPath, accessToken = freshToken)
         println("$GREEN  ✓$RESET QuickFaaS subprocess completed for '$functionName'")
 
         val resolvedProject = descriptor.project ?: projectId

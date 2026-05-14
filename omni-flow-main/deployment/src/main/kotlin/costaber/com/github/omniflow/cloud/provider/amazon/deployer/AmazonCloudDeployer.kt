@@ -2,7 +2,7 @@ package costaber.com.github.omniflow.cloud.provider.amazon.deployer
 
 import costaber.com.github.omniflow.cloud.provider.amazon.renderer.AmazonRenderingContext
 import costaber.com.github.omniflow.cloud.provider.amazon.service.AmazonStateMachineService
-import costaber.com.github.omniflow.cloud.provider.google.provider.GoogleDefaultStrategyDeciderProvider.createNodeRendererStrategyDecider
+import costaber.com.github.omniflow.cloud.provider.amazon.provider.AmazonDefaultStrategyDeciderProvider.createNodeRendererStrategyDecider
 import costaber.com.github.omniflow.deployer.CloudDeployer
 import costaber.com.github.omniflow.internalfunction.InternalFunctionDeployer
 import costaber.com.github.omniflow.internalfunction.NoopInternalFunctionDeployer
@@ -28,15 +28,14 @@ class AmazonCloudDeployer internal constructor(
     }
 
     override fun deploy(workflow: Workflow, deployContext: AmazonDeployContext) {
-        val registryPath = Path.of(System.getProperty("user.dir")).resolve("function-registry.json")
-        val registryStore = FunctionRegistryStore(registryPath)
-
-
-
-        
         val content = nodeTraversor.traverse(contextVisitor, workflow, AmazonRenderingContext())
             .filterNot(String::isEmpty)
             .joinToStringNewLines()
+
+        println("\n--- Generated State Machine JSON ---")
+        println(content)
+        println("--- End JSON ---\n")
+
         amazonStateMachineService.createStateMachine(
             roleArn = deployContext.roleArn,
             region = deployContext.region,

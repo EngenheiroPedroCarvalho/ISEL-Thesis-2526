@@ -1,0 +1,8 @@
+{
+  "cloudProvider": "aws",
+  "function": {
+    "name": "greeting-fn",
+    "location": "us-east-1",
+    "runtime": "java17"
+  }
+}

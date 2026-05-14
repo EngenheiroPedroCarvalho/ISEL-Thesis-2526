@@ -48,6 +48,20 @@ class QuickFaasDescriptorLoader {
                 }
             }
 
+            if (descriptor.function?.bucket.isNullOrBlank()) {
+                logger.warn { "Descriptor missing 'function.bucket'. QuickFaaS needs a GCS bucket for source upload." }
+            }
+
+            val token = descriptor.accessToken
+            if (token != null && (token.contains("REPLACE") || token.contains("placeholder", ignoreCase = true))) {
+                logger.info { "Descriptor has placeholder accessToken. OmniFlow will inject a fresh token from ADC." }
+            }
+
+            val funcName = descriptor.function?.name ?: ""
+            if (funcName.isNotEmpty() && !Regex("^[a-z][a-z0-9-]{0,62}$").matches(funcName)) {
+                logger.warn { "Function name '$funcName' may not be valid for GCP naming rules (lowercase, hyphens, max 63 chars)." }
+            }
+
             logger.info {
                 "Descriptor validated: provider=$provider, " +
                         "function=${descriptor.function?.name}, " +

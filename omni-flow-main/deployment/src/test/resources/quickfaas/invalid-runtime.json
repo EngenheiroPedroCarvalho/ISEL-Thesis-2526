@@ -1,0 +1,8 @@
+{
+  "cloudProvider": "gcp",
+  "function": {
+    "name": "my-function",
+    "location": "europe-west1",
+    "runtime": "python39"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "cloudProvider": "gcp",
+  "accessToken": "ya29.test-token-value",
+  "project": "my-test-project",
+  "functionFile": "MyFunctionClass.java",
+  "function": {
+    "name": "greeting-fn",
+    "location": "europe-west1",
+    "runtime": "java17",
+    "bucket": "my-test-bucket",
+    "trigger": {
+      "type": "HTTP"
+    }
+  }
+}

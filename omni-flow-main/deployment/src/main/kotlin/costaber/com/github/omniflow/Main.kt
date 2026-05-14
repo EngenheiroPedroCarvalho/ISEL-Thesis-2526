@@ -1,6 +1,8 @@
 package costaber.com.github.omniflow
 
 import costaber.com.github.omniflow.builder.ResultType
+import costaber.com.github.omniflow.cloud.provider.amazon.deployer.AmazonCloudDeployer
+import costaber.com.github.omniflow.cloud.provider.amazon.deployer.AmazonDeployContext
 import costaber.com.github.omniflow.cloud.provider.google.deployer.GoogleCloudDeployer
 import costaber.com.github.omniflow.cloud.provider.google.deployer.GoogleDeployContext
 import costaber.com.github.omniflow.dsl.*
@@ -71,21 +73,27 @@ fun main() {
         3 -> deployGreetingExample(scan)
         4 -> deployLoanApprovalExample(scan)
         5 -> deployMapReduceExample(scan)
+        6 -> deployAwsGreetingExample(scan)
     }
 }
 
 fun getSelectedOption(scan: Scanner): Int {
     var option: Int
     do {
+        println("  ${C.CYAN}${C.BOLD}— Google Cloud Workflows (GCP) —${C.RESET}")
         println("  ${C.CYAN}2${C.RESET}: QuickFaaS auto-deploy (single function)")
         println("  ${C.CYAN}3${C.RESET}: Greeting with query parameters (QuickFaaS)")
         println("  ${C.CYAN}4${C.RESET}: Loan approval with conditional branching (QuickFaaS)")
         println("  ${C.CYAN}5${C.RESET}: Text analysis with parallel iteration (QuickFaaS — 3 functions)")
+        println()
+        println("  ${C.YELLOW}${C.BOLD}— AWS Step Functions —${C.RESET}")
+        println("  ${C.YELLOW}6${C.RESET}: Greeting via API Gateway + Lambda")
+        println()
         println(" ${C.RED}99${C.RESET}: Exit")
         println()
         print("  ${C.BOLD}Choose an option:${C.RESET} ")
         option = scan.nextInt()
-    } while (option !in listOf(2, 3, 4, 5, 99))
+    } while (option !in listOf(2, 3, 4, 5, 6, 99))
     return option
 }
 
@@ -175,6 +183,62 @@ private fun buildDeployContext(
     workflowDescription = workflowDescription,
     workflowLabels = mapOf("environment" to "testing", "app" to "omni-flow"),
 )
+
+// ---------------------------------------------------------------------------
+//  Shared helpers — collect AWS config from env vars / interactive prompts
+// ---------------------------------------------------------------------------
+
+data class AwsConfig(
+    val region: String,
+    val roleArn: String,
+    val apiGatewayHost: String,
+    val apiStagePath: String,
+)
+
+private fun collectAwsConfig(scan: Scanner, stageTotal: Int): AwsConfig? {
+    C.stage(1, stageTotal, "Configuration")
+
+    val awsAccessKey = System.getenv("AWS_ACCESS_KEY_ID")
+    val awsSecretKey = System.getenv("AWS_SECRET_ACCESS_KEY")
+    if (awsAccessKey.isNullOrBlank() || awsSecretKey.isNullOrBlank()) {
+        C.warn("AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY not set.")
+        C.detail("AWS SDK requires these env vars BEFORE starting the JVM.")
+        C.detail("  Linux/Mac: export AWS_ACCESS_KEY_ID=AKIA...")
+        C.detail("             export AWS_SECRET_ACCESS_KEY=wJalr...")
+        C.detail("  Windows:   set AWS_ACCESS_KEY_ID=AKIA...")
+        C.detail("             set AWS_SECRET_ACCESS_KEY=wJalr...")
+        println()
+        print("  Continue anyway? (y/N): ")
+        if (!scan.next().trim().equals("y", ignoreCase = true)) return null
+    } else {
+        C.ok("AWS credentials set")
+    }
+
+    val region = System.getenv("AWS_REGION")
+        ?: run {
+            print("  Enter AWS region [eu-west-1]: ")
+            scan.next().trim().ifEmpty { "eu-west-1" }
+        }
+
+    print("  Enter Step Functions IAM Role ARN: ")
+    val roleArn = scan.next().trim()
+
+    print("  Enter API Gateway Invoke URL (e.g. https://abc123.execute-api.$region.amazonaws.com/prod/greeting): ")
+    val rawUrl = scan.next().trim()
+        .removePrefix("https://")
+        .removePrefix("http://")
+
+    val endpointHost = rawUrl.substringBefore("/")
+    val apiStagePath = "/" + rawUrl.substringAfter("/", "")
+
+    C.ok("Region:   ${C.BOLD}$region${C.RESET}")
+    C.ok("Role:     ${C.BOLD}$roleArn${C.RESET}")
+    C.ok("Endpoint: ${C.BOLD}$endpointHost${C.RESET}")
+    C.ok("Path:     ${C.BOLD}$apiStagePath${C.RESET}")
+    println()
+
+    return AwsConfig(region, roleArn, endpointHost, apiStagePath)
+}
 
 // ===========================================================================
 //  Example 2 — QuickFaaS auto-deploy (single function)
@@ -622,5 +686,70 @@ fun deployMapReduceExample(scan: Scanner) {
     C.separator()
     C.detail("Workflow ID: ${C.BOLD}TextAnalysisWorkflow${C.RESET}")
     C.detail("Execute with: {\"text\": \"Hello World Omniflow\"}")
+    C.separator()
+}
+
+// ===========================================================================
+//  Example 6 — AWS Step Functions: Greeting via API Gateway + Lambda
+//
+//  Calls a pre-existing Lambda function exposed through API Gateway.
+//  The Lambda should accept a query parameter ?lang=... and return a greeting.
+//
+//  Authentication: IAM_ROLE (Step Functions assumes its execution role)
+// ===========================================================================
+
+private fun buildAwsGreetingWorkflow(config: AwsConfig) = workflow {
+    name("AwsGreetingStepFunction")
+    description("Calls a greeting Lambda via API Gateway from AWS Step Functions")
+    steps(
+        step {
+            name("call-greeting")
+            description("Call the greeting Lambda via API Gateway")
+            context(
+                call {
+                    method(GET)
+                    host(config.apiGatewayHost)
+                    path(config.apiStagePath)
+                    query("lang" to value("pt"))
+                    authentication(authentication { type("IAM_ROLE") })
+                    result("greetingResult")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("greetingResult")
+}
+
+fun deployAwsGreetingExample(scan: Scanner) {
+    val stages = 3
+    C.banner("Example 6 — AWS Step Functions: Greeting")
+    C.info("Deploys a Step Function that calls a greeting Lambda via API Gateway.")
+    C.info("The Lambda must already be deployed and exposed via API Gateway.")
+    println()
+
+    val config = collectAwsConfig(scan, stages) ?: return
+
+    C.stage(2, stages, "Building state machine definition")
+    C.info("Rendering workflow DSL to AWS Step Functions JSON...")
+
+    val deployer = AmazonCloudDeployer.Builder().build()
+    val context = AmazonDeployContext(
+        roleArn = config.roleArn,
+        region = config.region,
+        tags = mapOf("environment" to "testing", "app" to "omni-flow"),
+        stateMachineName = "AwsGreetingStepFunction",
+    )
+    val workflow = buildAwsGreetingWorkflow(config)
+    deployer.deploy(workflow, context)
+
+    C.ok("State machine definition rendered")
+    println()
+
+    C.stage(3, stages, "Complete")
+    C.success("AWS Step Function deployed successfully!")
+    C.separator()
+    C.detail("State Machine: ${C.BOLD}AwsGreetingStepFunction${C.RESET}")
+    C.detail("Region:        ${C.BOLD}${config.region}${C.RESET}")
     C.separator()
 }
