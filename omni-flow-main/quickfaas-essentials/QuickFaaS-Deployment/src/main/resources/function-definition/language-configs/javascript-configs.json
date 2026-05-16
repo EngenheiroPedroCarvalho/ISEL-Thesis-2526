@@ -1,0 +1,43 @@
+{
+  "signatureFile": "MyFunction.js",
+  "packageSyntax": "",
+  "parameterSyntax": "",
+  "triggers": [
+    {
+      "name": "http",
+      "templateFile": "",
+      "defaultDefinition": "",
+      "parameters": [
+        {
+          "name": "",
+          "type": ""
+        },
+        {
+          "name": "",
+          "type": ""
+        }
+      ],
+      "packages": [
+        ""
+      ]
+    },
+    {
+      "name": "storage",
+      "templateFile": "",
+      "defaultDefinition": "",
+      "parameters": [
+        {
+          "name": "",
+          "type": ""
+        },
+        {
+          "name": "",
+          "type": ""
+        }
+      ],
+      "packages": [
+        ""
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "projects/<project_id>/locations/<location>/functions/<name>",
+  "description": "QuickFaaS cloud-agnostic function",
+  "status": "ACTIVE",
+  "entryPoint": "<entry_point>",
+  "runtime": "<runtime>",
+  "timeout": "60s",
+  "availableMemoryMb": 256,
+  "maxInstances": 3000,
+  "minInstances": 0,
+  "sourceArchiveUrl": "gs://<bucket>/quickfaas/<name>/<zip_file>",
+  "eventTrigger": {
+    "eventType": "<event_type>",
+    "resource": "projects/_/buckets/<trigger_bucket>",
+    "service": "storage.googleapis.com"
+  }
+}

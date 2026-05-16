@@ -1,0 +1,45 @@
+{
+  "signatureFile": "MyFunctionClass.java",
+  "packageSyntax": "import <package>;",
+  "parameterSyntax": "<type> <name>",
+  "triggers": [
+    {
+      "name": "http",
+      "templateFile": "HttpTemplate.java",
+      "defaultDefinition": "res.send(200, \"Hello world!\");",
+      "parameters": [
+        {
+          "name": "req",
+          "type": "HttpRequestQf"
+        },
+        {
+          "name": "res",
+          "type": "HttpResponseQf"
+        }
+      ],
+      "packages": [
+        "quickfaas.triggers.http.HttpRequestQf",
+        "quickfaas.triggers.http.HttpResponseQf"
+      ]
+    },
+    {
+      "name": "storage",
+      "templateFile": "StorageTemplate.java",
+      "defaultDefinition": "System.out.println(\"Processing file: \" + blob.getName());",
+      "parameters": [
+        {
+          "name": "event",
+          "type": "BucketEventQf"
+        },
+        {
+          "name": "blob",
+          "type": "BlobQf"
+        }
+      ],
+      "packages": [
+        "quickfaas.triggers.storage.BlobQf",
+        "quickfaas.triggers.storage.BucketEventQf"
+      ]
+    }
+  ]
+}

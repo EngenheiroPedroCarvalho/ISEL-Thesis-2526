@@ -1,0 +1,19 @@
+{
+  "cloudProvider": "",
+  "accessToken": "",
+  "project": "",
+  "function": {
+    "name": "",
+    "location": "",
+    "bucket": "",
+    "runtime": "java11",
+    "trigger": {
+      "type": "storage",
+	  "bucket": "",
+	  "eventType": ""
+    }
+  },
+  "functionFile": "./MyFunctionClass.java",
+  "dependenciesFile": "",
+  "configurationsFile": ""
+}

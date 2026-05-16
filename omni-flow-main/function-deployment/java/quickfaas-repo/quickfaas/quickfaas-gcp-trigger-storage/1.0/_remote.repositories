@@ -1,0 +1,4 @@
+#NOTE: This is a Maven Resolver internal implementation file, its format can be changed without prior notice.
+#Mon May 30 15:12:49 BST 2022
+quickfaas-gcp-trigger-storage-1.0.jar>=
+quickfaas-gcp-trigger-storage-1.0.pom>=

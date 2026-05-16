@@ -1,0 +1,13 @@
+{
+  "cloudProvider": "gcp",
+  "accessToken": "<from gcloud auth print-access-token>",
+  "project": "workflow-test-omniflow",
+  "function": {
+    "name": "hello-fn",
+    "location": "europe-west1",
+    "bucket": "my-deploy-bucket",
+    "runtime": "java17",
+    "trigger": { "type": "http" }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}

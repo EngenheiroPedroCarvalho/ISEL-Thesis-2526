@@ -1,0 +1,28 @@
+{
+  "name": "<function_app>",
+  "location": "<location>",
+  "kind": "functionapp",
+  "properties": {
+    "siteConfig": {
+      "appSettings": [
+        {
+          "name": "FUNCTIONS_EXTENSION_VERSION",
+          "value": "~4"
+        },
+        {
+          "name": "FUNCTIONS_WORKER_RUNTIME",
+          "value": "java"
+        },
+        {
+          "name": "AzureWebJobsStorage",
+          "value": "DefaultEndpointsProtocol=https;AccountName=<storage_account>;AccountKey=<storage_account_key>;EndpointSuffix=core.windows.net"
+        },
+        {
+          "name": "WEBSITE_RUN_FROM_PACKAGE",
+          "value": "1"
+        }
+      ],
+      "javaVersion": "<runtime_version>"
+    }
+  }
+}

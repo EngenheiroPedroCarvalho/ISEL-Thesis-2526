@@ -1,0 +1,17 @@
+{
+  "cloudProvider": "",
+  "accessToken": "",
+  "project": "",
+  "function": {
+    "name": "",
+    "location": "",
+    "bucket": "",
+    "runtime": "java11",
+    "trigger": {
+      "type": "http"
+    }
+  },
+  "functionFile": "./MyFunctionClass.java",
+  "dependenciesFile": "",
+  "configurationsFile": ""
+}
