@@ -11,6 +11,7 @@ data class DeploymentData(
     val cloudProvider: String,
     val accessToken: String,
     val subscriptionId: String? = null,         // Mandatory for MsAzure
+    val iamRoleArn: String? = null,             // Mandatory for AWS Lambda
     val project: String,
     val function: FunctionDeploymentData,
     val functionFile: String,

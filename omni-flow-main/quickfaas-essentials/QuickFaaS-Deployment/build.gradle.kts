@@ -42,11 +42,14 @@ tasks {
 
 dependencies {
     val ktorVersion = "2.0.3"
+    val awsSdkVersion = "2.20.26"
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")                      // CIO engine for HTTP client
     implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("org.apache.maven.shared:maven-invoker:3.2.0")               // Maven invoker
+    implementation("software.amazon.awssdk:lambda:$awsSdkVersion")             // AWS Lambda SDK
+    implementation("software.amazon.awssdk:s3:$awsSdkVersion")                 // AWS S3 SDK
     testImplementation(kotlin("test"))
 }
 

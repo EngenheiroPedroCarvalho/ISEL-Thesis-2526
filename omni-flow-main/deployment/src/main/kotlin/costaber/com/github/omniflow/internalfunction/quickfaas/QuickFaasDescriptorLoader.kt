@@ -12,6 +12,7 @@ class QuickFaasDescriptorLoader {
         private val mapper = ObjectMapper()
 
         private val GCP_VALID_RUNTIMES = setOf("java11", "java17", "java21", "nodejs14", "nodejs20", "nodejs22")
+        private val AWS_VALID_RUNTIMES = setOf("java11", "java17", "java21", "nodejs18.x", "nodejs20.x", "python3.11", "python3.12")
 
         fun load(path: Path): QuickFaasDescriptor {
             require(Files.exists(path)) {
@@ -31,8 +32,7 @@ class QuickFaasDescriptorLoader {
             if (!provider.equals(expectedCloudProvider, ignoreCase = true)) {
                 throw IllegalStateException(
                     "Cloud provider mismatch: workflow targets '$expectedCloudProvider' " +
-                            "but QuickFaaS descriptor specifies '$provider'. " +
-                            "A Google workflow can only use functions deployed on Google."
+                            "but QuickFaaS descriptor specifies '$provider'."
                 )
             }
 
@@ -41,25 +41,42 @@ class QuickFaasDescriptorLoader {
             }
 
             val runtime = descriptor.function?.runtime
-            if (provider.equals("gcp", ignoreCase = true) && runtime != null) {
-                require(runtime in GCP_VALID_RUNTIMES) {
-                    "Invalid runtime '$runtime' for GCP. " +
-                            "QuickFaaS supports: ${GCP_VALID_RUNTIMES.joinToString(", ")}"
-                }
-            }
-
-            if (descriptor.function?.bucket.isNullOrBlank()) {
-                logger.warn { "Descriptor missing 'function.bucket'. QuickFaaS needs a GCS bucket for source upload." }
-            }
-
-            val token = descriptor.accessToken
-            if (token != null && (token.contains("REPLACE") || token.contains("placeholder", ignoreCase = true))) {
-                logger.info { "Descriptor has placeholder accessToken. OmniFlow will inject a fresh token from ADC." }
-            }
-
             val funcName = descriptor.function?.name ?: ""
-            if (funcName.isNotEmpty() && !Regex("^[a-z][a-z0-9-]{0,62}$").matches(funcName)) {
-                logger.warn { "Function name '$funcName' may not be valid for GCP naming rules (lowercase, hyphens, max 63 chars)." }
+
+            when {
+                provider.equals("gcp", ignoreCase = true) -> {
+                    if (runtime != null) {
+                        require(runtime in GCP_VALID_RUNTIMES) {
+                            "Invalid runtime '$runtime' for GCP. Supported: ${GCP_VALID_RUNTIMES.joinToString(", ")}"
+                        }
+                    }
+                    if (descriptor.function?.bucket.isNullOrBlank()) {
+                        logger.warn { "Descriptor missing 'function.bucket'. QuickFaaS needs a GCS bucket for source upload." }
+                    }
+                    val token = descriptor.accessToken
+                    if (token != null && (token.contains("REPLACE") || token.contains("placeholder", ignoreCase = true))) {
+                        logger.info { "Descriptor has placeholder accessToken. OmniFlow will inject a fresh token from ADC." }
+                    }
+                    if (funcName.isNotEmpty() && !Regex("^[a-z][a-z0-9-]{0,62}$").matches(funcName)) {
+                        logger.warn { "Function name '$funcName' may not conform to GCP naming rules (lowercase, hyphens, max 63 chars)." }
+                    }
+                }
+                provider.equals("aws", ignoreCase = true) -> {
+                    if (runtime != null) {
+                        require(runtime in AWS_VALID_RUNTIMES) {
+                            "Invalid runtime '$runtime' for AWS Lambda. Supported: ${AWS_VALID_RUNTIMES.joinToString(", ")}"
+                        }
+                    }
+                    if (descriptor.function?.bucket.isNullOrBlank()) {
+                        logger.warn { "Descriptor missing 'function.bucket'. QuickFaaS needs an S3 bucket for code upload." }
+                    }
+                    if (descriptor.iamRoleArn.isNullOrBlank()) {
+                        logger.warn { "Descriptor missing 'iamRoleArn'. AWS Lambda deployment requires an IAM execution role." }
+                    }
+                    if (funcName.isNotEmpty() && !Regex("^[a-zA-Z0-9_-]{1,64}$").matches(funcName)) {
+                        logger.warn { "Function name '$funcName' may not conform to Lambda naming rules (alphanumeric, hyphens, underscores, max 64 chars)." }
+                    }
+                }
             }
 
             logger.info {

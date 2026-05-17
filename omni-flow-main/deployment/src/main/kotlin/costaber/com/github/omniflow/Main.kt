@@ -6,6 +6,7 @@ import costaber.com.github.omniflow.cloud.provider.amazon.deployer.AmazonDeployC
 import costaber.com.github.omniflow.cloud.provider.google.deployer.GoogleCloudDeployer
 import costaber.com.github.omniflow.cloud.provider.google.deployer.GoogleDeployContext
 import costaber.com.github.omniflow.dsl.*
+import costaber.com.github.omniflow.internalfunction.quickfaas.AwsLambdaDeployer
 import costaber.com.github.omniflow.internalfunction.quickfaas.QuickFaasDeployer
 import costaber.com.github.omniflow.model.HttpMethod.*
 import java.nio.file.Path
@@ -74,6 +75,7 @@ fun main() {
         4 -> deployLoanApprovalExample(scan)
         5 -> deployMapReduceExample(scan)
         6 -> deployAwsGreetingExample(scan)
+        7 -> deployAwsLambdaAutoDeployExample(scan)
     }
 }
 
@@ -88,12 +90,13 @@ fun getSelectedOption(scan: Scanner): Int {
         println()
         println("  ${C.YELLOW}${C.BOLD}— AWS Step Functions —${C.RESET}")
         println("  ${C.YELLOW}6${C.RESET}: Greeting via API Gateway + Lambda")
+        println("  ${C.YELLOW}7${C.RESET}: Greeting with QuickFaaS auto-deploy (Lambda Function URL)")
         println()
         println(" ${C.RED}99${C.RESET}: Exit")
         println()
         print("  ${C.BOLD}Choose an option:${C.RESET} ")
         option = scan.nextInt()
-    } while (option !in listOf(2, 3, 4, 5, 6, 99))
+    } while (option !in listOf(2, 3, 4, 5, 6, 7, 99))
     return option
 }
 
@@ -751,5 +754,152 @@ fun deployAwsGreetingExample(scan: Scanner) {
     C.separator()
     C.detail("State Machine: ${C.BOLD}AwsGreetingStepFunction${C.RESET}")
     C.detail("Region:        ${C.BOLD}${config.region}${C.RESET}")
+    C.separator()
+}
+
+// ===========================================================================
+//  Example 7 — AWS Step Functions: Greeting with QuickFaaS auto-deploy
+//
+//  Auto-deploys a Java Lambda function via QuickFaaS and creates a Step
+//  Function that calls it using the Lambda Function URL (AuthType=AWS_IAM).
+//
+//  Prerequisites:
+//    - AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY set in the environment
+//    - An IAM role for Lambda execution (LAMBDA_EXEC_ROLE_ARN)
+//    - An IAM role for Step Functions execution (STEP_FUNCTIONS_ROLE_ARN)
+//    - An S3 bucket for the Lambda deployment package
+//    - The QuickFaaS deployment JAR (QUICKFAAS_JAR_PATH)
+// ===========================================================================
+
+data class AwsAutoDeployConfig(
+    val quickFaasJarPath: String,
+    val region: String,
+    val stepFunctionsRoleArn: String,
+    val stateMachineName: String,
+)
+
+private fun collectAwsAutoDeployConfig(scan: Scanner, stageTotal: Int): AwsAutoDeployConfig? {
+    C.stage(1, stageTotal, "Configuration")
+
+    val awsAccessKey = System.getenv("AWS_ACCESS_KEY_ID")
+    val awsSecretKey = System.getenv("AWS_SECRET_ACCESS_KEY")
+    if (awsAccessKey.isNullOrBlank() || awsSecretKey.isNullOrBlank()) {
+        C.warn("AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY not set.")
+        C.detail("AWS SDK requires these env vars BEFORE starting the JVM.")
+        C.detail("  Linux/Mac: export AWS_ACCESS_KEY_ID=AKIA...")
+        C.detail("             export AWS_SECRET_ACCESS_KEY=wJalr...")
+        println()
+        print("  Continue anyway? (y/N): ")
+        if (!scan.next().trim().equals("y", ignoreCase = true)) return null
+    } else {
+        C.ok("AWS credentials set")
+    }
+
+    val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
+        ?: run {
+            print("  Enter path to QuickFaaS-Deployment JAR: ")
+            scan.next().trim()
+        }
+    require(Path.of(quickFaasJarPath).toFile().exists()) {
+        "QuickFaaS JAR not found at '$quickFaasJarPath'"
+    }
+    C.ok("QuickFaaS JAR found")
+
+    val region = System.getenv("AWS_REGION")
+        ?: run {
+            print("  Enter AWS region [eu-west-1]: ")
+            scan.next().trim().ifEmpty { "eu-west-1" }
+        }
+
+    val stepFunctionsRoleArn = System.getenv("STEP_FUNCTIONS_ROLE_ARN")
+        ?: run {
+            print("  Enter Step Functions IAM Role ARN: ")
+            scan.next().trim()
+        }
+
+    val stateMachineName = System.getenv("STATE_MACHINE_NAME")
+        ?: run {
+            print("  Enter State Machine name [AwsLambdaAutoDeployGreeting]: ")
+            scan.next().trim().ifEmpty { "AwsLambdaAutoDeployGreeting" }
+        }
+
+    C.ok("QuickFaaS JAR: ${C.BOLD}$quickFaasJarPath${C.RESET}")
+    C.ok("Region:        ${C.BOLD}$region${C.RESET}")
+    C.ok("Role:          ${C.BOLD}$stepFunctionsRoleArn${C.RESET}")
+    C.ok("State Machine: ${C.BOLD}$stateMachineName${C.RESET}")
+    println()
+
+    return AwsAutoDeployConfig(quickFaasJarPath, region, stepFunctionsRoleArn, stateMachineName)
+}
+
+private val Example7Workflow = workflow {
+    name("AwsLambdaAutoDeployGreeting")
+    description("Auto-deploys a greeting Lambda via QuickFaaS and calls it from Step Functions")
+    steps(
+        step {
+            name("call-hello-lambda")
+            description("Call the auto-deployed greeting Lambda with lang=pt")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "hello-lambda-fn",
+                        deploymentDescriptorPath = "./functions/hello-lambda-fn/func-deployment.json"
+                    )
+                    query("lang" to value("pt"))
+                    authentication(authentication { type("IAM_ROLE") })
+                    result("greetingResult")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("greetingResult")
+}
+
+fun deployAwsLambdaAutoDeployExample(scan: Scanner) {
+    val stages = 3
+    C.banner("Example 7 — AWS QuickFaaS Auto-Deploy (Lambda Function URL)")
+    C.info("Auto-deploys a greeting Lambda via QuickFaaS, then creates a Step Function")
+    C.info("that calls it using a Lambda Function URL with IAM authentication.")
+    println()
+    C.separator()
+    println("  ${C.YELLOW}Flow:${C.RESET}  QuickFaaS deploy → Lambda Function URL → Step Functions state machine")
+    C.separator()
+    println()
+
+    val config = collectAwsAutoDeployConfig(scan, stages) ?: return
+
+    C.stage(2, stages, "Lambda deployment + Workflow resolution")
+    C.info("Deploying ${C.BOLD}hello-lambda-fn${C.RESET} via QuickFaaS...")
+    C.info("Resolving internal functions and rendering state machine JSON...")
+
+    val lambdaDeployer = AwsLambdaDeployer(
+        quickFaasJarPath = Path.of(config.quickFaasJarPath),
+        region = config.region,
+        roleArn = config.stepFunctionsRoleArn,
+    )
+    val deployer = AmazonCloudDeployer.Builder()
+        .internalFunctionDeployer(lambdaDeployer)
+        .build()
+    val context = AmazonDeployContext(
+        roleArn = config.stepFunctionsRoleArn,
+        region = config.region,
+        tags = mapOf("environment" to "testing", "app" to "omni-flow"),
+        stateMachineName = config.stateMachineName,
+    )
+    deployer.deploy(Example7Workflow, context)
+
+    C.ok("Lambda deployed and state machine created")
+    println()
+
+    C.stage(3, stages, "Complete")
+    C.success("Example 7 deployed successfully!")
+    C.separator()
+    C.detail("State Machine: ${C.BOLD}${config.stateMachineName}${C.RESET}")
+    C.detail("Region:        ${C.BOLD}${config.region}${C.RESET}")
+    println()
+    C.detail("${C.GREEN}Try:${C.RESET} Start execution with input  {}")
+    C.detail("${C.GREEN}Expected:${C.RESET} {\"greeting\": \"Ola, Mundo!\", \"language\": \"pt\"}")
     C.separator()
 }

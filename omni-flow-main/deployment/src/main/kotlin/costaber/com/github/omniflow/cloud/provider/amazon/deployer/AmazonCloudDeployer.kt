@@ -6,8 +6,8 @@ import costaber.com.github.omniflow.cloud.provider.amazon.provider.AmazonDefault
 import costaber.com.github.omniflow.deployer.CloudDeployer
 import costaber.com.github.omniflow.internalfunction.InternalFunctionDeployer
 import costaber.com.github.omniflow.internalfunction.NoopInternalFunctionDeployer
-import costaber.com.github.omniflow.internalfunction.WorkflowInternalFunctionResolver
-import costaber.com.github.omniflow.model.Workflow
+import costaber.com.github.omniflow.internalfunction.quickfaas.AwsInternalFunctionResolver
+import costaber.com.github.omniflow.model.*
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
 import costaber.com.github.omniflow.resource.util.joinToStringNewLines
 import costaber.com.github.omniflow.traversor.DepthFirstNodeVisitorTraversor
@@ -25,10 +25,27 @@ class AmazonCloudDeployer internal constructor(
 
     private companion object {
         private val logger = KotlinLogging.logger { }
+        private const val RESET  = "[0m"
+        private const val BOLD   = "[1m"
+        private const val GREEN  = "[32m"
+        private const val CYAN   = "[36m"
     }
 
     override fun deploy(workflow: Workflow, deployContext: AmazonDeployContext) {
-        val content = nodeTraversor.traverse(contextVisitor, workflow, AmazonRenderingContext())
+        val internalCount = countInternalFunctions(workflow)
+
+        val resolvedWorkflow = if (internalCount > 0) {
+            println("$CYAN$BOLD[DEPLOY]$RESET Detected $BOLD$internalCount$RESET internal Lambda function(s) — resolving...")
+            AwsInternalFunctionResolver(
+                region = deployContext.region,
+                registry = FunctionRegistryStore(registryPath),
+                internalFunctionDeployer = internalFunctionDeployer
+            ).resolve(workflow)
+        } else {
+            workflow
+        }
+
+        val content = nodeTraversor.traverse(contextVisitor, resolvedWorkflow, AmazonRenderingContext())
             .filterNot(String::isEmpty)
             .joinToStringNewLines()
 
@@ -43,6 +60,28 @@ class AmazonCloudDeployer internal constructor(
             stateMachineName = deployContext.stateMachineName,
             stateMachineDefinition = content,
         )
+
+        println("$GREEN  ✓$RESET State Machine '${deployContext.stateMachineName}' deployed to AWS Step Functions")
+    }
+
+    private fun countInternalFunctions(workflow: Workflow): Int {
+        var count = 0
+        fun countInSteps(steps: Collection<Step>) {
+            for (step in steps) {
+                when (val ctx = step.context) {
+                    is CallContext -> if (ctx.internalFunction != null) count++
+                    is BranchContext -> countInSteps(ctx.steps)
+                    is IterationRangeContext -> countInSteps(ctx.steps)
+                    is IterationForEachContext -> countInSteps(ctx.steps)
+                    is IterationContext -> countInSteps(ctx.steps)
+                    is ParallelBranchContext -> ctx.branches.forEach { countInSteps(it.steps) }
+                    is ParallelIterationContext -> countInSteps(ctx.iterationContext.steps)
+                    else -> Unit
+                }
+            }
+        }
+        countInSteps(workflow.steps)
+        return count
     }
 
     class Builder {

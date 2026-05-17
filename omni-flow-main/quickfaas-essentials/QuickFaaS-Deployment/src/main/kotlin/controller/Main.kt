@@ -9,12 +9,13 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import model.AwsProvider
 import model.DeploymentData
 import model.GcpProvider
 import model.MsAzureProvider
 import model.Utils
 
-private val cloudProviders = arrayOf(MsAzureProvider, GcpProvider)  // Supported cloud providers
+private val cloudProviders = arrayOf(MsAzureProvider, GcpProvider, AwsProvider)  // Supported cloud providers
 
 fun main() {
 

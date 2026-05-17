@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 data class QuickFaasDescriptor(
     val cloudProvider: String? = null,
     val accessToken: String? = null,
+    val iamRoleArn: String? = null,
     val project: String? = null,
     val function: FunctionDescriptor? = null,
     val functionFile: String? = null
