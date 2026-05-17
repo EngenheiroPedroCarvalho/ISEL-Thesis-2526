@@ -69,6 +69,7 @@ private object C {
 fun main() {
     val scan = Scanner(System.`in`)
     C.banner("OmniFlow + QuickFaaS — Example Workflows")
+    printPrerequisites()
     when (getSelectedOption(scan)) {
         2 -> deployQuickFaasAutoDeployExample(scan)
         3 -> deployGreetingExample(scan)
@@ -77,6 +78,69 @@ fun main() {
         6 -> deployAwsGreetingExample(scan)
         7 -> deployAwsLambdaAutoDeployExample(scan)
     }
+}
+
+fun printPrerequisites() {
+    C.separator()
+    println("  ${C.BOLD}${C.WHITE}PRE-REQUISITES${C.RESET}")
+    C.separator()
+    println()
+
+    println("  ${C.CYAN}${C.BOLD}[ Common ]${C.RESET}")
+    C.detail("Java 17+ JDK installed and on PATH")
+    C.detail("Maven 3.6+ installed and on PATH  (required by QuickFaaS to build JARs)")
+    println()
+
+    println("  ${C.CYAN}${C.BOLD}[ GCP Examples — options 2, 3, 4, 5 ]${C.RESET}")
+    C.detail("GCP project with the following APIs enabled:")
+    C.detail("  • Cloud Functions API")
+    C.detail("  • Cloud Workflows API")
+    C.detail("  • Cloud Storage API")
+    C.detail("Service account with roles:")
+    C.detail("  • Cloud Functions Developer")
+    C.detail("  • Workflows Admin")
+    C.detail("  • Service Account Token Creator")
+    C.detail("  • Storage Admin  (only if QuickFaaS needs to create a bucket)")
+    C.detail("Environment variables:")
+    C.detail("  export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json")
+    C.detail("  export QUICKFAAS_JAR_PATH=/path/to/QuickFaaS-Deployment-fat.jar")
+    C.detail("  export GOOGLE_PROJECT_ID=your-gcp-project-id          # optional (prompted)")
+    C.detail("  export GOOGLE_ZONE=europe-west1                        # optional (prompted)")
+    C.detail("  export GOOGLE_SERVICE_ACCOUNT=sa@project.iam...        # optional (prompted)")
+    C.detail("Build QuickFaaS JAR:")
+    C.detail("  cd quickfaas-essentials/QuickFaaS-Deployment")
+    C.detail("  ./gradlew fatJar  →  build/libs/QuickFaaS-Deployment-fat.jar")
+    println()
+
+    println("  ${C.YELLOW}${C.BOLD}[ AWS Examples — option 6 ]${C.RESET}")
+    C.detail("Lambda function already deployed and exposed via API Gateway")
+    C.detail("IAM role for Step Functions with permission: lambda:InvokeFunction")
+    C.detail("Environment variables:")
+    C.detail("  export AWS_ACCESS_KEY_ID=AKIA...")
+    C.detail("  export AWS_SECRET_ACCESS_KEY=wJalr...")
+    C.detail("  export AWS_REGION=eu-west-1                            # optional (prompted)")
+    println()
+
+    println("  ${C.YELLOW}${C.BOLD}[ AWS QuickFaaS Auto-Deploy — option 7 ]${C.RESET}")
+    C.detail("S3 bucket to store Lambda deployment packages")
+    C.detail("IAM role for Lambda execution (trust: lambda.amazonaws.com) with:")
+    C.detail("  • AWSLambdaBasicExecutionRole")
+    C.detail("IAM role for Step Functions with permission: lambda:InvokeFunctionUrl")
+    C.detail("func-deployment.json updated with real values:")
+    C.detail("  • iamRoleArn   → Lambda execution role ARN (arn:aws:iam::ACCOUNT:role/...)")
+    C.detail("  • project      → AWS account ID  (12-digit number)")
+    C.detail("  • bucket       → S3 bucket name")
+    C.detail("Environment variables:")
+    C.detail("  export AWS_ACCESS_KEY_ID=AKIA...")
+    C.detail("  export AWS_SECRET_ACCESS_KEY=wJalr...")
+    C.detail("  export AWS_REGION=eu-west-1                            # optional (prompted)")
+    C.detail("  export QUICKFAAS_JAR_PATH=/path/to/QuickFaaS-Deployment-fat.jar")
+    C.detail("  export STEP_FUNCTIONS_ROLE_ARN=arn:aws:iam::ACCOUNT:role/StepFunctionsRole")
+    C.detail("  export STATE_MACHINE_NAME=AwsLambdaAutoDeployGreeting  # optional")
+    println()
+
+    C.separator()
+    println()
 }
 
 fun getSelectedOption(scan: Scanner): Int {

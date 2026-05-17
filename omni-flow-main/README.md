@@ -24,6 +24,125 @@ was advised by Professors Filipe Freitas and José Simão and developed by Berna
 ./mvnw clean test
 ```
 
+## How to Run the Demo Examples
+
+The `deployment` module contains an interactive CLI (`Main.kt`) that demonstrates several end-to-end examples for both
+GCP and AWS. Running it requires different prerequisites depending on the chosen example.
+
+### Common prerequisites
+
+| Requirement | Notes |
+|---|---|
+| Java 17+ JDK | Must be on `PATH` |
+| Maven 3.6+ | Required by QuickFaaS to compile and package function JARs |
+
+---
+
+### GCP Examples (options 2 – 5)
+
+These examples auto-deploy one or more Cloud Functions via QuickFaaS and then create a Cloud Workflow that calls them.
+
+**GCP project setup:**
+- Enable APIs: **Cloud Functions**, **Cloud Workflows**, **Cloud Storage**
+- Create a service account with the following IAM roles:
+  - `Cloud Functions Developer`
+  - `Workflows Admin`
+  - `Service Account Token Creator`
+  - `Storage Admin` _(only if QuickFaaS needs to create a new bucket)_
+- Download the service account key JSON file
+
+**Build the QuickFaaS JAR:**
+```shell script
+cd quickfaas-essentials/QuickFaaS-Deployment
+./gradlew fatJar
+# Output: build/libs/QuickFaaS-Deployment-fat.jar
+```
+
+**Set environment variables:**
+```shell script
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+export QUICKFAAS_JAR_PATH=/path/to/QuickFaaS-Deployment-fat.jar
+
+# Optional — if not set, the CLI will prompt for them
+export GOOGLE_PROJECT_ID=your-gcp-project-id
+export GOOGLE_ZONE=europe-west1
+export GOOGLE_SERVICE_ACCOUNT=workflow-sa@your-project.iam.gserviceaccount.com
+```
+
+---
+
+### AWS Example — API Gateway + Lambda (option 6)
+
+Deploys a Step Functions state machine that calls a **pre-existing** Lambda function via API Gateway.
+
+**Prerequisites:**
+- Lambda function already deployed and exposed through API Gateway
+- IAM role for Step Functions execution with permission `lambda:InvokeFunction` on that Lambda
+
+**Set environment variables:**
+```shell script
+export AWS_ACCESS_KEY_ID=AKIA...
+export AWS_SECRET_ACCESS_KEY=wJalr...
+
+# Optional — if not set, the CLI will prompt for them
+export AWS_REGION=eu-west-1
+```
+
+---
+
+### AWS Example — QuickFaaS Auto-Deploy with Lambda Function URL (option 7)
+
+Auto-deploys a Java Lambda via QuickFaaS and creates a Step Functions state machine that calls it using a
+**Lambda Function URL** authenticated with AWS IAM (SigV4).
+
+**AWS resource setup:**
+
+| Resource | Details |
+|---|---|
+| S3 bucket | Stores the Lambda deployment ZIP |
+| Lambda execution IAM role | Trust: `lambda.amazonaws.com`; Policy: `AWSLambdaBasicExecutionRole` |
+| Step Functions IAM role | Must have `lambda:InvokeFunctionUrl` permission on the deployed Lambda |
+
+**Update `functions/hello-lambda-fn/func-deployment.json`** with your real values:
+```json
+{
+  "cloudProvider": "aws",
+  "accessToken": "",
+  "iamRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/<LambdaExecutionRole>",
+  "project": "<ACCOUNT_ID>",
+  "function": {
+    "name": "hello-lambda-fn",
+    "location": "eu-west-1",
+    "bucket": "<your-s3-bucket>",
+    "runtime": "java17",
+    "trigger": { "type": "http" }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}
+```
+
+**Build the QuickFaaS JAR** _(same as GCP examples above)_
+
+**Set environment variables:**
+```shell script
+export AWS_ACCESS_KEY_ID=AKIA...
+export AWS_SECRET_ACCESS_KEY=wJalr...
+export QUICKFAAS_JAR_PATH=/path/to/QuickFaaS-Deployment-fat.jar
+export STEP_FUNCTIONS_ROLE_ARN=arn:aws:iam::<ACCOUNT_ID>:role/<StepFunctionsRole>
+
+# Optional — if not set, the CLI will prompt for them
+export AWS_REGION=eu-west-1
+export STATE_MACHINE_NAME=AwsLambdaAutoDeployGreeting
+```
+
+**Run:**
+```shell script
+java -jar deployment/target/omni-flow-deployment-*.jar
+# Select option 7
+```
+
+---
+
 ## How to Benchmark
 
 To run the benchmarks successfully, it is required the following environment variables:
