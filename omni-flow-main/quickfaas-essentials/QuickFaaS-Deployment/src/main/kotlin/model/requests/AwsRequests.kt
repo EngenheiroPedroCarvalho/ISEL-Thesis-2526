@@ -36,6 +36,7 @@ object AwsRequests : CloudRequests {
     private fun s3Client(): S3Client = S3Client.builder()
         .region(Region.of(region))
         .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+        .crossRegionAccessEnabled(true)
         .build()
 
     fun checkLambdaFunctionExistence(functionName: String): Boolean = try {
