@@ -14,6 +14,7 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.lambda.LambdaClient
 import software.amazon.awssdk.services.lambda.model.*
 import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.S3Configuration
 import software.amazon.awssdk.services.s3.model.*
 import java.io.File
 
@@ -36,7 +37,7 @@ object AwsRequests : CloudRequests {
     private fun s3Client(): S3Client = S3Client.builder()
         .region(Region.of(region))
         .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
-        .crossRegionAccessEnabled(true)
+        .serviceConfiguration(S3Configuration.builder().crossRegionAccessEnabled(true).build())
         .build()
 
     fun checkLambdaFunctionExistence(functionName: String): Boolean = try {
