@@ -65,6 +65,8 @@ object AwsRequests : CloudRequests {
 
     fun uploadZipToS3(bucket: String, key: String, zipFilePath: String) {
         val bucketRegion = resolveBucketRegion(bucket)
+        // Lambda must be in the same region as the S3 bucket — sync the region
+        region = bucketRegion
         s3Client(bucketRegion).use { client ->
             client.putObject(
                 PutObjectRequest.builder().bucket(bucket).key(key).build(),
