@@ -85,7 +85,7 @@ object AwsRequests : CloudRequests {
             client.createFunction(
                 CreateFunctionRequest.builder()
                     .functionName(functionName)
-                    .runtime(Runtime.fromValue(runtime))
+                    .runtime(runtime)
                     .handler(handler)
                     .role(roleArn)
                     .code(FunctionCode.builder().s3Bucket(s3Bucket).s3Key(s3Key).build())
