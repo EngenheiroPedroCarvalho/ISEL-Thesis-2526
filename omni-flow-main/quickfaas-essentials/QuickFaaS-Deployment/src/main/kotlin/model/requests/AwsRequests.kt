@@ -73,7 +73,7 @@ object AwsRequests : CloudRequests {
                     .build()
             )
             client.waiter().waitUntilFunctionActive(
-                GetFunctionRequest.builder().functionName(functionName).build()
+                GetFunctionConfigurationRequest.builder().functionName(functionName).build()
             )
         }
     }
@@ -88,7 +88,7 @@ object AwsRequests : CloudRequests {
                     .build()
             )
             client.waiter().waitUntilFunctionUpdated(
-                GetFunctionRequest.builder().functionName(functionName).build()
+                GetFunctionConfigurationRequest.builder().functionName(functionName).build()
             )
         }
     }
