@@ -14,7 +14,6 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.lambda.LambdaClient
 import software.amazon.awssdk.services.lambda.model.*
 import software.amazon.awssdk.services.s3.S3Client
-import software.amazon.awssdk.services.s3.S3Configuration
 import software.amazon.awssdk.services.s3.model.*
 import java.io.File
 
@@ -34,11 +33,28 @@ object AwsRequests : CloudRequests {
         .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
         .build()
 
-    private fun s3Client(): S3Client = S3Client.builder()
-        .region(Region.of(region))
+    private fun s3Client(bucketRegion: String = region): S3Client = S3Client.builder()
+        .region(Region.of(bucketRegion))
         .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
-        .serviceConfiguration(S3Configuration.builder().crossRegionAccessEnabled(true).build())
         .build()
+
+    private fun resolveBucketRegion(bucket: String): String {
+        // getBucketLocation must be called from us-east-1 (the global S3 endpoint)
+        return try {
+            S3Client.builder()
+                .region(Region.US_EAST_1)
+                .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+                .build()
+                .use { client ->
+                    val location = client.getBucketLocation(
+                        GetBucketLocationRequest.builder().bucket(bucket).build()
+                    ).locationConstraintAsString()
+                    if (location.isNullOrBlank()) "us-east-1" else location
+                }
+        } catch (e: Exception) {
+            region
+        }
+    }
 
     fun checkLambdaFunctionExistence(functionName: String): Boolean = try {
         lambdaClient().use { it.getFunction(GetFunctionRequest.builder().functionName(functionName).build()) }
@@ -48,7 +64,8 @@ object AwsRequests : CloudRequests {
     }
 
     fun uploadZipToS3(bucket: String, key: String, zipFilePath: String) {
-        s3Client().use { client ->
+        val bucketRegion = resolveBucketRegion(bucket)
+        s3Client(bucketRegion).use { client ->
             client.putObject(
                 PutObjectRequest.builder().bucket(bucket).key(key).build(),
                 RequestBody.fromFile(File(zipFilePath))
@@ -114,7 +131,7 @@ object AwsRequests : CloudRequests {
         }
     }
 
-    fun listBuckets(): List<BucketData> = s3Client().use { client ->
+    fun listBuckets(): List<BucketData> = s3Client(region).use { client ->
         client.listBuckets().buckets().map { AwsBucketData(it.name()) }
     }
 
