@@ -125,9 +125,7 @@ class AwsInternalFunctionResolver(
         } catch (e: Exception) {
             throw IllegalStateException("Invalid URL resolved for Lambda: '$url'", e)
         }
-        val scheme = uri.scheme ?: throw IllegalStateException("URL missing scheme: '$url'")
-        val authority = uri.authority ?: throw IllegalStateException("URL missing host: '$url'")
-        val host = "$scheme://$authority"
+        val host = uri.authority ?: throw IllegalStateException("URL missing host: '$url'")
         val path = uri.rawPath?.takeIf { it.isNotBlank() } ?: "/"
         return host to path
     }
