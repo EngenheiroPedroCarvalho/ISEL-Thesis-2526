@@ -9,7 +9,7 @@ import mu.KotlinLogging
 import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.GetFunctionUrlConfigRequest
+import software.amazon.awssdk.services.lambda.model.GetFunctionRequest
 import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException
 
 class AwsInternalFunctionResolver(
@@ -59,8 +59,8 @@ class AwsInternalFunctionResolver(
                 "Invalid workflow: internalFunction('${internal.name}') cannot be combined with host/path."
             )
         }
-        resolveOrDeploy(internal.name, internal)
-        return call.copy(host = "lambda://${internal.name}", path = "", internalFunction = null)
+        val arn = resolveOrDeploy(internal.name, internal)
+        return call.copy(host = "lambda://$arn", path = "", internalFunction = null)
     }
 
     private fun resolveOrDeploy(functionName: String, internal: InternalFunction): String {
@@ -106,9 +106,9 @@ class AwsInternalFunctionResolver(
             .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
             .build()
             .use { client ->
-                client.getFunctionUrlConfig(
-                    GetFunctionUrlConfigRequest.builder().functionName(functionName).build()
-                ).functionUrl()
+                client.getFunction(
+                    GetFunctionRequest.builder().functionName(functionName).build()
+                ).configuration().functionArn()
             }
     } catch (e: ResourceNotFoundException) {
         null

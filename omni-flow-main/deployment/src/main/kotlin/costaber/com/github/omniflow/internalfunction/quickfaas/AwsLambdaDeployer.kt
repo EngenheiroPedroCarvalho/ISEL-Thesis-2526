@@ -7,7 +7,8 @@ import mu.KotlinLogging
 import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.*
+import software.amazon.awssdk.services.lambda.model.GetFunctionRequest
+import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetBucketLocationRequest
 import java.nio.file.Path
@@ -64,14 +65,14 @@ class AwsLambdaDeployer(
         waitForLambdaActive(functionName, effectiveRegion)
         println("$GREEN  ✓$RESET Lambda '$functionName' is Active")
 
-        println("$BLUE  →$RESET Retrieving Function URL for '$functionName'...")
-        val functionUrl = getLambdaFunctionUrl(functionName, effectiveRegion)
-        println("$GREEN  ✓$RESET Function URL: $BOLD$functionUrl$RESET")
+        println("$BLUE  →$RESET Retrieving Lambda ARN for '$functionName'...")
+        val functionArn = getLambdaFunctionArn(functionName, effectiveRegion)
+        println("$GREEN  ✓$RESET Lambda ARN: $BOLD$functionArn$RESET")
 
         iamHelper.grantStepFunctionsInvoke(functionName, effectiveRegion, roleArn)
 
-        logger.info { "AwsLambdaDeployer completed for '$functionName'. URL: $functionUrl" }
-        return FunctionInvocationMetadata(serviceName = functionName, url = functionUrl)
+        logger.info { "AwsLambdaDeployer completed for '$functionName'. ARN: $functionArn" }
+        return FunctionInvocationMetadata(serviceName = functionName, url = functionArn)
     }
 
     private fun waitForLambdaActive(functionName: String, effectiveRegion: String) {
@@ -106,24 +107,12 @@ class AwsLambdaDeployer(
         )
     }
 
-    private fun getLambdaFunctionUrl(functionName: String, effectiveRegion: String): String {
-        return try {
-            lambdaClient(effectiveRegion).use { client ->
-                client.getFunctionUrlConfig(
-                    GetFunctionUrlConfigRequest.builder().functionName(functionName).build()
-                ).functionUrl()
-            }
-        } catch (e: ResourceNotFoundException) {
-            lambdaClient(effectiveRegion).use { client ->
-                client.createFunctionUrlConfig(
-                    CreateFunctionUrlConfigRequest.builder()
-                        .functionName(functionName)
-                        .authType(FunctionUrlAuthType.AWS_IAM)
-                        .build()
-                ).functionUrl()
-            }
+    private fun getLambdaFunctionArn(functionName: String, effectiveRegion: String): String =
+        lambdaClient(effectiveRegion).use { client ->
+            client.getFunction(
+                GetFunctionRequest.builder().functionName(functionName).build()
+            ).configuration().functionArn()
         }
-    }
 
     private fun lambdaClient(effectiveRegion: String = region): LambdaClient = LambdaClient.builder()
         .region(Region.of(effectiveRegion))
