@@ -34,8 +34,7 @@ class AwsLambdaIamHelper {
                             .functionName(functionName)
                             .statementId(statementId)
                             .principal("states.amazonaws.com")
-                            .action("lambda:InvokeFunctionUrl")
-                            .sourceArn(roleArn)
+                            .action("lambda:InvokeFunction")
                             .build()
                     )
                 }
@@ -50,9 +49,8 @@ class AwsLambdaIamHelper {
             println("$YELLOW  !$RESET Run manually:")
             println("    aws lambda add-permission --function-name $functionName \\")
             println("      --statement-id $statementId \\")
-            println("      --action lambda:InvokeFunctionUrl \\")
+            println("      --action lambda:InvokeFunction \\")
             println("      --principal states.amazonaws.com \\")
-            println("      --source-arn $roleArn \\")
             println("      --region $region")
             logger.warn { "Could not auto-grant Step Functions invoke permission: ${e.message}" }
         }
