@@ -8,6 +8,8 @@ import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsPro
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.lambda.LambdaClient
 import software.amazon.awssdk.services.lambda.model.*
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.GetBucketLocationRequest
 import java.nio.file.Path
 
 class AwsLambdaDeployer(
@@ -43,31 +45,41 @@ class AwsLambdaDeployer(
         QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "aws")
         println("$GREEN  ✓$RESET Descriptor validated (provider=aws, runtime=${descriptor.function?.runtime})")
 
+        // Resolve the actual bucket region so Lambda polling uses the right region
+        val bucketName = descriptor.function?.bucket
+        val effectiveRegion = if (!bucketName.isNullOrBlank()) {
+            resolveBucketRegion(bucketName).also {
+                if (it != region) println("$YELLOW  !$RESET Bucket '$bucketName' is in '$it' — using that region for Lambda")
+            }
+        } else {
+            region
+        }
+
         println("$BLUE  →$RESET Invoking QuickFaaS subprocess to deploy '$BOLD$functionName$RESET' on AWS Lambda...")
         val invoker = QuickFaasProcessInvoker(quickFaasJarPath)
         invoker.invoke(descriptorPath, accessToken = null)
         println("$GREEN  ✓$RESET QuickFaaS subprocess completed for '$functionName'")
 
         println("$BLUE  →$RESET Waiting for Lambda '$functionName' to become Active...")
-        waitForLambdaActive(functionName)
+        waitForLambdaActive(functionName, effectiveRegion)
         println("$GREEN  ✓$RESET Lambda '$functionName' is Active")
 
         println("$BLUE  →$RESET Retrieving Function URL for '$functionName'...")
-        val functionUrl = getLambdaFunctionUrl(functionName)
+        val functionUrl = getLambdaFunctionUrl(functionName, effectiveRegion)
         println("$GREEN  ✓$RESET Function URL: $BOLD$functionUrl$RESET")
 
-        iamHelper.grantStepFunctionsInvoke(functionName, region, roleArn)
+        iamHelper.grantStepFunctionsInvoke(functionName, effectiveRegion, roleArn)
 
         logger.info { "AwsLambdaDeployer completed for '$functionName'. URL: $functionUrl" }
         return FunctionInvocationMetadata(serviceName = functionName, url = functionUrl)
     }
 
-    private fun waitForLambdaActive(functionName: String) {
+    private fun waitForLambdaActive(functionName: String, effectiveRegion: String) {
         val deadline = System.currentTimeMillis() + readinessTimeoutSeconds * 1_000
 
         while (System.currentTimeMillis() < deadline) {
             try {
-                val state = lambdaClient().use { client ->
+                val state = lambdaClient(effectiveRegion).use { client ->
                     client.getFunction(
                         GetFunctionRequest.builder().functionName(functionName).build()
                     ).configuration().stateAsString()
@@ -94,15 +106,15 @@ class AwsLambdaDeployer(
         )
     }
 
-    private fun getLambdaFunctionUrl(functionName: String): String {
+    private fun getLambdaFunctionUrl(functionName: String, effectiveRegion: String): String {
         return try {
-            lambdaClient().use { client ->
+            lambdaClient(effectiveRegion).use { client ->
                 client.getFunctionUrlConfig(
                     GetFunctionUrlConfigRequest.builder().functionName(functionName).build()
                 ).functionUrl()
             }
         } catch (e: ResourceNotFoundException) {
-            lambdaClient().use { client ->
+            lambdaClient(effectiveRegion).use { client ->
                 client.createFunctionUrlConfig(
                     CreateFunctionUrlConfigRequest.builder()
                         .functionName(functionName)
@@ -113,8 +125,24 @@ class AwsLambdaDeployer(
         }
     }
 
-    private fun lambdaClient(): LambdaClient = LambdaClient.builder()
-        .region(Region.of(region))
+    private fun lambdaClient(effectiveRegion: String = region): LambdaClient = LambdaClient.builder()
+        .region(Region.of(effectiveRegion))
         .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
         .build()
+
+    private fun resolveBucketRegion(bucket: String): String = try {
+        S3Client.builder()
+            .region(Region.US_EAST_1)
+            .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+            .build()
+            .use { client ->
+                val location = client.getBucketLocation(
+                    GetBucketLocationRequest.builder().bucket(bucket).build()
+                ).locationConstraintAsString()
+                if (location.isNullOrBlank()) "us-east-1" else location
+            }
+    } catch (e: Exception) {
+        logger.warn { "Could not resolve bucket region for '$bucket': ${e.message} — using '$region'" }
+        region
+    }
 }
