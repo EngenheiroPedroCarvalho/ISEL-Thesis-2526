@@ -111,41 +111,23 @@ object AwsBuildScripts : CloudBuildScripts {
     private val LAMBDA_HTTP_WRAPPER = """
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 
-public class AwsHttpTemplate implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+public class AwsHttpTemplate implements RequestHandler<Map<String, Object>, Object> {
 
     @Override
-    public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent event, Context context) {
-        Map<String, String> queryParams = event.getQueryStringParameters();
-        if (queryParams == null) queryParams = new HashMap<>();
-        Map<String, Object> result;
-        try {
-            result = new MyFunctionClass().handleRequest(queryParams, context);
-        } catch (Exception e) {
-            return buildResponse(500, "{\"error\":\"" + e.getMessage() + "\"}");
+    public Object handleRequest(Map<String, Object> event, Context context) {
+        Map<String, String> queryParams = new HashMap<>();
+        Object qsp = event.get("queryStringParameters");
+        if (qsp instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) qsp).entrySet()) {
+                if (entry.getValue() != null) {
+                    queryParams.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+                }
+            }
         }
-        try {
-            return buildResponse(200, MAPPER.writeValueAsString(result));
-        } catch (Exception e) {
-            return buildResponse(500, "{\"error\":\"serialization failed\"}");
-        }
-    }
-
-    private APIGatewayV2HTTPResponse buildResponse(int statusCode, String body) {
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Content-Type", "application/json");
-        return APIGatewayV2HTTPResponse.builder()
-                .withStatusCode(statusCode)
-                .withBody(body)
-                .withHeaders(headers)
-                .build();
+        return new MyFunctionClass().handleRequest(queryParams, context);
     }
 }
     """.trimIndent()

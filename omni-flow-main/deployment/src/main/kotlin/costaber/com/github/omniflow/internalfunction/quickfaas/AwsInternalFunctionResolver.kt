@@ -11,7 +11,6 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.lambda.LambdaClient
 import software.amazon.awssdk.services.lambda.model.GetFunctionUrlConfigRequest
 import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException
-import java.net.URI
 
 class AwsInternalFunctionResolver(
     private val region: String,
@@ -60,9 +59,8 @@ class AwsInternalFunctionResolver(
                 "Invalid workflow: internalFunction('${internal.name}') cannot be combined with host/path."
             )
         }
-        val resolvedUrl = resolveOrDeploy(internal.name, internal)
-        val (host, path) = splitUrl(resolvedUrl)
-        return call.copy(host = host, path = path, internalFunction = null)
+        resolveOrDeploy(internal.name, internal)
+        return call.copy(host = "lambda://${internal.name}", path = "", internalFunction = null)
     }
 
     private fun resolveOrDeploy(functionName: String, internal: InternalFunction): String {
@@ -119,14 +117,4 @@ class AwsInternalFunctionResolver(
         null
     }
 
-    private fun splitUrl(url: String): Pair<String, String> {
-        val uri = try {
-            URI(url)
-        } catch (e: Exception) {
-            throw IllegalStateException("Invalid URL resolved for Lambda: '$url'", e)
-        }
-        val host = uri.authority ?: throw IllegalStateException("URL missing host: '$url'")
-        val path = uri.rawPath?.takeIf { it.isNotBlank() } ?: "/"
-        return host to path
-    }
 }

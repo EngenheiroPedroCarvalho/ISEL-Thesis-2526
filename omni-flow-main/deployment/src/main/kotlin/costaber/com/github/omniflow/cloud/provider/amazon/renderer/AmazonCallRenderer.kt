@@ -17,7 +17,9 @@ class AmazonCallRenderer(
 
     override val element: Node = callContext
 
-    private fun ResultType.name(): String = when (this) {
+    private var isLambdaInvoke = false
+
+    private fun ResultType.nameForApiGateway(): String = when (this) {
         ResultType.BODY -> AMAZON_RESPONSE_BODY
         ResultType.CODE -> AMAZON_STATUS_CODE_BODY
         ResultType.HEADERS -> AMAZON_HEADERS_BODY
@@ -26,8 +28,17 @@ class AmazonCallRenderer(
     override fun internalBeginRender(renderingContext: IndentedRenderingContext): String {
         val amazonContext = renderingContext as AmazonRenderingContext
         val host = amazonContext.hostResolve(callContext.host) ?: callContext.host
+        isLambdaInvoke = host.startsWith(LAMBDA_HOST_PREFIX)
 
-        return render(renderingContext) {
+        return if (isLambdaInvoke) {
+            renderLambdaInvoke(host.removePrefix(LAMBDA_HOST_PREFIX), renderingContext)
+        } else {
+            renderApiGatewayInvoke(host, renderingContext)
+        }
+    }
+
+    private fun renderApiGatewayInvoke(host: String, renderingContext: IndentedRenderingContext): String =
+        render(renderingContext) {
             addLine(AMAZON_TASK_TYPE)
             addLine(AMAZON_RESOURCE)
             addLine("$AMAZON_INPUT_PATH\"\$\",")
@@ -44,7 +55,37 @@ class AmazonCallRenderer(
             }
             add(AMAZON_CLOSE_OBJECT_WITH_COMMA)
         }
-    }
+
+    private fun renderLambdaInvoke(functionName: String, renderingContext: IndentedRenderingContext): String =
+        render(renderingContext) {
+            addLine(AMAZON_TASK_TYPE)
+            addLine(AMAZON_LAMBDA_RESOURCE)
+            addLine("$AMAZON_INPUT_PATH\"\$\",")
+            addLine(AMAZON_START_PARAMETERS)
+            tab {
+                add("${AMAZON_FUNCTION_NAME}\"$functionName\"")
+                if (callContext.query.isNotEmpty()) {
+                    append(",")
+                    addEmptyLine()
+                    addLine(AMAZON_LAMBDA_PAYLOAD_OPEN)
+                    tab {
+                        addLine(AMAZON_QUERY_STRING_PARAMETERS)
+                        tab {
+                            val entries = callContext.query.entries.toList()
+                            entries.dropLast(1).forEach {
+                                addLine("${renderMapEntry(it, renderingContext.termContext)},")
+                            }
+                            entries.lastOrNull()?.let { addLine(renderMapEntry(it, renderingContext.termContext)) }
+                        }
+                        add("}")
+                    }
+                    addEmptyLine()
+                    add("}")
+                }
+                addEmptyLine()
+            }
+            add(AMAZON_CLOSE_OBJECT_WITH_COMMA)
+        }
 
     override fun internalEndRender(renderingContext: IndentedRenderingContext): String {
         val amazonContext = renderingContext as AmazonRenderingContext
@@ -54,10 +95,12 @@ class AmazonCallRenderer(
             name = callContext.result,
             translation = "${amazonContext.getCurrentStepName().orEmpty()}.${callContext.result}"
         )
+        val resultSource = if (isLambdaInvoke) AMAZON_LAMBDA_PAYLOAD_RESULT
+                           else callContext.resultType.nameForApiGateway()
         return render(renderingContext) {
             addLine(AMAZON_START_RESULT_SELECTOR)
             tab {
-                addLine("\"${callContext.result}.\$\": \"\$.${callContext.resultType.name()}\"")
+                addLine("\"${callContext.result}.\$\": \"\$.${resultSource}\"")
             }
             addLine(AMAZON_CLOSE_OBJECT_WITH_COMMA)
             addLine("$AMAZON_START_RESULT_PATH\"\$.${currentStepName}\",")
