@@ -18,6 +18,8 @@ class AwsLambdaDeployer(
     private val quickFaasJarPath: Path,
     private val region: String,
     private val roleArn: String,
+    private val s3Bucket: String = "",
+    private val accountId: String = "",
     private val readinessTimeoutSeconds: Long = 180,
     private val readinessPollIntervalSeconds: Long = 5
 ) : InternalFunctionDeployer {
@@ -42,46 +44,48 @@ class AwsLambdaDeployer(
 
         logger.info { "Deploying Lambda '$functionName' via QuickFaaS (descriptor=$descriptorPath)" }
 
-        println("$BLUE  →$RESET Loading deployment descriptor from '$descriptorPath'...")
-        val descriptor = QuickFaasDescriptorLoader.load(descriptorPath)
-        QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "aws")
-        println("$GREEN  ✓$RESET Descriptor validated (provider=aws, runtime=${descriptor.function?.runtime})")
+        // Load raw descriptor only to read iamRoleArn before patching
+        val rawDescriptor = QuickFaasDescriptorLoader.load(descriptorPath)
+        val lambdaExecutionRoleArn = iamHelper.resolveOrCreateLambdaExecutionRole(rawDescriptor.iamRoleArn)
 
-        // Resolve the actual bucket region so Lambda polling uses the right region
-        val bucketName = descriptor.function?.bucket
-        val effectiveRegion = if (!bucketName.isNullOrBlank()) {
-            resolveBucketRegion(bucketName).also {
-                if (it != region) println("$YELLOW  !$RESET Bucket '$bucketName' is in '$it' — using that region for Lambda")
-            }
-        } else {
-            region
-        }
-
-        val lambdaExecutionRoleArn = iamHelper.resolveOrCreateLambdaExecutionRole(descriptor.iamRoleArn)
-
-        // Patch descriptor so QuickFaaS receives the real ARN (it ignores env var when iamRoleArn is non-empty)
-        val patchedDescriptorPath = patchDescriptorRoleArn(descriptorPath, lambdaExecutionRoleArn)
-        println("$BLUE  →$RESET Invoking QuickFaaS subprocess to deploy '$BOLD$functionName$RESET' on AWS Lambda...")
-        val invoker = QuickFaasProcessInvoker(quickFaasJarPath)
+        // Patch ALL placeholder fields so QuickFaaS receives a fully resolved descriptor
+        val patchedDescriptorPath = patchDescriptor(descriptorPath, lambdaExecutionRoleArn)
         try {
+            println("$BLUE  →$RESET Loading deployment descriptor from '$descriptorPath'...")
+            val descriptor = QuickFaasDescriptorLoader.load(patchedDescriptorPath)
+            QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "aws")
+            println("$GREEN  ✓$RESET Descriptor validated (provider=aws, runtime=${descriptor.function?.runtime})")
+
+            // Resolve bucket region using the patched (real) bucket name
+            val bucketName = descriptor.function?.bucket
+            val effectiveRegion = if (!bucketName.isNullOrBlank()) {
+                resolveBucketRegion(bucketName).also {
+                    if (it != region) println("$YELLOW  !$RESET Bucket '$bucketName' is in '$it' — using that region for Lambda")
+                }
+            } else {
+                region
+            }
+
+            println("$BLUE  →$RESET Invoking QuickFaaS subprocess to deploy '$BOLD$functionName$RESET' on AWS Lambda...")
+            val invoker = QuickFaasProcessInvoker(quickFaasJarPath)
             invokeWithRoleRetry(invoker, patchedDescriptorPath)
+            println("$GREEN  ✓$RESET QuickFaaS subprocess completed for '$functionName'")
+
+            println("$BLUE  →$RESET Waiting for Lambda '$functionName' to become Active...")
+            waitForLambdaActive(functionName, effectiveRegion)
+            println("$GREEN  ✓$RESET Lambda '$functionName' is Active")
+
+            println("$BLUE  →$RESET Retrieving Lambda ARN for '$functionName'...")
+            val functionArn = getLambdaFunctionArn(functionName, effectiveRegion)
+            println("$GREEN  ✓$RESET Lambda ARN: $BOLD$functionArn$RESET")
+
+            iamHelper.grantStepFunctionsInvoke(functionName, effectiveRegion, roleArn)
+
+            logger.info { "AwsLambdaDeployer completed for '$functionName'. ARN: $functionArn" }
+            return FunctionInvocationMetadata(serviceName = functionName, url = functionArn)
         } finally {
             Files.deleteIfExists(patchedDescriptorPath)
         }
-        println("$GREEN  ✓$RESET QuickFaaS subprocess completed for '$functionName'")
-
-        println("$BLUE  →$RESET Waiting for Lambda '$functionName' to become Active...")
-        waitForLambdaActive(functionName, effectiveRegion)
-        println("$GREEN  ✓$RESET Lambda '$functionName' is Active")
-
-        println("$BLUE  →$RESET Retrieving Lambda ARN for '$functionName'...")
-        val functionArn = getLambdaFunctionArn(functionName, effectiveRegion)
-        println("$GREEN  ✓$RESET Lambda ARN: $BOLD$functionArn$RESET")
-
-        iamHelper.grantStepFunctionsInvoke(functionName, effectiveRegion, roleArn)
-
-        logger.info { "AwsLambdaDeployer completed for '$functionName'. ARN: $functionArn" }
-        return FunctionInvocationMetadata(serviceName = functionName, url = functionArn)
     }
 
     private fun waitForLambdaActive(functionName: String, effectiveRegion: String) {
@@ -146,14 +150,33 @@ class AwsLambdaDeployer(
         }
     }
 
-    private fun patchDescriptorRoleArn(originalPath: Path, roleArn: String): Path {
-        val content = Files.readString(originalPath)
-        val patched = content.replace(
+    private fun patchDescriptor(originalPath: Path, roleArn: String): Path {
+        var content = Files.readString(originalPath)
+        // Always replace iamRoleArn with the resolved value
+        content = content.replace(
             Regex("\"iamRoleArn\"\\s*:\\s*\"[^\"]*\""),
             "\"iamRoleArn\": \"$roleArn\""
         )
+        // Replace placeholder bucket/project/location only when caller supplied a real value
+        if (s3Bucket.isNotBlank()) {
+            content = content.replace(
+                Regex("\"bucket\"\\s*:\\s*\"<[^\"]*>\""),
+                "\"bucket\": \"$s3Bucket\""
+            )
+        }
+        if (accountId.isNotBlank()) {
+            content = content.replace(
+                Regex("\"project\"\\s*:\\s*\"<[^\"]*>\""),
+                "\"project\": \"$accountId\""
+            )
+        }
+        // Always patch placeholder location with the configured region
+        content = content.replace(
+            Regex("\"location\"\\s*:\\s*\"<[^\"]*>\""),
+            "\"location\": \"$region\""
+        )
         val tempPath = originalPath.parent.resolve("_omniflow_tmp_descriptor.json")
-        Files.writeString(tempPath, patched)
+        Files.writeString(tempPath, content)
         return tempPath
     }
 

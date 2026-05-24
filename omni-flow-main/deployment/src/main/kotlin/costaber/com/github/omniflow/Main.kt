@@ -137,6 +137,8 @@ fun printPrerequisites() {
     C.detail("  export AWS_REGION=eu-west-1                            # optional (prompted)")
     C.detail("  export QUICKFAAS_JAR_PATH=/path/to/QuickFaaS-Deployment-fat.jar")
     C.detail("  export STEP_FUNCTIONS_ROLE_ARN=arn:aws:iam::ACCOUNT:role/StepFunctionsRole")
+    C.detail("  export AWS_S3_BUCKET=my-lambda-bucket                  # optional (prompted)")
+    C.detail("  export AWS_ACCOUNT_ID=123456789012                     # optional (prompted)")
     C.detail("  export STATE_MACHINE_NAME=AwsLambdaAutoDeployGreeting  # optional")
     println()
 
@@ -842,6 +844,8 @@ data class AwsAutoDeployConfig(
     val region: String,
     val stepFunctionsRoleArn: String,
     val stateMachineName: String,
+    val s3Bucket: String = "",
+    val accountId: String = "",
 )
 
 private fun collectAwsAutoDeployConfig(
@@ -887,6 +891,18 @@ private fun collectAwsAutoDeployConfig(
             scan.next().trim()
         }
 
+    val s3Bucket = System.getenv("AWS_S3_BUCKET")
+        ?: run {
+            print("  Enter S3 bucket name for Lambda packages: ")
+            scan.next().trim()
+        }
+
+    val accountId = System.getenv("AWS_ACCOUNT_ID")
+        ?: run {
+            print("  Enter AWS account ID (12-digit number): ")
+            scan.next().trim()
+        }
+
     val stateMachineName = System.getenv("STATE_MACHINE_NAME")
         ?: run {
             print("  Enter State Machine name [$defaultStateMachineName]: ")
@@ -896,10 +912,12 @@ private fun collectAwsAutoDeployConfig(
     C.ok("QuickFaaS JAR: ${C.BOLD}$quickFaasJarPath${C.RESET}")
     C.ok("Region:        ${C.BOLD}$region${C.RESET}")
     C.ok("Role:          ${C.BOLD}$stepFunctionsRoleArn${C.RESET}")
+    C.ok("S3 Bucket:     ${C.BOLD}$s3Bucket${C.RESET}")
+    C.ok("Account ID:    ${C.BOLD}$accountId${C.RESET}")
     C.ok("State Machine: ${C.BOLD}$stateMachineName${C.RESET}")
     println()
 
-    return AwsAutoDeployConfig(quickFaasJarPath, region, stepFunctionsRoleArn, stateMachineName)
+    return AwsAutoDeployConfig(quickFaasJarPath, region, stepFunctionsRoleArn, stateMachineName, s3Bucket, accountId)
 }
 
 private val Example7Workflow = workflow {
@@ -948,6 +966,8 @@ fun deployAwsLambdaAutoDeployExample(scan: Scanner) {
         quickFaasJarPath = Path.of(config.quickFaasJarPath),
         region = config.region,
         roleArn = config.stepFunctionsRoleArn,
+        s3Bucket = config.s3Bucket,
+        accountId = config.accountId,
     )
     val deployer = AmazonCloudDeployer.Builder()
         .internalFunctionDeployer(lambdaDeployer)
@@ -1071,6 +1091,8 @@ fun deployAwsTextAnalysisExample(scan: Scanner) {
         quickFaasJarPath = Path.of(config.quickFaasJarPath),
         region = config.region,
         roleArn = config.stepFunctionsRoleArn,
+        s3Bucket = config.s3Bucket,
+        accountId = config.accountId,
     )
     val deployer = AmazonCloudDeployer.Builder()
         .internalFunctionDeployer(lambdaDeployer)
