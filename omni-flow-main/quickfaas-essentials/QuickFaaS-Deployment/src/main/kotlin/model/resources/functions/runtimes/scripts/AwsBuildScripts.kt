@@ -109,24 +109,55 @@ object AwsBuildScripts : CloudBuildScripts {
 
     private val LAMBDA_HTTP_WRAPPER = """
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.RequestHandler;
-import java.util.HashMap;
-import java.util.Map;
+import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
+import java.io.*;
+import java.util.*;
 
-public class AwsHttpTemplate implements RequestHandler<Map<String, Object>, Object> {
+public class AwsHttpTemplate implements RequestStreamHandler {
 
     @Override
-    public Object handleRequest(Map<String, Object> event, Context context) {
-        Map<String, String> queryParams = new HashMap<>();
-        Object qsp = event.get("queryStringParameters");
-        if (qsp instanceof Map) {
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) qsp).entrySet()) {
-                if (entry.getValue() != null) {
-                    queryParams.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
-                }
-            }
+    public void handleRequest(InputStream input, OutputStream output, Context context) throws IOException {
+        String body = new String(input.readAllBytes(), "UTF-8");
+        Map<String, String> params = parseQueryParams(body);
+        Object result = new MyFunctionClass().handleRequest(params, context);
+        output.write(toJsonBytes(result));
+    }
+
+    private Map<String, String> parseQueryParams(String json) {
+        Map<String, String> params = new HashMap<>();
+        int idx = json.indexOf("\"queryStringParameters\"");
+        if (idx < 0) return params;
+        int open = json.indexOf('{', idx + 23);
+        if (open < 0) return params;
+        int close = json.indexOf('}', open);
+        if (close < 0) return params;
+        String content = json.substring(open + 1, close).trim();
+        if (content.isEmpty()) return params;
+        for (String pair : content.split(",")) {
+            String[] kv = pair.split(":", 2);
+            if (kv.length == 2)
+                params.put(unquote(kv[0].trim()), unquote(kv[1].trim()));
         }
-        return new MyFunctionClass().handleRequest(queryParams, context);
+        return params;
+    }
+
+    private String unquote(String s) {
+        return (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2)
+            ? s.substring(1, s.length() - 1) : s;
+    }
+
+    private byte[] toJsonBytes(Object obj) {
+        if (obj instanceof Map) {
+            StringBuilder sb = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<?, ?> e : ((Map<?, ?>) obj).entrySet()) {
+                if (!first) sb.append(",");
+                sb.append("\"").append(e.getKey()).append("\":\"").append(e.getValue()).append("\"");
+                first = false;
+            }
+            return sb.append("}").toString().getBytes();
+        }
+        return ("\"" + obj + "\"").getBytes();
     }
 }
     """.trimIndent()
