@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.lambda.model.GetFunctionRequest
 import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetBucketLocationRequest
+import java.nio.file.Files
 import java.nio.file.Path
 
 class AwsLambdaDeployer(
@@ -58,9 +59,15 @@ class AwsLambdaDeployer(
 
         val lambdaExecutionRoleArn = iamHelper.resolveOrCreateLambdaExecutionRole(descriptor.iamRoleArn)
 
+        // Patch descriptor so QuickFaaS receives the real ARN (it ignores env var when iamRoleArn is non-empty)
+        val patchedDescriptorPath = patchDescriptorRoleArn(descriptorPath, lambdaExecutionRoleArn)
         println("$BLUE  →$RESET Invoking QuickFaaS subprocess to deploy '$BOLD$functionName$RESET' on AWS Lambda...")
         val invoker = QuickFaasProcessInvoker(quickFaasJarPath)
-        invoker.invoke(descriptorPath, accessToken = null, extraEnv = mapOf("AWS_LAMBDA_ROLE_ARN" to lambdaExecutionRoleArn))
+        try {
+            invoker.invoke(patchedDescriptorPath, accessToken = null)
+        } finally {
+            Files.deleteIfExists(patchedDescriptorPath)
+        }
         println("$GREEN  ✓$RESET QuickFaaS subprocess completed for '$functionName'")
 
         println("$BLUE  →$RESET Waiting for Lambda '$functionName' to become Active...")
@@ -120,6 +127,17 @@ class AwsLambdaDeployer(
         .region(Region.of(effectiveRegion))
         .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
         .build()
+
+    private fun patchDescriptorRoleArn(originalPath: Path, roleArn: String): Path {
+        val content = Files.readString(originalPath)
+        val patched = content.replace(
+            Regex("\"iamRoleArn\"\\s*:\\s*\"[^\"]*\""),
+            "\"iamRoleArn\": \"$roleArn\""
+        )
+        val tempPath = originalPath.parent.resolve("_omniflow_tmp_descriptor.json")
+        Files.writeString(tempPath, patched)
+        return tempPath
+    }
 
     private fun resolveBucketRegion(bucket: String): String = try {
         S3Client.builder()
