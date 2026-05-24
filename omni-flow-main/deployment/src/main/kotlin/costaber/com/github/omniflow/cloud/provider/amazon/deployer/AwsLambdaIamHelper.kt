@@ -72,8 +72,8 @@ class AwsLambdaIamHelper {
                         .build()
                 )
                 println("$GREEN  ✓$RESET Role created → $roleArn")
-                println("$BLUE  →$RESET Waiting 15s for IAM propagation...")
-                Thread.sleep(15_000)
+                println("$BLUE  →$RESET Waiting 30s for IAM propagation...")
+                Thread.sleep(30_000)
                 roleArn
             }
         }

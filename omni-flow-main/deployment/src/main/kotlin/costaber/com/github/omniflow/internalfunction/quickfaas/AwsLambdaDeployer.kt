@@ -64,7 +64,7 @@ class AwsLambdaDeployer(
         println("$BLUE  →$RESET Invoking QuickFaaS subprocess to deploy '$BOLD$functionName$RESET' on AWS Lambda...")
         val invoker = QuickFaasProcessInvoker(quickFaasJarPath)
         try {
-            invoker.invoke(patchedDescriptorPath, accessToken = null)
+            invokeWithRoleRetry(invoker, patchedDescriptorPath)
         } finally {
             Files.deleteIfExists(patchedDescriptorPath)
         }
@@ -127,6 +127,24 @@ class AwsLambdaDeployer(
         .region(Region.of(effectiveRegion))
         .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
         .build()
+
+    private fun invokeWithRoleRetry(invoker: QuickFaasProcessInvoker, descriptorPath: Path, maxRetries: Int = 3) {
+        repeat(maxRetries) { attempt ->
+            try {
+                invoker.invoke(descriptorPath, accessToken = null)
+                return
+            } catch (e: IllegalStateException) {
+                val isRoleError = e.message?.contains("cannot be assumed by Lambda") == true
+                if (isRoleError && attempt < maxRetries - 1) {
+                    val waitSec = 20
+                    println("$YELLOW  !$RESET IAM role not yet propagated — waiting ${waitSec}s before retry ${attempt + 2}/$maxRetries...")
+                    Thread.sleep(waitSec * 1_000L)
+                } else {
+                    throw e
+                }
+            }
+        }
+    }
 
     private fun patchDescriptorRoleArn(originalPath: Path, roleArn: String): Path {
         val content = Files.readString(originalPath)
