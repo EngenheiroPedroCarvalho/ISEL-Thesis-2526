@@ -77,6 +77,7 @@ fun main() {
         5 -> deployMapReduceExample(scan)
         6 -> deployAwsGreetingExample(scan)
         7 -> deployAwsLambdaAutoDeployExample(scan)
+        8 -> deployAwsTextAnalysisExample(scan)
     }
 }
 
@@ -121,13 +122,13 @@ fun printPrerequisites() {
     C.detail("  export AWS_REGION=eu-west-1                            # optional (prompted)")
     println()
 
-    println("  ${C.YELLOW}${C.BOLD}[ AWS QuickFaaS Auto-Deploy — option 7 ]${C.RESET}")
+    println("  ${C.YELLOW}${C.BOLD}[ AWS QuickFaaS Auto-Deploy — options 7 and 8 ]${C.RESET}")
     C.detail("S3 bucket to store Lambda deployment packages")
     C.detail("IAM role for Lambda execution (trust: lambda.amazonaws.com) with:")
     C.detail("  • AWSLambdaBasicExecutionRole")
-    C.detail("IAM role for Step Functions with permission: lambda:InvokeFunctionUrl")
-    C.detail("func-deployment.json updated with real values:")
-    C.detail("  • iamRoleArn   → Lambda execution role ARN (arn:aws:iam::ACCOUNT:role/...)")
+    C.detail("IAM role for Step Functions with permission: lambda:InvokeFunction")
+    C.detail("func-deployment.json files updated with real values (or left as placeholders):")
+    C.detail("  • iamRoleArn   → Lambda execution role ARN (auto-created if blank/placeholder)")
     C.detail("  • project      → AWS account ID  (12-digit number)")
     C.detail("  • bucket       → S3 bucket name")
     C.detail("Environment variables:")
@@ -154,13 +155,14 @@ fun getSelectedOption(scan: Scanner): Int {
         println()
         println("  ${C.YELLOW}${C.BOLD}— AWS Step Functions —${C.RESET}")
         println("  ${C.YELLOW}6${C.RESET}: Greeting via API Gateway + Lambda")
-        println("  ${C.YELLOW}7${C.RESET}: Greeting with QuickFaaS auto-deploy (Lambda Function URL)")
+        println("  ${C.YELLOW}7${C.RESET}: Greeting with QuickFaaS auto-deploy (single Lambda)")
+        println("  ${C.YELLOW}8${C.RESET}: Text analysis pipeline with QuickFaaS auto-deploy (3 Lambdas)")
         println()
         println(" ${C.RED}99${C.RESET}: Exit")
         println()
         print("  ${C.BOLD}Choose an option:${C.RESET} ")
         option = scan.nextInt()
-    } while (option !in listOf(2, 3, 4, 5, 6, 7, 99))
+    } while (option !in listOf(2, 3, 4, 5, 6, 7, 8, 99))
     return option
 }
 
@@ -842,7 +844,11 @@ data class AwsAutoDeployConfig(
     val stateMachineName: String,
 )
 
-private fun collectAwsAutoDeployConfig(scan: Scanner, stageTotal: Int): AwsAutoDeployConfig? {
+private fun collectAwsAutoDeployConfig(
+    scan: Scanner,
+    stageTotal: Int,
+    defaultStateMachineName: String = "AwsLambdaAutoDeployGreeting",
+): AwsAutoDeployConfig? {
     C.stage(1, stageTotal, "Configuration")
 
     val awsAccessKey = System.getenv("AWS_ACCESS_KEY_ID")
@@ -883,8 +889,8 @@ private fun collectAwsAutoDeployConfig(scan: Scanner, stageTotal: Int): AwsAutoD
 
     val stateMachineName = System.getenv("STATE_MACHINE_NAME")
         ?: run {
-            print("  Enter State Machine name [AwsLambdaAutoDeployGreeting]: ")
-            scan.next().trim().ifEmpty { "AwsLambdaAutoDeployGreeting" }
+            print("  Enter State Machine name [$defaultStateMachineName]: ")
+            scan.next().trim().ifEmpty { defaultStateMachineName }
         }
 
     C.ok("QuickFaaS JAR: ${C.BOLD}$quickFaasJarPath${C.RESET}")
@@ -965,5 +971,128 @@ fun deployAwsLambdaAutoDeployExample(scan: Scanner) {
     println()
     C.detail("${C.GREEN}Try:${C.RESET} Start execution with input  {}")
     C.detail("${C.GREEN}Expected:${C.RESET} {\"greeting\": \"Ola, Mundo!\", \"language\": \"pt\"}")
+    C.separator()
+}
+
+// ===========================================================================
+//  Example 8 — AWS Step Functions: Text Analysis Pipeline (3 Lambdas)
+//
+//  Auto-deploys 3 Java Lambda functions via QuickFaaS and creates a Step
+//  Function that calls them sequentially on the same input text:
+//
+//    1. aws-preprocess-fn  — normalizes text (lowercase) and counts words
+//    2. aws-char-stats-fn  — computes character and word-length statistics
+//    3. aws-summary-fn     — generates a multilingual summary
+//
+//  All 3 functions receive the input text via query parameters.
+//  Input: {"text": "Hello World OmniFlow"}
+// ===========================================================================
+
+private val Example8Workflow = workflow {
+    name("AwsTextAnalysisPipeline")
+    description("Sequential text analysis pipeline with 3 Lambda functions auto-deployed via QuickFaaS")
+    steps(
+        step {
+            name("call-preprocess")
+            description("Normalize and preprocess the input text")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "aws-preprocess-fn",
+                        deploymentDescriptorPath = "./functions/aws-preprocess-fn/func-deployment.json"
+                    )
+                    query("text" to variable("text"))
+                    result("preprocessResult")
+                    resultType(ResultType.BODY)
+                }
+            )
+        },
+        step {
+            name("call-char-stats")
+            description("Compute character and word-length statistics")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "aws-char-stats-fn",
+                        deploymentDescriptorPath = "./functions/aws-char-stats-fn/func-deployment.json"
+                    )
+                    query("text" to variable("text"))
+                    result("charStatsResult")
+                    resultType(ResultType.BODY)
+                }
+            )
+        },
+        step {
+            name("call-summary")
+            description("Generate a multilingual text summary")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "aws-summary-fn",
+                        deploymentDescriptorPath = "./functions/aws-summary-fn/func-deployment.json"
+                    )
+                    query("text" to variable("text"), "lang" to value("pt"))
+                    result("summaryResult")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("summaryResult")
+}
+
+fun deployAwsTextAnalysisExample(scan: Scanner) {
+    val stages = 3
+    C.banner("Example 8 — AWS Step Functions: Text Analysis Pipeline (3 Lambdas)")
+    C.info("Auto-deploys 3 Lambda functions via QuickFaaS:")
+    C.detail("${C.BOLD}aws-preprocess-fn${C.RESET}  — normalizes text and counts words")
+    C.detail("${C.BOLD}aws-char-stats-fn${C.RESET}  — computes character and word statistics")
+    C.detail("${C.BOLD}aws-summary-fn${C.RESET}     — generates a multilingual text summary")
+    println()
+    C.separator()
+    println("  ${C.YELLOW}Flow:${C.RESET}  preprocess → char stats → summary (sequential, same input)")
+    C.separator()
+    println()
+
+    val config = collectAwsAutoDeployConfig(
+        scan,
+        stages,
+        defaultStateMachineName = "AwsTextAnalysisPipeline"
+    ) ?: return
+
+    C.stage(2, stages, "Lambda deployment + Workflow resolution")
+    C.info("Deploying ${C.BOLD}aws-preprocess-fn${C.RESET}, ${C.BOLD}aws-char-stats-fn${C.RESET}, ${C.BOLD}aws-summary-fn${C.RESET} via QuickFaaS...")
+    C.info("Resolving internal functions and rendering state machine JSON...")
+
+    val lambdaDeployer = AwsLambdaDeployer(
+        quickFaasJarPath = Path.of(config.quickFaasJarPath),
+        region = config.region,
+        roleArn = config.stepFunctionsRoleArn,
+    )
+    val deployer = AmazonCloudDeployer.Builder()
+        .internalFunctionDeployer(lambdaDeployer)
+        .build()
+    val context = AmazonDeployContext(
+        roleArn = config.stepFunctionsRoleArn,
+        region = config.region,
+        tags = mapOf("environment" to "testing", "app" to "omni-flow"),
+        stateMachineName = config.stateMachineName,
+    )
+    deployer.deploy(Example8Workflow, context)
+
+    C.ok("All 3 Lambdas deployed and state machine created")
+    println()
+
+    C.stage(3, stages, "Complete")
+    C.success("AWS Text Analysis Pipeline deployed successfully!")
+    C.separator()
+    C.detail("State Machine: ${C.BOLD}${config.stateMachineName}${C.RESET}")
+    C.detail("Region:        ${C.BOLD}${config.region}${C.RESET}")
+    println()
+    C.detail("${C.GREEN}Try:${C.RESET}     Start execution with input  {\"text\": \"Hello World OmniFlow\"}")
+    C.detail("${C.GREEN}Expected:${C.RESET} {\"summary\": \"O texto tem 3 palavras e 5.7 caracteres em média.\", ...}")
     C.separator()
 }

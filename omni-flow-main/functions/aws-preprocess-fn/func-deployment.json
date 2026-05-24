@@ -1,0 +1,16 @@
+{
+  "cloudProvider": "aws",
+  "accessToken": "",
+  "iamRoleArn": "<REPLACE_WITH_LAMBDA_EXECUTION_ROLE_ARN>",
+  "project": "<REPLACE_WITH_AWS_ACCOUNT_ID>",
+  "function": {
+    "name": "aws-preprocess-fn",
+    "location": "eu-west-1",
+    "bucket": "<REPLACE_WITH_S3_BUCKET>",
+    "runtime": "java17",
+    "trigger": {
+      "type": "http"
+    }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}
