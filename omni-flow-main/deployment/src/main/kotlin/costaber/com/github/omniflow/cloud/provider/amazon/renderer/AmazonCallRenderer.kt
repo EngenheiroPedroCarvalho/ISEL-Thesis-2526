@@ -95,7 +95,7 @@ class AmazonCallRenderer(
             name = callContext.result,
             translation = "${amazonContext.getCurrentStepName().orEmpty()}.${callContext.result}"
         )
-        val resultSource = if (isLambdaInvoke) AMAZON_LAMBDA_PAYLOAD_RESULT
+        val resultSource = if (callContext.host.startsWith(LAMBDA_HOST_PREFIX)) AMAZON_LAMBDA_PAYLOAD_RESULT
                            else callContext.resultType.nameForApiGateway()
         return render(renderingContext) {
             addLine(AMAZON_START_RESULT_SELECTOR)
