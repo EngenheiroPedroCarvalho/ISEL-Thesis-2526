@@ -56,6 +56,8 @@ class AwsLambdaDeployer(
             region
         }
 
+        descriptor.iamRoleArn?.takeIf { it.isNotBlank() }?.let { iamHelper.ensureLambdaTrustPolicy(it) }
+
         println("$BLUE  →$RESET Invoking QuickFaaS subprocess to deploy '$BOLD$functionName$RESET' on AWS Lambda...")
         val invoker = QuickFaasProcessInvoker(quickFaasJarPath)
         invoker.invoke(descriptorPath, accessToken = null)
