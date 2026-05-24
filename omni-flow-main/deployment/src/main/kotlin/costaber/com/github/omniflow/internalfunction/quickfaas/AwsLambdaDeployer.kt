@@ -18,8 +18,6 @@ class AwsLambdaDeployer(
     private val quickFaasJarPath: Path,
     private val region: String,
     private val roleArn: String,
-    private val s3Bucket: String = "",
-    private val accountId: String = "",
     private val readinessTimeoutSeconds: Long = 180,
     private val readinessPollIntervalSeconds: Long = 5
 ) : InternalFunctionDeployer {
@@ -31,7 +29,6 @@ class AwsLambdaDeployer(
         private const val GREEN   = "[32m"
         private const val YELLOW  = "[33m"
         private const val BLUE    = "[34m"
-        private const val CYAN    = "[36m"
     }
 
     private val iamHelper = AwsLambdaIamHelper()
@@ -44,19 +41,19 @@ class AwsLambdaDeployer(
 
         logger.info { "Deploying Lambda '$functionName' via QuickFaaS (descriptor=$descriptorPath)" }
 
-        // Load raw descriptor only to read iamRoleArn before patching
+        // Load raw descriptor to read iamRoleArn and resolve/create the execution role
         val rawDescriptor = QuickFaasDescriptorLoader.load(descriptorPath)
         val lambdaExecutionRoleArn = iamHelper.resolveOrCreateLambdaExecutionRole(rawDescriptor.iamRoleArn)
 
-        // Patch ALL placeholder fields so QuickFaaS receives a fully resolved descriptor
-        val patchedDescriptorPath = patchDescriptor(descriptorPath, lambdaExecutionRoleArn)
+        // Patch only iamRoleArn so QuickFaaS receives the resolved ARN;
+        // all other fields are expected to be filled in func-deployment.json
+        val patchedDescriptorPath = patchIamRoleArn(descriptorPath, lambdaExecutionRoleArn)
         try {
             println("$BLUE  →$RESET Loading deployment descriptor from '$descriptorPath'...")
             val descriptor = QuickFaasDescriptorLoader.load(patchedDescriptorPath)
             QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "aws")
             println("$GREEN  ✓$RESET Descriptor validated (provider=aws, runtime=${descriptor.function?.runtime})")
 
-            // Resolve bucket region using the patched (real) bucket name
             val bucketName = descriptor.function?.bucket
             val effectiveRegion = if (!bucketName.isNullOrBlank()) {
                 resolveBucketRegion(bucketName).also {
@@ -150,30 +147,10 @@ class AwsLambdaDeployer(
         }
     }
 
-    private fun patchDescriptor(originalPath: Path, roleArn: String): Path {
-        var content = Files.readString(originalPath)
-        // Always replace iamRoleArn with the resolved value
-        content = content.replace(
+    private fun patchIamRoleArn(originalPath: Path, roleArn: String): Path {
+        val content = Files.readString(originalPath).replace(
             Regex("\"iamRoleArn\"\\s*:\\s*\"[^\"]*\""),
             "\"iamRoleArn\": \"$roleArn\""
-        )
-        // Replace placeholder bucket/project/location only when caller supplied a real value
-        if (s3Bucket.isNotBlank()) {
-            content = content.replace(
-                Regex("\"bucket\"\\s*:\\s*\"<[^\"]*>\""),
-                "\"bucket\": \"$s3Bucket\""
-            )
-        }
-        if (accountId.isNotBlank()) {
-            content = content.replace(
-                Regex("\"project\"\\s*:\\s*\"<[^\"]*>\""),
-                "\"project\": \"$accountId\""
-            )
-        }
-        // Always patch placeholder location with the configured region
-        content = content.replace(
-            Regex("\"location\"\\s*:\\s*\"<[^\"]*>\""),
-            "\"location\": \"$region\""
         )
         val tempPath = originalPath.parent.resolve("_omniflow_tmp_descriptor.json")
         Files.writeString(tempPath, content)
