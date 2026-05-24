@@ -893,14 +893,14 @@ private fun collectAwsAutoDeployConfig(
 
     val s3Bucket = System.getenv("AWS_S3_BUCKET")
         ?: run {
-            print("  Enter S3 bucket name for Lambda packages: ")
-            scan.next().trim()
+            print("  Enter S3 bucket name (or '-' to use value from func-deployment.json): ")
+            scan.next().trim().let { if (it == "-") "" else it }
         }
 
     val accountId = System.getenv("AWS_ACCOUNT_ID")
         ?: run {
-            print("  Enter AWS account ID (12-digit number): ")
-            scan.next().trim()
+            print("  Enter AWS account ID (or '-' to use value from func-deployment.json): ")
+            scan.next().trim().let { if (it == "-") "" else it }
         }
 
     val stateMachineName = System.getenv("STATE_MACHINE_NAME")
@@ -912,8 +912,8 @@ private fun collectAwsAutoDeployConfig(
     C.ok("QuickFaaS JAR: ${C.BOLD}$quickFaasJarPath${C.RESET}")
     C.ok("Region:        ${C.BOLD}$region${C.RESET}")
     C.ok("Role:          ${C.BOLD}$stepFunctionsRoleArn${C.RESET}")
-    C.ok("S3 Bucket:     ${C.BOLD}$s3Bucket${C.RESET}")
-    C.ok("Account ID:    ${C.BOLD}$accountId${C.RESET}")
+    C.ok("S3 Bucket:     ${C.BOLD}${s3Bucket.ifEmpty { "(from descriptor)" }}${C.RESET}")
+    C.ok("Account ID:    ${C.BOLD}${accountId.ifEmpty { "(from descriptor)" }}${C.RESET}")
     C.ok("State Machine: ${C.BOLD}$stateMachineName${C.RESET}")
     println()
 
