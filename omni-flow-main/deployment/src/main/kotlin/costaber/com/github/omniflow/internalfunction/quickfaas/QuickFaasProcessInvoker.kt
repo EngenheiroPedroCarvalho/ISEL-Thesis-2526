@@ -24,7 +24,7 @@ class QuickFaasProcessInvoker(
         private const val BLUE    = "[34m"
     }
 
-    fun invoke(descriptorPath: Path, accessToken: String? = null) {
+    fun invoke(descriptorPath: Path, accessToken: String? = null, extraEnv: Map<String, String> = emptyMap()) {
         require(jarPath.toFile().exists()) {
             "QuickFaaS JAR not found at '$jarPath'. " +
                     "Set the QUICKFAAS_JAR_PATH environment variable or system property to the correct path."
@@ -73,6 +73,7 @@ class QuickFaasProcessInvoker(
             val process = ProcessBuilder(command)
                 .directory(jarDir.toFile())
                 .redirectErrorStream(true)
+                .also { pb -> if (extraEnv.isNotEmpty()) pb.environment().putAll(extraEnv) }
                 .start()
 
             val output = process.inputStream.bufferedReader().use { it.readText() }
