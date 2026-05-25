@@ -3,10 +3,56 @@
 
 ---
 
+## Glossário
+
+| Termo | Definição |
+|---|---|
+| **Lambda** | Serviço serverless da AWS que executa código sem gerir servidores. Cada função é invocada a pedido e escala automaticamente. |
+| **Step Functions** | Serviço de orquestração da AWS. Executa uma sequência de passos (state machine) e gere o fluxo entre eles. Equivalente ao Cloud Workflows no GCP. |
+| **State machine** | A descrição do workflow em Amazon States Language (JSON). Define os passos, a ordem, e o que fazer em caso de erro. |
+| **Amazon States Language** | Formato JSON nativo do Step Functions para descrever state machines. O OmniFlow gera este JSON automaticamente a partir do DSL Kotlin. |
+| **IAM** | Identity and Access Management — o sistema de permissões da AWS. Controla quem pode fazer o quê e em que recursos. |
+| **Role IAM** | Identidade temporária na AWS assumida por um serviço (ex: Lambda, Step Functions). Não tem credenciais fixas — são geradas no momento da assunção e expiram. |
+| **Trust policy** | Define quem pode assumir um role. Por exemplo, o role de execução da Lambda tem trust em `lambda.amazonaws.com` — só o serviço Lambda pode assumir esse papel. |
+| **Permissions policy** | Define o que pode fazer quem assumir o role. Por exemplo, escrever logs no CloudWatch. |
+| **ARN** | Amazon Resource Name — identificador único de qualquer recurso na AWS. Formato: `arn:aws:<serviço>:<região>:<conta>:<recurso>`. |
+| **S3** | Serviço de armazenamento de objectos da AWS. Usado como intermediário obrigatório para o deployment de Lambdas Java — o JAR é uploaded para S3 e a Lambda referencia-o a partir daí. |
+| **Fat JAR** | Arquivo JAR que contém o código da função e todas as suas dependências numa só unidade. Necessário porque o Lambda precisa de um pacote auto-suficiente. |
+| **QuickFaaS** | Ferramenta que, dado código Java e um ficheiro de configuração, compila, empacota e faz deployment automático de funções serverless (Cloud Functions no GCP, Lambda na AWS). |
+| **OmniFlow** | Ferramenta desenvolvida na tese que permite descrever workflows de orquestração em Kotlin e fazer deployment automático para GCP ou AWS. |
+| **DSL** | Domain-Specific Language — linguagem de alto nível orientada a um domínio concreto. O OmniFlow usa um DSL em Kotlin para descrever workflows sem expor detalhes da plataforma cloud. |
+| **InternalFunction** | Função declarada no DSL OmniFlow que ainda não existe na cloud. O OmniFlow delega o seu deployment ao QuickFaaS antes de criar o workflow. |
+
+---
+
+## Variáveis de ambiente necessárias
+
+Estas variáveis têm de estar exportadas **antes de iniciar a aplicação**. O AWS SDK lê-as na inicialização — defini-las depois não tem efeito.
+
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `AWS_ACCESS_KEY_ID` | Sim | ID da chave de acesso do utilizador IAM que corre o OmniFlow. |
+| `AWS_SECRET_ACCESS_KEY` | Sim | Chave secreta correspondente. Obtida uma única vez ao criar a access key no IAM. |
+| `AWS_REGION` | Não | Região por omissão (ex: `eu-west-1`). Se não definida, o programa pede interactivamente. |
+| `QUICKFAAS_JAR_PATH` | Sim (exemplos 7 e 8) | Caminho absoluto para o fat JAR do QuickFaaS. Construído com `./gradlew fatJar` na pasta `quickfaas-essentials/QuickFaaS-Deployment`. |
+| `STEP_FUNCTIONS_ROLE_ARN` | Não | ARN do role do Step Functions. Se não definida, o programa pede interactivamente. |
+| `STATE_MACHINE_NAME` | Não | Nome da state machine a criar. Se não definida, usa `AwsTextAnalysisPipeline`. |
+
+**Como exportar (Linux/Mac):**
+```bash
+export AWS_ACCESS_KEY_ID=AKIA...
+export AWS_SECRET_ACCESS_KEY=wJalr...
+export AWS_REGION=eu-west-1
+export QUICKFAAS_JAR_PATH=/caminho/para/QuickFaaS-Deployment-fat.jar
+export STEP_FUNCTIONS_ROLE_ARN=arn:aws:iam::<conta>:role/StepFunctionsExecutionRole
+```
+
+---
+
 ## Antes de começar
 
 - [ ] Variáveis de ambiente exportadas no terminal
-- [ ] `func-deployment.json` das 3 funções preenchidos
+- [ ] `func-deployment.json` das 3 funções preenchidos (`project`, `bucket`, `function.location`)
 - [ ] Browser aberto na consola AWS (Lambda + Step Functions + IAM)
 - [ ] IDE ou terminal pronto para correr `Main.kt`
 - [ ] Corrida de teste feita no dia anterior — **não demonstrar pela primeira vez ao vivo**
