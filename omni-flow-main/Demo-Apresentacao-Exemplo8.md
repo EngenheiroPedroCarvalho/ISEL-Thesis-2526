@@ -25,6 +25,174 @@
 
 ---
 
+## Configuração de raiz (primeira vez)
+
+Esta secção descreve tudo o que é necessário criar na AWS antes de correr o OmniFlow pela primeira vez. Se o ambiente já estiver configurado, pode saltar para a secção das variáveis de ambiente.
+
+---
+
+### 1. Conta AWS e Account ID
+
+É necessária uma conta AWS activa. O **Account ID** é um número de 12 dígitos visível no canto superior direito da consola AWS, no menu do utilizador. É necessário para preencher o campo `project` nos ficheiros `func-deployment.json`.
+
+> Guardar o Account ID **sem hífens**: `025064823406` e não `0250-6482-3406`.
+
+---
+
+### 2. Pré-requisitos na máquina local
+
+| Ferramenta | Versão mínima | Porquê |
+|---|---|---|
+| Java JDK | 17 | OmniFlow e QuickFaaS correm na JVM; o runtime Lambda é `java17` |
+| Maven | 3.6 | QuickFaaS invoca `mvn package` para compilar cada Lambda |
+| Git | qualquer | Para clonar o repositório |
+
+Verificar:
+```bash
+java -version   # deve mostrar 17 ou superior
+mvn -version    # deve mostrar 3.6 ou superior
+```
+
+---
+
+### 3. Construir o JAR do QuickFaaS
+
+O QuickFaaS é invocado como subprocesso pelo OmniFlow. É necessário compilá-lo uma única vez:
+
+```bash
+cd quickfaas-essentials/QuickFaaS-Deployment
+./gradlew fatJar
+```
+
+O JAR resultante fica em `build/libs/QuickFaaS-Deployment-fat.jar`. Guardar o caminho absoluto para a variável `QUICKFAAS_JAR_PATH`.
+
+---
+
+### 4. Criar o utilizador IAM
+
+O OmniFlow precisa de credenciais programáticas (Access Key) para chamar as APIs da AWS.
+
+1. **IAM → Users → Create user**
+2. Nome: `omniflow-deploy-user`
+3. Não activar acesso à consola (este utilizador é só para SDK)
+4. **Create user** → abrir o utilizador → **Security credentials → Create access key → CLI**
+5. Guardar `AWS_ACCESS_KEY_ID` e `AWS_SECRET_ACCESS_KEY` — são mostrados uma única vez
+
+**Adicionar política inline ao utilizador** — IAM → Users → `omniflow-deploy-user` → Add permissions → Create inline policy → JSON:
+
+Nome: `OmniFlowDeployPolicy`
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "LambdaFullAccess",       "Effect": "Allow", "Action": "lambda:*",  "Resource": "*" },
+    { "Sid": "StepFunctionsFullAccess","Effect": "Allow", "Action": "states:*",  "Resource": "*" },
+    { "Sid": "S3Access",               "Effect": "Allow",
+      "Action": ["s3:ListAllMyBuckets","s3:ListBucket","s3:GetBucketLocation","s3:PutObject","s3:GetObject"],
+      "Resource": "*" },
+    { "Sid": "IAMRoleManagement",      "Effect": "Allow",
+      "Action": ["iam:CreateRole","iam:GetRole","iam:AttachRolePolicy","iam:PutRolePolicy","iam:UpdateAssumeRolePolicy","iam:PassRole"],
+      "Resource": "*" }
+  ]
+}
+```
+
+**Porquê cada bloco:**
+- `lambda:*` — criar, actualizar e verificar o estado das Lambdas (incluindo o waiter interno do SDK)
+- `states:*` — criar e actualizar a state machine
+- `s3:*` — validar que o bucket existe, fazer upload do JAR
+- `iam:*` — criar o Lambda execution role automaticamente e associá-lo às funções
+
+---
+
+### 5. Criar o bucket S3
+
+O QuickFaaS não cria o bucket. Tem de existir antes da primeira execução.
+
+1. **S3 → Create bucket**
+2. Região: a mesma que vai estar em `function.location` nos descritores (ex: `eu-west-1`)
+3. Nome: globalmente único, ex: `omniflow-packages-<account-id>`
+4. Manter "Block all public access" activo
+5. Guardar o nome do bucket para preencher o campo `bucket` nos `func-deployment.json`
+
+> O bucket e a Lambda **têm de estar na mesma região**. O OmniFlow detecta a região do bucket automaticamente via `GetBucketLocation` e usa-a para criar as Lambdas.
+
+---
+
+### 6. Criar o role do Step Functions
+
+A state machine executa como um serviço AWS e precisa de um role próprio para invocar as Lambdas.
+
+1. **IAM → Roles → Create role**
+2. Trusted entity: **AWS service → Step Functions**
+3. Não adicionar políticas geridas — clicar Next
+4. Nome: `StepFunctionsExecutionRole`
+5. **Create role** → guardar o ARN resultante
+
+**Adicionar política inline ao role** — IAM → Roles → `StepFunctionsExecutionRole` → Add permissions → Create inline policy → JSON:
+
+Nome: `AllowInvokeWorkflowTargets`
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "InvokeLambdas",    "Effect": "Allow", "Action": "lambda:InvokeFunction", "Resource": "*" },
+    { "Sid": "InvokeApiGateway", "Effect": "Allow", "Action": "execute-api:Invoke",    "Resource": "arn:aws:execute-api:*:*:*" }
+  ]
+}
+```
+
+---
+
+### 7. Preencher os ficheiros `func-deployment.json`
+
+Cada função tem o seu descriptor em `functions/<nome>/func-deployment.json`. Preencher os campos em falta:
+
+```jsonc
+{
+  "cloudProvider": "aws",
+  "accessToken": "",                    // deixar vazio — não usado na AWS
+  "iamRoleArn": "",                     // deixar vazio — OmniFlow cria automaticamente
+  "project": "025064823406",            // Account ID sem hífens
+  "function": {
+    "name": "aws-preprocess-fn",
+    "location": "eu-west-1",            // mesma região do bucket S3
+    "bucket": "omniflow-packages-...",  // nome do bucket criado no passo 5
+    "runtime": "java17",
+    "trigger": { "type": "http" }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}
+```
+
+Repetir para `aws-char-stats-fn` e `aws-summary-fn` (alterar apenas o campo `name`).
+
+---
+
+### 8. Diagrama de identidades AWS
+
+```
+┌─────────────────────────────┐
+│   omniflow-deploy-user      │  ← credenciais usadas pelo OmniFlow
+│   (IAM User)                │     para criar Lambdas e state machine
+│   OmniFlowDeployPolicy      │
+└─────────────────────────────┘
+
+┌─────────────────────────────┐
+│   StepFunctionsExecutionRole│  ← assumido pelo Step Functions
+│   (IAM Role)                │     durante a execução do workflow
+│   AllowInvokeWorkflowTargets│     para invocar as Lambdas
+└─────────────────────────────┘
+
+┌─────────────────────────────┐
+│   OmniFlowLambdaExecutionRole│ ← criado automaticamente pelo OmniFlow
+│   (IAM Role)                │    assumido por cada Lambda quando executa
+│   AWSLambdaBasicExecutionRole│   para escrever logs no CloudWatch
+└─────────────────────────────┘
+```
+
+---
+
 ## Variáveis de ambiente necessárias
 
 Estas variáveis têm de estar exportadas **antes de iniciar a aplicação**. O AWS SDK lê-as na inicialização — defini-las depois não tem efeito.
