@@ -37,7 +37,7 @@ package "OmniFlow" {
 }
 
 package "QuickFaaS" {
-  component "GCP Function Deployer\n(build + deploy)" as Deployer
+  component "GCP Function Deployer" as Deployer
 }
 
 package "Cloud Providers" {
@@ -55,22 +55,22 @@ Model --> ALD
 Renderer --> AWS
 Renderer --> GCP
 Deployer --> CF
-ALD --> Lambda : uses QuickFaaS\nto build JAR,\nthen deploys\nvia AWS SDK
+ALD --> Lambda
 
 @enduml
 ```
 
-The architecture follows a layered model: the Kotlin workflow definition is transformed by provider-specific renderers into native platform artefacts (Amazon States Language for AWS, YAML for GCP). Internal functions are deployed before the workflow is created — via QuickFaaS for GCP Cloud Functions, and via OmniFlow's own `AwsLambdaDeployer` for AWS Lambda, which uses QuickFaaS solely to compile and package the function code.
+The architecture follows a layered model: the Kotlin workflow definition is transformed by provider-specific renderers into native platform artefacts (Amazon States Language for AWS, YAML for GCP). Internal functions are deployed before the workflow is created — via QuickFaaS for GCP Cloud Functions, and via OmniFlow's `AwsLambdaDeployer` for AWS Lambda.
 
 ---
 
-## Slide 3 — QuickFaaS: Portable Function Deployment on GCP
+## Slide 3 — QuickFaaS: Portable Function Deployment
 
-QuickFaaS is a tool that addresses serverless function portability by allowing developers to implement function logic once and deploy it across multiple FaaS providers with minimal code changes. In the context of this framework, QuickFaaS is responsible for building and deploying functions to **GCP Cloud Functions**.
+QuickFaaS is a tool that addresses serverless function portability by allowing developers to implement function logic once and deploy it to GCP Cloud Functions with minimal code changes.
 
 Conceptually, QuickFaaS separates cloud-agnostic business logic from provider-specific integration logic. Developers implement a *hook function* using generic request/response abstractions, while provider-specific templates serve as entry points that adapt native event formats and invocation contracts to the hook interface.
 
-The deployment pipeline works as follows: it creates a temporary project, integrates the user's hook function, compiles the code and required libraries, and bundles everything into a deployable ZIP archive. This artefact is then uploaded and deployed using the provider's API.
+The deployment pipeline works as follows: it creates a temporary project, integrates the user's hook function, compiles the code and required libraries, and bundles everything into a deployable ZIP archive. This artefact is then uploaded and deployed using the GCP Cloud Functions API.
 
 ```plantuml
 @startuml
@@ -83,7 +83,7 @@ start
 :Integrate provider-specific template;
 :Compile code + dependencies;
 :Package into ZIP / fat JAR;
-:Upload directly to GCP\n(Cloud Functions API);
+:Upload to GCP\n(Cloud Functions API);
 :Invoke DeployFunction API;
 :Wait for ACTIVE state;
 :Register metadata in Function Registry;
@@ -148,7 +148,7 @@ The gap addressed by this work is the combination of portable function deploymen
 
 The central contribution of this work is the extension of OmniFlow's call model to distinguish between two types of functions:
 
-An **internal function** is a serverless function owned and maintained by the workflow developer, who controls its source code and is responsible for its deployment and evolution. Internal functions on GCP are deployed via QuickFaaS; on AWS, deployment is handled by OmniFlow's `AwsLambdaDeployer`, which uses QuickFaaS to build the deployment package and then calls AWS APIs directly. In both cases, OmniFlow resolves the invocation metadata automatically during workflow generation.
+An **internal function** is a serverless function owned and maintained by the workflow developer, who controls its source code and is responsible for its deployment and evolution. Internal functions on GCP are deployed via QuickFaaS; on AWS, deployment is handled by OmniFlow's `AwsLambdaDeployer`. In both cases, OmniFlow resolves the invocation metadata automatically during workflow generation.
 
 An **external function** is a function not owned by the workflow developer — for example, a third-party API or a managed cloud service. The developer cannot deploy, update, or otherwise manage its lifecycle. External functions are treated as unmanaged HTTP dependencies, and their invocation parameters must be defined manually.
 
@@ -214,7 +214,7 @@ skinparam defaultFontSize 13
 actor "OmniFlow" as O
 participant "Function Registry\n(local)" as R
 participant "FaaS Platform\n(GCP / AWS)" as P
-participant "InternalFunctionDeployer\n(QuickFaaS for GCP /\nAwsLambdaDeployer for AWS)" as Q
+participant "InternalFunctionDeployer" as Q
 
 O -> R : resolveEntry(functionName)
 
@@ -293,7 +293,7 @@ package "GCP — Cloud Workflows + Cloud Functions (via QuickFaaS)" {
   card "Example 5\nText analysis with\nparallel iteration\n(3 functions)" as E5
 }
 
-package "AWS — Step Functions + Lambda (via AwsLambdaDeployer)" {
+package "AWS — Step Functions + Lambda" {
   card "Example 7\nGreeting Lambda\nauto-deployed\n(1 Lambda)" as E7
   card "Example 8\nSequential text\nanalysis pipeline\n(3 Lambdas)" as E8
 }
