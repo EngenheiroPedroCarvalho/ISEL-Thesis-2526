@@ -250,34 +250,7 @@ This mechanism preserves fail-fast behaviour: deployment proceeds only when invo
 
 ---
 
-## Slide 9 — AWS Support: Automatic IAM Management
-
-One of the technical contributions specific to AWS support is the automatic management of IAM identities. AWS requires every Lambda to have an explicit execution role — a mandatory field in the `CreateFunction` API — and requires Step Functions to have explicit permission to invoke each Lambda.
-
-```plantuml
-@startuml
-skinparam backgroundColor #FAFAFA
-skinparam defaultFontSize 13
-
-rectangle "omniflow-deploy-user\n(IAM User)" as U #D6EAF8
-note right of U : Creates Lambdas, uploads to S3,\ncreates state machines.\nCredentials via AWS_ACCESS_KEY_ID.
-
-rectangle "StepFunctionsExecutionRole\n(IAM Role)" as SF #D5F5E3
-note right of SF : Assumed by Step Functions\nduring workflow execution.\nAllows invoking Lambdas.
-
-rectangle "OmniFlowLambdaExecutionRole\n(IAM Role — auto-created)" as LR #FCF3CF
-note right of LR : Assumed by each Lambda at runtime.\nAuto-created by OmniFlow\nif not provided in the descriptor.
-
-U -[hidden]down- SF
-SF -[hidden]down- LR
-@enduml
-```
-
-The `AwsLambdaIamHelper` component implements this management: if the `iamRoleArn` field in the deployment descriptor is empty, it automatically creates the `OmniFlowLambdaExecutionRole` with the correct trust policy (`lambda.amazonaws.com`) and attaches the `AWSLambdaBasicExecutionRole` managed policy. After each Lambda is deployed, it automatically grants the Step Functions execution role invocation permission via `AddPermission`.
-
----
-
-## Slide 10 — Next Steps
+## Slide 9 — Next Steps
 
 The work identifies three main directions for future development, all motivated by limitations observed in the current implementation.
 
@@ -289,7 +262,7 @@ The work identifies three main directions for future development, all motivated 
 
 ---
 
-## Slide 11 — Conclusion
+## Slide 10 — Conclusion
 
 This work presents a unified framework that addresses serverless ecosystem fragmentation at the level of the complete lifecycle: from function definition to deployment, workflow composition, and execution on native managed orchestrators.
 
