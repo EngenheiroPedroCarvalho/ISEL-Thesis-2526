@@ -6,19 +6,19 @@ Instituto Superior de Engenharia de Lisboa (ISEL), Politécnico de Lisboa
 
 ---
 
-## Slide 1 — Motivação
+## Slide 1 — Motivation
 
-O ecossistema serverless actual apresenta uma fragmentação significativa: a definição de funções, o seu deployment e a orquestração de workflows são geridos por ferramentas separadas, frequentemente específicas de cada cloud provider. Esta fragmentação complica o raciocínio sobre semântica de execução, gestão de estado e portabilidade, aumentando o vendor lock-in em aplicações que abrangem múltiplas plataformas cloud.
+The current serverless ecosystem is significantly fragmented: function definition, deployment, and workflow orchestration are managed by separate tools that are often specific to a single cloud provider. This fragmentation complicates reasoning about execution semantics, state management, and portability, increasing vendor lock-in in applications that span multiple cloud platforms.
 
-O problema percorre todo o ciclo de vida de desenvolvimento: as equipas descrevem funções numa toolchain, fazem o deployment de artefactos provider-specific noutra, e orquestram workflows num terceiro modelo com pressupostos diferentes sobre retries, fluxo de dados e erros. Com o tempo, estas incompatibilidades aumentam o esforço de manutenção e tornam a migração cross-cloud dispendiosa, porque os metadados de invocação e a lógica de orquestração têm de ser sincronizados manualmente.
+The problem extends across the entire development lifecycle: teams describe functions in one toolchain, deploy provider-specific artefacts in another, and orchestrate workflows in a third model with different assumptions about retries, data flow, and error handling. Over time, these mismatches increase maintenance effort and make cross-cloud migration costly, because invocation metadata and orchestration logic must be manually synchronised.
 
-Um exemplo concreto deste problema: quando um programador quer definir um workflow que chama uma função que ainda não foi deploiada, tem de primeiro fazer o deployment da função para descobrir o seu endpoint, e só depois voltar ao workflow para o completar. Esta sincronização manual é uma fonte recorrente de erros e de retrabalho.
+A concrete example of this problem: when a developer wants to define a workflow that calls a function that has not yet been deployed, they must first deploy the function to discover its endpoint, and only then return to the workflow to complete it. This manual synchronisation is a recurring source of errors and rework.
 
 ---
 
-## Slide 2 — Visão Geral da Solução
+## Slide 2 — Solution Overview
 
-A solução proposta é um framework unificado que combina duas ferramentas existentes, desenvolvidas no contexto do grupo de investigação do ISEL: o **QuickFaaS**, para deployment portátil de funções serverless, e o **OmniFlow**, um DSL em Kotlin para orquestração de workflows. A integração destas duas ferramentas permite ao programador descrever todo o pipeline — funções e workflow — numa única definição, e fazer o deployment automático e coordenado para a plataforma cloud escolhida.
+The proposed solution is a unified framework that combines two existing tools developed within the ISEL research group: **QuickFaaS**, for portable serverless function deployment on GCP, and **OmniFlow**, a Kotlin-based DSL for workflow orchestration. Their integration allows developers to describe the entire pipeline — functions and workflow — in a single definition, with automatic and coordinated deployment to the target cloud platform.
 
 ```plantuml
 @startuml
@@ -33,10 +33,11 @@ package "OmniFlow" {
   component "DSL Parser" as Parser
   component "Internal Model" as Model
   component "Renderer" as Renderer
+  component "AwsLambdaDeployer" as ALD
 }
 
 package "QuickFaaS" {
-  component "Function Deployer" as Deployer
+  component "GCP Function Deployer\n(build + deploy)" as Deployer
 }
 
 package "Cloud Providers" {
@@ -50,25 +51,26 @@ DSL --> Parser
 Parser --> Model
 Model --> Renderer
 Model --> Deployer
+Model --> ALD
 Renderer --> AWS
 Renderer --> GCP
-Deployer --> Lambda
 Deployer --> CF
+ALD --> Lambda : uses QuickFaaS\nto build JAR,\nthen deploys\nvia AWS SDK
 
 @enduml
 ```
 
-A arquitectura segue um modelo em camadas: a definição do workflow em Kotlin é transformada por renderers provider-specific nos artefactos nativos de cada plataforma (Amazon States Language para AWS, YAML para GCP). As funções referenciadas no workflow são deploiadas automaticamente pelo QuickFaaS antes da criação do workflow.
+The architecture follows a layered model: the Kotlin workflow definition is transformed by provider-specific renderers into native platform artefacts (Amazon States Language for AWS, YAML for GCP). Internal functions are deployed before the workflow is created — via QuickFaaS for GCP Cloud Functions, and via OmniFlow's own `AwsLambdaDeployer` for AWS Lambda, which uses QuickFaaS solely to compile and package the function code.
 
 ---
 
-## Slide 3 — QuickFaaS: Deployment Portátil de Funções
+## Slide 3 — QuickFaaS: Portable Function Deployment on GCP
 
-O QuickFaaS é uma ferramenta que aborda a portabilidade de funções serverless, permitindo ao programador implementar a lógica da função uma única vez e deploiá-la em múltiplos providers FaaS com alterações mínimas de código.
+QuickFaaS is a tool that addresses serverless function portability by allowing developers to implement function logic once and deploy it across multiple FaaS providers with minimal code changes. In the context of this framework, QuickFaaS is responsible for building and deploying functions to **GCP Cloud Functions**.
 
-Conceptualmente, o QuickFaaS separa a lógica de negócio cloud-agnóstica da lógica de integração provider-specific. O programador implementa uma *hook function* usando abstrações genéricas de request/response, enquanto templates provider-specific servem como pontos de entrada que adaptam os formatos nativos de eventos e contratos de invocação à interface da hook.
+Conceptually, QuickFaaS separates cloud-agnostic business logic from provider-specific integration logic. Developers implement a *hook function* using generic request/response abstractions, while provider-specific templates serve as entry points that adapt native event formats and invocation contracts to the hook interface.
 
-O pipeline de deployment funciona da seguinte forma: cria um projecto temporário, integra a hook function do utilizador, compila o código e as bibliotecas necessárias, e empacota tudo num arquivo ZIP deployável. Este artefacto é depois uploaded e deployado usando as APIs do provider.
+The deployment pipeline works as follows: it creates a temporary project, integrates the user's hook function, compiles the code and required libraries, and bundles everything into a deployable ZIP archive. This artefact is then uploaded and deployed using the provider's API.
 
 ```plantuml
 @startuml
@@ -76,35 +78,35 @@ skinparam backgroundColor #FAFAFA
 skinparam defaultFontSize 13
 
 start
-:Programador fornece\nhook function + descriptor;
-:Criar projecto temporário;
-:Integrar template provider-specific;
-:Compilar código + dependências;
-:Empacotar em ZIP (fat JAR para Java);
-:Upload para armazenamento intermédio\n(S3 para AWS / directo para GCP);
-:Invocar API do provider\n(CreateFunction / DeployFunction);
-:Aguardar estado Active;
-:Registar metadados no Function Registry;
+:Developer provides\nhook function + descriptor;
+:Create temporary project;
+:Integrate provider-specific template;
+:Compile code + dependencies;
+:Package into ZIP / fat JAR;
+:Upload directly to GCP\n(Cloud Functions API);
+:Invoke DeployFunction API;
+:Wait for ACTIVE state;
+:Register metadata in Function Registry;
 stop
 @enduml
 ```
 
 ---
 
-## Slide 4 — OmniFlow: Orquestração Portátil de Workflows
+## Slide 4 — OmniFlow: Portable Workflow Orchestration
 
-O OmniFlow é uma biblioteca e DSL em Kotlin para definir workflows de forma independente dos schemas de workflow provider-specific. O programador especifica a lógica do workflow uma vez numa forma cloud-agnóstica, e o OmniFlow renderiza e deploiaa o artefacto correspondente para a plataforma alvo.
+OmniFlow is a Kotlin library and DSL for defining workflows independently of provider-specific workflow schemas. Developers specify workflow logic once in a provider-agnostic form, and OmniFlow renders and deploys the corresponding artefact for the target platform.
 
-O framework segue um pipeline de três fases: primeiro, o DSL captura a estrutura do workflow (metadados, inputs, steps, output); segundo, as construções do DSL são convertidas num modelo interno agnóstico organizado como uma árvore hierárquica; terceiro, uma camada de rendering percorre esse modelo e gera artefactos provider-specific, que são depois submetidos através de deployment adapters.
+The framework follows a three-stage pipeline: first, the DSL captures the workflow structure (metadata, inputs, steps, and output); second, the DSL constructs are converted into a provider-agnostic internal model organised as a hierarchical tree; third, a rendering layer traverses that model and generates provider-specific artefacts, which are then submitted through deployment adapters.
 
 ```plantuml
 @startuml
 skinparam backgroundColor #FAFAFA
 skinparam defaultFontSize 13
 
-rectangle "Fase 1\nDSL Kotlin" as F1 #D6EAF8
-rectangle "Fase 2\nModelo Interno\n(Árvore agnóstica)" as F2 #D5F5E3
-rectangle "Fase 3\nRendering +\nDeployment" as F3 #FCF3CF
+rectangle "Phase 1\nKotlin DSL" as F1 #D6EAF8
+rectangle "Phase 2\nInternal Model\n(Agnostic tree)" as F2 #D5F5E3
+rectangle "Phase 3\nRendering +\nDeployment" as F3 #FCF3CF
 
 F1 -right-> F2 : parse
 F2 -right-> F3 : traverse
@@ -124,31 +126,31 @@ end note
 @enduml
 ```
 
-O modelo de workflow suporta steps de execução e controlo de fluxo — chamadas HTTP, atribuições de variáveis, condicionais, ciclos e ramos paralelos — permitindo combinar invocações de serviços externos com transformações internas de dados numa única definição.
+The workflow model supports execution and control-flow steps — HTTP calls, variable assignments, conditionals, loops, and parallel branches — allowing developers to combine external service invocations with internal data transformations in a single definition.
 
 ---
 
-## Slide 5 — Trabalho Relacionado
+## Slide 5 — Related Work
 
-O trabalho posiciona-se na intersecção da portabilidade de workflows e da portabilidade de funções, um espaço que as soluções existentes cobrem apenas parcialmente.
+This work is positioned at the intersection of workflow portability and function portability, a space that existing solutions cover only partially.
 
-As ferramentas de Infrastructure-as-Code orientadas ao deployment, como AWS CloudFormation, Terraform, Serverless Framework e Pulumi, reduzem o esforço operacional, mas a configuração de funções e triggers continua fortemente moldada pelo provider. Não geram workflows nativos para orquestradores geridos.
+Deployment-oriented Infrastructure-as-Code tools such as AWS CloudFormation, Terraform, Serverless Framework, and Pulumi reduce operational effort, but function configuration and triggers remain strongly provider-shaped. They do not generate native workflow artefacts for managed orchestrators.
 
-As abordagens de execução portátil, como o OpenFaaS e transformações de código (Python-to-FaaS, Java-to-Lambda), reduzem o esforço de migração mas são frequentemente limitadas a plataformas específicas ou requerem uma camada de runtime adicional.
+Portable execution layer approaches such as OpenFaaS and code transformation tools (Python-to-FaaS, Java-to-Lambda) reduce migration effort but are often platform-constrained or require an additional runtime layer.
 
-Para composição de workflows, soluções como FaaSFlow, Triggerflow, Serverless Workflow Specification, Synapse e Temporal avançam a portabilidade de orquestração, mas normalmente através de um modelo de runtime dedicado — não delegam a execução aos orquestradores geridos nativos de cada provider (Step Functions, Cloud Workflows).
+For workflow composition, solutions such as FaaSFlow, Triggerflow, Serverless Workflow Specification, Synapse, and Temporal advance orchestration portability, but typically through a dedicated runtime model — they do not delegate execution to the managed orchestrators native to each provider (Step Functions, Cloud Workflows).
 
-A lacuna que este trabalho preenche é a combinação de deployment portátil de funções com geração de artefactos nativos para orquestradores geridos, sem introduzir uma camada de execução intermédia.
+The gap addressed by this work is the combination of portable function deployment with native artefact generation for managed orchestrators, without introducing an intermediate execution layer.
 
 ---
 
-## Slide 6 — Modelo Unificado: Funções Internas e Externas
+## Slide 6 — Unified Model: Internal and External Functions
 
-A contribuição central do trabalho é a extensão do modelo de chamada do OmniFlow para distinguir dois tipos de funções:
+The central contribution of this work is the extension of OmniFlow's call model to distinguish between two types of functions:
 
-Uma **função interna** é uma função serverless desenvolvida e mantida pelo próprio programador do workflow. O programador controla o código-fonte e é responsável pelo seu deployment. As funções internas são deploiadas com o QuickFaaS e o OmniFlow resolve os seus metadados de invocação automaticamente durante a geração do workflow.
+An **internal function** is a serverless function owned and maintained by the workflow developer, who controls its source code and is responsible for its deployment and evolution. Internal functions on GCP are deployed via QuickFaaS; on AWS, deployment is handled by OmniFlow's `AwsLambdaDeployer`, which uses QuickFaaS to build the deployment package and then calls AWS APIs directly. In both cases, OmniFlow resolves the invocation metadata automatically during workflow generation.
 
-Uma **função externa** é uma função que não pertence ao programador — por exemplo, uma API de terceiros ou um serviço cloud gerido. O programador não pode deployar, actualizar ou gerir o seu ciclo de vida. As funções externas são tratadas como dependências HTTP não geridas e os seus parâmetros de invocação têm de ser definidos manualmente.
+An **external function** is a function not owned by the workflow developer — for example, a third-party API or a managed cloud service. The developer cannot deploy, update, or otherwise manage its lifecycle. External functions are treated as unmanaged HTTP dependencies, and their invocation parameters must be defined manually.
 
 ```plantuml
 @startuml
@@ -156,24 +158,24 @@ skinparam backgroundColor #FAFAFA
 skinparam defaultFontSize 13
 
 rectangle "call { internalFunction(\"passengerFlowAnalysis\") }" as A #D5F5E3
-note right of A : Função interna — já existe no registry.\nOmniFlow resolve o endpoint automaticamente.
+note right of A : Internal function — already in the registry.\nOmniFlow resolves the endpoint automatically.
 
 rectangle "call { internalFunction(\"occupancyPredictor\", \"/path/descriptor.json\") }" as B #D5F5E3
-note right of B : Função interna — não existe ainda.\nOmniFlow faz deployment via QuickFaaS.
+note right of B : Internal function — not yet deployed.\nOmniFlow triggers deployment before generating the workflow.
 
 rectangle "call { host(\"gtfs-broker\"); path(\"/v1/realtime-feed\") }" as C #FADBD8
-note right of C : Função externa — API de terceiros.\nEndpoint definido manualmente pelo programador.
+note right of C : External function — third-party API.\nEndpoint defined manually by the developer.
 
 @enduml
 ```
 
-Esta distinção é aplicada com uma regra de exclusividade: um call step não pode conter simultaneamente `internalFunction` e `host`/`path`, evitando conflitos sobre a origem da função invocada. Ambos os modos do `internalFunction` — com nome apenas e com caminho para o deployment descriptor — estão implementados e funcionais para GCP e AWS.
+This distinction is enforced by a mutual exclusion rule: a call step cannot simultaneously contain `internalFunction` and `host`/`path`, preventing conflicts about the origin of the invoked function. Both modes of `internalFunction` — name only and name with descriptor path — are fully implemented and functional for both GCP and AWS.
 
 ---
 
 ## Slide 7 — Function Registry
 
-O Function Registry é um ficheiro JSON local (`function-registry.json`) que serve como fonte de verdade para os metadados de todas as funções internas deploiadas. É populado automaticamente pelo framework após cada deployment bem-sucedido, e é consultado durante a geração de cada workflow para resolver os endpoints das funções referenciadas.
+The Function Registry is a local JSON file (`function-registry.json`) that serves as the source of truth for the invocation metadata of all deployed internal functions. It is automatically populated by the framework after each successful deployment, and is consulted during workflow generation to resolve the endpoints of referenced functions.
 
 ```plantuml
 @startuml
@@ -194,15 +196,15 @@ object "function-registry.json" as Registry {
 @enduml
 ```
 
-O registry desacopla a autoria do workflow da gestão de endpoints: em vez de hardcodar URLs de invocação em cada call step, o workflow referencia nomes lógicos estáveis, enquanto o registry mapeia esses nomes para os endpoints actualmente deploiados. Esta indireção reduz as edições manuais quando as funções são redesploiadas, renomeadas ao nível da plataforma, ou movidas entre providers.
+The registry decouples workflow authoring from endpoint management: instead of hard-coding invocation URLs in each call step, the workflow references stable logical names, while the registry maps those names to the currently deployed endpoints. This indirection reduces manual edits when functions are redeployed, renamed at the platform layer, or moved across providers.
 
-O registry suporta resolução por nome exacto e por sufixo (por exemplo, `região/nomeFunção`), e expõe operações de `put`, `remove`, `readAll`, `resolveEntry` e `resolveUrl`. O campo `updatedAt` suporta verificações de freshness e políticas de sincronização, por exemplo, validar entradas apenas quando um limiar de staleness configurável é excedido.
+The registry supports resolution by exact name and by suffix (e.g., `region/functionName`), and exposes operations including `put`, `remove`, `readAll`, `resolveEntry`, and `resolveUrl`. The `updatedAt` field supports freshness checks and synchronisation policies — for example, validating entries only when a configurable staleness threshold is exceeded.
 
 ---
 
-## Slide 8 — Fluxo de Resolução de Funções Internas
+## Slide 8 — Internal Function Resolution Flow
 
-O processo de resolução de uma função interna durante o deployment do workflow segue uma lógica de validação determinística com comportamento fail-fast: o deployment só avança quando os metadados são consistentes entre o registo local e o estado remoto na plataforma cloud.
+The process of resolving an internal function during workflow deployment follows a deterministic validation logic with fail-fast behaviour: deployment only proceeds when metadata is consistent between the local registry and the remote state on the cloud platform.
 
 ```plantuml
 @startuml
@@ -211,46 +213,46 @@ skinparam defaultFontSize 13
 
 actor "OmniFlow" as O
 participant "Function Registry\n(local)" as R
-participant "FaaS Platform\n(AWS Lambda / GCP)" as P
-participant "QuickFaaS" as Q
+participant "FaaS Platform\n(GCP / AWS)" as P
+participant "InternalFunctionDeployer\n(QuickFaaS for GCP /\nAwsLambdaDeployer for AWS)" as Q
 
 O -> R : resolveEntry(functionName)
 
-alt Existe no registry
-  R --> O : metadados locais
+alt Found in registry
+  R --> O : local metadata
   O -> P : GetFunction / GetService
-  alt Existe remotamente
-    P --> O : metadados remotos
-    alt Endpoints iguais
-      O -> O : avança para deployment do workflow
-    else Endpoints diferentes
+  alt Exists remotely
+    P --> O : remote metadata
+    alt Endpoints match
+      O -> O : proceed to workflow deployment
+    else Endpoints differ
       O -> R : put(functionName, remoteMeta)
-      O -> O : avança com metadados actualizados
+      O -> O : proceed with updated metadata
     end
-  else Não existe remotamente
+  else Does not exist remotely
     O -> R : remove(functionName)
-    O -> O : para — redeployment necessário
+    O -> O : stop — redeployment required
   end
-else Não está no registry
-  alt Descriptor disponível
+else Not in registry
+  alt Descriptor available
     O -> Q : deployOrUpdate(name, descriptorPath)
     Q --> O : FunctionInvocationMetadata
     O -> R : put(functionName, meta)
-    O -> O : avança para deployment do workflow
-  else Sem descriptor
-    O -> O : para — função não encontrada
+    O -> O : proceed to workflow deployment
+  else No descriptor
+    O -> O : stop — function not found
   end
 end
 @enduml
 ```
 
-Este mecanismo preserva um comportamento fail-fast: o deployment prossegue apenas quando os metadados de invocação são consistentes entre a vista local e a vista remota. Como resultado, o workflow renderizado mantém-se reprodutível e os erros operacionais causados por endpoints desactualizados são detectados antes de runtime.
+This mechanism preserves fail-fast behaviour: deployment proceeds only when invocation metadata is consistent across the local and remote views. As a result, the rendered workflow remains reproducible, and operational errors caused by stale endpoints are detected before runtime.
 
 ---
 
-## Slide 9 — Suporte AWS: Gestão Automática de IAM
+## Slide 9 — AWS Support: Automatic IAM Management
 
-Uma das contribuições técnicas específicas para o suporte AWS é a gestão automática de identidades IAM, necessária porque a AWS exige que cada Lambda tenha um execution role explícito — um campo obrigatório na API `CreateFunction` — e que o Step Functions tenha permissão explícita para invocar cada Lambda.
+One of the technical contributions specific to AWS support is the automatic management of IAM identities. AWS requires every Lambda to have an explicit execution role — a mandatory field in the `CreateFunction` API — and requires Step Functions to have explicit permission to invoke each Lambda.
 
 ```plantuml
 @startuml
@@ -258,66 +260,66 @@ skinparam backgroundColor #FAFAFA
 skinparam defaultFontSize 13
 
 rectangle "omniflow-deploy-user\n(IAM User)" as U #D6EAF8
-note right of U : Cria Lambdas, faz upload para S3,\ncria state machines.\nCredenciais via AWS_ACCESS_KEY_ID.
+note right of U : Creates Lambdas, uploads to S3,\ncreates state machines.\nCredentials via AWS_ACCESS_KEY_ID.
 
 rectangle "StepFunctionsExecutionRole\n(IAM Role)" as SF #D5F5E3
-note right of SF : Assumido pelo Step Functions\ndurante execução do workflow.\nPermite invocar Lambdas.
+note right of SF : Assumed by Step Functions\nduring workflow execution.\nAllows invoking Lambdas.
 
-rectangle "OmniFlowLambdaExecutionRole\n(IAM Role — auto-criado)" as LR #FCF3CF
-note right of LR : Assumido por cada Lambda\nquando executa.\nCriado automaticamente se não fornecido.
+rectangle "OmniFlowLambdaExecutionRole\n(IAM Role — auto-created)" as LR #FCF3CF
+note right of LR : Assumed by each Lambda at runtime.\nAuto-created by OmniFlow\nif not provided in the descriptor.
 
 U -[hidden]down- SF
 SF -[hidden]down- LR
 @enduml
 ```
 
-O componente `AwsLambdaIamHelper` implementa esta gestão: se o campo `iamRoleArn` do deployment descriptor estiver vazio, cria automaticamente o role `OmniFlowLambdaExecutionRole` com a trust policy correcta (`lambda.amazonaws.com`) e anexa a política gerida `AWSLambdaBasicExecutionRole`. Após o deployment de cada Lambda, concede automaticamente ao Step Functions execution role permissão de invocação via `AddPermission`.
+The `AwsLambdaIamHelper` component implements this management: if the `iamRoleArn` field in the deployment descriptor is empty, it automatically creates the `OmniFlowLambdaExecutionRole` with the correct trust policy (`lambda.amazonaws.com`) and attaches the `AWSLambdaBasicExecutionRole` managed policy. After each Lambda is deployed, it automatically grants the Step Functions execution role invocation permission via `AddPermission`.
 
 ---
 
-## Slide 10 — Exemplos Demonstrados
+## Slide 10 — Demonstrated Examples
 
-O framework foi validado com seis exemplos funcionais, cobrindo os dois providers suportados e diferentes padrões de composição de workflows.
+The framework was validated with six functional examples covering both supported providers and different workflow composition patterns.
 
 ```plantuml
 @startuml
 skinparam backgroundColor #FAFAFA
 skinparam defaultFontSize 13
 
-package "GCP — Cloud Workflows + Cloud Functions" {
-  card "Exemplo 2\nAuto-deploy simples\n(1 função)" as E2
-  card "Exemplo 3\nGreeting com\nquery parameters\n(1 função)" as E3
-  card "Exemplo 4\nLoan approval com\nbranching condicional\n(1 função)" as E4
-  card "Exemplo 5\nText analysis com\niteração paralela\n(3 funções)" as E5
+package "GCP — Cloud Workflows + Cloud Functions (via QuickFaaS)" {
+  card "Example 2\nSimple auto-deploy\n(1 function)" as E2
+  card "Example 3\nGreeting with\nquery parameters\n(1 function)" as E3
+  card "Example 4\nLoan approval with\nconditional branching\n(1 function)" as E4
+  card "Example 5\nText analysis with\nparallel iteration\n(3 functions)" as E5
 }
 
-package "AWS — Step Functions + Lambda" {
-  card "Exemplo 7\nGreeting Lambda\nauto-deploiada\n(1 função)" as E7
-  card "Exemplo 8\nPipeline de análise\nde texto sequencial\n(3 Lambdas)" as E8
+package "AWS — Step Functions + Lambda (via AwsLambdaDeployer)" {
+  card "Example 7\nGreeting Lambda\nauto-deployed\n(1 Lambda)" as E7
+  card "Example 8\nSequential text\nanalysis pipeline\n(3 Lambdas)" as E8
 }
 @enduml
 ```
 
-O Exemplo 8 é o mais completo do lado AWS: deploiaa automaticamente três Lambdas em sequência (`aws-preprocess-fn`, `aws-char-stats-fn`, `aws-summary-fn`), aguarda que cada uma fique no estado `Active`, obtém os ARNs, configura as permissões IAM, e cria a state machine no Step Functions referenciando as funções directamente pelo ARN — sem API Gateway.
+Example 8 is the most complete on the AWS side: OmniFlow's `AwsLambdaDeployer` sequentially deploys three Lambda functions (`aws-preprocess-fn`, `aws-char-stats-fn`, `aws-summary-fn`), waits for each to reach the `Active` state, retrieves their ARNs, configures IAM permissions, and creates the Step Functions state machine referencing the functions directly by ARN — without an API Gateway.
 
 ---
 
-## Slide 11 — Próximos Passos
+## Slide 11 — Next Steps
 
-O trabalho identifica três direcções principais para desenvolvimento futuro, todas motivadas por limitações observadas na implementação actual.
+The work identifies three main directions for future development, all motivated by limitations observed in the current implementation.
 
-**Redeployment selectivo.** Actualmente, qualquer alteração num workflow ou função desencadeia um redeployment completo, o que introduz overhead desnecessário para pequenas actualizações. A solução planeada é usar content hashing ao nível da função e do workflow para detectar componentes modificados e redesploiar apenas o que mudou.
+**Selective redeployment.** Currently, any change to a workflow or function triggers a full redeployment, introducing unnecessary overhead for small updates. The planned solution is to use content hashing at the function and workflow levels to detect modified components and redeploy only what has changed.
 
-**Locality-aware placement.** Em workflows multi-cloud, o movimento de dados cross-provider aumenta a latência e o custo de transferência. O plano é adicionar hints de placement para que os programadores possam expressar restrições de co-localização (por exemplo, manter funções junto aos dados). O renderer pode então optimizar as decisões de deployment.
+**Locality-aware placement.** In multi-cloud workflows, cross-provider data movement increases latency and transfer cost. The plan is to add placement hints so developers can express co-location constraints (e.g., keeping functions close to data). The renderer can then optimise deployment decisions while balancing portability and performance.
 
-**Benchmarking cross-provider e ML inference.** Estão planeados benchmarks comparativos dos motores de workflow com workloads idênticos (latência, custo, cold-start), e suporte a scheduling adaptativo para inferência serverless de modelos de ML, onde padrões variáveis de carregamento de modelos e de pedidos criam desafios de optimização.
+**Cross-provider benchmarking and ML inference.** Comparative benchmarks of workflow engines using identical workloads (latency, cost, cold-start) are planned, as well as support for adaptive scheduling for serverless ML model inference, where variable model loading and request patterns create optimisation challenges.
 
 ---
 
-## Slide 12 — Conclusão
+## Slide 12 — Conclusion
 
-Este trabalho apresenta um framework unificado que aborda a fragmentação do ecossistema serverless ao nível do ciclo de vida completo: da definição das funções ao deployment, à composição de workflows e à execução em orquestradores geridos nativos.
+This work presents a unified framework that addresses serverless ecosystem fragmentation at the level of the complete lifecycle: from function definition to deployment, workflow composition, and execution on native managed orchestrators.
 
-As contribuições principais são: a integração entre QuickFaaS e OmniFlow que elimina a sincronização manual entre deployment e workflow; o modelo de chamada estendido com a distinção entre funções internas e externas; o Function Registry como mecanismo de desacoplamento entre nomes lógicos e endpoints físicos; e o suporte completo a AWS Lambda e Step Functions, incluindo gestão automática de IAM.
+The main contributions are: the integration between QuickFaaS and OmniFlow that eliminates manual synchronisation between deployment and workflow definition; the extended call model distinguishing internal and external functions; the Function Registry as a decoupling mechanism between logical names and physical endpoints; and full support for AWS Lambda and Step Functions through OmniFlow's `AwsLambdaDeployer`, including automatic IAM management.
 
-O framework avança a portabilidade cloud ao desacoplar o desenvolvimento de aplicações serverless dos serviços de orquestração específicos de cada vendor, mantendo a execução nos orquestradores nativos de cada plataforma sem introduzir uma camada de runtime intermédia.
+The framework advances cloud portability by decoupling serverless application development from vendor-specific orchestration services, while preserving execution on each platform's native managed orchestrators without introducing an intermediate runtime layer.
