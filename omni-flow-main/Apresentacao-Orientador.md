@@ -277,34 +277,7 @@ The `AwsLambdaIamHelper` component implements this management: if the `iamRoleAr
 
 ---
 
-## Slide 10 — Demonstrated Examples
-
-The framework was validated with six functional examples covering both supported providers and different workflow composition patterns.
-
-```plantuml
-@startuml
-skinparam backgroundColor #FAFAFA
-skinparam defaultFontSize 13
-
-package "GCP — Cloud Workflows + Cloud Functions (via QuickFaaS)" {
-  card "Example 2\nSimple auto-deploy\n(1 function)" as E2
-  card "Example 3\nGreeting with\nquery parameters\n(1 function)" as E3
-  card "Example 4\nLoan approval with\nconditional branching\n(1 function)" as E4
-  card "Example 5\nText analysis with\nparallel iteration\n(3 functions)" as E5
-}
-
-package "AWS — Step Functions + Lambda" {
-  card "Example 7\nGreeting Lambda\nauto-deployed\n(1 Lambda)" as E7
-  card "Example 8\nSequential text\nanalysis pipeline\n(3 Lambdas)" as E8
-}
-@enduml
-```
-
-Example 8 is the most complete on the AWS side: OmniFlow's `AwsLambdaDeployer` sequentially deploys three Lambda functions (`aws-preprocess-fn`, `aws-char-stats-fn`, `aws-summary-fn`), waits for each to reach the `Active` state, retrieves their ARNs, configures IAM permissions, and creates the Step Functions state machine referencing the functions directly by ARN — without an API Gateway.
-
----
-
-## Slide 11 — Next Steps
+## Slide 10 — Next Steps
 
 The work identifies three main directions for future development, all motivated by limitations observed in the current implementation.
 
@@ -316,7 +289,7 @@ The work identifies three main directions for future development, all motivated 
 
 ---
 
-## Slide 12 — Conclusion
+## Slide 11 — Conclusion
 
 This work presents a unified framework that addresses serverless ecosystem fragmentation at the level of the complete lifecycle: from function definition to deployment, workflow composition, and execution on native managed orchestrators.
 
