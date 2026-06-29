@@ -120,6 +120,11 @@ renderização/resolução (CPU local)** — os benchmarks de *deployment* na cl
 *forks*, e o resultado é consumido com `Blackhole` para evitar *dead-code elimination*. Exportar
 CSV (`-rf csv`) e ajustar uma curva aos pontos.
 
+> **Resultados já executados:** ver `benchmark/results/RESULTS.md` (tabelas + conclusões) e os
+> gráficos `benchmark/results/P1_*.png … P5_*.png`. Gerados com
+> `java -cp benchmark/target/benchmarks.jar org.openjdk.jmh.Main "...metrics.Benchmark(Rendering|InternalCall).*" -f 1 -wi 3 -i 5 -w 1 -r 1 -rf csv -rff benchmark/results/jmh-results.csv`
+> e `python3 benchmark/results/plot_benchmarks.py`.
+
 | Benchmark | Pergunta / objetivo | Variável | O que se espera |
 |---|---|---|---|
 | `metrics/BenchmarkRenderingScalability.kt` (**P1**) | Como degrada o tempo de **renderização** com o número de funções? | `@Param n ∈ {1..200}` | Tempo cresce com N; caracterizar linear vs. supralinear (atenção a O(N²) caso haja concatenação de strings). |
