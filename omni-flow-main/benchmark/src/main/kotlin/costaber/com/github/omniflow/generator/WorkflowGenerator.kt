@@ -19,6 +19,7 @@ import costaber.com.github.omniflow.generator.StepGenerator.petsFromStore
 import costaber.com.github.omniflow.generator.StepGenerator.usingVariables
 import costaber.com.github.omniflow.model.Range
 import costaber.com.github.omniflow.model.Step
+import costaber.com.github.omniflow.model.StepType
 import costaber.com.github.omniflow.model.Variable
 import costaber.com.github.omniflow.model.Workflow
 
@@ -256,4 +257,120 @@ object WorkflowGenerator {
         ),
         WORKFLOW_RESULT
     )
+
+    // ---------------------------------------------------------------------
+    // Additions for the parameter-count (P2), internal-call resolution (P3)
+    // and nesting-depth (P5) benchmarks. Pure in-memory model construction;
+    // no I/O, no network, no cloud SDK.
+    // ---------------------------------------------------------------------
+
+    /**
+     * P2 helper. Builds a workflow with a FIXED [stepsNumber] of CALL steps,
+     * where every call carries exactly [parameterCount] query, header and
+     * body parameters. This isolates the cost of rendering call payloads
+     * from the cost of rendering more steps.
+     *
+     * @param stepsNumber fixed number of call steps
+     * @param parameterCount number of query/header/body parameters per call
+     */
+    @JvmStatic
+    fun withParameterizedCalls(stepsNumber: Int, parameterCount: Int): Workflow {
+        val steps = (0 until stepsNumber).map { idx ->
+            Step(
+                STEP_NAME + idx,
+                "Parameterized call step example",
+                StepType.CALL,
+                StepContextGenerator.callWithParameters(parameterCount)
+            )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P3 helper. Builds a workflow whose calls are ALL internal (each call
+     * references the same registry [functionName] via internalFunction()).
+     * Resolution of these calls reads from the in-memory registry only.
+     */
+    @JvmStatic
+    fun withInternalCalls(stepsNumber: Int, functionName: String): Workflow {
+        val steps = (0 until stepsNumber).map { idx ->
+            Step(
+                STEP_NAME + idx,
+                "Internal call step example",
+                StepType.CALL,
+                StepContextGenerator.internalCall(functionName)
+            )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P3 helper. Builds a workflow whose calls are ALL external (literal
+     * host/path, no internalFunction()). The endpoint resolver leaves these
+     * untouched, so this is the baseline (no registry access at all).
+     */
+    @JvmStatic
+    fun withExternalCalls(stepsNumber: Int): Workflow {
+        val steps = (0 until stepsNumber).map { idx ->
+            Step(
+                STEP_NAME + idx,
+                "External call step example",
+                StepType.CALL,
+                StepContextGenerator.externalCall()
+            )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P5 helper. Builds a workflow with a FIXED [totalSteps] count of leaf
+     * CALL steps, wrapped in [depth] levels of nesting. Nesting alternates
+     * between an iteration (range) wrapper and a parallel (single-branch)
+     * wrapper, reusing the existing iteration/parallel step generators.
+     *
+     * depth == 0 -> flat list of [totalSteps] independent calls
+     * depth >= 1 -> the leaf calls live [depth] containers deep
+     *
+     * The number of innermost leaf steps is held constant across depths so
+     * that the benchmark isolates the effect of nesting from the effect of
+     * step count.
+     */
+    @JvmStatic
+    fun withNestedSteps(totalSteps: Int, depth: Int): Workflow {
+        val leaves: List<Step> = (0 until totalSteps).map { independent("INNER$STEP_NAME", it) }
+        var current: List<Step> = leaves
+        for (level in 0 until depth) {
+            val wrapped: Step = if (level % 2 == 0) {
+                iterationWithRange("NEST$level", level, current, Range(1, 10))
+            } else {
+                parallelOneBranch(current)
+            }
+            current = listOf(wrapped)
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            current,
+            WORKFLOW_RESULT
+        )
+    }
 }

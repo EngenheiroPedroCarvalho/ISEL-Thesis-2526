@@ -207,4 +207,81 @@ object StepContextGenerator {
             iterationContext = iterationContext,
         )
     }
+
+    // ---------------------------------------------------------------------
+    // Additions for parameter-count (P2) and internal-call (P3) benchmarks.
+    // All helpers below build plain in-memory model objects only (no I/O,
+    // no network, no cloud SDK).
+    // ---------------------------------------------------------------------
+
+    /**
+     * Builds an external [CallContext] carrying exactly [parameterCount]
+     * query parameters, [parameterCount] header parameters and
+     * [parameterCount] body parameters. Used by the P2 parameter-count
+     * scalability benchmark to vary the per-call payload size while keeping
+     * the number of steps fixed.
+     *
+     * When [parameterCount] is 0 the call has empty query/header/body maps.
+     */
+    fun callWithParameters(parameterCount: Int): StepContext {
+        val queries: Map<String, Term<*>> =
+            (0 until parameterCount).associate { "query$it" to Value(it) }
+        val headers: Map<String, Term<*>> =
+            (0 until parameterCount).associate { "X-Header-$it" to Value("header-value-$it") }
+        val body: Map<String, Any> =
+            (0 until parameterCount).associate { "field$it" to "value-$it" }
+        return CallContext(
+            HttpMethod.POST,
+            "example.com",
+            "/example",
+            null,
+            body,
+            "",
+            headers,
+            queries,
+            5L,
+            "result"
+        )
+    }
+
+    /**
+     * Builds an EXTERNAL [CallContext]: host/path are literal values and there
+     * is no [InternalFunction]. The endpoint resolver leaves these untouched.
+     */
+    fun externalCall(): StepContext {
+        return CallContext(
+            HttpMethod.GET,
+            "external.example.com",
+            "/external",
+            null,
+            emptyMap(),
+            "",
+            emptyMap(),
+            emptyMap(),
+            5L,
+            "result"
+        )
+    }
+
+    /**
+     * Builds an INTERNAL [CallContext]: host/path are blank and an
+     * [InternalFunction] reference is attached. The endpoint resolver fills
+     * host/path from the in-memory registry. Mirrors the DSL rule
+     * "internalFunction => host/path MUST NOT be provided".
+     */
+    fun internalCall(functionName: String): StepContext {
+        return CallContext(
+            method = HttpMethod.GET,
+            host = "",
+            path = "",
+            authentication = null,
+            body = emptyMap(),
+            bodyRaw = "",
+            header = emptyMap(),
+            query = emptyMap(),
+            timeoutInSeconds = 5L,
+            result = "result",
+            internalFunction = InternalFunction(functionName)
+        )
+    }
 }

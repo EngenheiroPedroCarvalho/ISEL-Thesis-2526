@@ -4,6 +4,7 @@ plugins {
     application
     kotlin("jvm") version "1.6.20"
     kotlin("plugin.serialization") version "1.6.10"
+    jacoco
 }
 
 group = "com.pexers.quickfaas"
@@ -55,6 +56,32 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+// Coverage of the AWS provider's LOCAL logic (provider/specifics/function/build-scripts).
+// Cloud-calling classes (AwsRequests, deployZip) are out of scope and excluded.
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        html.required.set(true)
+        csv.required.set(true)
+    }
+    classDirectories.setFrom(
+        files(classDirectories.files.map {
+            fileTree(it) {
+                include(
+                    "model/AwsProvider*",
+                    "model/projects/AwsProject*",
+                    "model/specifics/AwsSpecifics*",
+                    "model/resources/functions/AwsLambdaFunction*",
+                    "model/resources/buckets/AwsS3Bucket*",
+                    "model/resources/functions/runtimes/scripts/AwsBuildScripts*"
+                )
+                exclude("model/requests/AwsRequests*")
+            }
+        })
+    )
 }
 
 tasks.withType<KotlinCompile> {
