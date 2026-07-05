@@ -82,6 +82,61 @@ def load(path):
     return data
 
 
+def load_p6(path):
+    """P6 has two @Param dimensions (n, m); load raw (m, n, method) -> (score, err)."""
+    rows = list(csv.DictReader(open(path, encoding="utf-8")))
+    data = defaultdict(dict)  # data[method][(m, n)] = (score, err)
+    for r in rows:
+        full = r["Benchmark"]
+        method = full.split(".")[-1]
+        m = int(float(r["Param: m"]))
+        n = int(float(r["Param: n"]))
+        score = float(r["Score"])
+        err_col = next((c for c in rows[0].keys() if "Error" in c), None)
+        err = float(r[err_col]) if err_col and (r.get(err_col) or "").strip() not in ("", "NaN") else 0.0
+        data[method][(m, n)] = (score, err)
+    return data
+
+
+def plot_p6(csv_path, out_dir):
+    """P6 - per-call registry resolution cost vs registry size (m), one line per
+    n. Plotting T(n,m)/n (cost PER resolveUrl call) makes the n-curves collapse
+    onto a single curve, which is the direct visual evidence that resolution
+    cost factors as n * f(m) - i.e. the O(N*M) mechanism from a per-call,
+    unbounded registry re-read/re-parse (no cache)."""
+    if not os.path.exists(csv_path):
+        print(f"  [skip] no P6 csv at {csv_path}")
+        return None
+    data = load_p6(csv_path)
+    ns = sorted({n for (_, n) in data.get("resolveAllInternal", {})})
+    plt.figure(figsize=(8, 5))
+    for n in ns:
+        pts = sorted((m, score / n) for (m, nn), (score, _err) in data["resolveAllInternal"].items() if nn == n)
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        plt.plot(xs, ys, marker="o", label=f"internal, n={n}")
+    # external control: per-call cost should stay ~0 regardless of m
+    ext_ns = sorted({n for (_, n) in data.get("resolveAllExternal", {})})
+    if ext_ns:
+        max_n = max(ext_ns)
+        pts = sorted((m, score / max_n) for (m, nn), (score, _err) in data["resolveAllExternal"].items() if nn == max_n)
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        plt.plot(xs, ys, marker="s", linestyle="--", color="gray", label=f"external, n={max_n} (control)")
+    plt.xscale("log")
+    plt.title("P6 — Custo por chamada de resolveUrl() vs tamanho do registo (m)")
+    plt.xlabel("Funções no registo (m, escala log)")
+    plt.ylabel("Tempo por chamada (µs/op ÷ n)")
+    plt.grid(True, alpha=0.3, which="both")
+    plt.legend()
+    plt.tight_layout()
+    out = os.path.join(out_dir, "P6_registry_scaling.png")
+    plt.savefig(out, dpi=130)
+    plt.close()
+    print(f"  [ok] {out}")
+    return out
+
+
 def main():
     data = load(CSV)
     made = []
@@ -109,6 +164,12 @@ def main():
         plt.close()
         made.append(out)
         print(f"  [ok] {out}")
+
+    p6_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p6.csv")
+    p6_out = plot_p6(p6_csv, OUT)
+    if p6_out:
+        made.append(p6_out)
+
     print(f"\nGenerated {len(made)} graphs in {OUT}")
 
 

@@ -1,4 +1,4 @@
-# Resultados dos testes de desempenho (P1–P5)
+# Resultados dos testes de desempenho (P1–P6)
 
 Medições **locais** de **renderização** (DSL → Amazon States Language / GCP Workflows YAML) e de
 **resolução** de funções internas. Não há chamadas à nuvem. Geradas com JMH a partir do módulo
@@ -12,8 +12,9 @@ Medições **locais** de **renderização** (DSL → Amazon States Language / GC
 - **Configuração da execução:** `-f 1 -wi 3 -i 5 -w 1 -r 1` — uma *fork* da JVM, 3 iterações de
   aquecimento e 5 de medição, de 1 s cada. O aquecimento garante que se mede o código já
   compilado pelo JIT (regime estacionário) e não o interpretador.
-- **Dados brutos:** `jmh-results.csv`. **Gráficos:** ficheiros `P1_*.png … P5_*.png`,
-  regeneráveis com `python3 plot_benchmarks.py`.
+- **Dados brutos:** `jmh-results.csv` (P1–P5) e `jmh-results-p6.csv` (P6, que acrescenta a
+  dimensão `Param: m`). **Gráficos:** ficheiros `P1_*.png … P6_*.png`, regeneráveis com
+  `python3 plot_benchmarks.py`.
 - **Modelo de custo (para as justificações):** a renderização é uma travessia *depth-first*
   (`DepthFirstNodeVisitorTraversor` + `NodeContextVisitor`) que visita **uma vez** cada nó da
   árvore de objetos do workflow (AST) e acumula texto num `StringBuilder` partilhado
@@ -175,14 +176,79 @@ aninhado com mais estrutura obrigatória (estados `Parallel`/`Map`, `Branches`/`
 
 ---
 
+## P6 — Custo de escalabilidade do registo (Θ(N·M))
+
+`FunctionRegistryStore.resolveUrl` não tem cache em memória: cada chamada relê e reparsa o
+ficheiro do registo **inteiro** (`readAll()`). O P3 já isolava a dependência em N (nº de chamadas
+internas) mas fixava o registo numa única entrada (M = 1), deixando por medir a dependência em M
+(nº de funções já registadas). O P6 varia as duas dimensões de forma independente.
+
+**Tempo total de `resolveAllInternal` (µs), por combinação (M, N):**
+
+| M \ N | 1 | 10 | 50 | 200 |
+|---:|---:|---:|---:|---:|
+| 1 | 178,1 | 1772,7 | 9425,9 | 36346,0 |
+| 10 | 186,2 | 1824,6 | 9146,2 | 36713,6 |
+| 50 | 206,5 | 2133,3 | 10206,5 | 40478,3 |
+| 200 | 278,3 | 2773,3 | 13880,6 | 55616,7 |
+| 1000 | 744,6 | 7485,5 | 37316,5 | 149632,1 |
+
+**Controlo `resolveAllExternal`** (nunca toca o registo, independente de M): 0,02 µs (N=1) →
+0,13 µs (N=10) → 0,51 µs (N=50) → 1,97 µs (N=200) — os mesmos valores em toda a linha de M,
+confirmando que qualquer efeito de M observado acima é especificamente do acesso ao registo.
+
+![P6 — Custo por chamada de resolveUrl() vs tamanho do registo](P6_registry_scaling.png)
+
+As quatro curvas `n=1/10/50/200` colapsam visualmente numa só linha — a confirmação direta de que
+o custo por chamada depende apenas de M, não de N — enquanto o controlo externo se mantém plano
+próximo de zero em toda a escala logarítmica.
+
+**Resultado.** Dividindo o tempo total por N obtém-se o **custo por chamada** de `resolveUrl()`,
+que se revela **independente de N** (as quatro colunas do gráfico normalizado colapsam
+praticamente na mesma curva) e **crescente com M**:
+
+| M | Custo por chamada (µs) |
+|---:|---:|
+| 1 | 181,4 |
+| 10 | 183,8 |
+| 50 | 206,6 |
+| 200 | 277,8 |
+| 1000 | 746,9 |
+
+Ajustando um modelo linear `custo(M) ≈ b + c·M` aos extremos (M=1, M=1000): `b ≈ 181 µs`,
+`c ≈ 0,57 µs`/função registada — um ajuste que erra <6% nos pontos intermédios (M=10, 50, 200),
+compatível com o comportamento esperado.
+
+**Justificação.** `readAll()` lê o ficheiro do disco e materializa uma `JsonNode` para **cada**
+entrada do registo, pelo que o seu custo é Θ(M). Como `resolveUrl()` é invocado uma vez por chamada
+interna, o custo total de resolução é T(N, M) = N · (b + c·M) — precisamente o Θ(N·M) já
+identificado (mas não medido) no P3. Os dois termos têm origens distintas: `b ≈ 181 µs` é o custo
+**fixo por chamada** (abrir e ler o ficheiro do disco + `parsing` do envelope JSON), praticamente
+independente do conteúdo; `c ≈ 0,57 µs`/função é o custo **marginal por entrada** (percorrer o nó
+`functions` e construir o `LinkedHashMap` de saída). Note-se que `b` domina `c·M` até M ≈ 320 —
+ou seja, para registos de dimensão realista (dezenas a poucas centenas de funções internas por
+projeto), o fator dominante **não é o tamanho do registo, mas sim o número de vezes que o ficheiro
+é reaberto e reparsado** (uma vez por chamada, em vez de uma vez por `resolve(workflow)`).
+
+**Implicação prática.** Isto reordena a prioridade de otimização sugerida no P3: ler o registo
+**uma só vez por `resolve(workflow)`** (em vez de cache-ar por tamanho do registo) elimina o fator
+N de ambos os termos, reduzindo o custo de Θ(N·(b + c·M)) para Θ(b + c·M + N) — um ganho maior, e
+mais barato de implementar, do que otimizar apenas a travessia do JSON para registos grandes.
+
+---
+
 ## Síntese e discussão
 
 1. A renderização é **linear** no número de funções (P1) e no número de parâmetros (P2): escala de
    forma previsível, sem comportamento quadrático.
-2. O **custo da unificação** (resolução das funções internas) é **linear e pequeno** (~7,5 µs por
-   função), com uma degradação **Θ(N·M)** latente caso o registo cresça — facilmente mitigável (P3).
+2. O **custo da unificação** (resolução das funções internas) é **linear e pequeno** por chamada
+   (P3), mas o P6 confirma e quantifica a degradação **Θ(N·M)**: custo por chamada ≈ 181 µs
+   (fixo, I/O + parsing) + 0,57 µs por função registada — dominado pelo termo fixo até M ≈ 320,
+   e facilmente mitigável lendo o registo uma só vez por `resolve(workflow)`.
 3. O renderizador **AWS** é **competitivo** com o GCP, dentro da margem de erro (P4).
 4. A **profundidade estrutural** acrescenta um terceiro fator de custo, mais pronunciado no AWS (P5).
+5. O **tamanho do registo** (P6) é uma quarta dimensão de custo, independente de N; o fator
+   dominante para projetos reais é o **número de releituras** do ficheiro, não a sua dimensão.
 
 **Enquadramento global.** Todos os valores se situam na ordem dos microssegundos (≤ 1 ms mesmo para
 200 funções), pelo que a renderização e a resolução **não constituem o gargalo** do sistema — o
