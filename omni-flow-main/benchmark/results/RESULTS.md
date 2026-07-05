@@ -1,4 +1,4 @@
-# Resultados dos testes de desempenho (P1–P7)
+# Resultados dos testes de desempenho (P1–P7) e de tamanho (S1–S2)
 
 Medições **locais** de **renderização** (DSL → Amazon States Language / GCP Workflows YAML) e de
 **resolução** de funções internas. Não há chamadas à nuvem. Geradas com JMH a partir do módulo
@@ -277,6 +277,52 @@ a re-leitura do ficheiro.
 
 ---
 
+## S1 e S2 — Métricas de tamanho (inspiradas no "ZIP size (KB)" do QuickFaaS)
+
+A avaliação do QuickFaaS inicial mediu o **"ZIP size (KB)"** do *bundle* de deployment (agnóstico
+10877 KB vs não-agnóstico 10861 KB → ~16 KB de overhead). Estende-se aqui a dimensão de **tamanho**
+em dois planos, ambos locais.
+
+### S2 — Tamanho do artefacto renderizado (ASL JSON vs GCP YAML)
+Bytes do **workflow gerado** (não da função) em função de N, com
+`ArtifactSizeMeasurement` (medição direta, não JMH).
+
+| N | AWS ASL JSON (bytes) | GCP YAML (bytes) |
+|---:|---:|---:|
+| 1 | 1 019 | 487 |
+| 10 | 9 479 | 3 997 |
+| 50 | 47 199 | 19 637 |
+| 100 | 94 349 | 39 187 |
+| 200 | 188 949 | 78 387 |
+
+![S2 — Tamanho do artefacto renderizado vs N](S2_artifact_size.png)
+
+**Resultado.** Crescimento **linear** em N: ~944 bytes/função (AWS) e ~392 bytes/função (GCP). O
+artefacto **ASL JSON é ~2,4× mais volumoso** que o YAML do GCP para o mesmo workflow.
+**Justificação.** Coerente com a maior verbosidade estrutural da Amazon States Language (cada estado
+repete `Type`/`Resource`/`ResultPath`/etc. e chavetas JSON) face à sintaxe mais compacta do YAML —
+a mesma razão do custo-base superior do AWS observado no P2.
+
+### S1 — Bundle/ZIP size da Lambda: AWS agnóstico vs nativo
+Réplica da métrica dos colegas, aplicada ao provider AWS. A mesma função (`hello-lambda-fn`)
+empacotada de duas formas (fat-jar via maven-shade), medida com `measure_bundle_size.sh`:
+
+| Bundle | Tamanho |
+|---|---:|
+| AWS agnóstico (QuickFaaS: `MyFunctionClass` + adaptador `AwsHttpTemplate` + `aws-lambda-java-core`) | **14 552 bytes (14,2 KB)** |
+| AWS nativo (um único `RequestHandler`, mesma lógica) | **13 647 bytes (13,3 KB)** |
+| **delta (overhead da camada agnóstica)** | **905 bytes (0,88 KB)** |
+
+**Resultado.** A camada AWS do QuickFaaS acrescenta ao *bundle* apenas o **adaptador
+`AwsHttpTemplate`** — **~0,88 KB** (6,6% deste *bundle* mínimo). Em **valor absoluto** é ainda
+**menor** que os ~16 KB medidos pelos colegas para GCP/Azure.
+**Nota.** A percentagem (6,6%) está inflacionada porque a função-base é trivial (só
+`aws-lambda-java-core`, ~14 KB). Numa função real com dependências (bundle de MB), os mesmos ~0,9 KB
+do adaptador representam **<0,1%** — confirmando, também para AWS, a conclusão do QuickFaaS de que o
+overhead de empacotamento da abstração é **negligenciável**.
+
+---
+
 ## Síntese e discussão
 
 1. A renderização é **linear** no número de funções (P1) e no número de parâmetros (P2): escala de
@@ -292,6 +338,9 @@ a re-leitura do ficheiro.
 6. A **otimização de leitura única** (P7) elimina o produto N·M: a resolução passa de **Θ(N·M)**
    para **Θ(N+M)**, com *speedup* de ~200× no pior canto medido (de ~150 ms para ~0,75 ms) —
    identificar (P3/P6) → corrigir → quantificar (P7).
+7. **Tamanho** (S1/S2): o artefacto renderizado cresce linearmente, com o ASL JSON ~2,4× mais
+   volumoso que o YAML (S2); e a camada AWS agnóstica acrescenta ao *bundle* apenas ~0,9 KB (o
+   adaptador), overhead negligenciável em funções reais (S1) — em linha com a avaliação do QuickFaaS.
 
 **Enquadramento global.** Todos os valores se situam na ordem dos microssegundos (≤ 1 ms mesmo para
 200 funções), pelo que a renderização e a resolução **não constituem o gargalo** do sistema — o

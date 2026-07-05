@@ -189,6 +189,31 @@ def plot_p7(csv_path, out_dir):
     return out
 
 
+def plot_artifact_size(csv_path, out_dir):
+    """S2 - size in KB of the rendered workflow artifact (ASL JSON vs GCP YAML) vs N."""
+    if not os.path.exists(csv_path):
+        print(f"  [skip] no artifact-size csv at {csv_path}")
+        return None
+    rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
+    ns = [int(r["n"]) for r in rows]
+    aws = [int(r["aws_bytes"]) / 1024 for r in rows]
+    gcp = [int(r["gcp_bytes"]) / 1024 for r in rows]
+    plt.figure(figsize=(8, 5))
+    plt.plot(ns, aws, marker="o", label="AWS (ASL JSON)")
+    plt.plot(ns, gcp, marker="s", label="GCP (YAML)")
+    plt.title("S2 — Tamanho do artefacto renderizado vs número de funções")
+    plt.xlabel("Número de funções (passos do workflow)")
+    plt.ylabel("Tamanho do artefacto (KB)")
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    out = os.path.join(out_dir, "S2_artifact_size.png")
+    plt.savefig(out, dpi=130)
+    plt.close()
+    print(f"  [ok] {out}")
+    return out
+
+
 def main():
     data = load(CSV)
     made = []
@@ -226,6 +251,11 @@ def main():
     p7_out = plot_p7(p7_csv, OUT)
     if p7_out:
         made.append(p7_out)
+
+    s2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "artifact-size.csv")
+    s2_out = plot_artifact_size(s2_csv, OUT)
+    if s2_out:
+        made.append(s2_out)
 
     print(f"\nGenerated {len(made)} graphs in {OUT}")
 
