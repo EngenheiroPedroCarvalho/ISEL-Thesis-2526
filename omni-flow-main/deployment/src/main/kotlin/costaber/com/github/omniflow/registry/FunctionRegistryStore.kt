@@ -153,9 +153,21 @@ class FunctionRegistryStore(
         val existing = root.get(field)
         return if (existing is ObjectNode) existing else root.putObject(field)
     }
-    fun resolveUrl(functionName: String): String {
-        val all = readAll()
+    /**
+     * Reads the whole registry from disk and resolves [functionName]. Kept for backward
+     * compatibility and single-lookup callers.
+     *
+     * NOTE: this re-reads and re-parses the entire registry file on every call. When resolving
+     * many function references at once (e.g. a whole workflow), read the registry once with
+     * [readAll] and call [resolveUrlIn] per reference — that turns an O(N*M) sweep into O(N+M).
+     */
+    fun resolveUrl(functionName: String): String = resolveUrlIn(functionName, readAll())
 
+    /**
+     * Pure resolution of [functionName] against an already-loaded registry map [all] (no I/O).
+     * Same rules as [resolveUrl]: exact match, then suffix match "region/functionName".
+     */
+    fun resolveUrlIn(functionName: String, all: Map<String, FunctionInvocationMetadata>): String {
         all[functionName]?.url?.let { return it }
         val matches = all.filterKeys { it.endsWith("/$functionName") }.values.map { it.url }
         return when (matches.size){
