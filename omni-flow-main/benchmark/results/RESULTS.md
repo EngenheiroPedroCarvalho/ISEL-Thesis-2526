@@ -1,4 +1,4 @@
-# Resultados dos testes de desempenho (P1–P6)
+# Resultados dos testes de desempenho (P1–P7)
 
 Medições **locais** de **renderização** (DSL → Amazon States Language / GCP Workflows YAML) e de
 **resolução** de funções internas. Não há chamadas à nuvem. Geradas com JMH a partir do módulo
@@ -12,8 +12,9 @@ Medições **locais** de **renderização** (DSL → Amazon States Language / GC
 - **Configuração da execução:** `-f 1 -wi 3 -i 5 -w 1 -r 1` — uma *fork* da JVM, 3 iterações de
   aquecimento e 5 de medição, de 1 s cada. O aquecimento garante que se mede o código já
   compilado pelo JIT (regime estacionário) e não o interpretador.
-- **Dados brutos:** `jmh-results.csv` (P1–P5) e `jmh-results-p6.csv` (P6, que acrescenta a
-  dimensão `Param: m`). **Gráficos:** ficheiros `P1_*.png … P6_*.png`, regeneráveis com
+- **Dados brutos:** `jmh-results.csv` (P1–P5), `jmh-results-p6.csv` (P6, que acrescenta a
+  dimensão `Param: m`) e `jmh-results-p7.csv` (P7 antes/depois + P3/P6 reexecutados com o resolver
+  otimizado). **Gráficos:** ficheiros `P1_*.png … P7_*.png`, regeneráveis com
   `python3 plot_benchmarks.py`.
 - **Modelo de custo (para as justificações):** a renderização é uma travessia *depth-first*
   (`DepthFirstNodeVisitorTraversor` + `NodeContextVisitor`) que visita **uma vez** cada nó da
@@ -237,6 +238,45 @@ mais barato de implementar, do que otimizar apenas a travessia do JSON para regi
 
 ---
 
+## P7 — Otimização da resolução: leitura única do registo (Θ(N·M) → Θ(N+M))
+
+O P3 e o P6 identificaram a causa: `WorkflowInternalCallEndpointResolver.resolve` chamava
+`FunctionRegistryStore.resolveUrl` **uma vez por chamada interna**, e cada `resolveUrl` relia e
+reparava o ficheiro do registo inteiro. A correção lê o registo **uma só vez** por `resolve()`
+(método puro `resolveUrlIn` sobre o mapa já lido), preservando exatamente a lógica de resolução.
+
+O benchmark `BenchmarkResolutionOptimization` compara as duas estratégias **na mesma execução e
+máquina** (evitando a incomparabilidade P3↔P6): `resolveNaive` (leitura por chamada) vs
+`resolveOptimized` (leitura única), varrendo N × M.
+
+**Tempo total (µs) — antes (naive) vs depois (optimized):**
+
+| | N=1 | N=10 | N=50 | N=200 |
+|---|---:|---:|---:|---:|
+| **naive** M=1 | 4,6 | 47,0 | 233,6 | 920,2 |
+| **optimized** M=1 | 4,7 | 5,0 | 5,0 | 5,7 |
+| **naive** M=1000 | 543,7 | 5480,8 | 26698,5 | 104889,0 |
+| **optimized** M=1000 | 557,4 | 535,7 | 551,8 | 536,6 |
+
+![P7 — Resolução antes vs depois](P7_resolution_optimization.png)
+
+**Resultado.** O caminho otimizado é **praticamente independente de N**: uma só leitura do registo
+(O(M)) seguida de N *lookups* em memória (~0,005 µs cada, desprezáveis). O tempo passa a depender
+essencialmente de M. *Speedup* a N=200: **~162× (M=1)**, **~198× (M=50)**, **~195× (M=1000)** — o
+pior canto (N=200, M=1000) baixa de **~105 ms para ~0,54 ms**.
+
+**Justificação.** `naive` = N · (leitura O(M) + *lookup*) = **Θ(N·M)** (as curvas tracejadas sobem
+com N e deslocam-se para cima com M). `optimized` = 1 leitura O(M) + N · *lookup* O(1) =
+**Θ(N+M)** (as curvas sólidas são planas em N, deslocando-se com M apenas pela leitura única).
+
+**Nota (resolver completo).** Reexecutando P3 e P6 com o resolver já otimizado, o custo de
+`resolve(workflow)` deixa de crescer com N·M e passa a **Θ(N+M)**: no pior canto medido (N=200,
+M=1000) desce de **~150 ms para ~0,75 ms**. O termo residual O(N) que subsiste é apenas a
+**reconstrução da árvore** do workflow (N cópias de nós) — inevitável e barato (~0,7 µs/nó), já não
+a re-leitura do ficheiro.
+
+---
+
 ## Síntese e discussão
 
 1. A renderização é **linear** no número de funções (P1) e no número de parâmetros (P2): escala de
@@ -249,6 +289,9 @@ mais barato de implementar, do que otimizar apenas a travessia do JSON para regi
 4. A **profundidade estrutural** acrescenta um terceiro fator de custo, mais pronunciado no AWS (P5).
 5. O **tamanho do registo** (P6) é uma quarta dimensão de custo, independente de N; o fator
    dominante para projetos reais é o **número de releituras** do ficheiro, não a sua dimensão.
+6. A **otimização de leitura única** (P7) elimina o produto N·M: a resolução passa de **Θ(N·M)**
+   para **Θ(N+M)**, com *speedup* de ~200× no pior canto medido (de ~150 ms para ~0,75 ms) —
+   identificar (P3/P6) → corrigir → quantificar (P7).
 
 **Enquadramento global.** Todos os valores se situam na ordem dos microssegundos (≤ 1 ms mesmo para
 200 funções), pelo que a renderização e a resolução **não constituem o gargalo** do sistema — o

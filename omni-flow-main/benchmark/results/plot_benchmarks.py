@@ -137,6 +137,58 @@ def plot_p6(csv_path, out_dir):
     return out
 
 
+def load_p7(path):
+    """P7 has two @Param dimensions (n, m) and two methods (naive/optimized)."""
+    rows = list(csv.DictReader(open(path, encoding="utf-8")))
+    err_col = next((c for c in rows[0].keys() if "Error" in c), None)
+    data = defaultdict(dict)  # data[method][(m, n)] = (score, err)
+    for r in rows:
+        if r["Benchmark"].split(".")[-2] != "BenchmarkResolutionOptimization":
+            continue
+        method = r["Benchmark"].split(".")[-1]
+        m = int(float(r["Param: m"]))
+        n = int(float(r["Param: n"]))
+        score = float(r["Score"])
+        err = float(r[err_col]) if err_col and (r.get(err_col) or "").strip() not in ("", "NaN") else 0.0
+        data[method][(m, n)] = (score, err)
+    return data
+
+
+def plot_p7(csv_path, out_dir):
+    """P7 - before/after of the registry-read optimization. Total resolution time
+    vs N, dashed = naive (per-call read, O(N*M)), solid = optimized (read once,
+    O(N+M)); one colour per registry size M. Log-y makes the ~200x gap legible."""
+    if not os.path.exists(csv_path):
+        print(f"  [skip] no P7 csv at {csv_path}")
+        return None
+    data = load_p7(csv_path)
+    if not data.get("resolveNaive"):
+        return None
+    ms = sorted({m for (m, _) in data["resolveNaive"]})
+    ns = sorted({n for (_, n) in data["resolveNaive"]})
+    colours = plt.cm.viridis([i / max(1, len(ms) - 1) for i in range(len(ms))])
+    plt.figure(figsize=(8, 5))
+    for i, m in enumerate(ms):
+        nav = [(n, data["resolveNaive"][(m, n)][0]) for n in ns]
+        opt = [(n, data["resolveOptimized"][(m, n)][0]) for n in ns]
+        plt.plot([x for x, _ in nav], [y for _, y in nav],
+                 marker="o", linestyle="--", color=colours[i], label=f"antes O(N·M), M={m}")
+        plt.plot([x for x, _ in opt], [y for _, y in opt],
+                 marker="s", linestyle="-", color=colours[i], label=f"depois O(N+M), M={m}")
+    plt.yscale("log")
+    plt.title("P7 — Resolução: antes (leitura por chamada) vs depois (leitura única)")
+    plt.xlabel("Número de chamadas internas (N)")
+    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.grid(True, alpha=0.3, which="both")
+    plt.legend(fontsize=8, ncol=2)
+    plt.tight_layout()
+    out = os.path.join(out_dir, "P7_resolution_optimization.png")
+    plt.savefig(out, dpi=130)
+    plt.close()
+    print(f"  [ok] {out}")
+    return out
+
+
 def main():
     data = load(CSV)
     made = []
@@ -169,6 +221,11 @@ def main():
     p6_out = plot_p6(p6_csv, OUT)
     if p6_out:
         made.append(p6_out)
+
+    p7_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p7.csv")
+    p7_out = plot_p7(p7_csv, OUT)
+    if p7_out:
+        made.append(p7_out)
 
     print(f"\nGenerated {len(made)} graphs in {OUT}")
 
