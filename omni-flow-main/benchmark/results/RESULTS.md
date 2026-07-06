@@ -30,6 +30,9 @@ Medições **locais** de **renderização** (DSL → Amazon States Language / GC
 
 ## P1 — Degradação com o número de funções
 
+**Objetivo.** Medir como o **tempo de renderização** escala com o **número de funções (passos)**
+de um workflow, e verificar se a complexidade é linear ou supralinear (pergunta dos orientadores).
+
 | N (funções) | AWS (µs) | GCP (µs) |
 |---:|---:|---:|
 | 1 | 5,7 | 6,0 |
@@ -57,10 +60,13 @@ de uma travessia em passagem única com acumulação por `StringBuilder`.
 
 ## P2 — Efeito do número de *inputs* da função
 
-Pergunta: **uma função que recebe mais *inputs* demora mais a renderizar?** Nota
-de modelação: no workflow renderizado não entra a assinatura Java/Python da função — cada **input
-da função materializa-se como um argumento passado na chamada** (parâmetro de *query*/corpo da
-`CallContext`). Portanto varia-se aqui o número de inputs por chamada, com o número de funções fixo.
+**Objetivo.** Medir se e como o **número de inputs (argumentos)** que uma função recebe afeta o
+tempo de renderização, com o **número de funções fixo** — isolando esta dimensão da do P1
+(pergunta dos orientadores: **uma função que recebe mais *inputs* demora mais a renderizar?**).
+Nota de modelação: no workflow renderizado não entra a assinatura Java/Python da função — cada
+**input da função materializa-se como um argumento passado na chamada** (parâmetro de
+*query*/corpo da `CallContext`). Portanto varia-se aqui o número de inputs por chamada, com o
+número de funções fixo.
 
 | Inputs por função | AWS (µs) | GCP (µs) |
 |---:|---:|---:|
@@ -94,6 +100,11 @@ funções.
 ---
 
 ## P3 — Custo da unificação: resolução de funções internas
+
+**Objetivo.** Medir o **custo (overhead) que a unificação OmniFlow+QuickFaaS introduz**: quanto
+tempo demora a resolução dos endpoints das funções internas (o passo que liga as duas
+ferramentas), comparando com o custo de uma chamada externa (que não dispara resolução) — a
+métrica central da contribuição.
 
 | Nº de chamadas | Internas — resolução (µs) | Externas — sem resolução (µs) |
 |---:|---:|---:|
@@ -133,6 +144,10 @@ absolutos o custo é negligenciável face ao tempo de *deployment* real (segundo
 
 ## P4 — Renderizador AWS vs GCP
 
+**Objetivo.** Comparar o custo do **renderizador AWS** (a extensão desenvolvida na contribuição)
+com o do **renderizador GCP** já existente, para o mesmo workflow — confirmar que a extensão AWS
+não introduz penalização de desempenho face ao que já estava implementado.
+
 | N | AWS (µs) | GCP (µs) |
 |---:|---:|---:|
 | 1 | 5,8 | 5,8 |
@@ -160,6 +175,10 @@ fatores que alargam o intervalo de confiança sem alterar a tendência.
 
 ## P5 — Efeito da estrutura/aninhamento
 
+**Objetivo.** Isolar o efeito da **complexidade estrutural** (profundidade de aninhamento de
+`parallel`/`iteration`) no tempo de renderização, mantendo fixo o **número total de funções** —
+distinguir se o que degrada o desempenho é o número de funções ou a forma como estão organizadas.
+
 | Profundidade | AWS (µs) | GCP (µs) |
 |---:|---:|---:|
 | 0 | 83,9 | 96,3 |
@@ -186,6 +205,10 @@ aninhado com mais estrutura obrigatória (estados `Parallel`/`Map`, `Branches`/`
 ---
 
 ## P6 — Custo de escalabilidade do registo (Θ(N·M))
+
+**Objetivo.** Medir como o **tamanho do registo de funções (M)** afeta o custo da resolução,
+isolando esta dimensão do **número de chamadas internas (N)** — o P3 fixava M=1 e só variava N;
+o P6 varia as duas independentemente para caracterizar a dependência completa em M.
 
 `FunctionRegistryStore.resolveUrl` não tem cache em memória: cada chamada relê e reparsa o
 ficheiro do registo **inteiro** (`readAll()`). O P3 já isolava a dependência em N (nº de chamadas
@@ -248,6 +271,11 @@ mais barato de implementar, do que otimizar apenas a travessia do JSON para regi
 
 ## P7 — Otimização da resolução: leitura única do registo (Θ(N·M) → Θ(N+M))
 
+**Objetivo.** Medir o **ganho de desempenho (antes vs. depois)** de uma otimização concreta —
+ler o registo **uma só vez** por `resolve(workflow)` em vez de uma vez por chamada — na mesma
+execução/máquina, para que o *speedup* seja diretamente comparável (ao contrário de comparar P3
+e P6, medidos em execuções separadas).
+
 O P3 e o P6 identificaram a causa: `WorkflowInternalCallEndpointResolver.resolve` chamava
 `FunctionRegistryStore.resolveUrl` **uma vez por chamada interna**, e cada `resolveUrl` relia e
 reparava o ficheiro do registo inteiro. A correção lê o registo **uma só vez** por `resolve()`
@@ -292,6 +320,11 @@ A avaliação do QuickFaaS inicial mediu o **"ZIP size (KB)"** do *bundle* de de
 em dois planos, ambos locais.
 
 ### S2 — Tamanho do artefacto renderizado (ASL JSON vs GCP YAML)
+
+**Objetivo.** Medir o **tamanho (em bytes) do workflow gerado** — não da função — comparando AWS e
+GCP, em função do número de funções N; complementa os testes de **tempo** (P1) com a dimensão de
+**espaço**.
+
 Bytes do **workflow gerado** (não da função) em função de N, com
 `ArtifactSizeMeasurement` (medição direta, não JMH).
 
@@ -312,8 +345,14 @@ repete `Type`/`Resource`/`ResultPath`/etc. e chavetas JSON) face à sintaxe mais
 a mesma razão do custo-base superior do AWS observado no P2.
 
 ### S1 — Bundle/ZIP size da Lambda: AWS agnóstico vs nativo
-Réplica da métrica dos colegas, aplicada ao provider AWS. A mesma função (`hello-lambda-fn`)
-empacotada de duas formas (fat-jar via maven-shade), medida com `measure_bundle_size.sh`:
+
+**Objetivo.** Medir o **overhead de tamanho (bytes) que a camada de abstração agnóstica do
+QuickFaaS acrescenta ao *bundle* de deployment da Lambda**, comparando com uma implementação AWS
+nativa equivalente — réplica, para o provider AWS, da métrica **"ZIP size (KB)"** já usada na
+avaliação original do QuickFaaS (GCP/Azure).
+
+A mesma função (`hello-lambda-fn`) empacotada de duas formas (fat-jar via maven-shade), medida com
+`measure_bundle_size.sh`:
 
 | Bundle | Tamanho |
 |---|---:|
