@@ -1,0 +1,17 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit","Param: n"
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderApiGateway","avgt",1,5,4.307745,0.401057,"us/op",1
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderApiGateway","avgt",1,5,7.898455,1.345326,"us/op",2
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderApiGateway","avgt",1,5,18.502035,0.714003,"us/op",5
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderApiGateway","avgt",1,5,34.580309,3.392802,"us/op",10
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderApiGateway","avgt",1,5,72.073598,3.096227,"us/op",20
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderApiGateway","avgt",1,5,167.850414,25.483453,"us/op",50
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderApiGateway","avgt",1,5,337.211413,13.769785,"us/op",100
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderApiGateway","avgt",1,5,692.027901,74.589251,"us/op",200
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderLambda","avgt",1,5,2.736498,0.232960,"us/op",1
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderLambda","avgt",1,5,4.927224,0.652549,"us/op",2
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderLambda","avgt",1,5,10.380953,0.588954,"us/op",5
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderLambda","avgt",1,5,20.429270,0.760822,"us/op",10
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderLambda","avgt",1,5,42.758365,6.140772,"us/op",20
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderLambda","avgt",1,5,103.166418,10.013959,"us/op",50
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderLambda","avgt",1,5,194.884814,6.440607,"us/op",100
+"costaber.com.github.omniflow.metrics.BenchmarkRenderingLambdaVsApiGateway.renderLambda","avgt",1,5,394.891068,36.401987,"us/op",200

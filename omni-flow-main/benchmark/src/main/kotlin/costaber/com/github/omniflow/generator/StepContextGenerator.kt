@@ -284,4 +284,26 @@ object StepContextGenerator {
             internalFunction = InternalFunction(functionName)
         )
     }
+
+    /**
+     * P8 helper. Builds an ALREADY-RESOLVED Lambda [CallContext]: host is the
+     * "lambda://<arn>" form AmazonCallRenderer detects (LAMBDA_HOST_PREFIX) to
+     * emit the lambda:invoke block, exactly as validated in AmazonRendererTest
+     * ("test lambda call step uses Payload result"). No InternalFunction/resolve()
+     * involved — this measures rendering cost alone.
+     */
+    fun lambdaCall(index: Int): StepContext {
+        return CallContext(
+            method = HttpMethod.GET,
+            host = "lambda://arn:aws:lambda:eu-west-1:123456789012:function:bench-fn-$index",
+            path = "",
+            authentication = null,
+            body = emptyMap(),
+            bodyRaw = "",
+            header = emptyMap(),
+            query = emptyMap(),
+            timeoutInSeconds = 5L,
+            result = "result"
+        )
+    }
 }

@@ -1,4 +1,4 @@
-# Resultados dos testes de desempenho (P1–P7) e de tamanho (S1–S2)
+# Resultados dos testes de desempenho (P1–P8) e de tamanho (S1–S2)
 
 Medições **locais** de **renderização** (DSL → Amazon States Language / GCP Workflows YAML) e de
 **resolução** de funções internas. Não há chamadas à nuvem. Geradas com JMH a partir do módulo
@@ -13,9 +13,9 @@ Medições **locais** de **renderização** (DSL → Amazon States Language / GC
   aquecimento e 5 de medição, de 1 s cada. O aquecimento garante que se mede o código já
   compilado pelo JIT (regime estacionário) e não o interpretador.
 - **Dados brutos:** `jmh-results.csv` (P1–P5), `jmh-results-p6.csv` (P6, que acrescenta a
-  dimensão `Param: m`) e `jmh-results-p7.csv` (P7 antes/depois + P3/P6 reexecutados com o resolver
-  otimizado). **Gráficos:** ficheiros `P1_*.png … P7_*.png`, regeneráveis com
-  `python3 plot_benchmarks.py`.
+  dimensão `Param: m`), `jmh-results-p7.csv` (P7 antes/depois + P3/P6 reexecutados com o resolver
+  otimizado) e `jmh-results-p8.csv` (P8, interno vs. externo). **Gráficos:** ficheiros
+  `P1_*.png … P8_*.png`, regeneráveis com `python3 plot_benchmarks.py`.
 - **Modelo de custo (para as justificações):** a renderização é uma travessia *depth-first*
   (`DepthFirstNodeVisitorTraversor` + `NodeContextVisitor`) que visita **uma vez** cada nó da
   árvore de objetos do workflow (AST) e acumula texto num `StringBuilder` partilhado
@@ -324,6 +324,47 @@ a re-leitura do ficheiro.
 
 ---
 
+## P8 — Renderização interna (lambda:invoke) vs externa (apigateway:invoke)
+
+**Objetivo.** P1/P2/P4/P5 renderizam **sempre chamadas externas** (literal `host`/`path`); P3/P6/P7
+usam chamadas internas mas medem **só** o `resolve()`, nunca chegando a renderizar o resultado.
+Este experimento fecha essa lacuna: mede o custo de **renderizar**, à escala, uma chamada **interna
+já resolvida** (Lambda, `host = "lambda://<arn>"`) e compara com a mesma renderização externa já
+medida no P1 — sem nunca chamar `resolve()` em nenhum dos dois lados. Só AWS: o GCP não distingue
+estruturalmente uma chamada interna de uma externa na renderização.
+
+| N (funções) | Externa — apigateway:invoke (µs) | Interna — lambda:invoke (µs) |
+|---:|---:|---:|
+| 1 | 4,3 | 2,7 |
+| 2 | 7,9 | 4,9 |
+| 5 | 18,5 | 10,4 |
+| 10 | 34,6 | 20,4 |
+| 20 | 72,1 | 42,8 |
+| 50 | 167,9 | 103,2 |
+| 100 | 337,2 | 194,9 |
+| 200 | 692,0 | 394,9 |
+
+![P8 — Renderização interna (lambda:invoke) vs externa (apigateway:invoke)](P8_lambda_vs_apigateway.png)
+
+**Resultado.** Confirma-se a hipótese: renderizar uma chamada **interna** (`lambda:invoke`) é
+**consistentemente mais barato** do que uma chamada **externa** (`apigateway:invoke`), em **todos**
+os valores de N — cerca de **1,75× mais rápido** a N=200 (394,9 µs vs 692,0 µs) e **1,57×** a N=1.
+Ajustando `T(N) = a·N + b` a cada série: `apigateway` → `a ≈ 3,46 µs/função`, `b ≈ 0,85 µs`;
+`lambda` → `a ≈ 1,97 µs/função`, `b ≈ 0,77 µs` — o **declive** (custo marginal por função) do
+`lambda:invoke` é **~1,75× menor**, e as interceções são semelhantes.
+
+**Justificação.** O bloco `lambda:invoke` emite muito menos estrutura por chamada — só
+`Parameters: {"FunctionName": "..."}` e `ResultSelector: {"...": "$.Payload"}` — enquanto o bloco
+`apigateway:invoke` emite `ApiEndpoint`, `Method`, `Path`, `QueryParameters` (com a formatação
+`States.Array(States.Format(...))` por parâmetro) e `ResultSelector: "$.ResponseBody"`. Menos campos
+para resolver e escrever no `StringBuilder` traduz-se diretamente num declive menor — o mesmo
+mecanismo de custo (nº de campos emitidos por chamada) que já explicava a diferença de custo-base
+entre AWS e GCP no P2. Achado prático: a extensão AWS deste trabalho (invocação direta de Lambda)
+não só **evita** a chamada de rede extra do API Gateway em produção como é também **mais barata de
+renderizar** do que o caminho externo equivalente.
+
+---
+
 ## S1 e S2 — Métricas de tamanho (inspiradas no "ZIP size (KB)" do QuickFaaS)
 
 A avaliação do QuickFaaS inicial mediu o **"ZIP size (KB)"** do *bundle* de deployment (agnóstico
@@ -408,7 +449,11 @@ exato configurado no `finalName`. Ver `TESTING.md` §3.1 para o detalhe completo
 6. A **otimização de leitura única** (P7) elimina o produto N·M: a resolução passa de **Θ(N·M)**
    para **Θ(N+M)**, com *speedup* de ~200× no pior canto medido (de ~150 ms para ~0,75 ms) —
    identificar (P3/P6) → corrigir → quantificar (P7).
-7. **Tamanho** (S1/S2): o artefacto renderizado cresce linearmente, com o ASL JSON ~2,4× mais
+7. Renderizar uma chamada **interna** (`lambda:invoke`) é **~1,75× mais barato** do que uma
+   **externa** (`apigateway:invoke`), em todo o intervalo de N (P8) — o bloco Lambda tem menos
+   estrutura obrigatória, pelo que a extensão AWS deste trabalho não só evita a chamada de rede
+   extra do API Gateway como é também mais barata de renderizar.
+8. **Tamanho** (S1/S2): o artefacto renderizado cresce linearmente, com o ASL JSON ~2,4× mais
    volumoso que o YAML (S2); e a camada AWS agnóstica acrescenta ao *bundle* apenas ~0,9 KB (o
    adaptador), overhead negligenciável em funções reais (S1) — em linha com a avaliação do QuickFaaS.
 

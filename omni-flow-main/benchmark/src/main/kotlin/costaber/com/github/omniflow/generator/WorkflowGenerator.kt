@@ -317,6 +317,32 @@ object WorkflowGenerator {
     }
 
     /**
+     * P8 helper. Builds a workflow whose calls are ALREADY resolved internal
+     * (Lambda) calls: host = "lambda://<arn>", the form AmazonCallRenderer
+     * detects via LAMBDA_HOST_PREFIX to emit the lambda:invoke block. Unlike
+     * [withInternalCalls] (unresolved, for the resolver), this is directly
+     * renderable — used to measure rendering cost alone, with no resolve() step.
+     */
+    @JvmStatic
+    fun withLambdaCalls(stepsNumber: Int): Workflow {
+        val steps = (0 until stepsNumber).map { idx ->
+            Step(
+                STEP_NAME + idx,
+                "Lambda call step example",
+                StepType.CALL,
+                StepContextGenerator.lambdaCall(idx)
+            )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
      * P3 helper. Builds a workflow whose calls are ALL external (literal
      * host/path, no internalFunction()). The endpoint resolver leaves these
      * untouched, so this is the baseline (no registry access at all).

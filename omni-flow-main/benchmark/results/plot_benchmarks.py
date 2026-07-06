@@ -137,6 +137,38 @@ def plot_p6(csv_path, out_dir):
     return out
 
 
+def plot_p8(csv_path, out_dir):
+    """P8 - rendering cost of an internal (lambda:invoke) call vs an external
+    (apigateway:invoke) call, at scale. Own CSV (single Param: n), reuses the
+    generic load() used by P1/P4."""
+    if not os.path.exists(csv_path):
+        print(f"  [skip] no P8 csv at {csv_path}")
+        return None
+    data = load(csv_path)
+    cls = "BenchmarkRenderingLambdaVsApiGateway"
+    if cls not in data:
+        return None
+    plt.figure(figsize=(8, 5))
+    series = {"renderApiGateway": "Externa (apigateway:invoke)", "renderLambda": "Interna (lambda:invoke)"}
+    for method, label in series.items():
+        pts = sorted(data[cls].get(method, []))
+        xs = [p[0] for p in pts]
+        ys = [p[1] for p in pts]
+        es = [p[2] for p in pts]
+        plt.errorbar(xs, ys, yerr=es, marker="o", capsize=3, label=label)
+    plt.title("P8 — Renderização: interna (lambda:invoke) vs externa (apigateway:invoke)")
+    plt.xlabel("Número de funções (passos do workflow)")
+    plt.ylabel(YLABEL)
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    out = os.path.join(out_dir, "P8_lambda_vs_apigateway.png")
+    plt.savefig(out, dpi=130)
+    plt.close()
+    print(f"  [ok] {out}")
+    return out
+
+
 def load_p7(path):
     """P7 has two @Param dimensions (n, m) and two methods (naive/optimized)."""
     rows = list(csv.DictReader(open(path, encoding="utf-8")))
@@ -251,6 +283,11 @@ def main():
     p7_out = plot_p7(p7_csv, OUT)
     if p7_out:
         made.append(p7_out)
+
+    p8_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p8.csv")
+    p8_out = plot_p8(p8_csv, OUT)
+    if p8_out:
+        made.append(p8_out)
 
     s2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "artifact-size.csv")
     s2_out = plot_artifact_size(s2_csv, OUT)
