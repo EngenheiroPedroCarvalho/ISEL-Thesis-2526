@@ -55,9 +55,14 @@ de uma travessia em passagem única com acumulação por `StringBuilder`.
 
 ---
 
-## P2 — Efeito do número de parâmetros por função
+## P2 — Efeito do número de *inputs* da função
 
-| Parâmetros | AWS (µs) | GCP (µs) |
+Pergunta dos orientadores: **uma função que recebe mais *inputs* demora mais a renderizar?** Nota
+de modelação: no workflow renderizado não entra a assinatura Java/Python da função — cada **input
+da função materializa-se como um argumento passado na chamada** (parâmetro de *query*/corpo da
+`CallContext`). Portanto varia-se aqui o número de inputs por chamada, com o número de funções fixo.
+
+| Inputs por função | AWS (µs) | GCP (µs) |
 |---:|---:|---:|
 | 0 | 49,3 | 27,7 |
 | 1 | 85,7 | 77,7 |
@@ -65,23 +70,26 @@ de uma travessia em passagem única com acumulação por `StringBuilder`.
 | 10 | 184,5 | 243,2 |
 | 20 | 350,3 | 440,5 |
 
-![P2 — Tempo de renderização vs número de parâmetros](P2_rendering_by_parameters.png)
+![P2 — Tempo de renderização vs número de inputs da função](P2_rendering_by_parameters.png)
 
-**Resultado.** O número de parâmetros afeta o tempo de renderização de forma também
-**aproximadamente linear**. O GCP parte de um valor mais baixo (sem parâmetros) mas cresce mais
-depressa, ultrapassando o AWS a partir de ~5 parâmetros.
+**Resultado.** **Sim** — o número de inputs afeta o tempo de renderização de forma
+**aproximadamente linear** (~15 µs por input adicional). O GCP parte de um valor mais baixo (função
+sem inputs) mas cresce mais depressa, ultrapassando o AWS a partir de ~5 inputs.
 
-**Justificação.** Cada parâmetro (entrada de *query*, cabeçalho ou campo do corpo) é renderizado
-individualmente, com resolução de termo e emissão de um par chave-valor. Com N fixo, o trabalho
-descreve-se por T(p) = N·(c·p + k): o termo `c·p` é o custo dos parâmetros e `N·k` é o custo-base
-por chamada (a estrutura do estado sem parâmetros). Daqui resulta a **linearidade em p** e a
-**interceção positiva em p = 0**. A **base maior no AWS** (k_AWS > k_GCP) explica-se pelo facto de
-a Amazon States Language emitir, por chamada, mais estrutura fixa (`Type`, `Resource`,
-`Parameters`, `ResultSelector`, `ResultPath`) do que o `call:`/`args:` do GCP. O **declive maior
-no GCP** (c_GCP > c_AWS) reflete um custo por parâmetro superior na serialização YAML. Como uma
-reta tem base maior e a outra declive maior, a **interseção** por volta dos 5 parâmetros é uma
-consequência matemática inevitável. Confirma-se que o número de parâmetros constitui uma segunda
-dimensão de custo, independente do número de funções.
+**Justificação.** Cada input é escrito individualmente na chamada (resolução do termo + emissão de
+um par chave-valor no argumento). Com N funções fixo, o trabalho descreve-se por T(p) = N·(c·p + k):
+o termo `c·p` é o custo dos inputs e `N·k` é o custo-base por chamada (a estrutura do estado sem
+inputs). Daqui resulta a **linearidade em p** e a **interceção positiva em p = 0**. A **base maior
+no AWS** (k_AWS > k_GCP) explica-se pelo facto de a Amazon States Language emitir, por chamada, mais
+estrutura fixa (`Type`, `Resource`, `Parameters`, `ResultSelector`, `ResultPath`) do que o
+`call:`/`args:` do GCP. O **declive maior no GCP** (c_GCP > c_AWS) reflete um custo por input
+superior na serialização YAML. Como uma reta tem base maior e a outra declive maior, a
+**interseção** por volta dos 5 inputs é uma consequência matemática inevitável. Confirma-se que o
+número de inputs da função constitui uma segunda dimensão de custo, independente do número de
+funções.
+
+> Nota de implementação: o benchmark chama-se `BenchmarkRenderingByParameterCount` e o gerador
+> `callWithParameters(p)` — "parameter" aqui designa cada **input da função** passado na chamada.
 
 ---
 

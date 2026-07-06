@@ -30,8 +30,8 @@ PLOTS = {
     ),
     "BenchmarkRenderingByParameterCount": (
         "P2_rendering_by_parameters.png",
-        "P2 — Tempo de renderização vs número de parâmetros por função",
-        "Número de parâmetros por função",
+        "P2 — Tempo de renderização vs número de inputs da função",
+        "Número de inputs da função (argumentos passados na chamada)",
         {"renderToAmazon": "AWS (ASL JSON)", "renderToGoogle": "GCP (YAML)"},
     ),
     "BenchmarkInternalCallResolution": (

@@ -128,7 +128,7 @@ CSV (`-rf csv`) e ajustar uma curva aos pontos.
 | Benchmark | Pergunta / objetivo | Variável | O que se espera |
 |---|---|---|---|
 | `metrics/BenchmarkRenderingScalability.kt` (**P1**) | Como degrada o tempo de **renderização** com o número de funções? | `@Param n ∈ {1..200}` | Tempo cresce com N; caracterizar linear vs. supralinear (atenção a O(N²) caso haja concatenação de strings). |
-| `metrics/BenchmarkRenderingByParameterCount.kt` (**P2**) | O número de **parâmetros por função** afeta a renderização? | `@Param p ∈ {0..20}`, N fixo | Crescimento linear em P, com declive menor que o de N. |
+| `metrics/BenchmarkRenderingByParameterCount.kt` (**P2**) | O número de **inputs da função** (materializados como argumentos passados na chamada) afeta a renderização? | `@Param p ∈ {0..20}`, N fixo | Crescimento linear em p (~15 µs por input). |
 | `metrics/BenchmarkInternalCallResolution.kt` (**P3**) | Qual o **custo da unificação** (passo de resolução de funções internas)? | `@Param n`, interno vs. externo | Linear e pequeno; internas > externas pelo custo das *lookups* + cópia da árvore (registo pré-carregado em memória — sem I/O no caminho quente). |
 | `metrics/BenchmarkRenderingAwsVsGcp.kt` (**P4**) | O renderizador **AWS** tem custo comparável ao **GCP**? | renderer AWS vs. GCP, ao longo de N | Mesma ordem de grandeza; observação, não veredicto. |
 | `metrics/BenchmarkRenderingByNesting.kt` (**P5**) | O que degrada: o **número** de funções ou a **complexidade estrutural**? | profundidade de aninhamento, total de passos fixo | Distinguir efeito do nº total de nós vs. profundidade; aninhamento muito profundo pode revelar limites de recursão. |
