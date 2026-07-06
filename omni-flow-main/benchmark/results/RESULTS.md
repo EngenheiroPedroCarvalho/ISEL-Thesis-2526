@@ -33,6 +33,13 @@ Medições **locais** de **renderização** (DSL → Amazon States Language / GC
 **Objetivo.** Medir como o **tempo de renderização** escala com o **número de funções (passos)**
 de um workflow, e verificar se a complexidade é linear ou supralinear.
 
+> **Nota de âmbito:** as chamadas geradas são **externas** (`WorkflowGenerator.withIndependentSteps`
+> → `StepContextGenerator.independentCall()`, com `host`/`path` literais e `internalFunction =
+> null`), por design — este experimento isola o custo de **renderizar**, sem o custo de
+> **resolver** endpoints internos (esse é medido à parte em P3/P6/P7). Como a renderização só olha
+> para o `host`/`path` já presentes na `CallContext`, o resultado é o mesmo quer a chamada seja
+> interna ou externa.
+
 | N (funções) | AWS (µs) | GCP (µs) |
 |---:|---:|---:|
 | 1 | 5,7 | 6,0 |
@@ -67,6 +74,10 @@ Nota de modelação: no workflow renderizado não entra a assinatura Java/Python
 **input da função materializa-se como um argumento passado na chamada** (parâmetro de
 *query*/corpo da `CallContext`). Portanto varia-se aqui o número de inputs por chamada, com o
 número de funções fixo.
+
+> **Nota de âmbito:** tal como no P1, as chamadas são **externas**
+> (`StepContextGenerator.callWithParameters(p)`, `host`/`path` literais, sem `internalFunction`) —
+> mede-se só o custo de **renderizar**, não o de **resolver** endpoints internos.
 
 | Inputs por função | AWS (µs) | GCP (µs) |
 |---:|---:|---:|
