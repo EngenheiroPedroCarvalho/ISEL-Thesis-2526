@@ -31,7 +31,7 @@ Medições **locais** de **renderização** (DSL → Amazon States Language / GC
 ## P1 — Degradação com o número de funções
 
 **Objetivo.** Medir como o **tempo de renderização** escala com o **número de funções (passos)**
-de um workflow, e verificar se a complexidade é linear ou supralinear (pergunta dos orientadores).
+de um workflow, e verificar se a complexidade é linear ou supralinear.
 
 | N (funções) | AWS (µs) | GCP (µs) |
 |---:|---:|---:|
