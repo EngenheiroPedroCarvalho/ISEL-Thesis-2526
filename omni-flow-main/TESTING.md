@@ -67,19 +67,53 @@ Stack: **JUnit 5 + Strikt** (e `@TempDir` para I/O local). Localização:
 ## 3. Testes unitários — Parte A (provider AWS do QuickFaaS, `QuickFaaS-Deployment/`)
 
 Stack: **`kotlin.test`** (única biblioteca de teste no classpath deste módulo Gradle; sem Strikt/
-MockK). Localização: `QuickFaaS-Deployment/src/test/kotlin/model/`. **18 testes.**
+MockK). Localização: `QuickFaaS-Deployment/src/test/kotlin/model/`. **19 testes.**
 
 | Ficheiro | O que valida |
 |---|---|
 | `model/AwsProviderTest.kt` | `setProjectData(accountId)` define o Account ID em `AwsProjectData.name`, repõe o bucket e **propaga o `iamRoleArn`** de `AwsSpecifics` para o `AwsLambdaFunction`; `requestProjects()` devolve a lista em memória **sem chamada à cloud**; metadados do companion (`name`, `shortName`, `newCloudProvider()`). |
 | `model/specifics/AwsSpecificsTest.kt` | `setSpecifics(...)` resolve a **região** e o **`iamRoleArn`** a partir do descriptor; `iamRoleArn` em branco produz o aviso. (Testadas as ramificações fornecidas pelo descriptor; as que dependem de variáveis de ambiente não são exercitadas por não serem definíveis em processo.) |
 | `model/resources/functions/AwsLambdaFunctionTest.kt` | Propriedades locais: lista de `locations`, `runtimes` (`JAVA11`/`JAVA17`), formatação do runtime e `handler` (`AwsHttpTemplate`). **Não** invoca `deployZip` (esse chama o SDK). |
-| `model/resources/functions/runtimes/scripts/AwsBuildScriptsTest.kt` | Geração **local** de artefactos: o POM gerado para a Lambda contém o `maven-shade-plugin` e injeta as dependências do utilizador; seleção do fat-jar (ignora `original-*.jar`) e erro claro quando não há JAR. **Não** corre o build Maven real. |
+| `model/resources/functions/runtimes/scripts/AwsBuildScriptsTest.kt` | Geração **local** de artefactos: o POM gerado para a Lambda contém o `maven-shade-plugin` e injeta as dependências do utilizador; seleção do fat-jar e erro claro quando não há JAR. **Não** corre o build Maven real. |
+| `model/resources/functions/AwsLambdaFunctionBuildIntegrationTest.kt` | **Passa pelo código real do QuickFaaS, sem cloud** (ver secção 3.1). |
 
 > **Limitação documentada (Parte A):** o ramo de nome em branco de `setProjectData("")` chama
 > `logPropertyMissing(...)` → `exitProcess(1)`, que termina a JVM. Esse caminho não é testável em
 > processo (capturar `System.exit` exigiria um `SecurityManager`, indisponível nas JVM modernas),
 > pelo que fica como limitação conhecida e não é testado.
+
+### 3.1. Teste que passa pelo QuickFaaS real, mas sem cloud
+
+Todos os outros testes chamam apenas `resolver.resolve(...)` / `traversor.traverse(...)` — nunca o
+QuickFaaS. Este teste faz o oposto: invoca o **código de produção real** do QuickFaaS
+(`AwsLambdaFunction.buildAndZip("aws")` → `AwsBuildScripts.javaBuildScript` → `JavaUtils.mavenBuild`,
+um **`mvn package` real** via Maven Invoker, usando o Maven já empacotado no repo em
+`function-deployment/java/`), e para **exatamente** antes da fronteira com a cloud:
+
+```
+parse descriptor → provider setup (local, p/ AWS) → function.buildAndZip(...) → function.deployZip(...)
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^     ^^^^^^^^^^^^^^^^^^^^^
+                                                      testado (mvn real)          NUNCA chamado (S3+Lambda)
+```
+
+Reutiliza o mesmo `functions/hello-lambda-fn/MyFunctionClass.java` do Exemplo 8. Produz um zip real
+e confirma o seu tamanho (**14 685 bytes**, determinístico entre execuções).
+
+**Descoberta feita através deste teste:** a primeira execução produziu um zip de apenas 3988 bytes
+(sem as classes de `aws-lambda-java-core` incluídas) — revelando um **bug real** em
+`AwsBuildScripts.copyFatJarAsZip`. Como o POM não define `<build><finalName>` ao nível do projeto,
+o Maven produz **dois** jars em `target/` (`function-1.0.jar`, fino, do plugin `jar` por defeito, e
+`function.jar`, gordo, do `shade`); o filtro antigo (`extension=="jar" && !startsWith("original-")`)
+aceitava **ambos**, e `listFiles().firstOrNull()` escolhia entre eles de forma **não
+determinística** (a ordem do sistema de ficheiros não é garantida) — em produção, isto podia
+deployar uma Lambda **quebrada** (sem as suas dependências) só por azar na ordem de listagem.
+**Corrigido** para procurar o jar pelo nome exato (`function.jar`, o `finalName` configurado no
+shade), eliminando a ambiguidade. Confirmado determinístico em execuções repetidas após a correção.
+
+> **Nota de ambiente:** requer que `function-deployment/java/apache-maven-3.8.6/bin/{mvn,mvnDebug,mvnyjp}`
+> tenham o bit de execução (corrigido neste commit — não estava definido no repo) e que
+> `tasks.test.workingDir` aponte para `omni-flow-main/` (adicionado ao `build.gradle.kts`), para os
+> paths relativos do Maven empacotado resolverem.
 
 ---
 

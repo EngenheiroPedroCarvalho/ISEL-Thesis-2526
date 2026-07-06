@@ -329,6 +329,18 @@ empacotada de duas formas (fat-jar via maven-shade), medida com `measure_bundle_
 do adaptador representam **<0,1%** — confirmando, também para AWS, a conclusão do QuickFaaS de que o
 overhead de empacotamento da abstração é **negligenciável**.
 
+**Corroboração pelo código real (e um bug encontrado no processo).** O valor acima foi produzido
+por um script que *reproduz* o POM/wrapper do QuickFaaS. Para validar com o **código de produção
+real**, foi acrescentado `AwsLambdaFunctionBuildIntegrationTest` (`QuickFaaS-Deployment`), que
+invoca `AwsLambdaFunction.buildAndZip("aws")` — o `mvn package` real do QuickFaaS — e para
+exatamente antes de `deployZip` (a chamada à cloud). Esse teste **confirmou o mesmo valor**
+(14 685 bytes), mas só depois de expor e de se corrigir um **bug de não-determinismo** em
+`AwsBuildScripts.copyFatJarAsZip`: sem `<build><finalName>` ao nível do projeto, o Maven produz
+dois jars em `target/` (o fino, do plugin `jar`, e o gordo, do `shade`); o filtro antigo aceitava
+ambos e escolhia por ordem de listagem do sistema de ficheiros — **não garantida** — podendo
+selecionar o jar errado (sem as dependências) em produção. Corrigido para procurar o jar pelo nome
+exato configurado no `finalName`. Ver `TESTING.md` §3.1 para o detalhe completo.
+
 ---
 
 ## Síntese e discussão

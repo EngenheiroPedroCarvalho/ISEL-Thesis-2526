@@ -57,6 +57,19 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
     finalizedBy(tasks.jacocoTestReport)
+    // Some tests exercise the REAL QuickFaaS build pipeline (AwsLambdaFunction.buildAndZip ->
+    // JavaUtils.mavenBuild), which resolves the bundled Maven distribution and scratch build dir
+    // via paths relative to the process cwd ("function-deployment/java/..."), rooted at
+    // omni-flow-main/. Point the test JVM's working directory there so those paths resolve.
+    workingDir = file("$projectDir/../../")
+}
+
+// Gradle 7.3.3's default JaCoCo version predates JDK 21 bytecode support (class file major
+// version 65) and crashes when its agent is inherited by a nested forked JVM (e.g. the real
+// `mvn package` run by AwsLambdaFunctionBuildIntegrationTest via Maven Invoker). Pin a version
+// that supports JDK 21, matching the Maven side (deployment/pom.xml uses 0.8.12).
+jacoco {
+    toolVersion = "0.8.12"
 }
 
 // Coverage of the AWS provider's LOCAL logic (provider/specifics/function/build-scripts).
