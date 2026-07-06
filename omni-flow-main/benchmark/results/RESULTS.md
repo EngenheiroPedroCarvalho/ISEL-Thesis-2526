@@ -57,7 +57,7 @@ de uma travessia em passagem única com acumulação por `StringBuilder`.
 
 ## P2 — Efeito do número de *inputs* da função
 
-Pergunta dos orientadores: **uma função que recebe mais *inputs* demora mais a renderizar?** Nota
+Pergunta: **uma função que recebe mais *inputs* demora mais a renderizar?** Nota
 de modelação: no workflow renderizado não entra a assinatura Java/Python da função — cada **input
 da função materializa-se como um argumento passado na chamada** (parâmetro de *query*/corpo da
 `CallContext`). Portanto varia-se aqui o número de inputs por chamada, com o número de funções fixo.
