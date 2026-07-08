@@ -2,6 +2,30 @@
 
 Guidance for Claude Code when working in this repository.
 
+## Behavioral guidelines (Karpathy-inspired)
+
+General coding-agent guidelines, merged in from
+[multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) (MIT
+license), itself derived from Andrej Karpathy's public observations on common LLM coding pitfalls.
+Apply these before the project-specific guidance below.
+
+1. **Think Before Coding.** Don't assume — state assumptions explicitly. If a request is
+   ambiguous, present the alternative interpretations instead of silently picking one. Stop and ask
+   when confused rather than guessing; push back if a simpler approach exists.
+2. **Simplicity First.** Write the minimum code that solves the problem — nothing speculative. No
+   unrequested features, no abstractions for single-use code, no error handling for scenarios that
+   can't happen. Test: would a senior engineer call this overcomplicated?
+3. **Surgical Changes.** Touch only what the request requires; clean up only the mess your own
+   edit creates. Don't refactor, reformat, or "fix" adjacent code while making a requested change;
+   match the existing style even if you'd prefer another. Test: every changed line should trace
+   directly to the request.
+4. **Goal-Driven Execution.** Define success criteria and loop until verified. Convert vague asks
+   ("fix the bug," "add validation") into explicit, testable steps, each paired with how it's
+   verified.
+
+These bias toward caution over speed — for trivial tasks (typo fixes, obvious one-liners), use
+judgement; not every change needs the full rigor.
+
 ## What this project is
 
 Master's thesis (ISEL) — **OmniFlow + QuickFaaS integration**. OmniFlow is a Kotlin DSL that
