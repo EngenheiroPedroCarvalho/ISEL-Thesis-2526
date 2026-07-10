@@ -317,20 +317,27 @@ object WorkflowGenerator {
     }
 
     /**
-     * P8 helper. Builds a workflow whose calls are ALREADY resolved internal
-     * (Lambda) calls: host = "lambda://<arn>", the form AmazonCallRenderer
-     * detects via LAMBDA_HOST_PREFIX to emit the lambda:invoke block. Unlike
-     * [withInternalCalls] (unresolved, for the resolver), this is directly
-     * renderable — used to measure rendering cost alone, with no resolve() step.
+     * P8/P9 helper. Builds a workflow with [callCount] internal CALL steps whose
+     * references are distributed round-robin over [distinctFunctionCount] distinct
+     * functions: step idx -> "[baseName]${idx % distinctFunctionCount}". The registry
+     * must contain exactly those functions ([baseName]0 .. [baseName]{distinctFunctionCount-1}).
+     *
+     * Unlike [withInternalCalls] (a single shared name), this lets the number of
+     * DISTINCT internal functions vary INDEPENDENTLY of the number of calls, so the
+     * two cost axes (N = calls, M = functions in the registry) can be swept separately.
      */
     @JvmStatic
-    fun withLambdaCalls(stepsNumber: Int): Workflow {
-        val steps = (0 until stepsNumber).map { idx ->
+    fun withDistinctInternalCalls(
+        callCount: Int,
+        distinctFunctionCount: Int,
+        baseName: String = "benchFn"
+    ): Workflow {
+        val steps = (0 until callCount).map { idx ->
             Step(
                 STEP_NAME + idx,
-                "Lambda call step example",
+                "Distinct internal call step example",
                 StepType.CALL,
-                StepContextGenerator.lambdaCall(idx)
+                StepContextGenerator.internalCall("$baseName${idx % distinctFunctionCount}")
             )
         }
         return Workflow(
@@ -396,6 +403,47 @@ object WorkflowGenerator {
             WORKFLOW_DESCRIPTION,
             WORKFLOW_INPUT,
             current,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P12 helper. Builds a workflow with a SINGLE Choice step carrying exactly [branchCount]
+     * conditions, isolating the render cost of a Choice's branch width from step count/nesting.
+     */
+    @JvmStatic
+    fun withChoiceBranches(branchCount: Int): Workflow {
+        val step = Step(
+            STEP_NAME,
+            "Choice step example",
+            StepType.CONDITIONAL,
+            StepContextGenerator.choiceWithConditions(branchCount)
+        )
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            listOf(step),
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P12 helper. Builds a workflow with a SINGLE Parallel step carrying exactly [branchCount]
+     * branches (each holding [leafStepsPerBranch] leaf calls), isolating the render cost of a
+     * Parallel's branch width. Unlike [withParallelMultipleBranches] (which chunks a flat step
+     * total into several separate Parallel blocks of fixed bucket size), this keeps a single
+     * block so branch width is the only varying axis.
+     */
+    @JvmStatic
+    fun withParallelBranchWidth(branchCount: Int, leafStepsPerBranch: Int = 1): Workflow {
+        val leaves = (0 until leafStepsPerBranch).map { independent("INNER$STEP_NAME", it) }
+        val step = parallelMultipleBranch(leaves, branchCount)
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            listOf(step),
             WORKFLOW_RESULT
         )
     }

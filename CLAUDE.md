@@ -115,9 +115,20 @@ For thesis-grade numbers use `-f 3` on a dedicated machine.
 - **JDK 21 runtime.** `System.setSecurityManager` is unavailable, so code paths that call
   `kotlin.system.exitProcess` (e.g. `logPropertyMissing` via `setProjectData("")`) are **not
   unit-testable in-process** — leave them untested and documented.
-- **`FunctionRegistryStore.resolveUrl` re-reads and re-parses the whole registry file on every
-  call** (no in-memory cache). Fine for small registries; O(N·M) if the registry grows. Relevant
-  to benchmark P3 and a known optimization opportunity.
+- **`FunctionRegistryStore.resolveUrl`/`tryResolveEntry`/`resolveEntry` re-read and re-parse the
+  whole registry file on every call** (no in-memory cache). Fine for small registries; O(N·M) if
+  the registry grows. `resolveUrl` is exercised by benchmarks P3/P6/P7; `tryResolveEntry` is the
+  same anti-pattern reached from the real auto-deploy resolvers
+  (`AwsInternalFunctionResolver`/`WorkflowInternalFunctionResolver`), quantified by P10/P11 — a
+  known optimization opportunity, not yet applied to those two classes.
+- **`GoogleAccessTokenProvider`'s default constructor arg calls `GoogleCredentials.getApplicationDefault()`
+  eagerly** — and so do `CloudRunV2ServiceInspector()`/`CloudRunLocationsV1RestClient()`, which
+  default-construct a `GoogleAccessTokenProvider` themselves. Just *instantiating* either class
+  with no-arg defaults tries to resolve real Application Default Credentials and fails/hangs
+  without `gcloud auth application-default login` configured — even if no method that actually
+  needs a token is ever called. Local-only tests/benchmarks that construct these classes (e.g. P11)
+  must pass an explicit `GoogleAccessTokenProvider(credentials = GoogleCredentials.create(AccessToken(...)))`
+  to avoid touching ADC.
 - `.gradle/` is (unfortunately) tracked in the repo; avoid committing its churn — `git checkout --`
   it before committing.
 

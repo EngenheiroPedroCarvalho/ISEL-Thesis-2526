@@ -1,0 +1,13 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit","Param: m"
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveNaive","avgt",1,5,9828.779799,790.629187,"us/op",10
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveNaive","avgt",1,5,11952.401139,9485.644621,"us/op",20
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveNaive","avgt",1,5,10898.707459,280.594685,"us/op",50
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveNaive","avgt",1,5,12118.118873,459.965710,"us/op",100
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveNaive","avgt",1,5,14964.073985,714.597310,"us/op",200
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveNaive","avgt",1,5,43244.642267,6667.812427,"us/op",1000
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveOptimized","avgt",1,5,237.401682,47.507373,"us/op",10
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveOptimized","avgt",1,5,308.114748,340.085394,"us/op",20
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveOptimized","avgt",1,5,267.573899,166.561972,"us/op",50
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveOptimized","avgt",1,5,275.094507,115.510558,"us/op",100
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveOptimized","avgt",1,5,323.670208,81.365048,"us/op",200
+"costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySize.resolveOptimized","avgt",1,5,748.723498,43.421723,"us/op",1000

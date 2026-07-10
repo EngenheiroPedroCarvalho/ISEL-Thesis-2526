@@ -142,12 +142,12 @@ local e explicar que as classes de *deployment* na cloud ficam naturalmente fora
 
 ---
 
-## 5. Testes de desempenho (JMH) — P1 a P8
+## 5. Testes de desempenho (JMH) — P1 a P9
 
 Reutilizam o módulo `benchmark/` (JMH 1.37) e os geradores de workflows
 (`generator/WorkflowGenerator`, `StepGenerator`, `StepContextGenerator`, estendidos com
 `withParameterizedCalls`, `withInternalCalls`, `withExternalCalls`, `withNestedSteps`,
-`withLambdaCalls`, `callWithParameters`, `internalCall`, `externalCall`, `lambdaCall`). **Todos
+`withDistinctInternalCalls`, `callWithParameters`, `internalCall`, `externalCall`). **Todos
 medem apenas renderização/resolução (CPU local)** — os benchmarks de *deployment* na cloud não
 são usados.
 
@@ -156,8 +156,8 @@ são usados.
 CSV (`-rf csv`) e ajustar uma curva aos pontos.
 
 > **Resultados já executados:** ver `benchmark/results/RESULTS.md` (tabelas + conclusões) e os
-> gráficos `benchmark/results/P1_*.png … P8_*.png`. Gerados com
-> `java -cp benchmark/target/benchmarks.jar org.openjdk.jmh.Main "...metrics.Benchmark(Rendering|InternalCall|Resolution).*" -f 1 -wi 3 -i 5 -w 1 -r 1 -rf csv -rff benchmark/results/jmh-results.csv`
+> gráficos `benchmark/results/P1_*.png … P12_*.png`. Gerados com
+> `java -cp benchmark/target/benchmarks.jar org.openjdk.jmh.Main "...metrics.Benchmark(Rendering|InternalCall|Resol|Registry|Aws|Google).*" -f 1 -wi 3 -i 5 -w 1 -r 1 -rf csv -rff benchmark/results/jmh-results.csv`
 > e `python3 benchmark/results/plot_benchmarks.py`.
 
 | Benchmark | Pergunta / objetivo | Variável | O que se espera |
@@ -168,8 +168,12 @@ CSV (`-rf csv`) e ajustar uma curva aos pontos.
 | `metrics/BenchmarkRenderingAwsVsGcp.kt` (**P4**) | O renderizador **AWS** tem custo comparável ao **GCP**? | renderer AWS vs. GCP, ao longo de N | Mesma ordem de grandeza; observação, não veredicto. |
 | `metrics/BenchmarkRenderingByNesting.kt` (**P5**) | O que degrada: o **número** de funções ou a **complexidade estrutural**? | profundidade de aninhamento, total de passos fixo | Distinguir efeito do nº total de nós vs. profundidade; aninhamento muito profundo pode revelar limites de recursão. |
 | `metrics/BenchmarkRegistryScaling.kt` (**P6**) | `FunctionRegistryStore.resolveUrl` não tem cache: cada chamada relê e reparsa o ficheiro do registo inteiro. Qual o custo real disso à medida que o **registo cresce**, independentemente do nº de chamadas do workflow? | `@Param n` (chamadas internas) × `@Param m` (funções já registadas), `resolveAllExternal` como controlo (nunca toca o registo) | Custo cresce com `n` **e** com `m` (O(N·M)); `resolveAllExternal` deve manter-se ~constante em `m`, confirmando que o efeito é especificamente do I/O+parsing do registo. Quantifica o problema já identificado nos "Gotchas" do `CLAUDE.md` e serve de baseline para justificar uma futura cache em memória. |
-| `metrics/BenchmarkResolutionOptimization.kt` (**P7**) | Qual o ganho real de ler o registo **uma só vez** por `resolve(workflow)` em vez de por chamada? | `@Param n × @Param m`, naive vs. optimized, na mesma execução | *Speedup* de ~200×; a resolução passa de Θ(N·M) para Θ(N+M). |
-| `metrics/BenchmarkRenderingLambdaVsApiGateway.kt` (**P8**) | Renderizar uma chamada **interna** (`lambda:invoke`, já resolvida) é mais barato que uma **externa** (`apigateway:invoke`)? Nenhum benchmark anterior renderizava chamadas internas — P1/P2/P4/P5 só renderizam externas; P3/P6/P7 só medem `resolve()`, nunca renderizam. | `@Param n ∈ {1..200}`, AWS apenas (GCP não distingue) | `lambda:invoke` mais barato (menos campos por chamada); confirmado: ~1,75× mais rápido a N=200. |
+| `metrics/BenchmarkResolutionOptimization.kt` (**P7**) | Qual o ganho real de ler o registo **uma só vez** por `resolve(workflow)` em vez de por chamada? | `@Param n × @Param m`, sem cache vs. com cache, na mesma execução | *Speedup* de ~200×; a resolução passa de Θ(N·M) para Θ(N+M). |
+| `metrics/BenchmarkResolveWorkflowByFunctionsAndCalls.kt` (**P8**) | Custo de **resolução** de um workflow real (sem render) ao longo dos seus dois eixos: nº de funções **distintas** (F) × nº de **chamadas** (N), com o registo **M=F**, com e sem a otimização de leitura? | `@Param f ∈ {1..50}` × `@Param n ∈ {1..200}`, sem cache vs. com cache | sem cache dominado por N e ~indiferente a F (Θ(N·M) com M=F pequeno); com cache quase plano; *speedup* ~44× a N=50, ~110× a N=200. |
+| `metrics/BenchmarkResolveWorkflowByRegistrySize.kt` (**P9**) | Eixo complementar do P8: efeito do **tamanho do registo** (M) na resolução, com F=10 e N=50 fixos (registo com padding além de F)? | `@Param m ∈ {10..1000}`, sem cache vs. com cache | sem cache linear em M (Θ(N·M)); com cache quase plano (Θ(N+M)); *speedup* ~41× (M=10) → ~58× (M=1000). |
+| `metrics/BenchmarkAwsInternalFunctionResolution.kt` (**P10**) | Qual o custo real do glue de auto-deploy AWS (`AwsInternalFunctionResolver.resolve`, o caminho de produção da unificação)? Nunca foi corrigido com a leitura única do P7. | `@Param f ∈ {1..50}` × `@Param n ∈ {1..200}`, registo pré-populado (M=F, sempre *hit*) | Mesmo padrão Θ(N·M) do P8 "sem cache" — dominado por N, ~indiferente a F. |
+| `metrics/BenchmarkGoogleInternalFunctionResolution.kt` (**P11**) | Gémeo GCP do P10: custo real de `WorkflowInternalFunctionResolver.resolve`. Registo com URLs `.cloudfunctions.net` (1st-gen) para nunca tocar Cloud Run/ADC. | `@Param f ∈ {1..50}` × `@Param n ∈ {1..200}` | Mesmo padrão Θ(N·M), magnitude semelhante ao P10. |
+| `metrics/BenchmarkRenderingByBranchWidth.kt` (**P12**) | Custo de renderização vs. largura de um `Choice` (nº de condições) ou `Parallel` (nº de branches) — eixo nunca medido em P1/P2/P4/P5 (só variam CALL). | `@Param branchWidth ∈ {1..100}`, Choice vs. Parallel, AWS vs. GCP | Ambos ~lineares na largura, nos dois providers; AWS ligeiramente mais caro que GCP em toda a gama — contraria a hipótese (lida no código) de que a interseção de variáveis do `GoogleParallelRenderer` dominaria, porque os workflows gerados não têm variáveis em scope. |
 
 ---
 
@@ -180,7 +184,7 @@ CSV (`-rf csv`) e ajustar uma curva aos pontos.
 | Testes unitários | `deployment/` (Parte B, Maven) | **148 testes**, 0 falhas (5 `@Ignore`/`@Disabled` por exigirem cloud) |
 | Testes unitários | `QuickFaaS-Deployment/` (Parte A, Gradle) | **18 testes**, 0 falhas |
 | Cobertura | ambos | JaCoCo, focada na lógica local (ver secção 4) |
-| Desempenho | `benchmark/` (JMH) | P1–P8 compilam e correm localmente |
+| Desempenho | `benchmark/` (JMH) | P1–P9 compilam e correm localmente |
 
 **Fora de âmbito (trabalho futuro):** testes de integração reais contra AWS/GCP, tempo de
 deployment end-to-end, mutation testing, property-based, fuzzing, métricas estáticas e concorrência.
