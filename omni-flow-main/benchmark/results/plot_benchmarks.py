@@ -426,6 +426,21 @@ def _load_registry_write(csv_path):
     return data
 
 
+_KEY_MATCH_SERIES = {
+    "resolveExactMatch": "Exact match (O(1)/lookup)",
+    "resolveSuffixMatch": "Suffix match, region-qualified (O(M)/lookup)",
+}
+
+
+def plot_p14(csv_path, out_dir):
+    return _plot_pipeline(
+        csv_path, out_dir, "BenchmarkResolutionKeyMatchStrategy",
+        "P14 — Exact vs. suffix match no resolver \"com cache\" — F=10/N=50 fixos",
+        "Nº de funções no registo (M)",
+        "P14_resolution_key_match_strategy.png",
+        series=_KEY_MATCH_SERIES)
+
+
 def plot_p13(csv_path, out_dir):
     """P13 - cost of K sequential FunctionRegistryStore.put() calls starting from a registry of
     M0 entries, one curve per M0. Complements P6-P11 (read side) with the write side: put()
@@ -552,6 +567,11 @@ def main():
     p13_out = plot_p13(p13_csv, OUT)
     if p13_out:
         made.append(p13_out)
+
+    p14_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p14.csv")
+    p14_out = plot_p14(p14_csv, OUT)
+    if p14_out:
+        made.append(p14_out)
 
     s2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "artifact-size.csv")
     s2_out = plot_artifact_size(s2_csv, OUT)

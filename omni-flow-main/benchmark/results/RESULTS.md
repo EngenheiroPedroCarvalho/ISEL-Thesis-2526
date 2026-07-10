@@ -546,6 +546,52 @@ máquina dedicada para ser conclusiva nesse ponto específico.
 
 ---
 
+## P14 — Correspondência exata vs. por sufixo no resolver "com cache"
+
+**Objetivo.** P7–P9 provaram que ler o registo uma só vez transforma a resolução de Θ(N·M) em
+Θ(N+M). Mas isso pressupõe que cada `resolveUrlIn` acerta em O(1) (`all[functionName]`). O próprio
+método suporta um segundo caminho — correspondência por **sufixo** (`"region/functionName"`, para
+desambiguação regional) — que, ao falhar o *match* exato, faz um `filterKeys` sobre **todo** o mapa
+em memória: O(M) por chamada. Nenhum benchmark anterior testou este caminho (P6–P11 usam sempre
+nomes exatos). Mede-se aqui, com F=10/N=50 fixos (mesmo ponto do P9) e M a variar, o custo do
+resolver "com cache" quando o registo tem chaves **exatas** (o caso já medido, aqui como controlo
+cruzado com o P9) vs. quando tem chaves **qualificadas por região** — o workflow continua a
+referenciar nomes nus, pelo que o *match* exato falha sempre e cada chamada paga o scan O(M).
+
+**Tempo de resolução (µs) — exact match vs. suffix match, F=10 / N=50 fixos:**
+
+| M (registo) | exact match (µs) | suffix match (µs) | razão |
+|---:|---:|---:|---:|
+| 10 | 219 | 228 | ~1,04× |
+| 20 | 224 | 241 | ~1,07× |
+| 50 | 250 | 278 | ~1,11× |
+| 100 | 259 | 333 | ~1,29× |
+| 200 | 309 | 442 | ~1,43× |
+| 1000 | 768 | 1 456 | ~1,90× |
+
+![P14 — Exact vs. suffix match](P14_resolution_key_match_strategy.png)
+
+**Resultado.** A coluna *exact match* reproduz de perto o "com cache" já medido no P9 no mesmo
+ponto F=10/N=50 (P9: 237→749 µs de M=10 a M=1000; aqui: 219→768 µs) — confirmação cruzada de que
+`resolveExactMatch` é arquitetonicamente o mesmo resolver, só com um registo diferente. A coluna
+*suffix match* fica sistematicamente **acima**, e a razão entre as duas cresce de forma monótona
+com M: ~1,04× a M=10, ~1,90× a M=1000 — o dobro do custo, apenas por as chaves do registo estarem
+qualificadas por região em vez de serem nomes nus, sem qualquer outra diferença.
+
+**Justificação.** `resolveExactMatch` = 1 leitura O(M) + N *lookups* O(1) = **Θ(N+M)**, igual ao
+P9. `resolveSuffixMatch` = 1 leitura O(M) + N *scans* O(M) = **Θ(N+N·M) ≈ Θ(N·M)** — a mesma classe
+de complexidade do resolver "sem cache" do P7-P9, só que agora reintroduzida *dentro* do resolver já
+corrigido, por uma particularidade do formato das chaves e não por falta de otimização de leitura.
+Note-se que a magnitude absoluta aqui (µs, não ms) fica muito abaixo do "sem cache" do P8/P9 (que
+chega às dezenas de ms): ali o M é lido do **disco** a cada chamada (I/O + parsing); aqui o *scan*
+de sufixo é sobre um mapa **já em memória** (`registrySnapshot`, carregado uma única vez), pelo que
+o custo por elemento é ordens de grandeza mais barato. A mudança de classe de complexidade
+(O(1)→O(M) por *lookup*) é real e mensurável — visível na razão crescente entre as duas colunas —
+mas só se tornaria dramática em termos absolutos com um N muito maior ou um registo muito maior do
+que os testados aqui (o custo extra escala com N·M, não só M).
+
+---
+
 ## S1 e S2 — Métricas de tamanho (inspiradas no "ZIP size (KB)" do QuickFaaS)
 
 A avaliação inicial do QuickFaaS mediu o "ZIP size (KB)" do *bundle* de deployment (agnóstico

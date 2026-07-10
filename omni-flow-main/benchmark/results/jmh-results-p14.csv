@@ -1,0 +1,13 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit","Param: m"
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch","avgt",1,5,219.286136,5.526538,"us/op",10
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch","avgt",1,5,224.311513,7.570922,"us/op",20
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch","avgt",1,5,249.772718,41.514989,"us/op",50
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch","avgt",1,5,258.836304,2.153027,"us/op",100
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch","avgt",1,5,309.402306,3.625124,"us/op",200
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch","avgt",1,5,768.447021,95.649845,"us/op",1000
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch","avgt",1,5,227.680284,1.714521,"us/op",10
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch","avgt",1,5,240.732274,2.504504,"us/op",20
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch","avgt",1,5,278.023500,3.344997,"us/op",50
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch","avgt",1,5,332.544175,4.066406,"us/op",100
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch","avgt",1,5,442.437677,4.379403,"us/op",200
+"costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch","avgt",1,5,1456.266794,55.897659,"us/op",1000
