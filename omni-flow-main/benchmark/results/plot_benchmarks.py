@@ -410,6 +410,56 @@ def plot_p12(csv_path, out_dir):
         series=_BRANCH_WIDTH_SERIES)
 
 
+def _load_registry_write(csv_path):
+    """P13 has two @Param dimensions (m0, k) and a single method (putKSequential)."""
+    rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
+    err_col = next((c for c in rows[0].keys() if "Error" in c), None)
+    data = {}  # data[(m0, k)] = (score, err)
+    for r in rows:
+        if r["Benchmark"].split(".")[-2] != "BenchmarkRegistryWriteScaling":
+            continue
+        m0 = int(float(r["Param: m0"]))
+        k = int(float(r["Param: k"]))
+        score = float(r["Score"])
+        err = float(r[err_col]) if err_col and (r.get(err_col) or "").strip() not in ("", "NaN") else 0.0
+        data[(m0, k)] = (score, err)
+    return data
+
+
+def plot_p13(csv_path, out_dir):
+    """P13 - cost of K sequential FunctionRegistryStore.put() calls starting from a registry of
+    M0 entries, one curve per M0. Complements P6-P11 (read side) with the write side: put()
+    re-reads and rewrites the whole file per call, so K registrations cost Theta(K*M0 + K^2)."""
+    if not os.path.exists(csv_path):
+        print(f"  [skip] no P13 csv at {csv_path}")
+        return None
+    data = _load_registry_write(csv_path)
+    if not data:
+        print("  [skip] no data for BenchmarkRegistryWriteScaling")
+        return None
+    m0s = sorted({m0 for (m0, _) in data})
+    ks = sorted({k for (_, k) in data})
+    colours = plt.cm.viridis([i / max(1, len(m0s) - 1) for i in range(len(m0s))])
+    plt.figure(figsize=(8, 5))
+    for i, m0 in enumerate(m0s):
+        pts = [(k, data[(m0, k)][0]) for k in ks if (m0, k) in data]
+        plt.plot([x for x, _ in pts], [y for _, y in pts],
+                 marker="o", linestyle="--", color=colours[i], label=f"M0={m0}")
+    plt.yscale("log")
+    plt.xscale("log")
+    plt.title("P13 — Custo de escrita incremental no registo (put) — M0 × K")
+    plt.xlabel("Nº de escritas sucessivas (K, escala log)")
+    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.grid(True, alpha=0.3, which="both")
+    plt.legend(fontsize=8)
+    plt.tight_layout()
+    out = os.path.join(out_dir, "P13_registry_write_scaling.png")
+    plt.savefig(out, dpi=130)
+    plt.close()
+    print(f"  [ok] {out}")
+    return out
+
+
 def plot_artifact_size(csv_path, out_dir):
     """S2 - size in KB of the rendered workflow artifact (ASL JSON vs GCP YAML) vs N."""
     if not os.path.exists(csv_path):
@@ -497,6 +547,11 @@ def main():
     p12_out = plot_p12(p12_csv, OUT)
     if p12_out:
         made.append(p12_out)
+
+    p13_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p13.csv")
+    p13_out = plot_p13(p13_csv, OUT)
+    if p13_out:
+        made.append(p13_out)
 
     s2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "artifact-size.csv")
     s2_out = plot_artifact_size(s2_csv, OUT)

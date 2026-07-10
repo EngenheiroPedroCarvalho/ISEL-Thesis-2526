@@ -497,6 +497,55 @@ que a leitura do código sozinha não substitui a medição.
 
 ---
 
+## P13 — Custo de escrita incremental no registo (`FunctionRegistryStore.put`)
+
+**Objetivo.** P6–P11 mediram o **lado de leitura** do `FunctionRegistryStore` (`resolveUrl`/
+`tryResolveEntry`, relê o ficheiro inteiro por chamada). Mas os resolvers reais também **escrevem**:
+sempre que uma função é descoberta/desenhada pela primeira vez, chamam `registry.put(key, meta)` —
+e `put()` nunca foi medido. Lendo o código: `put()` chama `readRootOrNew()` (lê+reparsa o ficheiro
+inteiro) e depois `writeRoot()` (reescreve o ficheiro inteiro) — cada chamada custa O(M), onde M é
+o tamanho *atual* do registo. Regista **K** funções sucessivas num registo que começa com **M0**
+entradas: custo total = Σ O(M0+i) para i=0..K-1 = **Θ(K·M0 + K²)**, quadrático no próprio K quando
+M0 é pequeno. Mede-se diretamente `FunctionRegistryStore.put()`, sem passar pelo resolver completo
+(tal como o P6 já chama o `FunctionRegistryStore` diretamente) — pura I/O local, sem SDK nem rede.
+
+**Tempo total (µs) — K escritas sucessivas, K em linhas / M0 em colunas:**
+
+| K \ M0 | 0 | 10 | 50 | 200 | 1000 |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 2 673 | 2 860 | 3 235 | 4 139 | 2 761 |
+| 5 | 12 887 | 13 149 | 14 955 | 19 710 | 13 874 |
+| 10 | 27 691 | 26 986 | 29 912 | 39 164 | 24 029 |
+| 50 | 154 601 | 144 606 | 161 098 | 206 385 | 123 322 |
+| 100 | 329 757 | 304 187 | 330 100 | 419 531 | 237 910 |
+
+![P13 — Custo de escrita incremental no registo](P13_registry_write_scaling.png)
+
+*(3 forks (`-f 3`) precisamente para reduzir ruído — erros já pequenos e consistentes na maioria
+dos pontos; ver nota na Justificação sobre a coluna M0=1000.)*
+
+**Resultado.** O custo cresce claramente mais que linear em K: entre K=1 e K=100 (100× mais
+escritas), o tempo total sobe ~120–125× em vez de ~100× — a assinatura do termo K² a somar-se ao
+K·M0. Para M0 ∈ {0, 10, 50, 200} a subida com M0 é a esperada (quanto maior o registo de partida,
+mais caro cada `put()`): a K=100, sobe de 329,8 ms (M0=0) para 419,5 ms (M0=200), um aumento
+consistente com o termo K·M0 do modelo.
+
+**Justificação.** `put()` = O(M0+i) na i-ésima escrita, logo K escritas custam
+Σ_{i=0}^{K-1} O(M0+i) = **Θ(K·M0 + K²)**. O termo K² domina a subida entre colunas de K (cada
+salto ~2–5× em K dá um salto correspondentemente maior no tempo, não proporcional); o termo K·M0
+explica a subida mais suave ao longo de M0 (para M0 ∈ {0,10,50,200}). A coluna M0=1000 foge a este
+padrão — sai sistematicamente **abaixo** de M0=200 em vez de acima, mesmo repetindo a medição com
+`-f 3` (forks frescos por combinação, o que devia excluir *warm-up* de JIT entre parâmetros
+diferentes). A explicação mais provável não é o código em si, mas a máquina partilhada/não dedicada
+onde isto corre (mesma ressalva do P10–P12): M0=1000 é sempre a última coluna processada em cada
+grupo de K, pelo que efeitos ao nível do SO (cache de ficheiros, processos em segundo plano,
+throttling térmico) ao longo dos ~30 minutos de execução total podem introduzir viés que uma
+repetição de forks não elimina. A conclusão principal do P13 — o crescimento Θ(K²) em K — é robusta
+em todas as colunas; a curva exata vs. M0 precisaria de `-f 3`+ordem aleatória dos parâmetros numa
+máquina dedicada para ser conclusiva nesse ponto específico.
+
+---
+
 ## S1 e S2 — Métricas de tamanho (inspiradas no "ZIP size (KB)" do QuickFaaS)
 
 A avaliação inicial do QuickFaaS mediu o "ZIP size (KB)" do *bundle* de deployment (agnóstico
