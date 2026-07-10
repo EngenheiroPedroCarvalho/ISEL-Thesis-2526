@@ -1,4 +1,4 @@
-# Resultados dos testes de desempenho (P1–P9) e de tamanho (S1–S2)
+# Resultados dos testes de desempenho (P1–P14) e de tamanho (S1–S2)
 
 Medições locais de renderização (DSL → Amazon States Language / GCP Workflows YAML) e de resolução
 de funções internas, sem chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
@@ -9,10 +9,12 @@ de funções internas, sem chamadas à nuvem. Geradas com JMH a partir do módul
   resultado para impedir *dead-code elimination*.
 - **Execução:** `-f 1 -wi 3 -i 5 -w 1 -r 1` — uma *fork* da JVM, 3 iterações de aquecimento e 5 de
   medição (1 s cada), para medir o código já compilado pelo JIT.
-- **Dados brutos:** `jmh-results.csv` (P1–P5), `jmh-results-p6.csv` (P6, com a dimensão
-  `Param: m`), `jmh-results-p7.csv` (P7 antes/depois) e `jmh-results-p8.csv`/`jmh-results-p9.csv`
-  (P8–P9, resolução do workflow real). Gráficos: `P1_*.png … P9_*.png` (P8 em duas figuras
-  `P8a`/`P8b`), regeneráveis com `python3 plot_benchmarks.py`.
+- **Dados brutos:** `jmh-results.csv` (P1–P5 e P12, um só `@Param`), `jmh-results-p6.csv` (P6, com
+  a dimensão `Param: m`), `jmh-results-p7.csv` (P7 antes/depois), `jmh-results-p8.csv`/
+  `jmh-results-p9.csv` (P8–P9, resolução do workflow real), `jmh-results-p10.csv`/`jmh-results-p11.csv`
+  (P10–P11, resolvers reais AWS/GCP), `jmh-results-p13.csv` (P13, escrita no registo) e
+  `jmh-results-p14.csv` (P14, exact vs. suffix match). Gráficos: `P1_*.png … P14_*.png` (P7 e P8 em
+  duas figuras cada, `P7a`/`P7b` e `P8a`/`P8b`), regeneráveis com `python3 plot_benchmarks.py`.
 - **Modelo de custo:** a renderização é uma travessia *depth-first*
   (`DepthFirstNodeVisitorTraversor` + `NodeContextVisitor`) que visita cada nó da AST uma vez e
   acumula texto num `StringBuilder` partilhado (`IndentedRenderingContext.append`). Como o `append`
@@ -21,6 +23,34 @@ de funções internas, sem chamadas à nuvem. Geradas com JMH a partir do módul
 - **Ressalva:** ambiente partilhado e configuração reduzida; os valores absolutos servem para
   comparar tendências e relações, não como números definitivos de hardware. Para a versão final,
   repetir com `-f 3` e máquina dedicada.
+
+## Notação — o que N, M e F representam
+
+Estes três símbolos aparecem ao longo de quase todas as secções seguintes. Têm sempre o mesmo
+significado — o que muda, secção a secção, é a **relação entre eles** (fixos? independentes?
+M=F?):
+
+- **N** — número de **chamadas** no workflow (passos `CALL` que disparam uma resolução). É sempre
+  esta a unidade que se soma/repete N vezes (N leituras, N *lookups*, N escritas).
+- **F** — número de funções **internas distintas** que o workflow referencia. Só existe a partir do
+  P8 (antes disso não havia necessidade de distinguir "quantas chamadas" de "quantas funções
+  diferentes"): as N chamadas distribuem-se *round-robin* pelas F funções (ex.: F=4/N=6 → cada
+  função é chamada 1 ou 2 vezes).
+- **M** — número de entradas no **registo** (`function-registry.json`) no momento em que é
+  lido/escrito. **Não é o mesmo que F** — M é o tamanho físico do ficheiro; F é quantas dessas
+  entradas o workflow *usa*. Um registo pode ter M=1000 entradas e o workflow só referenciar F=10
+  delas (as outras M-F são "ruído"/funções de outros workflows).
+
+**Como M e F se relacionam, secção a secção:**
+
+| Secções | Relação M ↔ F | O que representa |
+|---|---|---|
+| P3 | F não se aplica; M fixo em 1 | registo de uma função só, isola o efeito de N |
+| P6, P7 | F não se aplica; M e N variam independentemente | registo genérico de M entradas, sem ligação às funções que o workflow chama |
+| **P8, P10, P11** | **M = F** | registo "do tamanho certo": contém exatamente as F funções que o workflow usa, nem mais nem menos |
+| **P9, P14** | **M ≥ F**, com F e N fixos | registo "sobredimensionado": as M-F entradas extra nunca são chamadas, só inflacionam o custo de cada leitura/scan do ficheiro inteiro |
+| P13 | Não há F (é o lado de **escrita**, não de resolução); usa **M0** (tamanho inicial do registo) e **K** (nº de escritas sucessivas) em vez de M/N | mesmo papel de M e N, mas nomeados de forma diferente por não se tratar de resolução de chamadas |
+| P12 | Nenhum dos três; usa **branchWidth** (nº de condições/branches) | eixo de renderização, não de registo |
 
 ---
 
