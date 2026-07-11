@@ -9,8 +9,8 @@ de funções internas, sem chamadas à nuvem. Geradas com JMH a partir do módul
   resultado para impedir *dead-code elimination*.
 - **Execução:** `-f 1 -wi 3 -i 5 -w 1 -r 1` — uma *fork* da JVM, 3 iterações de aquecimento e 5 de
   medição (1 s cada), para medir o código já compilado pelo JIT.
-- **Dados brutos:** `jmh-results.csv` (P1–P5 e P12, um só `@Param`), `jmh-results-p6.csv` (P6, com
-  a dimensão `Param: m`), `jmh-results-p7.csv` (P7 antes/depois), `jmh-results-p8.csv`/
+- **Dados brutos:** `jmh-results.csv` (P1–P3, P5 e P12, um só `@Param`), `jmh-results-p6.csv` (P6,
+  com a dimensão `Param: r`), `jmh-results-p7.csv` (P7 antes/depois), `jmh-results-p8.csv`/
   `jmh-results-p9.csv` (P8–P9, resolução do workflow real), `jmh-results-p10.csv`/`jmh-results-p11.csv`
   (P10–P11, resolvers reais AWS/GCP), `jmh-results-p13.csv` (P13, escrita no registo),
   `jmh-results-p14.csv` (P14, exact vs. suffix match), `jmh-results-p15.csv` (P15, mistura I/E) e
@@ -49,7 +49,7 @@ R=F? tudo interno? misto?):
   à mesma função contam 2 para I). Só existe a partir do P15.
 - **E** — número de chamadas a **funções externas** no workflow (idem, repetições contam). Só
   existe a partir do P15. **N = I + E**: até ao P14 todo workflow era homogéneo (I=N/E=0 em
-  P3/P6-P14, ou I=0/E=N em P1/P2/P4/P5) — P15/P16 são os primeiros a misturar os dois tipos de
+  P3/P6-P14, ou I=0/E=N em P1/P2/P5) — P15/P16 são os primeiros a misturar os dois tipos de
   chamada no mesmo workflow.
 
 **Como R, F e I/E se relacionam, secção a secção:**
@@ -70,7 +70,12 @@ R=F? tudo interno? misto?):
 ## P1 — Degradação com o número de funções
 
 **Objetivo.** Medir como o tempo de renderização escala com o número de funções (passos) e se a
-complexidade é linear ou supralinear.
+complexidade é linear ou supralinear. Responde também à pergunta original do P4 — "o renderizador
+AWS, a extensão da contribuição, introduz penalização de desempenho face ao renderizador GCP já
+existente?" — cuja secção própria foi fundida aqui: ambos os testes mediam exatamente o mesmo
+código (`WorkflowGenerator.withIndependentSteps` + os mesmos dois renderizadores), só com nomes de
+classe e uma grelha de N ligeiramente diferentes; a numeração das restantes secções (P5–P16)
+mantém-se inalterada.
 
 > **Nota de âmbito:** as chamadas são externas por design (`WorkflowGenerator.withIndependentSteps`
 > → `StepContextGenerator.independentCall()`, `host`/`path` literais, `internalFunction = null`),
@@ -89,13 +94,21 @@ complexidade é linear ou supralinear.
 ![P1 — Tempo de renderização vs número de funções](P1_rendering_scalability.png)
 
 **Resultado.** O tempo cresce de forma aproximadamente **linear** (≈4 µs por função adicional, em
-ambos os destinos), sem comportamento quadrático.
+ambos os destinos), sem comportamento quadrático. Comparando os dois destinos diretamente (a
+pergunta do P4): o GCP fica sistematicamente um pouco mais caro que o AWS em todo o intervalo — no
+extremo (N=200), AWS 810,9 µs vs GCP 901,2 µs (~11% mais caro) — mas a leitura correta é de
+**equivalência assintótica**, não de superioridade clara de um lado: os pontos maiores têm barras de
+erro largas (pressão do recoletor de lixo por realocações do `StringBuilder`, proporcionais ao texto
+gerado, e contenção de CPU no ambiente partilhado) que se sobrepõem entre os dois destinos.
 
 **Justificação.** Um workflow de N passos independentes tem Θ(N) nós na AST; a travessia visita cada
 nó uma vez e cada passo emite texto constante, logo T(N) = a·N + b, com `b` o custo fixo de arranque
 (dominante só para N pequeno). Com concatenação imutável, cada passo recopiaria o prefixo já
 produzido, dando Θ(N²); a linearidade observada confirma a travessia em passagem única com
-`StringBuilder`.
+`StringBuilder`. Os dois renderizadores partilham a mesma travessia e o mesmo mecanismo de
+acumulação de texto, diferindo só no renderizador concreto de cada nó — daí serem ambos Θ(N) e as
+retas só diferirem na constante; a pequena vantagem do AWS à escala é coerente com o YAML do GCP
+exigir mais formatação do que a emissão direta de JSON.
 
 ---
 
@@ -171,35 +184,6 @@ com R = tamanho do registo. O ensaio fixa R = 1, isolando a dependência linear 
 crescer com o número de funções distintas (R ∝ N), a resolução degrada para Θ(N²). Ler o registo
 uma só vez por `resolve(workflow)` reduziria o custo para Θ(N + R) — otimização explorada em P6/P7.
 Em absoluto, o custo é negligenciável face ao *deployment* real (segundos).
-
----
-
-## P4 — Renderizador AWS vs GCP
-
-**Objetivo.** Comparar o renderizador AWS (a extensão da contribuição) com o renderizador GCP já
-existente, para o mesmo workflow, confirmando que a extensão AWS não introduz penalização de
-desempenho.
-
-| N | AWS (µs) | GCP (µs) |
-|---:|---:|---:|
-| 1 | 5,8 | 5,8 |
-| 50 | 221,4 | 233,0 |
-| 100 | 423,0 | 469,5 |
-| 200 | 817,4 | 912,3 |
-
-![P4 — Renderizador AWS vs GCP](P4_aws_vs_gcp.png)
-
-**Resultado.** O renderizador AWS tem custo equivalente ao GCP — mesma ordem de grandeza em todo o
-intervalo, com o GCP ligeiramente mais caro à escala.
-
-**Justificação.** Ambos partilham a travessia e o mecanismo de acumulação de texto, diferindo só
-nos renderizadores concretos de cada nó; são ambos Θ(N) e as retas só diferem nas constantes. A
-pequena vantagem do AWS à escala (~12% em N = 200) é coerente com o YAML do GCP exigir mais
-formatação do que a emissão direta de JSON. Contudo, as barras de erro do AWS são largas nos pontos
-maiores (±115 µs em N = 100; ±185 µs em N = 200) e sobrepõem-se às do GCP: a leitura correta é de
-equivalência assintótica, não de superioridade. A maior variância em N elevado vem da pressão do
-recoletor de lixo (realocações do `StringBuilder`, *garbage* proporcional ao texto) e da contenção
-de CPU no ambiente partilhado, alargando o intervalo de confiança sem alterar a tendência.
 
 ---
 
@@ -507,7 +491,7 @@ de registo — consistente com o P8/P9, onde o termo dominante a F=R pequeno é 
 
 ## P12 — Custo de renderização vs largura de Choice / Parallel
 
-**Objetivo.** P1/P2/P4/P5 variam sempre o mesmo tipo de step (CALL) — nunca a largura de um
+**Objetivo.** P1/P2/P5 variam sempre o mesmo tipo de step (CALL) — nunca a largura de um
 `Choice` (nº de condições) nem de um `Parallel` (nº de branches), apesar do `AmazonChoiceRenderer`/
 `AmazonParallelRenderer` serem praticamente triviais (poucas linhas, sem serialização por item)
 enquanto o `GoogleParallelRenderer.internalEndRender` faz uma **interseção de sets de variáveis**
@@ -784,7 +768,8 @@ nome exato do `finalName`. Detalhe em `TESTING.md` §3.1.
 2. O custo da unificação (resolução das funções internas) é linear e pequeno por chamada (P3); o P6
    quantifica a degradação **Θ(N·R)**: ≈ 181 µs (fixo, I/O + parsing) + 0,57 µs por função
    registada — dominado pelo termo fixo até R ≈ 320 e mitigável lendo o registo uma só vez.
-3. O renderizador AWS é competitivo com o GCP, dentro da margem de erro (P4).
+3. O renderizador AWS é competitivo com o GCP, dentro da margem de erro (P1; a comparação tinha
+   originalmente uma secção P4 própria, fundida no P1 por medir exatamente o mesmo código).
 4. A profundidade estrutural é um terceiro fator de custo, mais pronunciado no AWS (P5).
 5. O tamanho do registo (P6) é uma quarta dimensão, independente de N; para projetos reais o fator
    dominante é o número de releituras do ficheiro, não a sua dimensão.
@@ -804,5 +789,5 @@ nome exato do `finalName`. Detalhe em `TESTING.md` §3.1.
 **Enquadramento global.** Todos os valores estão na ordem dos microssegundos (≤ 1 ms mesmo para 200
 funções): a renderização e a resolução não são o gargalo — o custo dominante é o *deployment* na
 nuvem (segundos). O sobrecusto da unificação é assintoticamente linear e praticamente irrelevante na
-operação real. As ressalvas de variância (P4) decorrem do recoletor de lixo e da partilha de CPU,
+operação real. As ressalvas de variância (P1) decorrem do recoletor de lixo e da partilha de CPU,
 mitigáveis com `-f 3` e máquina dedicada, sem alterar as tendências.

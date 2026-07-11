@@ -41,12 +41,6 @@ PLOTS = {
         {"resolveAllInternal": "Internas (dispara resolução)",
          "resolveAllExternal": "Externas (sem resolução)"},
     ),
-    "BenchmarkRenderingAwsVsGcp": (
-        "P4_aws_vs_gcp.png",
-        "P4 — Renderizador AWS vs GCP",
-        "Número de funções (passos do workflow)",
-        {"renderAslJson": "AWS (ASL JSON)", "renderGcpYaml": "GCP (YAML)"},
-    ),
     "BenchmarkRenderingByNesting": (
         "P5_rendering_by_nesting.png",
         "P5 — Tempo de renderização vs profundidade de aninhamento",
