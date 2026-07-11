@@ -224,18 +224,27 @@ do número de chamadas internas (N). `FunctionRegistryStore.resolveUrl` não tem
 relê e reparsa o ficheiro do registo inteiro (`readAll()`). O P3 fixava R = 1 e só variava N; o P6
 varia as duas dimensões independentemente para caracterizar a dependência em R.
 
+> **Nota de correção.** Esta secção mede a resolução via [`NaiveEndpointResolver`](../src/main/kotlin/costaber/com/github/omniflow/metrics/NaiveEndpointResolver.kt)
+> (`store.resolveUrl()` chamado uma vez por chamada interna — o caminho legado sem cache). Numa
+> versão anterior da classe `BenchmarkRegistryScaling`, ambos os métodos usavam por engano
+> `WorkflowInternalCallEndpointResolver` — o resolver **já otimizado**, que lê o registo uma só vez
+> por `resolve(workflow)` — pelo que o P6 estava, sem se aperceber, a medir Θ(N+R) e a rotulá-lo como
+> Θ(N·R). Os números abaixo já refletem a correção (voltar a usar o caminho naive, como o
+> `resolveNaive` do P7); as tabelas e o ajuste `b`/`c` ficaram, dentro do ruído de medição, muito
+> próximos dos valores originais desta secção.
+
 **Tempo total de `resolveAllInternal` (µs), por combinação (R, N):**
 
 | R \ N | 1 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|
-| 1 | 178,1 | 1772,7 | 9425,9 | 36346,0 |
-| 10 | 186,2 | 1824,6 | 9146,2 | 36713,6 |
-| 50 | 206,5 | 2133,3 | 10206,5 | 40478,3 |
-| 200 | 278,3 | 2773,3 | 13880,6 | 55616,7 |
-| 1000 | 744,6 | 7485,5 | 37316,5 | 149632,1 |
+| 1 | 178,8 | 1799,8 | 9252,9 | 36046,3 |
+| 10 | 185,5 | 1838,8 | 9367,7 | 36729,9 |
+| 50 | 204,3 | 2029,3 | 10803,9 | 40897,3 |
+| 200 | 278,9 | 2775,3 | 14117,2 | 55567,4 |
+| 1000 | 742,5 | 7474,7 | 36701,6 | 148576,7 |
 
-**Controlo `resolveAllExternal`** (nunca toca o registo, independente de R): 0,02 µs (N=1) →
-0,13 µs (N=10) → 0,51 µs (N=50) → 1,97 µs (N=200) — iguais em toda a linha de R, confirmando que o
+**Controlo `resolveAllExternal`** (nunca toca o registo, independente de R): 0,016 µs (N=1) →
+0,090 µs (N=10) → 0,320 µs (N=50) → 1,140 µs (N=200) — iguais em toda a linha de R, confirmando que o
 efeito de R acima é específico do acesso ao registo.
 
 ![P6 — Custo por chamada de resolveUrl() vs tamanho do registo](P6_registry_scaling.png)
@@ -248,19 +257,19 @@ independente de N e crescente com R:
 
 | R | Custo por chamada (µs) |
 |---:|---:|
-| 1 | 181,4 |
-| 10 | 183,8 |
-| 50 | 206,6 |
-| 200 | 277,8 |
-| 1000 | 746,9 |
+| 1 | 181,0 |
+| 10 | 185,1 |
+| 50 | 207,0 |
+| 200 | 279,2 |
+| 1000 | 741,7 |
 
-Ajustando `custo(R) ≈ b + c·R` aos extremos (R=1, R=1000): `b ≈ 181 µs`, `c ≈ 0,57 µs`/função — um
+Ajustando `custo(R) ≈ b + c·R` aos extremos (R=1, R=1000): `b ≈ 180 µs`, `c ≈ 0,56 µs`/função — um
 ajuste que erra <6% nos pontos intermédios (R=10, 50, 200).
 
 **Justificação.** `readAll()` lê o ficheiro e materializa uma `JsonNode` por cada entrada, logo é
 Θ(R). Como `resolveUrl()` corre uma vez por chamada interna, o custo total é T(N, R) = N·(b + c·R) —
-o Θ(N·R) já identificado (mas não medido) no P3. Os dois termos têm origens distintas: `b ≈ 181 µs`
-é o custo fixo por chamada (abrir/ler o ficheiro + `parsing` do envelope JSON); `c ≈ 0,57 µs`/função
+o Θ(N·R) já identificado (mas não medido) no P3. Os dois termos têm origens distintas: `b ≈ 180 µs`
+é o custo fixo por chamada (abrir/ler o ficheiro + `parsing` do envelope JSON); `c ≈ 0,56 µs`/função
 é o custo marginal por entrada (percorrer o nó `functions` e construir o `LinkedHashMap`). `b` domina
 `c·R` até R ≈ 320: para registos realistas (dezenas a poucas centenas de funções), o fator dominante
 não é o tamanho do registo, mas o número de vezes que o ficheiro é reaberto e reparsado (uma vez por
@@ -766,7 +775,7 @@ nome exato do `finalName`. Detalhe em `TESTING.md` §3.1.
 1. A renderização é **linear** no número de funções (P1) e de inputs (P2), sem comportamento
    quadrático.
 2. O custo da unificação (resolução das funções internas) é linear e pequeno por chamada (P3); o P6
-   quantifica a degradação **Θ(N·R)**: ≈ 181 µs (fixo, I/O + parsing) + 0,57 µs por função
+   quantifica a degradação **Θ(N·R)**: ≈ 180 µs (fixo, I/O + parsing) + 0,56 µs por função
    registada — dominado pelo termo fixo até R ≈ 320 e mitigável lendo o registo uma só vez.
 3. O renderizador AWS é competitivo com o GCP, dentro da margem de erro (P1; a comparação tinha
    originalmente uma secção P4 própria, fundida no P1 por medir exatamente o mesmo código).

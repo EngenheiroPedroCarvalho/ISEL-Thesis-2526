@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -29,10 +28,11 @@ import java.util.concurrent.TimeUnit
  *
  * [FunctionRegistryStore.resolveUrl] has no in-memory cache: every call
  * re-reads and re-parses the WHOLE registry file from disk (see
- * [FunctionRegistryStore.readAll]). [WorkflowInternalCallEndpointResolver]
- * calls it once per internal call node it resolves. So resolution cost is
- * O(N*R): N = number of internal calls in the workflow, R = number of
- * functions already in the registry file.
+ * [FunctionRegistryStore.readAll]). [NaiveEndpointResolver] calls it once per
+ * internal call node it resolves, mirroring that legacy per-call re-read path
+ * (the same one [BenchmarkResolutionOptimization]'s `resolveNaive` exercises).
+ * So resolution cost is O(N*R): N = number of internal calls in the workflow,
+ * R = number of functions already in the registry file.
  *
  * P3 ([BenchmarkInternalCallResolution]) already varies N but pins the
  * registry at a single entry (R=1), so the R-dependent half of that cost is
@@ -56,7 +56,7 @@ open class BenchmarkRegistryScaling {
     var r: Int = 0
 
     private lateinit var registryFile: Path
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
+    private lateinit var store: FunctionRegistryStore
 
     private lateinit var internalWorkflow: Workflow
     private lateinit var externalWorkflow: Workflow
@@ -71,7 +71,7 @@ open class BenchmarkRegistryScaling {
         // the real target function plus (r - 1) padding entries, so readAll()
         // has to parse a file with exactly r entries on every resolveUrl call.
         registryFile = Files.createTempFile("omniflow-bench-registry", ".json")
-        val store = FunctionRegistryStore(registryFile)
+        store = FunctionRegistryStore(registryFile)
 
         val functions = mutableMapOf(
             FUNCTION_NAME to FunctionInvocationMetadata(
@@ -87,7 +87,6 @@ open class BenchmarkRegistryScaling {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         internalWorkflow = WorkflowGenerator.withInternalCalls(n, FUNCTION_NAME)
         externalWorkflow = WorkflowGenerator.withExternalCalls(n)
@@ -98,10 +97,11 @@ open class BenchmarkRegistryScaling {
         Files.deleteIfExists(registryFile)
     }
 
-    /** Cost of resolving n internal calls against an r-entry registry file. */
+    /** Cost of resolving n internal calls against an r-entry registry file,
+     *  re-reading and re-parsing the whole file on EVERY call -> O(N*R). */
     @Benchmark
     fun resolveAllInternal(blackhole: Blackhole) {
-        val resolved = resolver.resolve(internalWorkflow, internalCallExtractor)
+        val resolved = NaiveEndpointResolver.resolve(internalWorkflow, store, internalCallExtractor)
         blackhole.consume(resolved)
     }
 
@@ -110,7 +110,7 @@ open class BenchmarkRegistryScaling {
      *  the registry read/parse, not workflow generation itself. */
     @Benchmark
     fun resolveAllExternal(blackhole: Blackhole) {
-        val resolved = resolver.resolve(externalWorkflow, internalCallExtractor)
+        val resolved = NaiveEndpointResolver.resolve(externalWorkflow, store, internalCallExtractor)
         blackhole.consume(resolved)
     }
 
