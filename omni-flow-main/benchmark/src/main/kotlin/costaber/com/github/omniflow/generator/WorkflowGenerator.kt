@@ -324,7 +324,7 @@ object WorkflowGenerator {
      *
      * Unlike [withInternalCalls] (a single shared name), this lets the number of
      * DISTINCT internal functions vary INDEPENDENTLY of the number of calls, so the
-     * two cost axes (N = calls, M = functions in the registry) can be swept separately.
+     * two cost axes (N = calls, R = functions in the registry) can be swept separately.
      */
     @JvmStatic
     fun withDistinctInternalCalls(
@@ -363,6 +363,47 @@ object WorkflowGenerator {
                 StepType.CALL,
                 StepContextGenerator.externalCall()
             )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P15/P16 helper. Builds a workflow with [internalCalls] internal CALL steps
+     * (round-robin over [distinctFunctionCount] distinct functions, same scheme as
+     * [withDistinctInternalCalls]) INTERLEAVED with [externalCalls] external CALL
+     * steps, evenly spread across the [internalCalls] + [externalCalls] steps
+     * (Bresenham-style distribution) rather than grouped as "all internal then all
+     * external" - a more realistic shape for a workflow that mixes auto-deployed
+     * internal functions with third-party external calls.
+     *
+     * I = [internalCalls], E = [externalCalls], N = I + E.
+     */
+    @JvmStatic
+    fun withMixedCalls(
+        internalCalls: Int,
+        externalCalls: Int,
+        distinctFunctionCount: Int,
+        baseName: String = "benchFn"
+    ): Workflow {
+        val total = internalCalls + externalCalls
+        var internalIdx = 0
+        val steps = (0 until total).map { idx ->
+            val isExternal = externalCalls > 0 &&
+                ((idx + 1) * externalCalls) / total != (idx * externalCalls) / total
+            val context = if (isExternal) {
+                StepContextGenerator.externalCall()
+            } else {
+                val fnName = "$baseName${internalIdx % distinctFunctionCount}"
+                internalIdx++
+                StepContextGenerator.internalCall(fnName)
+            }
+            Step(STEP_NAME + idx, "Mixed internal/external call step example", StepType.CALL, context)
         }
         return Workflow(
             WORKFLOW_NAME,

@@ -29,17 +29,17 @@ import java.util.concurrent.TimeUnit
  * the number of DISTINCT internal functions the workflow calls ([f], F) and the
  * number of CALLS ([n], N). The N calls are distributed round-robin over the F
  * distinct functions, so F=4/N=6 gives F0,F1,F2,F3,F0,F1 (F0 2x, F1 2x, F2 1x,
- * F3 1x). The registry holds exactly those F functions (M = F): the realistic
+ * F3 1x). The registry holds exactly those F functions (R = F): the realistic
  * case where the registry contains precisely the functions the workflow uses.
- * (The effect of an oversized registry, M independent of F, is P9's axis.)
+ * (The effect of an oversized registry, R independent of F, is P9's axis.)
  *
  * Each benchmark resolves every internal call's endpoint against the F-entry
  * registry, WITHOUT rendering - the read optimization only affects resolution,
  * so rendering would just be a shared constant baseline that shifts both curves:
  *  - [resolveNaive]     resolves with [NaiveEndpointResolver] (re-reads the whole
- *                       registry file per call, legacy `resolveUrl`)      -> O(N*M)
+ *                       registry file per call, legacy `resolveUrl`)      -> O(N*R)
  *  - [resolveOptimized] resolves with [WorkflowInternalCallEndpointResolver]
- *                       (reads once, `readAll` + `resolveUrlIn` per call)  -> O(N+M)
+ *                       (reads once, `readAll` + `resolveUrlIn` per call)  -> O(N+R)
  *
  * Both paths produce an IDENTICAL resolved workflow, so the measured gap is purely
  * the registry-read overhead. Pure local file I/O - no AWS/GCP SDK, no network.
@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit
 @State(Scope.Thread)
 open class BenchmarkResolveWorkflowByFunctionsAndCalls {
 
-    /** Number of DISTINCT internal functions the workflow calls (F); registry M = F. */
+    /** Number of DISTINCT internal functions the workflow calls (F); registry R = F. */
     @Param("1", "2", "5", "10", "20", "50")
     var f: Int = 0
 
@@ -73,7 +73,7 @@ open class BenchmarkResolveWorkflowByFunctionsAndCalls {
         registryFile = Files.createTempFile("omniflow-bench-p8-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
-        // Registry holds exactly the F functions the workflow references (M = F).
+        // Registry holds exactly the F functions the workflow references (R = F).
         val functions = (0 until f).associate { idx ->
             val name = "$BASE$idx"
             name to FunctionInvocationMetadata(
@@ -93,13 +93,13 @@ open class BenchmarkResolveWorkflowByFunctionsAndCalls {
         Files.deleteIfExists(registryFile)
     }
 
-    /** Naive resolution: one full registry read+parse per call -> O(N*M). */
+    /** Naive resolution: one full registry read+parse per call -> O(N*R). */
     @Benchmark
     fun resolveNaive(blackhole: Blackhole) {
         blackhole.consume(NaiveEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
-    /** Optimized resolution: one registry read, then N pure lookups -> O(N+M). */
+    /** Optimized resolution: one registry read, then N pure lookups -> O(N+R). */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
         blackhole.consume(resolver.resolve(workflow, internalCallExtractor))

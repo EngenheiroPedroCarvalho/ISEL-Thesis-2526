@@ -22,15 +22,15 @@ import java.util.concurrent.TimeUnit
 
 /**
  * P13 - Cost of incremental registry writes, [FunctionRegistryStore.put], vs registry size
- * before writing starts (M0) and number of sequential writes (K).
+ * before writing starts (R0) and number of sequential writes (K).
  *
  * P6-P11 measured the READ side (`resolveUrl`/`tryResolveEntry`, re-reads the whole file per
  * call). `put` has never been measured, and is exercised by the real auto-deploy resolvers
  * (`AwsInternalFunctionResolver`, `WorkflowInternalFunctionResolver`) every time a newly
  * discovered/deployed function is registered. `put` reads the whole file (`readRootOrNew`) then
  * rewrites it whole (`writeRoot`), so registering K functions in sequence into a registry that
- * starts at M0 entries costs sum_{i=0}^{K-1} O(M0+i) = Θ(K*M0 + K^2) - quadratic in K itself when
- * M0 is small, not just linear. Pure local file I/O - no AWS/GCP SDK, no network.
+ * starts at R0 entries costs sum_{i=0}^{K-1} O(R0+i) = Θ(K*R0 + K^2) - quadratic in K itself when
+ * R0 is small, not just linear. Pure local file I/O - no AWS/GCP SDK, no network.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -42,7 +42,7 @@ open class BenchmarkRegistryWriteScaling {
 
     /** Registry size before the K writes start. */
     @Param("0", "10", "50", "200", "1000")
-    var m0: Int = 0
+    var r0: Int = 0
 
     /** Number of sequential put() calls measured per invocation. */
     @Param("1", "5", "10", "50", "100")
@@ -51,7 +51,7 @@ open class BenchmarkRegistryWriteScaling {
     private lateinit var registryFile: Path
     private lateinit var store: FunctionRegistryStore
 
-    // Level.Invocation (not Trial): each measured invocation must start from the same M0-sized
+    // Level.Invocation (not Trial): each measured invocation must start from the same R0-sized
     // registry, otherwise the K writes of one invocation would grow the registry for the next,
     // contaminating the measurement.
     @Setup(Level.Invocation)
@@ -59,7 +59,7 @@ open class BenchmarkRegistryWriteScaling {
         registryFile = Files.createTempFile("omniflow-bench-p13-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
-        val baseline = (0 until m0).associate { idx ->
+        val baseline = (0 until r0).associate { idx ->
             val name = "base$idx"
             name to FunctionInvocationMetadata(
                 serviceName = name,

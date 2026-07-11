@@ -25,11 +25,11 @@ import java.util.concurrent.TimeUnit
  * on the SAME machine (so the two strategies are directly comparable, unlike
  * comparing P3 and P6 across machines).
  *
- * Resolving N internal calls against an M-entry registry:
+ * Resolving N internal calls against an R-entry registry:
  *  - [resolveNaive]     re-reads + re-parses the whole registry file on EVERY call
- *                       (legacy `resolveUrl` path)                      -> O(N*M)
+ *                       (legacy `resolveUrl` path)                      -> O(N*R)
  *  - [resolveOptimized] reads the registry ONCE, then does N pure lookups
- *                       (`readAll` + `resolveUrlIn`, the new resolver path) -> O(N+M)
+ *                       (`readAll` + `resolveUrlIn`, the new resolver path) -> O(N+R)
  *
  * Pure local file I/O only - no AWS/GCP SDK, no network.
  */
@@ -47,7 +47,7 @@ open class BenchmarkResolutionOptimization {
 
     /** Number of functions already registered in the registry file. */
     @Param("1", "50", "1000")
-    var m: Int = 0
+    var r: Int = 0
 
     private lateinit var registryFile: Path
     private lateinit var store: FunctionRegistryStore
@@ -63,7 +63,7 @@ open class BenchmarkResolutionOptimization {
                 url = "https://internal.example.com/$FUNCTION_NAME"
             )
         )
-        (1 until m).forEach { idx ->
+        (1 until r).forEach { idx ->
             val paddingName = "paddingFn$idx"
             functions[paddingName] = FunctionInvocationMetadata(
                 serviceName = paddingName,
@@ -78,7 +78,7 @@ open class BenchmarkResolutionOptimization {
         Files.deleteIfExists(registryFile)
     }
 
-    /** Legacy path: one full registry read+parse per internal call -> O(N*M). */
+    /** Legacy path: one full registry read+parse per internal call -> O(N*R). */
     @Benchmark
     fun resolveNaive(blackhole: Blackhole) {
         repeat(n) {
@@ -86,7 +86,7 @@ open class BenchmarkResolutionOptimization {
         }
     }
 
-    /** Optimized path: one registry read, then N pure lookups -> O(N+M). */
+    /** Optimized path: one registry read, then N pure lookups -> O(N+R). */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
         val all = store.readAll()

@@ -25,17 +25,17 @@ import java.util.concurrent.TimeUnit
 
 /**
  * P10 - Cost of the REAL AWS auto-deploy resolver, [AwsInternalFunctionResolver.resolve], vs the
- * number of internal calls (N) and registry size (M=F), same grid as P8.
+ * number of internal calls (N) and registry size (R=F), same grid as P8.
  *
  * Unlike P6-P9 (which benchmark [FunctionRegistryStore] or the already-corrected
  * [costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver]),
  * this exercises the actual "unification" glue that decides whether an internal function should
  * be reused or deployed. It has never been fixed with the single-read optimization: every call
  * to `resolveOrDeploy` hits `registry.tryResolveEntry`, which re-reads and re-parses the whole
- * registry file (no caching) - the same Θ(N*M) anti-pattern as P6-P9's `resolveUrl`, but on the
+ * registry file (no caching) - the same Θ(N*R) anti-pattern as P6-P9's `resolveUrl`, but on the
  * real production path.
  *
- * The registry is pre-populated with exactly the F functions the workflow references (M=F, as in
+ * The registry is pre-populated with exactly the F functions the workflow references (R=F, as in
  * P8), so `tryResolveEntry` always hits on step 1 of `resolveOrDeploy` and the benchmark never
  * reaches step 2 (`checkLambdaFunctionUrl`, a real AWS Lambda SDK call) - pure local file I/O,
  * no AWS SDK calls, no network.
@@ -48,7 +48,7 @@ import java.util.concurrent.TimeUnit
 @State(Scope.Thread)
 open class BenchmarkAwsInternalFunctionResolution {
 
-    /** Number of DISTINCT internal functions the workflow calls (F); registry M = F. */
+    /** Number of DISTINCT internal functions the workflow calls (F); registry R = F. */
     @Param("1", "2", "5", "10", "20", "50")
     var f: Int = 0
 
@@ -65,7 +65,7 @@ open class BenchmarkAwsInternalFunctionResolution {
         registryFile = Files.createTempFile("omniflow-bench-p10-registry", ".json")
         val store = FunctionRegistryStore(registryFile)
 
-        // Registry holds exactly the F functions the workflow references (M = F) -> always a
+        // Registry holds exactly the F functions the workflow references (R = F) -> always a
         // registry hit, so resolveOrDeploy never reaches the AWS Lambda SDK call.
         val functions = (0 until f).associate { idx ->
             val name = "$BASE$idx"

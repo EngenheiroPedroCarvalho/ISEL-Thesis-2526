@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
 /**
  * P11 - GCP twin of P10: cost of the REAL auto-deploy resolver,
  * [WorkflowInternalFunctionResolver.resolve], vs the number of internal calls (N) and registry
- * size (M=F), same grid as P8/P10.
+ * size (R=F), same grid as P8/P10.
  *
  * Registry entries use `.cloudfunctions.net` URLs (1st-gen Cloud Function) so that
  * `resolveOrDiscoverInternal`'s `isFirstGenCloudFunction` check short-circuits BEFORE any Cloud
@@ -56,7 +56,7 @@ import java.util.concurrent.TimeUnit
 @State(Scope.Thread)
 open class BenchmarkGoogleInternalFunctionResolution {
 
-    /** Number of DISTINCT internal functions the workflow calls (F); registry M = F. */
+    /** Number of DISTINCT internal functions the workflow calls (F); registry R = F. */
     @Param("1", "2", "5", "10", "20", "50")
     var f: Int = 0
 
@@ -73,7 +73,7 @@ open class BenchmarkGoogleInternalFunctionResolution {
         registryFile = Files.createTempFile("omniflow-bench-p11-registry", ".json")
         val store = FunctionRegistryStore(registryFile)
 
-        // Registry holds exactly the F functions the workflow references (M = F), with 1st-gen
+        // Registry holds exactly the F functions the workflow references (R = F), with 1st-gen
         // Cloud Function URLs -> always a registry hit that short-circuits before Cloud Run/ADC.
         val functions = (0 until f).associate { idx ->
             val name = "$BASE$idx"

@@ -31,12 +31,12 @@ import java.util.concurrent.TimeUnit
  * re-reads and re-parses the WHOLE registry file from disk (see
  * [FunctionRegistryStore.readAll]). [WorkflowInternalCallEndpointResolver]
  * calls it once per internal call node it resolves. So resolution cost is
- * O(N*M): N = number of internal calls in the workflow, M = number of
+ * O(N*R): N = number of internal calls in the workflow, R = number of
  * functions already in the registry file.
  *
  * P3 ([BenchmarkInternalCallResolution]) already varies N but pins the
- * registry at a single entry (M=1), so the M-dependent half of that cost is
- * never exercised there. P6 varies M independently of N to isolate and
+ * registry at a single entry (R=1), so the R-dependent half of that cost is
+ * never exercised there. P6 varies R independently of N to isolate and
  * quantify it. Pure local file I/O only - no AWS/GCP SDK, no network.
  */
 @BenchmarkMode(Mode.AverageTime)
@@ -53,7 +53,7 @@ open class BenchmarkRegistryScaling {
 
     /** Number of functions already registered in the registry file. */
     @Param("1", "10", "50", "200", "1000")
-    var m: Int = 0
+    var r: Int = 0
 
     private lateinit var registryFile: Path
     private lateinit var resolver: WorkflowInternalCallEndpointResolver
@@ -67,9 +67,9 @@ open class BenchmarkRegistryScaling {
 
     @Setup(Level.Trial)
     fun setup() {
-        // Registry pre-loaded once per (n, m) trial into a local temp file:
-        // the real target function plus (m - 1) padding entries, so readAll()
-        // has to parse a file with exactly m entries on every resolveUrl call.
+        // Registry pre-loaded once per (n, r) trial into a local temp file:
+        // the real target function plus (r - 1) padding entries, so readAll()
+        // has to parse a file with exactly r entries on every resolveUrl call.
         registryFile = Files.createTempFile("omniflow-bench-registry", ".json")
         val store = FunctionRegistryStore(registryFile)
 
@@ -79,7 +79,7 @@ open class BenchmarkRegistryScaling {
                 url = "https://internal.example.com/$FUNCTION_NAME"
             )
         )
-        (1 until m).forEach { idx ->
+        (1 until r).forEach { idx ->
             val paddingName = "paddingFn$idx"
             functions[paddingName] = FunctionInvocationMetadata(
                 serviceName = paddingName,
@@ -98,7 +98,7 @@ open class BenchmarkRegistryScaling {
         Files.deleteIfExists(registryFile)
     }
 
-    /** Cost of resolving n internal calls against an m-entry registry file. */
+    /** Cost of resolving n internal calls against an r-entry registry file. */
     @Benchmark
     fun resolveAllInternal(blackhole: Blackhole) {
         val resolved = resolver.resolve(internalWorkflow, internalCallExtractor)
@@ -106,7 +106,7 @@ open class BenchmarkRegistryScaling {
     }
 
     /** Control: external calls never touch the registry, so cost should be
-     *  independent of m - confirms any m-driven slowdown above is specifically
+     *  independent of r - confirms any r-driven slowdown above is specifically
      *  the registry read/parse, not workflow generation itself. */
     @Benchmark
     fun resolveAllExternal(blackhole: Blackhole) {

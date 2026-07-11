@@ -1,4 +1,4 @@
-# Resultados dos testes de desempenho (P1–P14) e de tamanho (S1–S2)
+# Resultados dos testes de desempenho (P1–P16) e de tamanho (S1–S2)
 
 Medições locais de renderização (DSL → Amazon States Language / GCP Workflows YAML) e de resolução
 de funções internas, sem chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
@@ -12,8 +12,9 @@ de funções internas, sem chamadas à nuvem. Geradas com JMH a partir do módul
 - **Dados brutos:** `jmh-results.csv` (P1–P5 e P12, um só `@Param`), `jmh-results-p6.csv` (P6, com
   a dimensão `Param: m`), `jmh-results-p7.csv` (P7 antes/depois), `jmh-results-p8.csv`/
   `jmh-results-p9.csv` (P8–P9, resolução do workflow real), `jmh-results-p10.csv`/`jmh-results-p11.csv`
-  (P10–P11, resolvers reais AWS/GCP), `jmh-results-p13.csv` (P13, escrita no registo) e
-  `jmh-results-p14.csv` (P14, exact vs. suffix match). Gráficos: `P1_*.png … P14_*.png` (P7 e P8 em
+  (P10–P11, resolvers reais AWS/GCP), `jmh-results-p13.csv` (P13, escrita no registo),
+  `jmh-results-p14.csv` (P14, exact vs. suffix match), `jmh-results-p15.csv` (P15, mistura I/E) e
+  `jmh-results-p16.csv` (P16, R com workflow misto). Gráficos: `P1_*.png … P16_*.png` (P7 e P8 em
   duas figuras cada, `P7a`/`P7b` e `P8a`/`P8b`), regeneráveis com `python3 plot_benchmarks.py`.
 - **Modelo de custo:** a renderização é uma travessia *depth-first*
   (`DepthFirstNodeVisitorTraversor` + `NodeContextVisitor`) que visita cada nó da AST uma vez e
@@ -24,33 +25,45 @@ de funções internas, sem chamadas à nuvem. Geradas com JMH a partir do módul
   comparar tendências e relações, não como números definitivos de hardware. Para a versão final,
   repetir com `-f 3` e máquina dedicada.
 
-## Notação — o que N, M e F representam
+## Notação — o que N, R, F, I e E representam
 
-Estes três símbolos aparecem ao longo de quase todas as secções seguintes. Têm sempre o mesmo
+Estes símbolos aparecem ao longo de quase todas as secções seguintes. Têm sempre o mesmo
 significado — o que muda, secção a secção, é a **relação entre eles** (fixos? independentes?
-M=F?):
+R=F? tudo interno? misto?):
 
-- **N** — número de **chamadas** no workflow (passos `CALL` que disparam uma resolução). É sempre
-  esta a unidade que se soma/repete N vezes (N leituras, N *lookups*, N escritas).
+- **N** — número total de **chamadas** no workflow (passos `CALL`, internas ou externas). É sempre
+  esta a unidade que se soma/repete N vezes quando o workflow é homogéneo (N leituras, N *lookups*,
+  N escritas). A partir do P15, N decompõe-se em **N = I + E** (ver abaixo).
+- **R** — número de entradas no **registo** (`function-registry.json`) no momento em que é
+  lido/escrito. **Não é o mesmo que F** — R é o tamanho físico do ficheiro; F é quantas dessas
+  entradas o workflow *usa*. Um registo pode ter R=1000 entradas e o workflow só referenciar F=10
+  delas (as outras R-F são "ruído"/funções de outros workflows). (Chamava-se **M** até ao P14;
+  renomeado para **R** — de "Registo" — sem alterar lógica nem valores.)
 - **F** — número de funções **internas distintas** que o workflow referencia. Só existe a partir do
   P8 (antes disso não havia necessidade de distinguir "quantas chamadas" de "quantas funções
-  diferentes"): as N chamadas distribuem-se *round-robin* pelas F funções (ex.: F=4/N=6 → cada
-  função é chamada 1 ou 2 vezes).
-- **M** — número de entradas no **registo** (`function-registry.json`) no momento em que é
-  lido/escrito. **Não é o mesmo que F** — M é o tamanho físico do ficheiro; F é quantas dessas
-  entradas o workflow *usa*. Um registo pode ter M=1000 entradas e o workflow só referenciar F=10
-  delas (as outras M-F são "ruído"/funções de outros workflows).
+  diferentes"): as chamadas internas distribuem-se *round-robin* pelas F funções (ex.: F=4 e 6
+  chamadas internas → cada função é chamada 1 ou 2 vezes). A partir do P15, F aplica-se
+  especificamente às **I** chamadas internas — as **E** chamadas externas não têm este conceito
+  (não são resolvidas contra nenhum registo).
+- **I** — número de chamadas a **funções internas** no workflow (repetições contam: duas chamadas
+  à mesma função contam 2 para I). Só existe a partir do P15.
+- **E** — número de chamadas a **funções externas** no workflow (idem, repetições contam). Só
+  existe a partir do P15. **N = I + E**: até ao P14 todo workflow era homogéneo (I=N/E=0 em
+  P3/P6-P14, ou I=0/E=N em P1/P2/P4/P5) — P15/P16 são os primeiros a misturar os dois tipos de
+  chamada no mesmo workflow.
 
-**Como M e F se relacionam, secção a secção:**
+**Como R, F e I/E se relacionam, secção a secção:**
 
-| Secções | Relação M ↔ F | O que representa |
+| Secções | Relação R ↔ F ↔ I/E | O que representa |
 |---|---|---|
-| P3 | F não se aplica; M fixo em 1 | registo de uma função só, isola o efeito de N |
-| P6, P7 | F não se aplica; M e N variam independentemente | registo genérico de M entradas, sem ligação às funções que o workflow chama |
-| **P8, P10, P11** | **M = F** | registo "do tamanho certo": contém exatamente as F funções que o workflow usa, nem mais nem menos |
-| **P9, P14** | **M ≥ F**, com F e N fixos | registo "sobredimensionado": as M-F entradas extra nunca são chamadas, só inflacionam o custo de cada leitura/scan do ficheiro inteiro |
-| P13 | Não há F (é o lado de **escrita**, não de resolução); usa **M0** (tamanho inicial do registo) e **K** (nº de escritas sucessivas) em vez de M/N | mesmo papel de M e N, mas nomeados de forma diferente por não se tratar de resolução de chamadas |
+| P3 | F não se aplica; R fixo em 1 | registo de uma função só, isola o efeito de N (workflow 100% interno) |
+| P6, P7 | F não se aplica; R e N variam independentemente | registo genérico de R entradas, sem ligação às funções que o workflow chama |
+| **P8, P10, P11** | **R = F** | registo "do tamanho certo": contém exatamente as F funções que o workflow usa, nem mais nem menos |
+| **P9, P14** | **R ≥ F**, com F e N fixos | registo "sobredimensionado": as R-F entradas extra nunca são chamadas, só inflacionam o custo de cada leitura/scan do ficheiro inteiro |
+| P13 | Não há F (é o lado de **escrita**, não de resolução); usa **R0** (tamanho inicial do registo) e **K** (nº de escritas sucessivas) em vez de R/N | mesmo papel de R e N, mas nomeados de forma diferente por não se tratar de resolução de chamadas |
 | P12 | Nenhum dos três; usa **branchWidth** (nº de condições/branches) | eixo de renderização, não de registo |
+| **P15** | **R = F** fixo (=10); **I** e **E** variam livremente, **N = I+E** | primeiro workflow com mistura real de chamadas internas/externas; isola se o custo segue I ou N |
+| **P16** | **I, E, F fixos** (I=40/E=10/F=10); **R** varia | gémeo do P9 em workflow misto — confirma que Θ(R) se mantém inalterado com chamadas externas presentes |
 
 ---
 
@@ -153,10 +166,10 @@ registo do disco e reinterpreta todo o JSON), seguido de procura no mapa, *parsi
 constante por chamada, logo T(N) = a·N. Os 7,5 µs — altos para uma consulta em mapa — devem-se a
 essa releitura do ficheiro a cada invocação, sem cache.
 
-**Caveat de escalabilidade.** Como `readAll()` é Θ(M), a resolução é, no caso geral, **Θ(N·M)**,
-com M = tamanho do registo. O ensaio fixa M = 1, isolando a dependência linear em N; se o registo
-crescer com o número de funções distintas (M ∝ N), a resolução degrada para Θ(N²). Ler o registo
-uma só vez por `resolve(workflow)` reduziria o custo para Θ(N + M) — otimização explorada em P6/P7.
+**Caveat de escalabilidade.** Como `readAll()` é Θ(R), a resolução é, no caso geral, **Θ(N·R)**,
+com R = tamanho do registo. O ensaio fixa R = 1, isolando a dependência linear em N; se o registo
+crescer com o número de funções distintas (R ∝ N), a resolução degrada para Θ(N²). Ler o registo
+uma só vez por `resolve(workflow)` reduziria o custo para Θ(N + R) — otimização explorada em P6/P7.
 Em absoluto, o custo é negligenciável face ao *deployment* real (segundos).
 
 ---
@@ -220,16 +233,16 @@ número bruto de funções.
 
 ---
 
-## P6 — Custo de escalabilidade do registo (Θ(N·M))
+## P6 — Custo de escalabilidade do registo (Θ(N·R))
 
-**Objetivo.** Medir como o tamanho do registo (M) afeta o custo da resolução, isolando esta dimensão
+**Objetivo.** Medir como o tamanho do registo (R) afeta o custo da resolução, isolando esta dimensão
 do número de chamadas internas (N). `FunctionRegistryStore.resolveUrl` não tem cache: cada chamada
-relê e reparsa o ficheiro do registo inteiro (`readAll()`). O P3 fixava M = 1 e só variava N; o P6
-varia as duas dimensões independentemente para caracterizar a dependência em M.
+relê e reparsa o ficheiro do registo inteiro (`readAll()`). O P3 fixava R = 1 e só variava N; o P6
+varia as duas dimensões independentemente para caracterizar a dependência em R.
 
-**Tempo total de `resolveAllInternal` (µs), por combinação (M, N):**
+**Tempo total de `resolveAllInternal` (µs), por combinação (R, N):**
 
-| M \ N | 1 | 10 | 50 | 200 |
+| R \ N | 1 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|
 | 1 | 178,1 | 1772,7 | 9425,9 | 36346,0 |
 | 10 | 186,2 | 1824,6 | 9146,2 | 36713,6 |
@@ -237,19 +250,19 @@ varia as duas dimensões independentemente para caracterizar a dependência em M
 | 200 | 278,3 | 2773,3 | 13880,6 | 55616,7 |
 | 1000 | 744,6 | 7485,5 | 37316,5 | 149632,1 |
 
-**Controlo `resolveAllExternal`** (nunca toca o registo, independente de M): 0,02 µs (N=1) →
-0,13 µs (N=10) → 0,51 µs (N=50) → 1,97 µs (N=200) — iguais em toda a linha de M, confirmando que o
-efeito de M acima é específico do acesso ao registo.
+**Controlo `resolveAllExternal`** (nunca toca o registo, independente de R): 0,02 µs (N=1) →
+0,13 µs (N=10) → 0,51 µs (N=50) → 1,97 µs (N=200) — iguais em toda a linha de R, confirmando que o
+efeito de R acima é específico do acesso ao registo.
 
 ![P6 — Custo por chamada de resolveUrl() vs tamanho do registo](P6_registry_scaling.png)
 
-As quatro curvas `n=1/10/50/200` colapsam numa só linha — o custo por chamada depende apenas de M,
+As quatro curvas `n=1/10/50/200` colapsam numa só linha — o custo por chamada depende apenas de R,
 não de N — enquanto o controlo externo se mantém plano próximo de zero.
 
 **Resultado.** Dividindo o tempo total por N obtém-se o custo por chamada de `resolveUrl()`,
-independente de N e crescente com M:
+independente de N e crescente com R:
 
-| M | Custo por chamada (µs) |
+| R | Custo por chamada (µs) |
 |---:|---:|
 | 1 | 181,4 |
 | 10 | 183,8 |
@@ -257,26 +270,26 @@ independente de N e crescente com M:
 | 200 | 277,8 |
 | 1000 | 746,9 |
 
-Ajustando `custo(M) ≈ b + c·M` aos extremos (M=1, M=1000): `b ≈ 181 µs`, `c ≈ 0,57 µs`/função — um
-ajuste que erra <6% nos pontos intermédios (M=10, 50, 200).
+Ajustando `custo(R) ≈ b + c·R` aos extremos (R=1, R=1000): `b ≈ 181 µs`, `c ≈ 0,57 µs`/função — um
+ajuste que erra <6% nos pontos intermédios (R=10, 50, 200).
 
 **Justificação.** `readAll()` lê o ficheiro e materializa uma `JsonNode` por cada entrada, logo é
-Θ(M). Como `resolveUrl()` corre uma vez por chamada interna, o custo total é T(N, M) = N·(b + c·M) —
-o Θ(N·M) já identificado (mas não medido) no P3. Os dois termos têm origens distintas: `b ≈ 181 µs`
+Θ(R). Como `resolveUrl()` corre uma vez por chamada interna, o custo total é T(N, R) = N·(b + c·R) —
+o Θ(N·R) já identificado (mas não medido) no P3. Os dois termos têm origens distintas: `b ≈ 181 µs`
 é o custo fixo por chamada (abrir/ler o ficheiro + `parsing` do envelope JSON); `c ≈ 0,57 µs`/função
 é o custo marginal por entrada (percorrer o nó `functions` e construir o `LinkedHashMap`). `b` domina
-`c·M` até M ≈ 320: para registos realistas (dezenas a poucas centenas de funções), o fator dominante
+`c·R` até R ≈ 320: para registos realistas (dezenas a poucas centenas de funções), o fator dominante
 não é o tamanho do registo, mas o número de vezes que o ficheiro é reaberto e reparsado (uma vez por
 chamada, em vez de uma por `resolve(workflow)`).
 
 **Implicação prática.** Isto reordena a otimização sugerida no P3: ler o registo uma só vez por
 `resolve(workflow)` (em vez de cache por tamanho) elimina o fator N de ambos os termos, reduzindo
-Θ(N·(b + c·M)) para Θ(b + c·M + N) — ganho maior e mais barato do que otimizar só a travessia do
+Θ(N·(b + c·R)) para Θ(b + c·R + N) — ganho maior e mais barato do que otimizar só a travessia do
 JSON.
 
 ---
 
-## P7 — Otimização da resolução: leitura única do registo (Θ(N·M) → Θ(N+M))
+## P7 — Otimização da resolução: leitura única do registo (Θ(N·R) → Θ(N+R))
 
 **Objetivo.** Medir o ganho de desempenho (antes vs. depois) de uma otimização concreta — ler o
 registo uma só vez por `resolve(workflow)` em vez de uma vez por chamada — na mesma execução, para
@@ -286,46 +299,46 @@ O P3/P6 apontaram a causa: `WorkflowInternalCallEndpointResolver.resolve` chamav
 `FunctionRegistryStore.resolveUrl` uma vez por chamada interna, relendo o ficheiro inteiro de cada
 vez. A correção lê o registo uma só vez por `resolve()` (método `resolveUrlIn` sobre o mapa já
 lido), mantendo a mesma lógica. O benchmark `BenchmarkResolutionOptimization` compara as duas
-estratégias na mesma máquina, varrendo N × M: `resolveNaive` (leitura por chamada) vs
+estratégias na mesma máquina, varrendo N × R: `resolveNaive` (leitura por chamada) vs
 `resolveOptimized` (leitura única).
 
 **Tempo total (µs) — antes (sem cache) vs depois (com cache):**
 
 | | N=1 | N=10 | N=50 | N=200 |
 |---|---:|---:|---:|---:|
-| **sem cache** M=1 | 4,6 | 47,0 | 233,6 | 920,2 |
-| **com cache** M=1 | 4,7 | 5,0 | 5,0 | 5,7 |
-| **sem cache** M=1000 | 543,7 | 5480,8 | 26698,5 | 104889,0 |
-| **com cache** M=1000 | 557,4 | 535,7 | 551,8 | 536,6 |
+| **sem cache** R=1 | 4,6 | 47,0 | 233,6 | 920,2 |
+| **com cache** R=1 | 4,7 | 5,0 | 5,0 | 5,7 |
+| **sem cache** R=1000 | 543,7 | 5480,8 | 26698,5 | 104889,0 |
+| **com cache** R=1000 | 557,4 | 535,7 | 551,8 | 536,6 |
 
 ![P7a — Resolução sem cache (leitura por chamada)](P7a_resolution_sem_cache.png)
 
 ![P7b — Resolução com cache (leitura única)](P7b_resolution_com_cache.png)
 
-**Resultado.** O caminho com cache é praticamente independente de N: uma leitura do registo (O(M))
-seguida de N *lookups* em memória desprezáveis. *Speedup* a N=200: ~162× (M=1), ~198× (M=50),
-~195× (M=1000) — o pior canto (N=200, M=1000) desce de **~105 ms para ~0,54 ms**.
+**Resultado.** O caminho com cache é praticamente independente de N: uma leitura do registo (O(R))
+seguida de N *lookups* em memória desprezáveis. *Speedup* a N=200: ~162× (R=1), ~198× (R=50),
+~195× (R=1000) — o pior canto (N=200, R=1000) desce de **~105 ms para ~0,54 ms**.
 
-**Justificação.** `sem cache` = N · (leitura O(M) + *lookup*) = **Θ(N·M)**: no gráfico P7a as curvas
-sobem com N e deslocam-se para cima com M. `com cache` = 1 leitura O(M) + N · *lookup* O(1) =
-**Θ(N+M)**: no P7b as curvas são planas em N, separadas apenas por M (custo da leitura única). As
+**Justificação.** `sem cache` = N · (leitura O(R) + *lookup*) = **Θ(N·R)**: no gráfico P7a as curvas
+sobem com N e deslocam-se para cima com R. `com cache` = 1 leitura O(R) + N · *lookup* O(1) =
+**Θ(N+R)**: no P7b as curvas são planas em N, separadas apenas por R (custo da leitura única). As
 duas figuras partilham o eixo log-y, tornando o desnível visível.
 
 **Nota (resolver completo).** Com o resolver já com cache, o custo de `resolve(workflow)` passa de
-N·M a **Θ(N+M)**: no pior canto (N=200, M=1000) desce de ~150 ms para ~0,75 ms. O termo O(N)
+N·R a **Θ(N+R)**: no pior canto (N=200, R=1000) desce de ~150 ms para ~0,75 ms. O termo O(N)
 residual é só a reconstrução da árvore do workflow (N cópias de nós), barato (~0,7 µs/nó) e
 inevitável, já não a re-leitura do ficheiro.
 
 ---
 
-## P8 — Resolução do workflow vs nº de funções distintas (F) × nº de chamadas (N), com M=F
+## P8 — Resolução do workflow vs nº de funções distintas (F) × nº de chamadas (N), com R=F
 
 **Objetivo.** Caracterizar o custo de resolução de *endpoints* de um workflow real ao longo dos seus
 dois eixos intrínsecos: o nº de funções **distintas** que o workflow chama (F) e o nº total de
 **chamadas** (N). As N chamadas distribuem-se *round-robin* pelas F funções (ex.: F=4/N=6 →
-F1 2×, F2 2×, F3 1×, F4 1×) e o registo contém **exatamente** essas F funções (**M = F**) — o caso
+F1 2×, F2 2×, F3 1×, F4 1×) e o registo contém **exatamente** essas F funções (**R = F**) — o caso
 realista em que o registo tem só as funções que o workflow usa (o efeito de um registo
-sobredimensionado, M independente de F, é o eixo do P9). Mede-se **só a resolução, sem
+sobredimensionado, R independente de F, é o eixo do P9). Mede-se **só a resolução, sem
 renderização**: a otimização em estudo (leitura única do registo) só afeta a resolução, pelo que
 renderizar seria apenas uma base constante partilhada que deslocaria ambas as curvas sem alterar o
 *speedup*. Compara-se `resolveNaive` (leitura do registo por chamada) com `resolveOptimized`
@@ -361,30 +374,30 @@ de leitura do registo.
 **Resultado.** No caso sem cache, o custo é dominado por **N** e quase indiferente a **F**: as seis
 curvas (uma por F) praticamente sobrepõem-se no P8a e sobem linearmente com N (~200 µs por chamada;
 9,5–10,9 ms a N=50; ~38–43 ms a N=200). No caso com cache, o custo é quase plano (191 → 367 µs),
-subindo devagar com N (reconstrução O(N) da árvore) e com F (leitura O(M=F)). O *speedup* cresce com
+subindo devagar com N (reconstrução O(N) da árvore) e com F (leitura O(R=F)). O *speedup* cresce com
 N: ~1× a N=1 (uma única leitura, indistinguível), ~44× a N=50 e ~109–114× a N=200.
 
-**Justificação.** Com M=F pequeno, cada leitura do registo é dominada pelo termo fixo b≈190 µs
-(abrir/parsear o ficheiro), não pelo termo c·M (percorrer as entradas) — daí as curvas `sem cache`
-quase coincidirem para todos os F e a subida vir só de N. `sem cache` = N·(leitura O(M) + *lookup*) =
-**Θ(N·M)**; com M=F pequeno reduz-se praticamente a N·b, uma reta em N. `com cache` = 1 leitura O(M)
-+ N · *lookup* O(1) + reconstrução O(N) = **Θ(N+M)**, daí a superfície quase plana. O efeito isolado
+**Justificação.** Com R=F pequeno, cada leitura do registo é dominada pelo termo fixo b≈190 µs
+(abrir/parsear o ficheiro), não pelo termo c·R (percorrer as entradas) — daí as curvas `sem cache`
+quase coincidirem para todos os F e a subida vir só de N. `sem cache` = N·(leitura O(R) + *lookup*) =
+**Θ(N·R)**; com R=F pequeno reduz-se praticamente a N·b, uma reta em N. `com cache` = 1 leitura O(R)
++ N · *lookup* O(1) + reconstrução O(N) = **Θ(N+R)**, daí a superfície quase plana. O efeito isolado
 de **F** (chamadas repetidas vs. distintas) é desprezável porque a resolução é por chamada, não por
-função distinta. O eixo que faz o registo pesar — aumentar M para além de F — é o P9.
+função distinta. O eixo que faz o registo pesar — aumentar R para além de F — é o P9.
 
 ---
 
-## P9 — Resolução do workflow vs tamanho do registo (M), com F e N fixos
+## P9 — Resolução do workflow vs tamanho do registo (R), com F e N fixos
 
-**Objetivo.** O eixo complementar do P8: isolar o efeito do **tamanho do registo (M)** sobre a
+**Objetivo.** O eixo complementar do P8: isolar o efeito do **tamanho do registo (R)** sobre a
 resolução, mantendo o workflow fixo (F = 10 funções distintas, N = 50 chamadas) e enchendo o registo
-até M entradas (M ≥ F), das quais o workflow só refere as primeiras F. Mesmas duas estratégias, só
-resolução (sem render): `resolveNaive` (leitura por chamada, Θ(N·M)) vs `resolveOptimized` (leitura
-única, Θ(N+M)).
+até R entradas (R ≥ F), das quais o workflow só refere as primeiras F. Mesmas duas estratégias, só
+resolução (sem render): `resolveNaive` (leitura por chamada, Θ(N·R)) vs `resolveOptimized` (leitura
+única, Θ(N+R)).
 
 **Tempo de resolução (µs) — sem cache vs com cache, F=10 / N=50 fixos:**
 
-| M (registo) | sem cache (µs) | com cache (µs) | speedup |
+| R (registo) | sem cache (µs) | com cache (µs) | speedup |
 |---:|---:|---:|---:|
 | 10 | 9 829 | 237 | ~41,4× |
 | 20 | 11 952 | 308 | ~38,8× |
@@ -395,26 +408,26 @@ resolução (sem render): `resolveNaive` (leitura por chamada, Θ(N·M)) vs `res
 
 ![P9 — Resolução vs tamanho do registo](P9_resolution_by_registry.png)
 
-**Resultado.** O caso sem cache sobe com M (9,8 ms a M=10 → 43,2 ms a M=1000): com N=50 chamadas,
-relê o ficheiro 50 vezes e cada re-leitura reparsa M entradas. O caso com cache mantém-se quase plano
-(237 → 749 µs): uma única leitura O(M) seguida de 50 *lookups*. O *speedup* sobe de ~41× (M=10) a
-~58× (M=1000).
+**Resultado.** O caso sem cache sobe com R (9,8 ms a R=10 → 43,2 ms a R=1000): com N=50 chamadas,
+relê o ficheiro 50 vezes e cada re-leitura reparsa R entradas. O caso com cache mantém-se quase plano
+(237 → 749 µs): uma única leitura O(R) seguida de 50 *lookups*. O *speedup* sobe de ~41× (R=10) a
+~58× (R=1000).
 
-**Justificação.** `sem cache` = N·(b + c·M) = **Θ(N·M)**: com N fixo é uma reta em M de declive N·c.
-`com cache` = (b + c·M) + N · *lookup* O(1) = **Θ(N+M)**: paga o termo c·M uma só vez, daí a subida
-suave. Enquanto no P8 (M=F pequeno) o custo sem cache era dominado por N·b, aqui — com M a crescer
-até 1000 — o termo N·c·M torna-se visível e explica a subida. Verificação cruzada com o P8 no ponto
-comum F=10/N=50 (M=10): sem cache ≈ 9,8–10,5 ms e com cache ≈ 0,24 ms nos dois testes, coerente.
+**Justificação.** `sem cache` = N·(b + c·R) = **Θ(N·R)**: com N fixo é uma reta em R de declive N·c.
+`com cache` = (b + c·R) + N · *lookup* O(1) = **Θ(N+R)**: paga o termo c·R uma só vez, daí a subida
+suave. Enquanto no P8 (R=F pequeno) o custo sem cache era dominado por N·b, aqui — com R a crescer
+até 1000 — o termo N·c·R torna-se visível e explica a subida. Verificação cruzada com o P8 no ponto
+comum F=10/N=50 (R=10): sem cache ≈ 9,8–10,5 ms e com cache ≈ 0,24 ms nos dois testes, coerente.
 
 ---
 
 ## P10 — Custo real do resolver de auto-deploy AWS (`AwsInternalFunctionResolver`)
 
-**Objetivo.** O P6–P9 provaram e corrigiram o custo Θ(N·M) de reler o registo por chamada, mas só
+**Objetivo.** O P6–P9 provaram e corrigiram o custo Θ(N·R) de reler o registo por chamada, mas só
 no `WorkflowInternalCallEndpointResolver` (o resolver "de baixo nível"). O verdadeiro glue da
 contribuição (B) "Unificação" — `AwsInternalFunctionResolver.resolve`, que decide "está no registo?
 reutiliza : não está? despoleta deploy via QuickFaaS" — nunca foi medido nem corrigido. Mede-se aqui
-o seu custo real vs N (chamadas) × M (registo, M=F), mesma grelha do P8. O registo é pré-populado
+o seu custo real vs N (chamadas) × R (registo, R=F), mesma grelha do P8. O registo é pré-populado
 com exatamente as F funções que o workflow chama, garantindo sempre *hit* no passo 1 de
 `resolveOrDeploy` — nunca se chega ao passo 2 (chamada real ao SDK Lambda). Pura leitura/escrita
 local de ficheiro, sem SDK nem rede.
@@ -433,7 +446,7 @@ local de ficheiro, sem SDK nem rede.
 ![P10 — Resolução real AWS](P10_aws_internal_resolution.png)
 
 *(máquina partilhada, não dedicada — margens de erro largas nesta configuração rápida; ver nota
-sobre `-f 3` no `TESTING.md`. Os pontos são consistentes entre si e com a forma Θ(N·M) esperada.)*
+sobre `-f 3` no `TESTING.md`. Os pontos são consistentes entre si e com a forma Θ(N·R) esperada.)*
 
 **Resultado.** O custo é dominado por **N** e quase indiferente a **F**, tal como no P8 "sem
 cache": ~355–360 µs/chamada em todo o intervalo de F (200 chamadas: 71,8 ms a F=1 → 73,6 ms a
@@ -442,11 +455,11 @@ do próprio glue de produção (`println`s coloridos por chamada, verificação
 `host.isNotBlank()`/`path.isNotBlank()`, construção do URL `lambda://`), não só da releitura do
 registo.
 
-**Justificação.** `AwsInternalFunctionResolver.resolve` = N·(leitura O(M) + *lookup* + overhead de
-glue) = **Θ(N·M)**, exatamente como `resolveNaive` no P8/P9, porque `resolveOrDeploy` chama
+**Justificação.** `AwsInternalFunctionResolver.resolve` = N·(leitura O(R) + *lookup* + overhead de
+glue) = **Θ(N·R)**, exatamente como `resolveNaive` no P8/P9, porque `resolveOrDeploy` chama
 `registry.tryResolveEntry` (que chama `readAll()`) uma vez por chamada, sem cache — nunca recebeu a
 otimização de leitura única do P7. Se recebesse (lendo o registo uma vez por `resolve(workflow)`,
-como o P8 "com cache"), o custo cairia para a mesma ordem de Θ(N+M) (~367 µs no pior canto do P8) —
+como o P8 "com cache"), o custo cairia para a mesma ordem de Θ(N+R) (~367 µs no pior canto do P8) —
 um *speedup* projetado de ~200× no ponto F=50/N=200 (73 603 µs → ~367 µs), sem sequer contar o custo
 extra dos `println`. Fica documentado como oportunidade de otimização concreta e ainda não aplicada
 ao glue de produção.
@@ -454,7 +467,7 @@ ao glue de produção.
 ## P11 — Custo real do resolver de auto-deploy GCP (`WorkflowInternalFunctionResolver`)
 
 **Objetivo.** Gémeo GCP do P10: mede o custo real de `WorkflowInternalFunctionResolver.resolve`, o
-glue de auto-deploy do lado Google, mesma grelha N × M=F. O registo usa URLs `.cloudfunctions.net`
+glue de auto-deploy do lado Google, mesma grelha N × R=F. O registo usa URLs `.cloudfunctions.net`
 (1ª geração), o que faz `resolveOrDiscoverInternal` devolver logo após o *hit* no registo, sem
 chamar a API REST do Cloud Run (`inspector.lookupByServiceName`) nem aceder a `regions` (`by lazy`,
 nunca avaliado neste caminho) — mantendo o benchmark 100% local. `CloudRunV2ServiceInspector` e
@@ -478,17 +491,17 @@ duas classes disparem `GoogleCredentials.getApplicationDefault()` — ver gotcha
 
 *(mesma máquina/ressalva de margens de erro do P10.)*
 
-**Resultado.** Mesmo padrão Θ(N·M) do P10, ~7–8% mais caro por chamada (~385–430 µs/chamada em
+**Resultado.** Mesmo padrão Θ(N·R) do P10, ~7–8% mais caro por chamada (~385–430 µs/chamada em
 todo o intervalo de F; 200 chamadas: 76,8 ms a F=1 → 83,3 ms a F=50). A diferença face ao AWS vem
 do glue adicional específico do GCP (verificação `isFirstGenCloudFunction`, construção do par
 host/path via `URI`, mais um `GoogleAccessTokenProvider`/`CloudRunV2ServiceInspector`/
 `CloudRunLocationsV1RestClient` construídos por *trial*), não da leitura do registo em si — o termo
 de I/O é o mesmo `FunctionRegistryStore`.
 
-**Justificação.** Mesma equação do P10: Θ(N·M), nunca corrigido com leitura única. A pequena
+**Justificação.** Mesma equação do P10: Θ(N·R), nunca corrigido com leitura única. A pequena
 diferença de constante entre P10/P11 é o próprio código de glue de cada provider, não o mecanismo
-de registo — consistente com o P8/P9, onde o termo dominante a F=M pequeno é o custo fixo `b`
-(abrir/parsear o ficheiro) por chamada, e não o termo `c·M`.
+de registo — consistente com o P8/P9, onde o termo dominante a F=R pequeno é o custo fixo `b`
+(abrir/parsear o ficheiro) por chamada, e não o termo `c·R`.
 
 ---
 
@@ -533,15 +546,15 @@ que a leitura do código sozinha não substitui a medição.
 `tryResolveEntry`, relê o ficheiro inteiro por chamada). Mas os resolvers reais também **escrevem**:
 sempre que uma função é descoberta/desenhada pela primeira vez, chamam `registry.put(key, meta)` —
 e `put()` nunca foi medido. Lendo o código: `put()` chama `readRootOrNew()` (lê+reparsa o ficheiro
-inteiro) e depois `writeRoot()` (reescreve o ficheiro inteiro) — cada chamada custa O(M), onde M é
-o tamanho *atual* do registo. Regista **K** funções sucessivas num registo que começa com **M0**
-entradas: custo total = Σ O(M0+i) para i=0..K-1 = **Θ(K·M0 + K²)**, quadrático no próprio K quando
-M0 é pequeno. Mede-se diretamente `FunctionRegistryStore.put()`, sem passar pelo resolver completo
+inteiro) e depois `writeRoot()` (reescreve o ficheiro inteiro) — cada chamada custa O(R), onde R é
+o tamanho *atual* do registo. Regista **K** funções sucessivas num registo que começa com **R0**
+entradas: custo total = Σ O(R0+i) para i=0..K-1 = **Θ(K·R0 + K²)**, quadrático no próprio K quando
+R0 é pequeno. Mede-se diretamente `FunctionRegistryStore.put()`, sem passar pelo resolver completo
 (tal como o P6 já chama o `FunctionRegistryStore` diretamente) — pura I/O local, sem SDK nem rede.
 
-**Tempo total (µs) — K escritas sucessivas, K em linhas / M0 em colunas:**
+**Tempo total (µs) — K escritas sucessivas, K em linhas / R0 em colunas:**
 
-| K \ M0 | 0 | 10 | 50 | 200 | 1000 |
+| K \ R0 | 0 | 10 | 50 | 200 | 1000 |
 |---:|---:|---:|---:|---:|---:|
 | 1 | 2 673 | 2 860 | 3 235 | 4 139 | 2 761 |
 | 5 | 12 887 | 13 149 | 14 955 | 19 710 | 13 874 |
@@ -552,45 +565,45 @@ M0 é pequeno. Mede-se diretamente `FunctionRegistryStore.put()`, sem passar pel
 ![P13 — Custo de escrita incremental no registo](P13_registry_write_scaling.png)
 
 *(3 forks (`-f 3`) precisamente para reduzir ruído — erros já pequenos e consistentes na maioria
-dos pontos; ver nota na Justificação sobre a coluna M0=1000.)*
+dos pontos; ver nota na Justificação sobre a coluna R0=1000.)*
 
 **Resultado.** O custo cresce claramente mais que linear em K: entre K=1 e K=100 (100× mais
 escritas), o tempo total sobe ~120–125× em vez de ~100× — a assinatura do termo K² a somar-se ao
-K·M0. Para M0 ∈ {0, 10, 50, 200} a subida com M0 é a esperada (quanto maior o registo de partida,
-mais caro cada `put()`): a K=100, sobe de 329,8 ms (M0=0) para 419,5 ms (M0=200), um aumento
-consistente com o termo K·M0 do modelo.
+K·R0. Para R0 ∈ {0, 10, 50, 200} a subida com R0 é a esperada (quanto maior o registo de partida,
+mais caro cada `put()`): a K=100, sobe de 329,8 ms (R0=0) para 419,5 ms (R0=200), um aumento
+consistente com o termo K·R0 do modelo.
 
-**Justificação.** `put()` = O(M0+i) na i-ésima escrita, logo K escritas custam
-Σ_{i=0}^{K-1} O(M0+i) = **Θ(K·M0 + K²)**. O termo K² domina a subida entre colunas de K (cada
-salto ~2–5× em K dá um salto correspondentemente maior no tempo, não proporcional); o termo K·M0
-explica a subida mais suave ao longo de M0 (para M0 ∈ {0,10,50,200}). A coluna M0=1000 foge a este
-padrão — sai sistematicamente **abaixo** de M0=200 em vez de acima, mesmo repetindo a medição com
+**Justificação.** `put()` = O(R0+i) na i-ésima escrita, logo K escritas custam
+Σ_{i=0}^{K-1} O(R0+i) = **Θ(K·R0 + K²)**. O termo K² domina a subida entre colunas de K (cada
+salto ~2–5× em K dá um salto correspondentemente maior no tempo, não proporcional); o termo K·R0
+explica a subida mais suave ao longo de R0 (para R0 ∈ {0,10,50,200}). A coluna R0=1000 foge a este
+padrão — sai sistematicamente **abaixo** de R0=200 em vez de acima, mesmo repetindo a medição com
 `-f 3` (forks frescos por combinação, o que devia excluir *warm-up* de JIT entre parâmetros
 diferentes). A explicação mais provável não é o código em si, mas a máquina partilhada/não dedicada
-onde isto corre (mesma ressalva do P10–P12): M0=1000 é sempre a última coluna processada em cada
+onde isto corre (mesma ressalva do P10–P12): R0=1000 é sempre a última coluna processada em cada
 grupo de K, pelo que efeitos ao nível do SO (cache de ficheiros, processos em segundo plano,
 throttling térmico) ao longo dos ~30 minutos de execução total podem introduzir viés que uma
 repetição de forks não elimina. A conclusão principal do P13 — o crescimento Θ(K²) em K — é robusta
-em todas as colunas; a curva exata vs. M0 precisaria de `-f 3`+ordem aleatória dos parâmetros numa
+em todas as colunas; a curva exata vs. R0 precisaria de `-f 3`+ordem aleatória dos parâmetros numa
 máquina dedicada para ser conclusiva nesse ponto específico.
 
 ---
 
 ## P14 — Correspondência exata vs. por sufixo no resolver "com cache"
 
-**Objetivo.** P7–P9 provaram que ler o registo uma só vez transforma a resolução de Θ(N·M) em
-Θ(N+M). Mas isso pressupõe que cada `resolveUrlIn` acerta em O(1) (`all[functionName]`). O próprio
+**Objetivo.** P7–P9 provaram que ler o registo uma só vez transforma a resolução de Θ(N·R) em
+Θ(N+R). Mas isso pressupõe que cada `resolveUrlIn` acerta em O(1) (`all[functionName]`). O próprio
 método suporta um segundo caminho — correspondência por **sufixo** (`"region/functionName"`, para
 desambiguação regional) — que, ao falhar o *match* exato, faz um `filterKeys` sobre **todo** o mapa
-em memória: O(M) por chamada. Nenhum benchmark anterior testou este caminho (P6–P11 usam sempre
-nomes exatos). Mede-se aqui, com F=10/N=50 fixos (mesmo ponto do P9) e M a variar, o custo do
+em memória: O(R) por chamada. Nenhum benchmark anterior testou este caminho (P6–P11 usam sempre
+nomes exatos). Mede-se aqui, com F=10/N=50 fixos (mesmo ponto do P9) e R a variar, o custo do
 resolver "com cache" quando o registo tem chaves **exatas** (o caso já medido, aqui como controlo
 cruzado com o P9) vs. quando tem chaves **qualificadas por região** — o workflow continua a
-referenciar nomes nus, pelo que o *match* exato falha sempre e cada chamada paga o scan O(M).
+referenciar nomes nus, pelo que o *match* exato falha sempre e cada chamada paga o scan O(R).
 
 **Tempo de resolução (µs) — exact match vs. suffix match, F=10 / N=50 fixos:**
 
-| M (registo) | exact match (µs) | suffix match (µs) | razão |
+| R (registo) | exact match (µs) | suffix match (µs) | razão |
 |---:|---:|---:|---:|
 | 10 | 219 | 228 | ~1,04× |
 | 20 | 224 | 241 | ~1,07× |
@@ -602,23 +615,102 @@ referenciar nomes nus, pelo que o *match* exato falha sempre e cada chamada paga
 ![P14 — Exact vs. suffix match](P14_resolution_key_match_strategy.png)
 
 **Resultado.** A coluna *exact match* reproduz de perto o "com cache" já medido no P9 no mesmo
-ponto F=10/N=50 (P9: 237→749 µs de M=10 a M=1000; aqui: 219→768 µs) — confirmação cruzada de que
+ponto F=10/N=50 (P9: 237→749 µs de R=10 a R=1000; aqui: 219→768 µs) — confirmação cruzada de que
 `resolveExactMatch` é arquitetonicamente o mesmo resolver, só com um registo diferente. A coluna
 *suffix match* fica sistematicamente **acima**, e a razão entre as duas cresce de forma monótona
-com M: ~1,04× a M=10, ~1,90× a M=1000 — o dobro do custo, apenas por as chaves do registo estarem
+com R: ~1,04× a R=10, ~1,90× a R=1000 — o dobro do custo, apenas por as chaves do registo estarem
 qualificadas por região em vez de serem nomes nus, sem qualquer outra diferença.
 
-**Justificação.** `resolveExactMatch` = 1 leitura O(M) + N *lookups* O(1) = **Θ(N+M)**, igual ao
-P9. `resolveSuffixMatch` = 1 leitura O(M) + N *scans* O(M) = **Θ(N+N·M) ≈ Θ(N·M)** — a mesma classe
+**Justificação.** `resolveExactMatch` = 1 leitura O(R) + N *lookups* O(1) = **Θ(N+R)**, igual ao
+P9. `resolveSuffixMatch` = 1 leitura O(R) + N *scans* O(R) = **Θ(N+N·R) ≈ Θ(N·R)** — a mesma classe
 de complexidade do resolver "sem cache" do P7-P9, só que agora reintroduzida *dentro* do resolver já
 corrigido, por uma particularidade do formato das chaves e não por falta de otimização de leitura.
 Note-se que a magnitude absoluta aqui (µs, não ms) fica muito abaixo do "sem cache" do P8/P9 (que
-chega às dezenas de ms): ali o M é lido do **disco** a cada chamada (I/O + parsing); aqui o *scan*
+chega às dezenas de ms): ali o R é lido do **disco** a cada chamada (I/O + parsing); aqui o *scan*
 de sufixo é sobre um mapa **já em memória** (`registrySnapshot`, carregado uma única vez), pelo que
 o custo por elemento é ordens de grandeza mais barato. A mudança de classe de complexidade
-(O(1)→O(M) por *lookup*) é real e mensurável — visível na razão crescente entre as duas colunas —
+(O(1)→O(R) por *lookup*) é real e mensurável — visível na razão crescente entre as duas colunas —
 mas só se tornaria dramática em termos absolutos com um N muito maior ou um registo muito maior do
-que os testados aqui (o custo extra escala com N·M, não só M).
+que os testados aqui (o custo extra escala com N·R, não só R).
+
+---
+
+## P15 — Resolução do workflow com mistura de chamadas internas/externas (I × E)
+
+**Objetivo.** Todos os benchmarks anteriores (P3, P6–P11, P13, P14) medem workflows homogéneos —
+todas as chamadas são internas. Mas o modelo já suporta chamadas externas no mesmo workflow
+(`CallContext.internalFunction == null`), o caso realista de um workflow que combina funções
+auto-deployadas com APIs de terceiros. Isola-se aqui se o custo de resolução depende do número de
+chamadas **internas** (I) ou do total de chamadas (N = I+E), com F=R=10 fixo (registo do tamanho
+exato do nº de funções distintas, o caso "afinado" do P8) e resolvendo sempre com cache (leitura
+única) — não se repete a comparação naive/otimizado, já exaustivamente coberta em P6–P9.
+
+**Tempo de resolução (µs) — `resolveOptimized`, I em linhas / E em colunas, R=F=10 fixos:**
+
+| I \ E | 0 | 1 | 5 | 10 | 50 | 200 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 181 | 190 | 182 | 187 | 183 | 183 |
+| 1 | 193 | 184 | 183 | 187 | 183 | 186 |
+| 5 | 186 | 186 | 211 | 188 | 187 | 187 |
+| 10 | 189 | 205 | 195 | 203 | 189 | 255 |
+| 50 | 217 | 217 | 217 | 230 | 219 | 322 |
+| 200 | 326 | 321 | 333 | 323 | 315 | 393 |
+
+![P15 — Resolução vs mistura interno/externo (I × E)](P15_resolution_internal_external_mix.png)
+
+**Resultado.** A linha I=0 (só chamadas externas, nenhuma interna) fica praticamente plana
+(~181–190 µs) mesmo com E a subir até 200 — o resolver não paga custo por chamada externa. Ao longo
+de cada coluna (E fixo), o custo sobe claramente com I: ~183 µs a I=0 até ~315–393 µs a I=200, a
+mesma ordem de grandeza da subida por N observada no P8 "com cache". Dentro de cada linha (I fixo),
+a variação com E é pequena e sem tendência clara — o ruído entre colunas é da ordem do erro de
+medição (fork único), não um efeito sistemático de E.
+
+**Justificação.** O resolver resolve *apenas* as chamadas com `internalFunction != null` (o
+*lookup* O(1) no registo já carregado); chamadas externas (`internalFunction == null`) são
+ignoradas nesse passo e só contam para o custo O(N) de reconstruir a árvore do workflow resolvido.
+Por isso o custo real depende de **I** (via os *lookups* no registo) e não de **N** inteiro —
+confirmando explicitamente, pela primeira vez com um workflow realmente misto, o que o P8 já
+sugeria implicitamente (lá, I=N sempre, por o workflow ser todo interno). A escala fica:
+**Θ(I+R)**, com E a entrar apenas no termo O(N) partilhado de reconstrução da árvore, não no termo
+de resolução propriamente dito.
+
+---
+
+## P16 — Resolução vs tamanho do registo (R), workflow misto I=40/E=10 fixos
+
+**Objetivo.** O gémeo do P9, mas com um workflow misto em vez de todo-interno: mantêm-se I=40
+chamadas internas + E=10 chamadas externas (N=50, o mesmo total do P9) e F=10 funções distintas
+fixo, fazendo variar só o tamanho do registo R (R ≥ F, mesma grelha do P9: 10 a 1000). Confirma se o
+Θ(R) já provado no P9 se mantém inalterado quando o workflow tem chamadas externas misturadas —
+isto é, se R continua independente de I/E tal como já era independente de F/N.
+
+**Tempo de resolução (µs) — `resolveOptimized`, I=40/E=10/F=10 fixos:**
+
+| R (registo) | com cache (µs) |
+|---:|---:|
+| 10 | 346 |
+| 20 | 221 |
+| 50 | 247 |
+| 100 | 309 |
+| 200 | 306 |
+| 1000 | 776 |
+
+![P16 — Resolução vs tamanho do registo, workflow misto](P16_resolution_by_registry_mixed.png)
+
+**Resultado.** A tendência geral confirma o mesmo padrão Θ(R) do P9 com cache (237→749 µs de R=10 a
+R=1000 no P9 todo-interno; aqui 346→776 µs com I=40/E=10) — a mesma ordem de grandeza e a mesma
+subida global entre os extremos da grelha. A série é mais ruidosa do que o P9 (nota-se um mínimo
+local em R=20 em vez de uma subida monótona, com erros de medição maiores neste conjunto de fork
+único), mas o ponto-chave — R=1000 claramente acima de todos os outros pontos — replica-se sem
+ambiguidade.
+
+**Justificação.** `resolveOptimized` continua a ser 1 leitura O(R) + N *lookups* O(1) (aqui só os
+I=40 lookups internos tocam o registo; os E=10 externos são ignorados nessa etapa) = **Θ(I+R)** ≈
+**Θ(N+R)** do P9, dado que o termo dominante é a leitura O(R) do registo, indiferente a que fração
+das N chamadas é interna vs externa. O ruído adicional face ao P9 (execução com um único fork, sem
+repetição `-f 3`) explica o não-monotonismo local (R=20 abaixo de R=10); o sinal Θ(R) mantém-se
+claro na escala ponta-a-ponta (346→776 µs, ~2,2×), da mesma ordem do ~3,2× do P9 no mesmo intervalo
+de R.
 
 ---
 
@@ -690,18 +782,24 @@ nome exato do `finalName`. Detalhe em `TESTING.md` §3.1.
 1. A renderização é **linear** no número de funções (P1) e de inputs (P2), sem comportamento
    quadrático.
 2. O custo da unificação (resolução das funções internas) é linear e pequeno por chamada (P3); o P6
-   quantifica a degradação **Θ(N·M)**: ≈ 181 µs (fixo, I/O + parsing) + 0,57 µs por função
-   registada — dominado pelo termo fixo até M ≈ 320 e mitigável lendo o registo uma só vez.
+   quantifica a degradação **Θ(N·R)**: ≈ 181 µs (fixo, I/O + parsing) + 0,57 µs por função
+   registada — dominado pelo termo fixo até R ≈ 320 e mitigável lendo o registo uma só vez.
 3. O renderizador AWS é competitivo com o GCP, dentro da margem de erro (P4).
 4. A profundidade estrutural é um terceiro fator de custo, mais pronunciado no AWS (P5).
 5. O tamanho do registo (P6) é uma quarta dimensão, independente de N; para projetos reais o fator
    dominante é o número de releituras do ficheiro, não a sua dimensão.
-6. A otimização de leitura única (P7) elimina o produto N·M: a resolução passa de **Θ(N·M)** para
-   **Θ(N+M)**, com *speedup* de ~200× no pior canto (de ~150 ms para ~0,75 ms) — identificar
+6. A otimização de leitura única (P7) elimina o produto N·R: a resolução passa de **Θ(N·R)** para
+   **Θ(N+R)**, com *speedup* de ~200× no pior canto (de ~150 ms para ~0,75 ms) — identificar
    (P3/P6) → corrigir → quantificar (P7).
 7. Tamanho (S1/S2): o artefacto cresce linearmente, com o ASL JSON ~2,4× mais volumoso que o YAML
    (S2); e a camada AWS agnóstica acrescenta ao *bundle* apenas ~0,9 KB — overhead negligenciável em
    funções reais (S1), em linha com a avaliação do QuickFaaS.
+8. O eixo I/E (P15/P16), o primeiro workflow realmente misto (chamadas internas e externas no mesmo
+   workflow) medido neste conjunto, confirma que o custo de resolução escala com **I** (chamadas
+   internas) e não com N=I+E — as chamadas externas custam apenas o termo O(N) partilhado de
+   reconstrução da árvore, não o *lookup* no registo (P15); e que o **Θ(R)** já provado no P9 se
+   mantém inalterado, na mesma ordem de grandeza, quando o workflow tem uma fração de chamadas
+   externas (P16).
 
 **Enquadramento global.** Todos os valores estão na ordem dos microssegundos (≤ 1 ms mesmo para 200
 funções): a renderização e a resolução não são o gargalo — o custo dominante é o *deployment* na

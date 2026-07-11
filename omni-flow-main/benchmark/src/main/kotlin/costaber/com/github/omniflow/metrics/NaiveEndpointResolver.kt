@@ -10,9 +10,9 @@ import java.net.URI
  * [costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver].
  *
  * The production resolver reads the registry ONCE per workflow (`readAll()` +
- * `resolveUrlIn` per call, Θ(N+M)). This one instead calls
+ * `resolveUrlIn` per call, Θ(N+R)). This one instead calls
  * [FunctionRegistryStore.resolveUrl] on EVERY internal call, so it re-reads and
- * re-parses the whole registry file per call (Θ(N·M)) - the legacy pre-optimization
+ * re-parses the whole registry file per call (Θ(N·R)) - the legacy pre-optimization
  * path. Used by P8/P9 to measure workflow resolution with and without the
  * registry-read optimization.
  *

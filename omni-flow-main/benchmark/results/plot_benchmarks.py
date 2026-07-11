@@ -83,26 +83,26 @@ def load(path):
 
 
 def load_p6(path):
-    """P6 has two @Param dimensions (n, m); load raw (m, n, method) -> (score, err)."""
+    """P6 has two @Param dimensions (n, r); load raw (r, n, method) -> (score, err)."""
     rows = list(csv.DictReader(open(path, encoding="utf-8")))
-    data = defaultdict(dict)  # data[method][(m, n)] = (score, err)
-    for r in rows:
-        full = r["Benchmark"]
+    data = defaultdict(dict)  # data[method][(r, n)] = (score, err)
+    for row in rows:
+        full = row["Benchmark"]
         method = full.split(".")[-1]
-        m = int(float(r["Param: m"]))
-        n = int(float(r["Param: n"]))
-        score = float(r["Score"])
+        r = int(float(row["Param: r"]))
+        n = int(float(row["Param: n"]))
+        score = float(row["Score"])
         err_col = next((c for c in rows[0].keys() if "Error" in c), None)
-        err = float(r[err_col]) if err_col and (r.get(err_col) or "").strip() not in ("", "NaN") else 0.0
-        data[method][(m, n)] = (score, err)
+        err = float(row[err_col]) if err_col and (row.get(err_col) or "").strip() not in ("", "NaN") else 0.0
+        data[method][(r, n)] = (score, err)
     return data
 
 
 def plot_p6(csv_path, out_dir):
-    """P6 - per-call registry resolution cost vs registry size (m), one line per
-    n. Plotting T(n,m)/n (cost PER resolveUrl call) makes the n-curves collapse
+    """P6 - per-call registry resolution cost vs registry size (r), one line per
+    n. Plotting T(n,r)/n (cost PER resolveUrl call) makes the n-curves collapse
     onto a single curve, which is the direct visual evidence that resolution
-    cost factors as n * f(m) - i.e. the O(N*M) mechanism from a per-call,
+    cost factors as n * f(r) - i.e. the O(N*R) mechanism from a per-call,
     unbounded registry re-read/re-parse (no cache)."""
     if not os.path.exists(csv_path):
         print(f"  [skip] no P6 csv at {csv_path}")
@@ -111,21 +111,21 @@ def plot_p6(csv_path, out_dir):
     ns = sorted({n for (_, n) in data.get("resolveAllInternal", {})})
     plt.figure(figsize=(8, 5))
     for n in ns:
-        pts = sorted((m, score / n) for (m, nn), (score, _err) in data["resolveAllInternal"].items() if nn == n)
+        pts = sorted((r, score / n) for (r, nn), (score, _err) in data["resolveAllInternal"].items() if nn == n)
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         plt.plot(xs, ys, marker="o", label=f"internal, n={n}")
-    # external control: per-call cost should stay ~0 regardless of m
+    # external control: per-call cost should stay ~0 regardless of r
     ext_ns = sorted({n for (_, n) in data.get("resolveAllExternal", {})})
     if ext_ns:
         max_n = max(ext_ns)
-        pts = sorted((m, score / max_n) for (m, nn), (score, _err) in data["resolveAllExternal"].items() if nn == max_n)
+        pts = sorted((r, score / max_n) for (r, nn), (score, _err) in data["resolveAllExternal"].items() if nn == max_n)
         xs = [p[0] for p in pts]
         ys = [p[1] for p in pts]
         plt.plot(xs, ys, marker="s", linestyle="--", color="gray", label=f"external, n={max_n} (control)")
     plt.xscale("log")
-    plt.title("P6 — Custo por chamada de resolveUrl() vs tamanho do registo (m)")
-    plt.xlabel("Funções no registo (m, escala log)")
+    plt.title("P6 — Custo por chamada de resolveUrl() vs tamanho do registo (r)")
+    plt.xlabel("Funções no registo (r, escala log)")
     plt.ylabel("Tempo por chamada (µs/op ÷ n)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend()
@@ -138,33 +138,33 @@ def plot_p6(csv_path, out_dir):
 
 
 def load_p7(path):
-    """P7 has two @Param dimensions (n, m) and two methods (uncached/cached)."""
+    """P7 has two @Param dimensions (n, r) and two methods (uncached/cached)."""
     rows = list(csv.DictReader(open(path, encoding="utf-8")))
     err_col = next((c for c in rows[0].keys() if "Error" in c), None)
-    data = defaultdict(dict)  # data[method][(m, n)] = (score, err)
-    for r in rows:
-        if r["Benchmark"].split(".")[-2] != "BenchmarkResolutionOptimization":
+    data = defaultdict(dict)  # data[method][(r, n)] = (score, err)
+    for row in rows:
+        if row["Benchmark"].split(".")[-2] != "BenchmarkResolutionOptimization":
             continue
-        method = r["Benchmark"].split(".")[-1]
-        m = int(float(r["Param: m"]))
-        n = int(float(r["Param: n"]))
-        score = float(r["Score"])
-        err = float(r[err_col]) if err_col and (r.get(err_col) or "").strip() not in ("", "NaN") else 0.0
-        data[method][(m, n)] = (score, err)
+        method = row["Benchmark"].split(".")[-1]
+        r = int(float(row["Param: r"]))
+        n = int(float(row["Param: n"]))
+        score = float(row["Score"])
+        err = float(row[err_col]) if err_col and (row.get(err_col) or "").strip() not in ("", "NaN") else 0.0
+        data[method][(r, n)] = (score, err)
     return data
 
 
-def _plot_p7_one(data, method, ms, ns, style, title, fname, out_dir, ylim):
+def _plot_p7_one(data, method, rs, ns, style, title, fname, out_dir, ylim):
     """Draw a single P7 strategy (uncached or cached): total resolution time vs N,
-    one curve per registry size M, shared log-y range so the two figures are
+    one curve per registry size R, shared log-y range so the two figures are
     directly comparable."""
-    colours = plt.cm.viridis([i / max(1, len(ms) - 1) for i in range(len(ms))])
+    colours = plt.cm.viridis([i / max(1, len(rs) - 1) for i in range(len(rs))])
     plt.figure(figsize=(8, 5))
-    for i, m in enumerate(ms):
-        pts = [(n, data[method][(m, n)][0]) for n in ns]
+    for i, r in enumerate(rs):
+        pts = [(n, data[method][(r, n)][0]) for n in ns]
         plt.plot([x for x, _ in pts], [y for _, y in pts],
                  marker=style["marker"], linestyle=style["linestyle"],
-                 color=colours[i], label=f"M={m}")
+                 color=colours[i], label=f"R={r}")
     plt.yscale("log")
     plt.ylim(*ylim)
     plt.title(title)
@@ -182,42 +182,42 @@ def _plot_p7_one(data, method, ms, ns, style, title, fname, out_dir, ylim):
 
 def plot_p7(csv_path, out_dir):
     """P7 - before/after of the registry-read optimization, as two separate figures
-    on a shared log-y axis: uncached (per-call read, O(N*M)) vs cached (read once,
-    O(N+M)); one curve per registry size M."""
+    on a shared log-y axis: uncached (per-call read, O(N*R)) vs cached (read once,
+    O(N+R)); one curve per registry size R."""
     if not os.path.exists(csv_path):
         print(f"  [skip] no P7 csv at {csv_path}")
         return None
     data = load_p7(csv_path)
     if not data.get("resolveNaive"):
         return None
-    ms = sorted({m for (m, _) in data["resolveNaive"]})
+    rs = sorted({r for (r, _) in data["resolveNaive"]})
     ns = sorted({n for (_, n) in data["resolveNaive"]})
     # shared log-y range across both strategies, with a small margin
     scores = [s for meth in ("resolveNaive", "resolveOptimized")
               for (s, _err) in data[meth].values()]
     ylim = (min(scores) / 1.5, max(scores) * 1.5)
     uncached = _plot_p7_one(
-        data, "resolveNaive", ms, ns,
+        data, "resolveNaive", rs, ns,
         {"marker": "o", "linestyle": "--"},
-        "P7a — Resolução sem cache (leitura por chamada, Θ(N·M))",
+        "P7a — Resolução sem cache (leitura por chamada, Θ(N·R))",
         "P7a_resolution_sem_cache.png", out_dir, ylim)
     cached = _plot_p7_one(
-        data, "resolveOptimized", ms, ns,
+        data, "resolveOptimized", rs, ns,
         {"marker": "s", "linestyle": "-"},
-        "P7b — Resolução com cache (leitura única, Θ(N+M))",
+        "P7b — Resolução com cache (leitura única, Θ(N+R))",
         "P7b_resolution_com_cache.png", out_dir, ylim)
     return [uncached, cached]
 
 
 _PIPELINE_SERIES = {
-    "resolveNaive": "Sem cache (leitura por chamada, Θ(N·M))",
-    "resolveOptimized": "Com cache (leitura única, Θ(N+M))",
+    "resolveNaive": "Sem cache (leitura por chamada, Θ(N·R))",
+    "resolveOptimized": "Com cache (leitura única, Θ(N+R))",
 }
 
 
 def _plot_pipeline(csv_path, out_dir, cls, title, xlabel, fname, series=None):
     """P9 - workflow resolution, one CSV with a single @Param. Reuses the generic
-    load(); log-y because uncached (Θ(N·M)) vs cached (Θ(N+M)) spans ~2 orders of
+    load(); log-y because uncached (Θ(N·R)) vs cached (Θ(N+R)) spans ~2 orders of
     magnitude. `series` maps @Benchmark method -> legend label."""
     if not os.path.exists(csv_path):
         print(f"  [skip] no csv at {csv_path}")
@@ -295,8 +295,8 @@ def _plot_p8_one(data, method, fs, ns, style, title, fname, out_dir, ylim):
 
 def plot_p8(csv_path, out_dir):
     """P8 - workflow resolution vs its two axes (F distinct functions x N calls,
-    with registry M=F), as two figures on a shared log-y axis: uncached (per-call
-    read, O(N*M)) vs cached (read once, O(N+M)); one curve per F."""
+    with registry R=F), as two figures on a shared log-y axis: uncached (per-call
+    read, O(N*R)) vs cached (read once, O(N+R)); one curve per F."""
     if not os.path.exists(csv_path):
         print(f"  [skip] no P8 csv at {csv_path}")
         return None
@@ -311,12 +311,12 @@ def plot_p8(csv_path, out_dir):
     uncached = _plot_p8_one(
         data, "resolveNaive", fs, ns,
         {"marker": "o", "linestyle": "--"},
-        "P8a — Resolução sem cache (leitura por chamada, Θ(N·M)) — M=F",
+        "P8a — Resolução sem cache (leitura por chamada, Θ(N·R)) — R=F",
         "P8a_resolution_sem_cache.png", out_dir, ylim)
     cached = _plot_p8_one(
         data, "resolveOptimized", fs, ns,
         {"marker": "s", "linestyle": "-"},
-        "P8b — Resolução com cache (leitura única, Θ(N+M)) — M=F",
+        "P8b — Resolução com cache (leitura única, Θ(N+R)) — R=F",
         "P8b_resolution_com_cache.png", out_dir, ylim)
     return [uncached, cached]
 
@@ -324,8 +324,8 @@ def plot_p8(csv_path, out_dir):
 def plot_p9(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkResolveWorkflowByRegistrySize",
-        "P9 — Resolução vs tamanho do registo (M) — F=10/N=50 fixos",
-        "Nº de funções no registo (M)",
+        "P9 — Resolução vs tamanho do registo (R) — F=10/N=50 fixos",
+        "Nº de funções no registo (R)",
         "P9_resolution_by_registry.png")
 
 
@@ -347,7 +347,7 @@ def _load_single_method(csv_path, cls):
 
 def _plot_internal_resolution(csv_path, out_dir, cls, title, fname):
     """P10/P11 - cost of a REAL auto-deploy resolver (not a benchmark-only stand-in like
-    NaiveEndpointResolver) vs N calls x M registry size (M=F), one curve per F. Unlike P8/P9
+    NaiveEndpointResolver) vs N calls x R registry size (R=F), one curve per F. Unlike P8/P9
     there is only one strategy: neither resolver was ever fixed with the single-read
     optimization, so this measures the actual production cost of the unification glue."""
     if not os.path.exists(csv_path):
@@ -382,14 +382,14 @@ def _plot_internal_resolution(csv_path, out_dir, cls, title, fname):
 def plot_p10(csv_path, out_dir):
     return _plot_internal_resolution(
         csv_path, out_dir, "BenchmarkAwsInternalFunctionResolution",
-        "P10 — Resolução real AWS (AwsInternalFunctionResolver) — M=F",
+        "P10 — Resolução real AWS (AwsInternalFunctionResolver) — R=F",
         "P10_aws_internal_resolution.png")
 
 
 def plot_p11(csv_path, out_dir):
     return _plot_internal_resolution(
         csv_path, out_dir, "BenchmarkGoogleInternalFunctionResolution",
-        "P11 — Resolução real GCP (WorkflowInternalFunctionResolver) — M=F",
+        "P11 — Resolução real GCP (WorkflowInternalFunctionResolver) — R=F",
         "P11_google_internal_resolution.png")
 
 
@@ -411,24 +411,24 @@ def plot_p12(csv_path, out_dir):
 
 
 def _load_registry_write(csv_path):
-    """P13 has two @Param dimensions (m0, k) and a single method (putKSequential)."""
+    """P13 has two @Param dimensions (r0, k) and a single method (putKSequential)."""
     rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
     err_col = next((c for c in rows[0].keys() if "Error" in c), None)
-    data = {}  # data[(m0, k)] = (score, err)
-    for r in rows:
-        if r["Benchmark"].split(".")[-2] != "BenchmarkRegistryWriteScaling":
+    data = {}  # data[(r0, k)] = (score, err)
+    for row in rows:
+        if row["Benchmark"].split(".")[-2] != "BenchmarkRegistryWriteScaling":
             continue
-        m0 = int(float(r["Param: m0"]))
-        k = int(float(r["Param: k"]))
-        score = float(r["Score"])
-        err = float(r[err_col]) if err_col and (r.get(err_col) or "").strip() not in ("", "NaN") else 0.0
-        data[(m0, k)] = (score, err)
+        r0 = int(float(row["Param: r0"]))
+        k = int(float(row["Param: k"]))
+        score = float(row["Score"])
+        err = float(row[err_col]) if err_col and (row.get(err_col) or "").strip() not in ("", "NaN") else 0.0
+        data[(r0, k)] = (score, err)
     return data
 
 
 _KEY_MATCH_SERIES = {
     "resolveExactMatch": "Exact match (O(1)/lookup)",
-    "resolveSuffixMatch": "Suffix match, region-qualified (O(M)/lookup)",
+    "resolveSuffixMatch": "Suffix match, region-qualified (O(R)/lookup)",
 }
 
 
@@ -436,15 +436,15 @@ def plot_p14(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkResolutionKeyMatchStrategy",
         "P14 — Exact vs. suffix match no resolver \"com cache\" — F=10/N=50 fixos",
-        "Nº de funções no registo (M)",
+        "Nº de funções no registo (R)",
         "P14_resolution_key_match_strategy.png",
         series=_KEY_MATCH_SERIES)
 
 
 def plot_p13(csv_path, out_dir):
     """P13 - cost of K sequential FunctionRegistryStore.put() calls starting from a registry of
-    M0 entries, one curve per M0. Complements P6-P11 (read side) with the write side: put()
-    re-reads and rewrites the whole file per call, so K registrations cost Theta(K*M0 + K^2)."""
+    R0 entries, one curve per R0. Complements P6-P11 (read side) with the write side: put()
+    re-reads and rewrites the whole file per call, so K registrations cost Theta(K*R0 + K^2)."""
     if not os.path.exists(csv_path):
         print(f"  [skip] no P13 csv at {csv_path}")
         return None
@@ -452,17 +452,17 @@ def plot_p13(csv_path, out_dir):
     if not data:
         print("  [skip] no data for BenchmarkRegistryWriteScaling")
         return None
-    m0s = sorted({m0 for (m0, _) in data})
+    r0s = sorted({r0 for (r0, _) in data})
     ks = sorted({k for (_, k) in data})
-    colours = plt.cm.viridis([i / max(1, len(m0s) - 1) for i in range(len(m0s))])
+    colours = plt.cm.viridis([i / max(1, len(r0s) - 1) for i in range(len(r0s))])
     plt.figure(figsize=(8, 5))
-    for i, m0 in enumerate(m0s):
-        pts = [(k, data[(m0, k)][0]) for k in ks if (m0, k) in data]
+    for i, r0 in enumerate(r0s):
+        pts = [(k, data[(r0, k)][0]) for k in ks if (r0, k) in data]
         plt.plot([x for x, _ in pts], [y for _, y in pts],
-                 marker="o", linestyle="--", color=colours[i], label=f"M0={m0}")
+                 marker="o", linestyle="--", color=colours[i], label=f"R0={r0}")
     plt.yscale("log")
     plt.xscale("log")
-    plt.title("P13 — Custo de escrita incremental no registo (put) — M0 × K")
+    plt.title("P13 — Custo de escrita incremental no registo (put) — R0 × K")
     plt.xlabel("Nº de escritas sucessivas (K, escala log)")
     plt.ylabel("Tempo total (µs/op, escala log)")
     plt.grid(True, alpha=0.3, which="both")
@@ -473,6 +473,64 @@ def plot_p13(csv_path, out_dir):
     plt.close()
     print(f"  [ok] {out}")
     return out
+
+
+def _load_ie(csv_path, cls):
+    """Generic loader for CSVs with two @Param dims (i, e) and a single @Benchmark method."""
+    rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
+    err_col = next((c for c in rows[0].keys() if "Error" in c), None)
+    data = {}  # data[(i, e)] = (score, err)
+    for row in rows:
+        if row["Benchmark"].split(".")[-2] != cls:
+            continue
+        i_val = int(float(row["Param: i"]))
+        e_val = int(float(row["Param: e"]))
+        score = float(row["Score"])
+        err = float(row[err_col]) if err_col and (row.get(err_col) or "").strip() not in ("", "NaN") else 0.0
+        data[(i_val, e_val)] = (score, err)
+    return data
+
+
+def plot_p15(csv_path, out_dir):
+    """P15 - resolution cost of a workflow mixing internal (I) and external (E) calls, N=I+E,
+    R=F=10 fixed. Only the cached/optimized resolver is measured (naive-vs-optimized already
+    established in P6-P9). One curve per I value, x-axis E, showing whether cost tracks I (the
+    only calls that touch the registry) rather than the full N=I+E."""
+    if not os.path.exists(csv_path):
+        print(f"  [skip] no P15 csv at {csv_path}")
+        return None
+    data = _load_ie(csv_path, "BenchmarkResolveWorkflowByInternalExternalMix")
+    if not data:
+        print("  [skip] no data for BenchmarkResolveWorkflowByInternalExternalMix")
+        return None
+    i_values = sorted({i_val for (i_val, _) in data})
+    e_values = sorted({e_val for (_, e_val) in data})
+    colours = plt.cm.viridis([k / max(1, len(i_values) - 1) for k in range(len(i_values))])
+    plt.figure(figsize=(8, 5))
+    for k, i_val in enumerate(i_values):
+        pts = [(e_val, data[(i_val, e_val)][0]) for e_val in e_values if (i_val, e_val) in data]
+        plt.plot([x for x, _ in pts], [y for _, y in pts],
+                 marker="o", linestyle="-", color=colours[k], label=f"I={i_val}")
+    plt.title("P15 — Resolução vs mistura interno/externo (I × E) — R=F=10 fixos")
+    plt.xlabel("Nº de chamadas externas (E)")
+    plt.ylabel("Tempo total (µs/op)")
+    plt.grid(True, alpha=0.3)
+    plt.legend(fontsize=8)
+    plt.tight_layout()
+    out = os.path.join(out_dir, "P15_resolution_internal_external_mix.png")
+    plt.savefig(out, dpi=130)
+    plt.close()
+    print(f"  [ok] {out}")
+    return out
+
+
+def plot_p16(csv_path, out_dir):
+    return _plot_pipeline(
+        csv_path, out_dir, "BenchmarkResolveWorkflowByRegistrySizeMixed",
+        "P16 — Resolução vs tamanho do registo (R), workflow misto — I=40/E=10/F=10 fixos",
+        "Nº de funções no registo (R)",
+        "P16_resolution_by_registry_mixed.png",
+        series={"resolveOptimized": "Com cache (workflow misto)"})
 
 
 def plot_artifact_size(csv_path, out_dir):
@@ -572,6 +630,16 @@ def main():
     p14_out = plot_p14(p14_csv, OUT)
     if p14_out:
         made.append(p14_out)
+
+    p15_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p15.csv")
+    p15_out = plot_p15(p15_csv, OUT)
+    if p15_out:
+        made.append(p15_out)
+
+    p16_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p16.csv")
+    p16_out = plot_p16(p16_csv, OUT)
+    if p16_out:
+        made.append(p16_out)
 
     s2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "artifact-size.csv")
     s2_out = plot_artifact_size(s2_csv, OUT)

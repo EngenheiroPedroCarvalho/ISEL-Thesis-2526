@@ -25,20 +25,23 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P9 - The complementary axis of P8 ([BenchmarkResolveWorkflowByFunctionsAndCalls]):
- * isolate the effect of the REGISTRY SIZE (R) on resolution, holding the workflow
- * fixed. The workflow always makes [FIXED_CALLS] calls over [FIXED_FUNCTIONS]
- * distinct functions (N and F fixed); only the registry is padded to R entries
- * (R >= [FIXED_FUNCTIONS]), so the workflow references just the first F of them
- * while R-F extra entries inflate every registry read.
+ * P15 - Resolution cost of a workflow that MIXES internal and external calls, along its two new
+ * axes: the number of internal calls ([i], I) and the number of external calls ([e], E). N = I+E.
  *
- * Same two strategies as P8, resolution only (no render, which the read
- * optimization does not affect):
- *  - [resolveNaive]     re-reads the whole R-entry registry file per call -> O(N*R)
- *  - [resolveOptimized] reads the R-entry registry once, then N lookups    -> O(N+R)
+ * P1-P14 only ever benchmarked HOMOGENEOUS workflows: all-internal (P3, P6-P11, P13, P14) or
+ * all-external (P1, P2, P4, P5) - no benchmark mixed both in the same workflow, even though
+ * production workflows realistically do (auto-deployed internal functions alongside third-party
+ * external calls). [WorkflowGenerator.withMixedCalls] interleaves I internal calls (round-robin
+ * over [FIXED_FUNCTIONS] distinct functions, same scheme as P8/P9) with E external calls, evenly
+ * spread rather than grouped.
  *
- * Both paths produce an IDENTICAL resolved workflow, so the measured gap is purely
- * the registry-read overhead. Pure local file I/O - no AWS/GCP SDK, no network.
+ * The registry holds exactly the [FIXED_FUNCTIONS] functions the internal calls reference (R=F,
+ * the "right-sized" registry case, as in P8/P10/P11). Only the ALREADY-OPTIMIZED resolver (single
+ * registry read, `WorkflowInternalCallEndpointResolver`) is measured here - the naive-vs-optimized
+ * comparison is already exhaustively established in P6/P7/P8/P9; the point of P15 is to isolate
+ * whether resolution cost tracks I (internal calls, the only ones that touch the registry) or the
+ * full N, now that a single workflow contains both. Pure local file I/O - no AWS/GCP SDK, no
+ * network.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -46,14 +49,17 @@ import java.util.concurrent.TimeUnit
 @Measurement(iterations = 10)
 @Fork(1)
 @State(Scope.Thread)
-open class BenchmarkResolveWorkflowByRegistrySize {
+open class BenchmarkResolveWorkflowByInternalExternalMix {
 
-    /** Number of functions registered in the registry file (R); always >= FIXED_FUNCTIONS. */
-    @Param("10", "20", "50", "100", "200", "1000")
-    var r: Int = 0
+    /** Number of internal call steps in the workflow (I). */
+    @Param("0", "1", "5", "10", "50", "200")
+    var i: Int = 0
+
+    /** Number of external call steps in the workflow (E). */
+    @Param("0", "1", "5", "10", "50", "200")
+    var e: Int = 0
 
     private lateinit var registryFile: Path
-    private lateinit var store: FunctionRegistryStore
     private lateinit var resolver: WorkflowInternalCallEndpointResolver
     private lateinit var workflow: Workflow
 
@@ -62,11 +68,11 @@ open class BenchmarkResolveWorkflowByRegistrySize {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p9-registry", ".json")
-        store = FunctionRegistryStore(registryFile)
+        registryFile = Files.createTempFile("omniflow-bench-p15-registry", ".json")
+        val store = FunctionRegistryStore(registryFile)
 
-        // Registry padded to R entries; the workflow references only the first F.
-        val functions = (0 until r).associate { idx ->
+        // Registry holds exactly the FIXED_FUNCTIONS functions the internal calls reference (R=F).
+        val functions = (0 until FIXED_FUNCTIONS).associate { idx ->
             val name = "$BASE$idx"
             name to FunctionInvocationMetadata(
                 serviceName = name,
@@ -76,8 +82,8 @@ open class BenchmarkResolveWorkflowByRegistrySize {
         store.writeNew(functions)
         resolver = WorkflowInternalCallEndpointResolver(store)
 
-        // FIXED_CALLS calls distributed round-robin over the first FIXED_FUNCTIONS functions.
-        workflow = WorkflowGenerator.withDistinctInternalCalls(FIXED_CALLS, FIXED_FUNCTIONS, BASE)
+        // I internal calls (round-robin over FIXED_FUNCTIONS) interleaved with E external calls.
+        workflow = WorkflowGenerator.withMixedCalls(i, e, FIXED_FUNCTIONS, BASE)
     }
 
     @TearDown(Level.Trial)
@@ -85,20 +91,13 @@ open class BenchmarkResolveWorkflowByRegistrySize {
         Files.deleteIfExists(registryFile)
     }
 
-    /** Naive resolution: one full registry read+parse per call -> O(N*R). */
-    @Benchmark
-    fun resolveNaive(blackhole: Blackhole) {
-        blackhole.consume(NaiveEndpointResolver.resolve(workflow, store, internalCallExtractor))
-    }
-
-    /** Optimized resolution: one registry read, then N pure lookups -> O(N+R). */
+    /** Optimized resolution (single registry read, then per-call lookups) of a mixed I/E workflow. */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
         blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
     }
 
     companion object {
-        private const val FIXED_CALLS = 50
         private const val FIXED_FUNCTIONS = 10
         private const val BASE = "benchFn"
     }
