@@ -469,6 +469,57 @@ def plot_p13(csv_path, out_dir):
     return out
 
 
+def _load_registry_miss_and_deploy(csv_path):
+    """P17 has two @Param dimensions (r0, k) and a single method
+    (missThenDeployKSequential) - same shape as P13's loader."""
+    rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
+    err_col = next((c for c in rows[0].keys() if "Error" in c), None)
+    data = {}  # data[(r0, k)] = (score, err)
+    for row in rows:
+        if row["Benchmark"].split(".")[-2] != "BenchmarkRegistryMissAndDeploy":
+            continue
+        r0 = int(float(row["Param: r0"]))
+        k = int(float(row["Param: k"]))
+        score = float(row["Score"])
+        err = float(row[err_col]) if err_col and (row.get(err_col) or "").strip() not in ("", "NaN") else 0.0
+        data[(r0, k)] = (score, err)
+    return data
+
+
+def plot_p17(csv_path, out_dir):
+    """P17 - cost of K sequential (tryResolveEntry miss + put) pairs starting from a registry of
+    R0 entries, one curve per R0. Same (R0, K) grid as P13 (put-only), so the two are directly
+    comparable on the same axes - the gap between them is the added cost of the miss lookup."""
+    if not os.path.exists(csv_path):
+        print(f"  [skip] no P17 csv at {csv_path}")
+        return None
+    data = _load_registry_miss_and_deploy(csv_path)
+    if not data:
+        print("  [skip] no data for BenchmarkRegistryMissAndDeploy")
+        return None
+    r0s = sorted({r0 for (r0, _) in data})
+    ks = sorted({k for (_, k) in data})
+    colours = plt.cm.viridis([i / max(1, len(r0s) - 1) for i in range(len(r0s))])
+    plt.figure(figsize=(8, 5))
+    for i, r0 in enumerate(r0s):
+        pts = [(k, data[(r0, k)][0]) for k in ks if (r0, k) in data]
+        plt.plot([x for x, _ in pts], [y for _, y in pts],
+                 marker="o", linestyle="--", color=colours[i], label=f"R0={r0}")
+    plt.yscale("log")
+    plt.xscale("log")
+    plt.title("P17 — Custo de miss+deploy (tryResolveEntry + put) — R0 × K")
+    plt.xlabel("Nº de funções novas resolvidas+registadas (K, escala log)")
+    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.grid(True, alpha=0.3, which="both")
+    plt.legend(fontsize=8)
+    plt.tight_layout()
+    out = os.path.join(out_dir, "P17_registry_miss_and_deploy.png")
+    plt.savefig(out, dpi=130)
+    plt.close()
+    print(f"  [ok] {out}")
+    return out
+
+
 def _load_ie(csv_path, cls):
     """Generic loader for CSVs with two @Param dims (i, e) and a single @Benchmark method."""
     rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
@@ -634,6 +685,11 @@ def main():
     p16_out = plot_p16(p16_csv, OUT)
     if p16_out:
         made.append(p16_out)
+
+    p17_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p17.csv")
+    p17_out = plot_p17(p17_csv, OUT)
+    if p17_out:
+        made.append(p17_out)
 
     s2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "artifact-size.csv")
     s2_out = plot_artifact_size(s2_csv, OUT)
