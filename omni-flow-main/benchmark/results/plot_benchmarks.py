@@ -578,6 +578,24 @@ def plot_p16(csv_path, out_dir):
         series={"resolveOptimized": "Com cache (workflow misto)"})
 
 
+def plot_p18(csv_path, out_dir):
+    return _plot_pipeline(
+        csv_path, out_dir, "BenchmarkInternalResolutionByNesting",
+        "P18 — Resolução interna vs profundidade de aninhamento — 20 chamadas/F=10 fixos",
+        "Profundidade de aninhamento (parallel/iteration encadeados)",
+        "P18_internal_resolution_by_nesting.png",
+        series={"resolveOptimized": "Com cache (workflow aninhado)"})
+
+
+def plot_p19(csv_path, out_dir):
+    return _plot_pipeline(
+        csv_path, out_dir, "BenchmarkInternalResolutionByBranchWidth",
+        "P19 — Resolução interna vs largura de Parallel — 5 chamadas/branch, F=10 fixos",
+        "Nº de branches do Parallel",
+        "P19_internal_resolution_by_branch_width.png",
+        series={"resolveOptimized": "Com cache (workflow com Parallel largo)"})
+
+
 def plot_artifact_size(csv_path, out_dir):
     """S2 - size in KB of the rendered workflow artifact (ASL JSON vs GCP YAML) vs N."""
     if not os.path.exists(csv_path):
@@ -690,6 +708,16 @@ def main():
     p17_out = plot_p17(p17_csv, OUT)
     if p17_out:
         made.append(p17_out)
+
+    p18_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p18.csv")
+    p18_out = plot_p18(p18_csv, OUT)
+    if p18_out:
+        made.append(p18_out)
+
+    p19_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p19.csv")
+    p19_out = plot_p19(p19_csv, OUT)
+    if p19_out:
+        made.append(p19_out)
 
     s2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "artifact-size.csv")
     s2_out = plot_artifact_size(s2_csv, OUT)

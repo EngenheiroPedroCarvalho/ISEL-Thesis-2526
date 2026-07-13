@@ -1,4 +1,4 @@
-# Resultados dos testes de desempenho (P3, P6–P17) e de tamanho (S1)
+# Resultados dos testes de desempenho (P3, P6–P19) e de tamanho (S1)
 
 Medições locais da resolução de funções internas (registo, glue de auto-deploy AWS/GCP), sem
 chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
@@ -7,7 +7,9 @@ chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
 > contribuição da tese (Parte B — unificação/registo/resolução; Parte A — suporte AWS no
 > QuickFaaS). Os testes que mediam o motor de renderização AWS/GCP herdado do OmniFlow original
 > (P1, P2, P5, P12, S2) foram removidos por incidirem sobre código pré-existente de terceiros,
-> nunca modificado nesta tese.
+> nunca modificado nesta tese. P18/P19 retomam os eixos estruturais do P5 (aninhamento) e do P12
+> (largura de Parallel), mas do lado da **resolução** de funções internas (contribuição da tese),
+> não da renderização.
 
 ## Metodologia
 
@@ -20,9 +22,11 @@ chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
   `jmh-results-p9.csv` (P8–P9, resolução do workflow real), `jmh-results-p10.csv`/`jmh-results-p11.csv`
   (P10–P11, resolvers reais AWS/GCP), `jmh-results-p13.csv` (P13, escrita no registo),
   `jmh-results-p14.csv` (P14, exact vs. suffix match), `jmh-results-p15.csv` (P15, mistura I/E),
-  `jmh-results-p16.csv` (P16, R com workflow misto) e `jmh-results-p17.csv` (P17, miss+deploy no
-  registo). Gráficos: `P3_*.png`, `P6_*.png … P17_*.png` (P7 e P8 em duas figuras cada,
-  `P7a`/`P7b` e `P8a`/`P8b`), regeneráveis com `python3 plot_benchmarks.py`.
+  `jmh-results-p16.csv` (P16, R com workflow misto), `jmh-results-p17.csv` (P17, miss+deploy no
+  registo), `jmh-results-p18.csv` (P18, resolução vs profundidade de aninhamento) e
+  `jmh-results-p19.csv` (P19, resolução vs largura de Parallel). Gráficos: `P3_*.png`,
+  `P6_*.png … P19_*.png` (P7 e P8 em duas figuras cada, `P7a`/`P7b` e `P8a`/`P8b`), regeneráveis com
+  `python3 plot_benchmarks.py`.
 - **Ressalva:** ambiente partilhado e configuração reduzida; os valores absolutos servem para
   comparar tendências e relações, não como números definitivos de hardware. Para a versão final,
   repetir com `-f 3` e máquina dedicada.
@@ -64,6 +68,7 @@ R=F? tudo interno? misto?):
 | P13, P17 | Não há F (é o lado de **escrita**, não de resolução); usa **R0** (tamanho inicial do registo) e **K** (nº de escritas sucessivas, ou pares miss+escrita no P17) em vez de R/N | mesmo papel de R e N, mas nomeados de forma diferente por não se tratar de resolução de chamadas |
 | **P15** | **R = F** fixo (=10); **I** e **E** variam livremente, **N = I+E** | primeiro workflow com mistura real de chamadas internas/externas; isola se o custo segue I ou N |
 | **P16** | **I, E, F fixos** (I=40/E=10/F=10); **R** varia | gémeo do P9 em workflow misto — confirma que Θ(R) se mantém inalterado com chamadas externas presentes |
+| **P18, P19** | **R = F** fixo (=10); **N** fixo (P18: 20 chamadas; P19: 5×largura) | eixo estrutural (profundidade de aninhamento / largura de Parallel) em vez de R — isola se o custo depende só do N total de chamadas ou também da forma da árvore |
 
 ---
 
@@ -356,6 +361,71 @@ a 54% de custo, crescendo com R0, pois tryResolveEntry também é O(R).
 
 ---
 
+## P18 — Resolução interna vs profundidade de aninhamento
+
+P5 mediu este eixo (profundidade de aninhamento, alternando *iteration*/*parallel*) só para a
+**renderização**, com workflows 100% externos — nunca tocava o registo. `resolveContext` no
+`WorkflowInternalCallEndpointResolver` recursa explicitamente em `IterationRangeContext`/
+`ParallelBranchContext`, mas nenhum benchmark de resolução (P3, P6-P17) alguma vez construiu uma
+árvore aninhada — todos usam sequências planas de chamadas. O P18 fecha essa lacuna: mesma
+estrutura do P5 (20 chamadas-folha fixas, profundidade `depth` a variar), mas as folhas são
+chamadas **internas** (10 funções distintas, round-robin, R=F=10) em vez de chamadas externas
+independentes.
+
+**Tempo total (µs) — 20 chamadas internas, R=F=10 fixos, profundidade a variar:**
+
+| Profundidade | Tempo (µs) |
+|---:|---:|
+| 0 (plano) | 207,3 |
+| 1 | 203,2 |
+| 2 | 200,7 |
+| 3 | 200,4 |
+| 4 | 204,1 |
+| 5 | 199,6 |
+
+![P18 — Resolução interna vs profundidade de aninhamento](P18_internal_resolution_by_nesting.png)
+
+**Resumo.** O tempo fica praticamente constante (~200-207 µs) em todas as profundidades, dentro da
+margem de erro — a recursão do resolver sobre `Iteration`/`Parallel` não acrescenta custo
+mensurável além do que as 20 folhas já custariam numa lista plana. Confirma que a resolução escala
+com o **número total de chamadas internas**, não com a forma/profundidade da árvore.
+
+---
+
+## P19 — Resolução interna vs largura de Parallel
+
+Gémeo do P12 (que mediu largura de `Choice`/`Parallel` só para renderização), mas do lado da
+resolução. Não há equivalente de largura de `Choice` aqui: um `ConditionalContext` só tem pares
+condição/nome-de-destino, nunca `Step`s aninhados — não há nada para o resolver percorrer. Já o
+`Parallel` aninha listas reais de `Step`s por *branch*, e `resolveContext` recursa explicitamente
+em `ParallelBranchContext` — caminho nunca exercitado pelos workflows planos de P3/P6-P17. Mesma
+estrutura do P12 (um único bloco `Parallel`, 5 chamadas-folha fixas por *branch*, largura a
+variar), mas as folhas são chamadas internas (10 funções distintas, round-robin, R=F=10). O nº
+total de chamadas resolvidas é N = 5 × largura.
+
+**Tempo total (µs) — 5 chamadas internas/branch, R=F=10 fixos, largura do Parallel a variar:**
+
+| Nº de branches | N (=5×largura) | Tempo (µs) |
+|---:|---:|---:|
+| 1 | 5 | 188,3 |
+| 2 | 10 | 195,0 |
+| 5 | 25 | 204,5 |
+| 10 | 50 | 220,8 |
+| 20 | 100 | 276,2 |
+| 50 | 250 | 404,9 |
+| 100 | 500 | 583,7 |
+
+![P19 — Resolução interna vs largura de Parallel](P19_internal_resolution_by_branch_width.png)
+
+**Resumo.** O tempo cresce de forma aproximadamente linear com o número total de chamadas internas
+N=5×largura (188 µs em N=5 → 584 µs em N=500), na mesma ordem de grandeza e com a mesma tendência
+já vista nos workflows planos do P8/P15 — estar dentro de um `Parallel` largo não introduz nenhum
+custo extra por *branch* além das chamadas que ele de facto contém. Confirma, junto com o P18, que
+o custo de resolução depende só do nº total de chamadas internas (N), independentemente de estarem
+organizadas numa lista plana, aninhadas em profundidade ou espalhadas por muitos *branches*.
+
+---
+
 ## S1 — Bundle/ZIP size da Lambda: AWS agnóstico vs nativo
 
 A avaliação inicial do QuickFaaS mediu o "ZIP size (KB)" do *bundle* de deployment (agnóstico
@@ -402,6 +472,12 @@ não-determinística de jar, validado por teste.
 7. O custo real de "primeiro deploy" de uma função nova (P17) é maior do que só o `put()` do P13:
    o *miss lookup* (`tryResolveEntry`) que os resolvers reais fazem antes de escrever acrescenta
    ~24-54% de custo, crescendo com R0 — outro termo Θ(R) que se soma ao já identificado.
+8. Os eixos estruturais que P5/P12 só tinham medido para renderização (profundidade de aninhamento,
+   largura de Parallel) foram fechados do lado da resolução por P18/P19: apesar de o resolver
+   recursar explicitamente em `Iteration`/`Parallel`, nem a profundidade (P18, plano em ~200 µs)
+   nem a largura de Parallel (P19, cresce com N=5×largura na mesma ordem do P8/P15) introduzem
+   custo além do que o nº total de chamadas internas já explica — a forma da árvore é irrelevante,
+   só a contagem de chamadas importa.
 
 **Enquadramento global.** Todos os valores estão na ordem dos microssegundos a poucas centenas de
 milissegundos no pior caso não otimizado (K=100 escritas sucessivas): a resolução de endpoints não

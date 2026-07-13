@@ -1,0 +1,7 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit","Param: depth"
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized","avgt",1,5,207.313017,19.516964,"us/op",0
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized","avgt",1,5,203.175256,8.298061,"us/op",1
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized","avgt",1,5,200.724994,3.796684,"us/op",2
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized","avgt",1,5,200.364217,13.066845,"us/op",3
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized","avgt",1,5,204.087762,4.010374,"us/op",4
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized","avgt",1,5,199.636385,6.949817,"us/op",5

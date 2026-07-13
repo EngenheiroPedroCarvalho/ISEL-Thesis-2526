@@ -488,4 +488,80 @@ object WorkflowGenerator {
             WORKFLOW_RESULT
         )
     }
+
+    /**
+     * P18 helper. Same nesting scheme as [withNestedSteps] (FIXED leaf count, [depth] levels
+     * alternating iteration/parallel wrappers), but the innermost leaves are INTERNAL CALL steps -
+     * round-robin over [distinctFunctionCount] distinct functions, same scheme as
+     * [withDistinctInternalCalls] - instead of independent external calls. Lets a resolution
+     * benchmark measure internal-function resolution cost as a function of nesting depth, isolated
+     * from total call count.
+     */
+    @JvmStatic
+    fun withNestedInternalCalls(
+        totalSteps: Int,
+        depth: Int,
+        distinctFunctionCount: Int,
+        baseName: String = "benchFn"
+    ): Workflow {
+        val leaves: List<Step> = (0 until totalSteps).map { idx ->
+            Step(
+                "INNER$STEP_NAME$idx",
+                "Nested internal call step example",
+                StepType.CALL,
+                StepContextGenerator.internalCall("$baseName${idx % distinctFunctionCount}")
+            )
+        }
+        var current: List<Step> = leaves
+        for (level in 0 until depth) {
+            val wrapped: Step = if (level % 2 == 0) {
+                iterationWithRange("NEST$level", level, current, Range(1, 10))
+            } else {
+                parallelOneBranch(current)
+            }
+            current = listOf(wrapped)
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            current,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P19 helper. Same structure as [withParallelBranchWidth] (a SINGLE Parallel step with
+     * [branchCount] branches, each holding [leafStepsPerBranch] leaves), but the leaves are
+     * INTERNAL CALL steps - round-robin over [distinctFunctionCount] distinct functions - instead
+     * of independent external calls. Lets a resolution benchmark measure internal-function
+     * resolution cost as a function of Parallel branch width, isolated from total call count.
+     *
+     * There is no Choice-width analogue: a ConditionalContext only carries Condition/target-name
+     * pairs, never nested CALL steps, so internal resolution has nothing to recurse into there.
+     */
+    @JvmStatic
+    fun withParallelBranchWidthInternalCalls(
+        branchCount: Int,
+        leafStepsPerBranch: Int,
+        distinctFunctionCount: Int,
+        baseName: String = "benchFn"
+    ): Workflow {
+        val leaves = (0 until leafStepsPerBranch).map { idx ->
+            Step(
+                "INNER$STEP_NAME$idx",
+                "Parallel internal call step example",
+                StepType.CALL,
+                StepContextGenerator.internalCall("$baseName${idx % distinctFunctionCount}")
+            )
+        }
+        val step = parallelMultipleBranch(leaves, branchCount)
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            listOf(step),
+            WORKFLOW_RESULT
+        )
+    }
 }
