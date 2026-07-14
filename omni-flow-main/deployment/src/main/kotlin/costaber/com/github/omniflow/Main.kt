@@ -329,7 +329,6 @@ private val Example2Workflow = workflow {
                         "quickfaas-test-fn",
                         deploymentDescriptorPath = "./functions/quickfaas-test-fn/func-deployment.json"
                     )
-                    authentication(authentication { type("OIDC") })
                     result("result")
                     resultType(ResultType.BODY)
                 }
