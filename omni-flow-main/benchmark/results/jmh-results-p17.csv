@@ -1,0 +1,26 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit","Param: k","Param: r0"
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,3309.348283,509.280405,"us/op",1,0
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,3545.050045,345.150457,"us/op",1,10
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,3958.578423,245.141483,"us/op",1,50
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,5121.863091,1037.597761,"us/op",1,200
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,4242.904620,2246.989948,"us/op",1,1000
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,16699.348558,1974.662492,"us/op",5,0
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,18052.743182,5348.605189,"us/op",5,10
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,18794.863624,2152.618594,"us/op",5,50
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,23928.368998,1006.169304,"us/op",5,200
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,17402.833137,1783.943877,"us/op",5,1000
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,35107.285846,2446.174823,"us/op",10,0
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,34357.709944,2263.428665,"us/op",10,10
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,37190.005144,3741.254366,"us/op",10,50
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,47631.483591,2883.178401,"us/op",10,200
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,47816.541664,66148.166951,"us/op",10,1000
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,214238.463840,54328.422054,"us/op",50,0
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,185077.579373,31328.151869,"us/op",50,10
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,196111.789473,27840.702916,"us/op",50,50
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,250588.698130,22872.897303,"us/op",50,200
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,176339.606533,20905.998423,"us/op",50,1000
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,410388.853800,28277.185578,"us/op",100,0
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,382139.500067,40820.930913,"us/op",100,10
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,403488.246667,35543.421938,"us/op",100,50
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,511877.960300,21465.646879,"us/op",100,200
+"costaber.com.github.omniflow.metrics.BenchmarkRegistryMissAndDeploy.missThenDeployKSequential","avgt",1,5,346067.998150,32952.871534,"us/op",100,1000

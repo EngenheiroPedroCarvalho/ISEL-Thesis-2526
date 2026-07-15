@@ -131,6 +131,11 @@
             <artifactId>junit-platform-launcher</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -141,6 +146,47 @@
                     <source>17</source>
                     <target>17</target>
                 </configuration>
+            </plugin>
+            <!-- Code coverage of the contribution's local logic (resolvers, registry,
+                 descriptor parsing, patch logic). Cloud-calling classes are out of scope. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <configuration>
+                    <includes>
+                        <include>costaber/com/github/omniflow/registry/**</include>
+                        <include>costaber/com/github/omniflow/internalfunction/**</include>
+                    </includes>
+                    <!-- Exclude classes that call AWS/GCP (out of unit-test scope by design):
+                         their coverage would otherwise drag down the local-logic metric. -->
+                    <excludes>
+                        <exclude>costaber/com/github/omniflow/internalfunction/quickfaas/AwsLambdaDeployer*</exclude>
+                        <exclude>costaber/com/github/omniflow/internalfunction/quickfaas/QuickFaasDeployer*</exclude>
+                        <exclude>costaber/com/github/omniflow/internalfunction/quickfaas/CloudFunctionsIamHelper*</exclude>
+                        <exclude>costaber/com/github/omniflow/internalfunction/InternalFunctionDeployer*</exclude>
+                        <exclude>costaber/com/github/omniflow/internalfunction/NoopInternalFunctionDeployer*</exclude>
+                        <exclude>costaber/com/github/omniflow/internalfunction/WorkflowInternalFunctionResolver*</exclude>
+                        <exclude>costaber/com/github/omniflow/internalfunction/FaasPlatformInspector*</exclude>
+                        <exclude>costaber/com/github/omniflow/registry/FunctionRegistryBootstrapper*</exclude>
+                        <exclude>costaber/com/github/omniflow/registry/CloudFunctionsCatalog*</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

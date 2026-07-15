@@ -12,6 +12,12 @@ import java.io.File
 
 object AwsBuildScripts : CloudBuildScripts {
 
+    // Must match the shade plugin's <finalName> in buildLambdaPom(). Since the POM sets no
+    // top-level <build><finalName>, Maven's default jar plugin also produces an unshaded
+    // "<artifactId>-<version>.jar" alongside the shaded one; picking the fat jar by exact name
+    // (rather than "any non-'original-' jar") avoids depending on filesystem listing order.
+    private const val SHADED_JAR_FINAL_NAME = "function"
+
     override fun javaBuildScript(func: CloudFunction, templatesDir: String, tmpDir: String) {
         func as AwsLambdaFunction
         JavaUtils.let {
@@ -29,13 +35,13 @@ object AwsBuildScripts : CloudBuildScripts {
     private fun copyFatJarAsZip(func: AwsLambdaFunction, tmpDir: String) {
         val runtime = func.runtimeVersion!!.runtime
         val targetDir = File("${runtime.tmpDirsRoot}/$tmpDir/target")
-        val jar = targetDir.listFiles { f ->
-            f.extension == "jar" && !f.name.startsWith("original-")
-        }?.firstOrNull()
-            ?: throw IllegalStateException(
-                "Lambda build failed: no JAR found in '${targetDir.absolutePath}'. " +
+        val jar = File(targetDir, "$SHADED_JAR_FINAL_NAME.jar")
+        if (!jar.exists()) {
+            throw IllegalStateException(
+                "Lambda build failed: expected shaded JAR at '${jar.absolutePath}' was not found. " +
                         "Check that the maven-shade-plugin produced a fat JAR."
             )
+        }
         val dest = File("${runtime.tmpDirsRoot}/$tmpDir/${Utils.ZIP_FILE}")
         jar.copyTo(dest, overwrite = true)
     }
@@ -86,7 +92,7 @@ object AwsBuildScripts : CloudBuildScripts {
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <finalName>function</finalName>
+                            <finalName>$SHADED_JAR_FINAL_NAME</finalName>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <filters>
                                 <filter>

@@ -19,6 +19,7 @@ import costaber.com.github.omniflow.generator.StepGenerator.petsFromStore
 import costaber.com.github.omniflow.generator.StepGenerator.usingVariables
 import costaber.com.github.omniflow.model.Range
 import costaber.com.github.omniflow.model.Step
+import costaber.com.github.omniflow.model.StepType
 import costaber.com.github.omniflow.model.Variable
 import costaber.com.github.omniflow.model.Workflow
 
@@ -256,4 +257,311 @@ object WorkflowGenerator {
         ),
         WORKFLOW_RESULT
     )
+
+    // ---------------------------------------------------------------------
+    // Additions for the parameter-count (P2), internal-call resolution (P3)
+    // and nesting-depth (P5) benchmarks. Pure in-memory model construction;
+    // no I/O, no network, no cloud SDK.
+    // ---------------------------------------------------------------------
+
+    /**
+     * P2 helper. Builds a workflow with a FIXED [stepsNumber] of CALL steps,
+     * where every call carries exactly [parameterCount] query, header and
+     * body parameters. This isolates the cost of rendering call payloads
+     * from the cost of rendering more steps.
+     *
+     * @param stepsNumber fixed number of call steps
+     * @param parameterCount number of query/header/body parameters per call
+     */
+    @JvmStatic
+    fun withParameterizedCalls(stepsNumber: Int, parameterCount: Int): Workflow {
+        val steps = (0 until stepsNumber).map { idx ->
+            Step(
+                STEP_NAME + idx,
+                "Parameterized call step example",
+                StepType.CALL,
+                StepContextGenerator.callWithParameters(parameterCount)
+            )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P3 helper. Builds a workflow whose calls are ALL internal (each call
+     * references the same registry [functionName] via internalFunction()).
+     * Resolution of these calls reads from the in-memory registry only.
+     */
+    @JvmStatic
+    fun withInternalCalls(stepsNumber: Int, functionName: String): Workflow {
+        val steps = (0 until stepsNumber).map { idx ->
+            Step(
+                STEP_NAME + idx,
+                "Internal call step example",
+                StepType.CALL,
+                StepContextGenerator.internalCall(functionName)
+            )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P8/P9 helper. Builds a workflow with [callCount] internal CALL steps whose
+     * references are distributed round-robin over [distinctFunctionCount] distinct
+     * functions: step idx -> "[baseName]${idx % distinctFunctionCount}". The registry
+     * must contain exactly those functions ([baseName]0 .. [baseName]{distinctFunctionCount-1}).
+     *
+     * Unlike [withInternalCalls] (a single shared name), this lets the number of
+     * DISTINCT internal functions vary INDEPENDENTLY of the number of calls, so the
+     * two cost axes (N = calls, R = functions in the registry) can be swept separately.
+     */
+    @JvmStatic
+    fun withDistinctInternalCalls(
+        callCount: Int,
+        distinctFunctionCount: Int,
+        baseName: String = "benchFn"
+    ): Workflow {
+        val steps = (0 until callCount).map { idx ->
+            Step(
+                STEP_NAME + idx,
+                "Distinct internal call step example",
+                StepType.CALL,
+                StepContextGenerator.internalCall("$baseName${idx % distinctFunctionCount}")
+            )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P3 helper. Builds a workflow whose calls are ALL external (literal
+     * host/path, no internalFunction()). The endpoint resolver leaves these
+     * untouched, so this is the baseline (no registry access at all).
+     */
+    @JvmStatic
+    fun withExternalCalls(stepsNumber: Int): Workflow {
+        val steps = (0 until stepsNumber).map { idx ->
+            Step(
+                STEP_NAME + idx,
+                "External call step example",
+                StepType.CALL,
+                StepContextGenerator.externalCall()
+            )
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P15/P16 helper. Builds a workflow with [internalCalls] internal CALL steps
+     * (round-robin over [distinctFunctionCount] distinct functions, same scheme as
+     * [withDistinctInternalCalls]) INTERLEAVED with [externalCalls] external CALL
+     * steps, evenly spread across the [internalCalls] + [externalCalls] steps
+     * (Bresenham-style distribution) rather than grouped as "all internal then all
+     * external" - a more realistic shape for a workflow that mixes auto-deployed
+     * internal functions with third-party external calls.
+     *
+     * I = [internalCalls], E = [externalCalls], N = I + E.
+     */
+    @JvmStatic
+    fun withMixedCalls(
+        internalCalls: Int,
+        externalCalls: Int,
+        distinctFunctionCount: Int,
+        baseName: String = "benchFn"
+    ): Workflow {
+        val total = internalCalls + externalCalls
+        var internalIdx = 0
+        val steps = (0 until total).map { idx ->
+            val isExternal = externalCalls > 0 &&
+                ((idx + 1) * externalCalls) / total != (idx * externalCalls) / total
+            val context = if (isExternal) {
+                StepContextGenerator.externalCall()
+            } else {
+                val fnName = "$baseName${internalIdx % distinctFunctionCount}"
+                internalIdx++
+                StepContextGenerator.internalCall(fnName)
+            }
+            Step(STEP_NAME + idx, "Mixed internal/external call step example", StepType.CALL, context)
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            steps,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P5 helper. Builds a workflow with a FIXED [totalSteps] count of leaf
+     * CALL steps, wrapped in [depth] levels of nesting. Nesting alternates
+     * between an iteration (range) wrapper and a parallel (single-branch)
+     * wrapper, reusing the existing iteration/parallel step generators.
+     *
+     * depth == 0 -> flat list of [totalSteps] independent calls
+     * depth >= 1 -> the leaf calls live [depth] containers deep
+     *
+     * The number of innermost leaf steps is held constant across depths so
+     * that the benchmark isolates the effect of nesting from the effect of
+     * step count.
+     */
+    @JvmStatic
+    fun withNestedSteps(totalSteps: Int, depth: Int): Workflow {
+        val leaves: List<Step> = (0 until totalSteps).map { independent("INNER$STEP_NAME", it) }
+        var current: List<Step> = leaves
+        for (level in 0 until depth) {
+            val wrapped: Step = if (level % 2 == 0) {
+                iterationWithRange("NEST$level", level, current, Range(1, 10))
+            } else {
+                parallelOneBranch(current)
+            }
+            current = listOf(wrapped)
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            current,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P12 helper. Builds a workflow with a SINGLE Choice step carrying exactly [branchCount]
+     * conditions, isolating the render cost of a Choice's branch width from step count/nesting.
+     */
+    @JvmStatic
+    fun withChoiceBranches(branchCount: Int): Workflow {
+        val step = Step(
+            STEP_NAME,
+            "Choice step example",
+            StepType.CONDITIONAL,
+            StepContextGenerator.choiceWithConditions(branchCount)
+        )
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            listOf(step),
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P12 helper. Builds a workflow with a SINGLE Parallel step carrying exactly [branchCount]
+     * branches (each holding [leafStepsPerBranch] leaf calls), isolating the render cost of a
+     * Parallel's branch width. Unlike [withParallelMultipleBranches] (which chunks a flat step
+     * total into several separate Parallel blocks of fixed bucket size), this keeps a single
+     * block so branch width is the only varying axis.
+     */
+    @JvmStatic
+    fun withParallelBranchWidth(branchCount: Int, leafStepsPerBranch: Int = 1): Workflow {
+        val leaves = (0 until leafStepsPerBranch).map { independent("INNER$STEP_NAME", it) }
+        val step = parallelMultipleBranch(leaves, branchCount)
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            listOf(step),
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P18 helper. Same nesting scheme as [withNestedSteps] (FIXED leaf count, [depth] levels
+     * alternating iteration/parallel wrappers), but the innermost leaves are INTERNAL CALL steps -
+     * round-robin over [distinctFunctionCount] distinct functions, same scheme as
+     * [withDistinctInternalCalls] - instead of independent external calls. Lets a resolution
+     * benchmark measure internal-function resolution cost as a function of nesting depth, isolated
+     * from total call count.
+     */
+    @JvmStatic
+    fun withNestedInternalCalls(
+        totalSteps: Int,
+        depth: Int,
+        distinctFunctionCount: Int,
+        baseName: String = "benchFn"
+    ): Workflow {
+        val leaves: List<Step> = (0 until totalSteps).map { idx ->
+            Step(
+                "INNER$STEP_NAME$idx",
+                "Nested internal call step example",
+                StepType.CALL,
+                StepContextGenerator.internalCall("$baseName${idx % distinctFunctionCount}")
+            )
+        }
+        var current: List<Step> = leaves
+        for (level in 0 until depth) {
+            val wrapped: Step = if (level % 2 == 0) {
+                iterationWithRange("NEST$level", level, current, Range(1, 10))
+            } else {
+                parallelOneBranch(current)
+            }
+            current = listOf(wrapped)
+        }
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            current,
+            WORKFLOW_RESULT
+        )
+    }
+
+    /**
+     * P19 helper. Same structure as [withParallelBranchWidth] (a SINGLE Parallel step with
+     * [branchCount] branches, each holding [leafStepsPerBranch] leaves), but the leaves are
+     * INTERNAL CALL steps - round-robin over [distinctFunctionCount] distinct functions - instead
+     * of independent external calls. Lets a resolution benchmark measure internal-function
+     * resolution cost as a function of Parallel branch width, isolated from total call count.
+     *
+     * There is no Choice-width analogue: a ConditionalContext only carries Condition/target-name
+     * pairs, never nested CALL steps, so internal resolution has nothing to recurse into there.
+     */
+    @JvmStatic
+    fun withParallelBranchWidthInternalCalls(
+        branchCount: Int,
+        leafStepsPerBranch: Int,
+        distinctFunctionCount: Int,
+        baseName: String = "benchFn"
+    ): Workflow {
+        val leaves = (0 until leafStepsPerBranch).map { idx ->
+            Step(
+                "INNER$STEP_NAME$idx",
+                "Parallel internal call step example",
+                StepType.CALL,
+                StepContextGenerator.internalCall("$baseName${idx % distinctFunctionCount}")
+            )
+        }
+        val step = parallelMultipleBranch(leaves, branchCount)
+        return Workflow(
+            WORKFLOW_NAME,
+            WORKFLOW_DESCRIPTION,
+            WORKFLOW_INPUT,
+            listOf(step),
+            WORKFLOW_RESULT
+        )
+    }
 }

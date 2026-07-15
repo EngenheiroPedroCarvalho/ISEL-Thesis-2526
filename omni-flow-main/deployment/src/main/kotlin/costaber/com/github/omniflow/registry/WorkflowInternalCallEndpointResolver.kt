@@ -36,35 +36,47 @@ class WorkflowInternalCallEndpointResolver(
         workflow: Workflow,
         internalCallExtractor: (CallContext) -> String?
     ): Workflow {
-        val updatedSteps = workflow.steps.toList().map { resolveStep(it, internalCallExtractor) }
+        // Read the registry ONCE per workflow instead of once per internal call.
+        // This turns resolution from O(N*M) (N internal calls, each re-reading the whole
+        // M-entry registry file) into O(N+M): one read + a lookup per call.
+        val registrySnapshot = registry.readAll()
+        val updatedSteps = workflow.steps.toList().map { resolveStep(it, internalCallExtractor, registrySnapshot) }
         return workflow.copy(steps = updatedSteps)
     }
 
-    private fun resolveStep(step: Step, internalCallExtractor: (CallContext) -> String?): Step {
-        val newCtx = resolveContext(step.context, internalCallExtractor)
+    private fun resolveStep(
+        step: Step,
+        internalCallExtractor: (CallContext) -> String?,
+        registrySnapshot: Map<String, FunctionInvocationMetadata>
+    ): Step {
+        val newCtx = resolveContext(step.context, internalCallExtractor, registrySnapshot)
         return step.copy(context = newCtx)
     }
 
-    private fun resolveContext(ctx: StepContext, internalCallExtractor: (CallContext) -> String?): StepContext{
+    private fun resolveContext(
+        ctx: StepContext,
+        internalCallExtractor: (CallContext) -> String?,
+        registrySnapshot: Map<String, FunctionInvocationMetadata>
+    ): StepContext{
         return when (ctx) {
-            is CallContext -> resolveCall(ctx, internalCallExtractor)
+            is CallContext -> resolveCall(ctx, internalCallExtractor, registrySnapshot)
 
             is BranchContext ->
-                ctx.copy(steps = ctx.steps.map { resolveStep(it, internalCallExtractor) })
+                ctx.copy(steps = ctx.steps.map { resolveStep(it, internalCallExtractor, registrySnapshot) })
 
             is IterationRangeContext ->
-                ctx.copy(steps = ctx.steps.map { resolveStep(it, internalCallExtractor) })
+                ctx.copy(steps = ctx.steps.map { resolveStep(it, internalCallExtractor, registrySnapshot) })
 
             is IterationForEachContext ->
-                ctx.copy(steps = ctx.steps.map { resolveStep(it, internalCallExtractor) })
+                ctx.copy(steps = ctx.steps.map { resolveStep(it, internalCallExtractor, registrySnapshot) })
 
             is IterationContext ->
-                IterationContext(ctx.value, ctx.steps.map { resolveStep(it, internalCallExtractor) })
+                IterationContext(ctx.value, ctx.steps.map { resolveStep(it, internalCallExtractor, registrySnapshot) })
 
             is ParallelBranchContext ->
                 ctx.copy(
                     branches = ctx.branches.map { b ->
-                        b.copy(steps = b.steps.map { resolveStep(it, internalCallExtractor) })
+                        b.copy(steps = b.steps.map { resolveStep(it, internalCallExtractor, registrySnapshot) })
                     }
                 )
 
@@ -72,13 +84,13 @@ class WorkflowInternalCallEndpointResolver(
                 val itCtx = ctx.iterationContext
                 val updatedIt = when (itCtx) {
                     is IterationRangeContext ->
-                        itCtx.copy(steps = itCtx.steps.map { resolveStep(it, internalCallExtractor) })
+                        itCtx.copy(steps = itCtx.steps.map { resolveStep(it, internalCallExtractor, registrySnapshot) })
 
                     is IterationForEachContext ->
-                        itCtx.copy(steps = itCtx.steps.map { resolveStep(it, internalCallExtractor) })
+                        itCtx.copy(steps = itCtx.steps.map { resolveStep(it, internalCallExtractor, registrySnapshot) })
 
                     else ->
-                        IterationContext(itCtx.value, itCtx.steps.map { resolveStep(it, internalCallExtractor) })
+                        IterationContext(itCtx.value, itCtx.steps.map { resolveStep(it, internalCallExtractor, registrySnapshot) })
                 }
                 ctx.copy(iterationContext = updatedIt)
             }
@@ -87,11 +99,15 @@ class WorkflowInternalCallEndpointResolver(
         }
     }
 
-    private fun resolveCall(call: CallContext, internalCallExtractor: (CallContext) -> String?): CallContext {
+    private fun resolveCall(
+        call: CallContext,
+        internalCallExtractor: (CallContext) -> String?,
+        registrySnapshot: Map<String, FunctionInvocationMetadata>
+    ): CallContext {
         val fnName = internalCallExtractor(call) ?: return call // external call
 
-        // Resolve URL from registry
-        val url = registry.resolveUrl(fnName)
+        // Resolve URL against the already-loaded registry snapshot (no per-call file read).
+        val url = registry.resolveUrlIn(fnName, registrySnapshot)
 
         val (host, path) = splitUrl(url)
 

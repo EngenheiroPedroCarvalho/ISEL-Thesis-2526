@@ -1,0 +1,8 @@
+"Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit","Param: branchWidth"
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized","avgt",1,5,188.319366,3.617614,"us/op",1
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized","avgt",1,5,194.980215,17.434048,"us/op",2
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized","avgt",1,5,204.484868,11.278441,"us/op",5
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized","avgt",1,5,220.750770,3.409115,"us/op",10
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized","avgt",1,5,276.243428,91.412525,"us/op",20
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized","avgt",1,5,404.889431,97.851274,"us/op",50
+"costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized","avgt",1,5,583.716702,138.940781,"us/op",100
