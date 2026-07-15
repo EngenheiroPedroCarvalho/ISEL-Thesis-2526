@@ -70,9 +70,24 @@ R=F? tudo interno? misto?):
 | **P16** | **I, E, F fixos** (I=40/E=10/F=10); **R** varia | gémeo do P9 em workflow misto — confirma que Θ(R) se mantém inalterado com chamadas externas presentes |
 | **P18, P19** | **R = F** fixo (=10); **N** fixo (P18: 20 chamadas; P19: 5×largura) | eixo estrutural (profundidade de aninhamento / largura de Parallel) em vez de R — isola se o custo depende só do N total de chamadas ou também da forma da árvore |
 
+**Como ler a linha de caracterização.** Cada secção abre com uma linha (bloco citado) que resume,
+num relance, o *formato* do teste — para não confundir testes parecidos:
+
+- **Objeto** — o que está de facto a ser medido: *resolução de um workflow* (constrói um objeto
+  `Workflow` com N passos e passa-o a um resolver), *resolução isolada no `store`* (chama a primitiva
+  de resolução diretamente, N vezes, **sem** construir nenhum `Workflow`), *escrita no registo*
+  (`put`), ou *tamanho do bundle*. É esta a diferença, por exemplo, entre o **P7** (primitiva isolada,
+  1 função) e o **P8** (workflow real, F funções distintas) — que de resto medem a mesma otimização.
+- **Funções distintas** — se as N chamadas vão todas para **1 só** função (a mesma, repetida) ou para
+  **F funções diferentes** (distribuídas *round-robin* pelas N chamadas).
+- **Chamadas (N)** e **Registo (R)** — os eixos definidos acima; a linha diz, em cada teste, quais
+  variam e quais ficam fixos.
+
 ---
 
 ## P3 — Custo da unificação: resolução de funções internas
+
+> **Objeto:** resolução de um *workflow* (objeto `Workflow`) · **Funções distintas:** 1 (a mesma, repetida nos N passos) · **Chamadas (N):** N internas (1–200), com controlo de N externas · **Registo (R):** R=1.
 
 | Nº de chamadas | Internas — resolução (µs) | Externas — sem resolução (µs) |
 |---:|---:|---:|
@@ -92,6 +107,8 @@ geral é Θ(N·R), R = tamanho do registo.
 ---
 
 ## P6 — Custo de escalabilidade do registo (Θ(N·R))
+
+> **Objeto:** resolução de um *workflow* (objeto `Workflow`), com leitura do registo por chamada · **Funções distintas:** 1 (a mesma, repetida nos N passos) · **Chamadas (N):** N internas (1–200), com controlo de N externas · **Registo (R):** independente de N (1–1000, entradas de *padding*).
 
 **Tempo total de `resolveAllInternal` (µs), por combinação (R, N):**
 
@@ -130,6 +147,8 @@ N: Θ(N·R). Para registos realistas, o custo fixo de reabrir o ficheiro domina,
 
 ## P7 — Otimização da resolução: leitura única do registo (Θ(N·R) → Θ(N+R))
 
+> **Objeto:** resolução **isolada no `store`** (`resolveUrl` vs `readAll`+`resolveUrlIn`) — **sem** objeto `Workflow` · **Funções distintas:** 1 (a mesma, resolvida N× em loop) · **Chamadas (N):** N resoluções (1–200) · **Registo (R):** independente de N (1/50/1000, entradas de *padding*).
+
 **Tempo total (µs) — antes (sem cache) vs depois (com cache):**
 
 | | N=1 | N=10 | N=50 | N=200 |
@@ -150,6 +169,8 @@ speedup até ~200× no pior caso (N=200,R=1000: ~105 ms → ~0,54 ms). Confirma 
 ---
 
 ## P8 — Resolução do workflow vs nº de funções distintas (F) × nº de chamadas (N), com R=F
+
+> **Objeto:** resolução de um *workflow real* (objeto `Workflow`), naive vs otimizado · **Funções distintas:** F distintas (1–50), *round-robin* pelas N chamadas · **Chamadas (N):** N internas (1–200) · **Registo (R):** R=F.
 
 **Tempo de resolução (µs) — `resolveNaive` (leitura por chamada), F em linhas / N em colunas:**
 
@@ -185,6 +206,8 @@ com cache fica quase plano. Speedup cresce com N: ~1× a N=1, até ~110× a N=20
 
 ## P9 — Resolução do workflow vs tamanho do registo (R), com F e N fixos
 
+> **Objeto:** resolução de um *workflow real* (objeto `Workflow`) · **Funções distintas:** F=10 distintas (fixo) · **Chamadas (N):** N=50 internas (fixo) · **Registo (R):** R≥F (10–1000).
+
 **Tempo de resolução (µs) — sem cache vs com cache, F=10 / N=50 fixos:**
 
 | R (registo) | sem cache (µs) | com cache (µs) | speedup |
@@ -205,6 +228,8 @@ Speedup sobe de ~41× (R=10) a ~58× (R=1000), confirmando Θ(N+R).
 ---
 
 ## P10 — Custo real do resolver de auto-deploy AWS (`AwsInternalFunctionResolver`)
+
+> **Objeto:** resolução de um *workflow* pelo **resolver de auto-deploy AWS real** (`AwsInternalFunctionResolver.resolve`) · **Funções distintas:** F distintas (1–50), *round-robin* · **Chamadas (N):** N internas (1–200) · **Registo (R):** R=F (sempre *hit*).
 
 **Tempo de resolução (µs) — `AwsInternalFunctionResolver.resolve`, F em linhas / N em colunas:**
 
@@ -228,6 +253,8 @@ medido, com registo sempre em hit (R=F). Dominado por N, quase indiferente a F (
 speedup projetado ~200×.
 
 ## P11 — Custo real do resolver de auto-deploy GCP (`WorkflowInternalFunctionResolver`)
+
+> **Objeto:** resolução de um *workflow* pelo **resolver de auto-deploy GCP real** (`WorkflowInternalFunctionResolver.resolve`) · **Funções distintas:** F distintas (1–50), *round-robin* · **Chamadas (N):** N internas (1–200) · **Registo (R):** R=F (sempre *hit*).
 
 **Tempo de resolução (µs) — `WorkflowInternalFunctionResolver.resolve`, F em linhas / N em colunas:**
 
@@ -253,6 +280,8 @@ mecanismo de registo, partilhado.
 
 ## P13 — Custo de escrita incremental no registo (`FunctionRegistryStore.put`)
 
+> **Objeto:** **escrita** no registo (`FunctionRegistryStore.put`) — não é resolução · **Funções distintas:** — (escreve K funções novas) · **Chamadas (N):** K escritas sucessivas (1–100) · **Registo (R):** R0 inicial (0–1000).
+
 **Tempo total (µs) — K escritas sucessivas, K em linhas / R0 em colunas:**
 
 | K \ R0 | 0 | 10 | 50 | 200 | 1000 |
@@ -277,6 +306,8 @@ máquina partilhada, não do código.
 
 ## P14 — Correspondência exata vs. por sufixo no resolver "com cache"
 
+> **Objeto:** resolução de um *workflow real* (objeto `Workflow`), caminho *exact-match* vs *suffix-match* · **Funções distintas:** F=10 distintas (fixo) · **Chamadas (N):** N=50 internas (fixo) · **Registo (R):** R (10–1000).
+
 **Tempo de resolução (µs) — exact match vs. suffix match, F=10 / N=50 fixos:**
 
 | R (registo) | exact match (µs) | suffix match (µs) | razão |
@@ -297,6 +328,8 @@ o match exato e faz scan O(R) por chamada em memória. Fica mais caro, com razã
 ---
 
 ## P15 — Resolução do workflow com mistura de chamadas internas/externas (I × E)
+
+> **Objeto:** resolução de um *workflow real* **misto** (internas + externas) · **Funções distintas:** F=10 distintas (fixo, para as I internas) · **Chamadas (N):** N=I+E, I e E variam (0–200 cada) · **Registo (R):** R=F=10 (fixo).
 
 **Tempo de resolução (µs) — `resolveOptimized`, I em linhas / E em colunas, R=F=10 fixos:**
 
@@ -319,6 +352,8 @@ com I: confirma Θ(I+R), com E só a pesar na reconstrução O(N) da árvore.
 
 ## P16 — Resolução vs tamanho do registo (R), workflow misto I=40/E=10 fixos
 
+> **Objeto:** resolução de um *workflow real* **misto**, variando o registo · **Funções distintas:** F=10 distintas (fixo) · **Chamadas (N):** I=40/E=10 fixas (N=50) · **Registo (R):** R varia (10–1000).
+
 **Tempo de resolução (µs) — `resolveOptimized`, I=40/E=10/F=10 fixos:**
 
 | R (registo) | com cache (µs) |
@@ -339,6 +374,8 @@ independente de quantas chamadas são internas vs externas — só mais ruidoso 
 ---
 
 ## P17 — Custo real de miss + deploy no registo (`tryResolveEntry` + `put`)
+
+> **Objeto:** **miss + escrita** no registo (`tryResolveEntry` + `put`) — não é só resolução · **Funções distintas:** — (K funções novas) · **Chamadas (N):** K pares miss+put (1–100) · **Registo (R):** R0 inicial (0–1000).
 
 **Tempo total (µs) — K pares (miss + put) sucessivos, K em linhas / R0 em colunas:**
 
@@ -362,6 +399,8 @@ a 54% de custo, crescendo com R0, pois tryResolveEntry também é O(R).
 ---
 
 ## P18 — Resolução interna vs profundidade de aninhamento
+
+> **Objeto:** resolução de um *workflow real* **aninhado** (Iteration/Parallel) · **Funções distintas:** F=10 distintas (fixo), *round-robin* pelas 20 chamadas · **Chamadas (N):** N=20 internas (fixo); varia a **profundidade** (0–5) · **Registo (R):** R=F=10 (fixo).
 
 P5 mediu este eixo (profundidade de aninhamento, alternando *iteration*/*parallel*) só para a
 **renderização**, com workflows 100% externos — nunca tocava o registo. `resolveContext` no
@@ -393,6 +432,8 @@ com o **número total de chamadas internas**, não com a forma/profundidade da �
 ---
 
 ## P19 — Resolução interna vs largura de Parallel
+
+> **Objeto:** resolução de um *workflow real* com um bloco **`Parallel`** · **Funções distintas:** F=10 distintas (fixo), *round-robin* · **Chamadas (N):** N=5×largura internas; varia a **largura** (1–100) · **Registo (R):** R=F=10 (fixo).
 
 Gémeo do P12 (que mediu largura de `Choice`/`Parallel` só para renderização), mas do lado da
 resolução. Não há equivalente de largura de `Choice` aqui: um `ConditionalContext` só tem pares
@@ -427,6 +468,8 @@ organizadas numa lista plana, aninhadas em profundidade ou espalhadas por muitos
 ---
 
 ## S1 — Bundle/ZIP size da Lambda: AWS agnóstico vs nativo
+
+> **Objeto:** **tamanho do bundle ZIP** da Lambda — não é resolução nem escrita · **Funções distintas:** 1 função empacotada · **Chamadas (N):** — · **Registo (R):** —.
 
 A avaliação inicial do QuickFaaS mediu o "ZIP size (KB)" do *bundle* de deployment (agnóstico
 10877 KB vs não-agnóstico 10861 KB → ~16 KB de overhead, medidos pelos colegas para GCP/Azure).
