@@ -2,7 +2,7 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 12
-title Prior state: OmniFlow and QuickFaaS as disjoint tools
+title OmniFlow and QuickFaaS as disjoint tools
 
 actor Developer as D1
 component "OmniFlow DSL" as DSL1
