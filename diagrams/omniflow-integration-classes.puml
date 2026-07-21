@@ -1,0 +1,87 @@
+@startuml omniflow-integration-classes
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+title Integration layer added to OmniFlow (Part B)
+
+interface InternalFunctionDeployer {
+  +deployOrUpdate(functionName, descriptorPath) : FunctionInvocationMetadata
+}
+
+class NoopInternalFunctionDeployer {
+  +deployOrUpdate() : UnsupportedOperationException
+}
+
+class QuickFaasDeployer {
+  -quickFaasJarPath : Path
+  -projectId : String
+  -region : String
+  +deployOrUpdate(...) : FunctionInvocationMetadata
+}
+
+class AwsLambdaDeployer <<new in this work>> {
+  -quickFaasJarPath : Path
+  -region : String
+  -roleArn : String
+  -readinessTimeoutSeconds : Long
+  +deployOrUpdate(...) : FunctionInvocationMetadata
+  -patchIamRoleArn(path, roleArn) : Path
+  -invokeWithRoleRetry(invoker, path)
+  -waitForLambdaActive(name, region)
+  -resolveBucketRegion(bucket) : String
+}
+
+class WorkflowInternalFunctionResolver {
+  -projectId : String
+  -preferredRegion : String[0..1]
+  +resolve(workflow) : Workflow
+  -resolveOrDiscoverInternal(ref, fn) : String
+  -discoverServiceForRef(ref) : List
+}
+
+class AwsInternalFunctionResolver <<new in this work>> {
+  -region : String
+  +resolve(workflow) : Workflow
+  -resolveOrDeploy(name, fn) : String
+  -checkLambdaFunctionUrl(name) : String[0..1]
+}
+
+class FunctionRegistryStore {
+  -file : Path
+  +readAll() : Map
+  +tryResolveEntry(ref) : Pair[0..1]
+  +put(key, metadata)
+  +remove(key)
+  +resolveUrlIn(name, snapshot) : String
+}
+
+class FunctionInvocationMetadata {
+  +serviceName : String
+  +url : String
+}
+
+class FunctionRegistryBootstrapper {
+  +bootstrapIfMissing(projectId)
+}
+
+class GoogleCloudDeployer
+class AmazonCloudDeployer
+
+InternalFunctionDeployer <|.. NoopInternalFunctionDeployer
+InternalFunctionDeployer <|.. QuickFaasDeployer
+InternalFunctionDeployer <|.. AwsLambdaDeployer
+GoogleCloudDeployer --> WorkflowInternalFunctionResolver
+AmazonCloudDeployer --> AwsInternalFunctionResolver
+WorkflowInternalFunctionResolver --> FunctionRegistryStore
+AwsInternalFunctionResolver --> FunctionRegistryStore
+WorkflowInternalFunctionResolver --> InternalFunctionDeployer
+AwsInternalFunctionResolver --> InternalFunctionDeployer
+FunctionRegistryStore ..> FunctionInvocationMetadata
+FunctionRegistryBootstrapper --> FunctionRegistryStore
+
+note bottom of FunctionInvocationMetadata
+  url holds an HTTPS endpoint on GCP
+  and a Lambda ARN on AWS
+end note
+@enduml

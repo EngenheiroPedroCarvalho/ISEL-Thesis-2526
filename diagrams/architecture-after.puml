@@ -1,0 +1,44 @@
+@startuml architecture-after
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 12
+title This work: unified deployment from a single workflow definition
+
+actor Developer as D2
+component "OmniFlow DSL\n+ internalFunction construct" as DSL2
+component "GoogleCloudDeployer" as GCD2
+component "AmazonCloudDeployer" as ACD2
+component "WorkflowInternalFunctionResolver" as WIFR
+component "AwsInternalFunctionResolver" as AIFR <<new>>
+component "QuickFaasDeployer" as QFD
+component "AwsLambdaDeployer" as ALD <<new>>
+component "QuickFaaS JAR\n+ AwsProvider" as JAR <<extended>>
+database "function-registry.json" as REG
+cloud "Google Cloud Workflows" as GCW2
+cloud "AWS Step Functions" as SF2
+cloud "GCP Cloud Functions" as GFN
+cloud "AWS Lambda" as LAM
+
+D2 --> DSL2
+DSL2 --> GCD2
+DSL2 --> ACD2
+GCD2 --> WIFR
+ACD2 --> AIFR
+WIFR <--> REG
+AIFR <--> REG
+WIFR --> QFD
+AIFR --> ALD
+QFD --> JAR : subprocess
+ALD --> JAR : subprocess
+JAR --> GFN
+JAR --> LAM
+GCD2 --> GCW2 : YAML
+ACD2 --> SF2 : ASL JSON
+SF2 --> LAM : lambda:invoke (ARN)
+
+note bottom of AIFR
+  Components marked <<new>> / <<extended>> are the
+  contribution: AWS provider in QuickFaaS (Part A)
+  and the resolver-registry layer (Part B)
+end note
+@enduml

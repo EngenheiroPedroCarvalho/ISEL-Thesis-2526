@@ -1,0 +1,58 @@
+@startuml aws-deploy-sequence
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title AWS deployment sequence (worst case: function absent from registry and provider)
+
+participant "AmazonCloudDeployer" as ACD
+participant "AwsInternalFunctionResolver" as R
+participant "FunctionRegistryStore" as REG
+participant "AwsLambdaDeployer" as ALD
+participant "AwsLambdaIamHelper" as IAM
+participant "QuickFaasProcessInvoker" as PI
+participant "QuickFaaS JAR\n(AwsProvider)" as QF
+participant "AWS APIs\n(IAM, S3, Lambda)" as AWS
+participant "AWS Step Functions" as SFN
+
+ACD -> R : resolve(workflow)
+loop for each CallContext with internalFunction
+  R -> REG : tryResolveEntry(name)
+  alt registry hit
+    REG --> R : (key, metadata) - url = ARN
+  else registry miss
+    R -> AWS : GetFunction(name)
+    alt function exists in AWS
+      AWS --> R : FunctionArn
+      R -> REG : put(name, metadata)
+    else absent, descriptor provided
+      R -> ALD : deployOrUpdate(name, descriptorPath)
+      ALD -> IAM : resolveOrCreateLambdaExecutionRole(iamRoleArn)
+      IAM -> AWS : GetRole / CreateRole + AttachRolePolicy
+      AWS --> IAM : execution role ARN
+      ALD -> ALD : patchIamRoleArn(descriptor)\n-> temp descriptor
+      ALD -> ALD : load + validate(descriptor, "aws")
+      ALD -> AWS : GetBucketLocation -> effective region
+      ALD -> PI : invoke(descriptor)\n[<=3 attempts, 20 s backoff\non IAM propagation]
+      PI -> QF : java -jar QuickFaaS.jar
+      QF -> QF : build hook + template,\nzip sources
+      QF -> AWS : PutObject (S3 bucket)
+      QF -> AWS : CreateFunction /\nUpdateFunctionCode
+      QF -> AWS : CreateFunctionUrlConfig
+      QF --> PI : deployment finished
+      ALD -> AWS : GetFunction - poll until\nState = Active (<=180 s, 5 s interval)
+      ALD -> AWS : GetFunction -> FunctionArn
+      ALD -> IAM : grantStepFunctionsInvoke(name, region, roleArn)
+      IAM -> AWS : AddPermission\n(principal = states.amazonaws.com)
+      ALD --> R : FunctionInvocationMetadata\n(serviceName, url = ARN)
+      R -> REG : put(name, metadata)
+    else absent, no descriptor
+      R --> ACD : IllegalStateException (fail fast)
+    end
+  end
+  R -> R : call.copy(host = "lambda://" + ARN,\npath = e)
+end
+R --> ACD : resolved workflow
+ACD -> ACD : render -> ASL with Resource\n"arn:aws:states:::lambda:invoke"
+ACD -> SFN : CreateStateMachine(name, roleArn, definition)
+SFN --> ACD : StateMachineArn
+@enduml
