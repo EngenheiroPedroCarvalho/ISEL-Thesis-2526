@@ -2,7 +2,7 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 11
-title AWS deployment sequence (worst case: function absent from registry and provider)
+title AWS deployment sequence
 
 participant "AmazonCloudDeployer" as ACD
 participant "AwsInternalFunctionResolver" as R
