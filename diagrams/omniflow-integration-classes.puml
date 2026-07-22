@@ -3,7 +3,7 @@ skinparam monochrome true
 skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam defaultFontSize 12
-title Integration layer added to OmniFlow (Part B)
+title Integration layer added to OmniFlow
 
 interface InternalFunctionDeployer {
   +deployOrUpdate(functionName, descriptorPath) : FunctionInvocationMetadata
