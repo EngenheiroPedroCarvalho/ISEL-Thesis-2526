@@ -1,0 +1,123 @@
+\chapter{Conclusions and Future Work}
+\label{cha:conclusions}
+
+This dissertation set out to unify two previously independent tools --- QuickFaaS, which deploys
+serverless functions, and OmniFlow, which defines and deploys workflows --- so that a serverless
+application can be deployed from a single workflow definition, without manually coordinating
+function endpoints. This final chapter summarises the contribution, revisits the objectives,
+assesses the work critically, and outlines future directions.
+
+\section{Summary of Contributions}
+\label{sec:concl-contributions}
+
+The work delivered two complementary halves.
+
+\paragraph{Part B --- Unification (core).}
+OmniFlow was extended with a \emph{Function Registry} and a deployment-time \emph{resolution
+cascade}. Internal workflow calls declare a stable logical identifier through the
+\texttt{internalFunction(name, deploymentDescriptorPath)} construct added to the \texttt{call}
+step, mutually exclusive with the literal \texttt{host}/\texttt{path} of external calls. At
+deployment time OmniFlow traverses the workflow tree, and for each internal call resolves the
+endpoint from the registry, discovers it directly on the provider, or --- as a last resort ---
+deploys it through QuickFaaS, writing the resulting metadata back to the registry. Function
+deployment is abstracted behind the \texttt{InternalFunctionDeployer} strategy interface, which
+keeps the two providers symmetric and makes support for a further platform a matter of adding one
+resolver and one deployer.
+
+\paragraph{Part A --- AWS support (complement).}
+QuickFaaS, previously limited to GCP and Azure, was extended with an AWS provider, and OmniFlow
+gained an \texttt{AwsLambdaDeployer} that performs the AWS-specific work (IAM execution role,
+region resolution from the S3 bucket, readiness polling, and granting Step Functions permission to
+invoke the Lambda). Internal AWS calls are rendered with the native
+\texttt{arn:aws:states:::lambda:invoke} integration rather than an HTTP task, keeping the
+invocation within the AWS control plane.
+
+\section{Objectives Revisited}
+\label{sec:concl-objectives}
+
+The three objectives stated in Section~\ref{sec:int_objectives} were met:
+\begin{enumerate}
+  \item \textbf{Design a unified integration architecture} --- achieved through the registry,
+  the \texttt{functionRef} indirection, the \texttt{internalFunction} construct, and the resolver
+  strategy described in Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}.
+  \item \textbf{Implement an orchestration prototype} --- a working prototype deploys a workflow
+  together with its internal functions to a single provider (GCP or AWS) without manually copying
+  endpoints.
+  \item \textbf{Evaluate feasibility and overhead} --- Chapter~\ref{cha:evaluation} quantifies the
+  resolution overhead ($\Theta(N\cdot R)$, reducible to $\Theta(N+R)$), the write-path cost, and
+  the negligible packaging overhead of the AWS agnostic layer.
+\end{enumerate}
+
+\section{Critical Assessment}
+\label{sec:concl-critical}
+
+The design is sound but the implementation is that of a prototype, and several limitations should
+be stated plainly.
+
+\begin{itemize}
+  \item \textbf{Design residue.} An earlier registry model based on synthetic
+  \texttt{.host}/\texttt{.path} keys (\texttt{WorkflowInternalCallEndpointResolver},
+  \texttt{FunctionEndpointKeys}) was superseded by the \texttt{serviceName}+\texttt{url} model but
+  never removed; it survives only through its tests and is dead on the live deployment path.
+  \item \textbf{Optimization not propagated.} The single-read optimization that reduces resolution
+  to $\Theta(N+R)$ lives in the superseded resolver, not in the production
+  \texttt{AwsInternalFunctionResolver} and \texttt{WorkflowInternalFunctionResolver}, which still
+  pay the full $\Theta(N\cdot R)$ cost (Section~\ref{sec:eval-real-resolvers}).
+  \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
+  or authenticity guarantee, and no cross-process locking; concurrent writers race, and a tampered
+  \texttt{url}/ARN would be trusted blindly.
+  \item \textbf{Broad, automatic IAM.} The AWS path auto-creates and mutates a shared execution
+  role and grants invoke permissions as a deployment side effect --- convenient for a demo, but at
+  odds with a least-privilege, change-controlled environment.
+  \item \textbf{Brittle integration boundary.} QuickFaaS is invoked as a subprocess, coupling two
+  build systems across a process boundary and keying error handling off child-process text.
+  \item \textbf{Testability of cloud paths.} By design, the classes that call the cloud SDKs have
+  no automated coverage, so the integration edges --- where production incidents occur --- are the
+  least tested.
+\end{itemize}
+
+\section{Applicability}
+\label{sec:concl-applicability}
+
+The shape of the solution --- logical indirection between workflows and endpoints, provider
+symmetry, and explicit fail-fast diagnostics --- fits the needs of an organisation that must keep
+orchestration definitions stable while functions are redeployed, and that values a credible
+multi-provider posture (for example, to satisfy operational-resilience regulation such as the EU
+Digital Operational Resilience Act, or to expose open-banking functions under PSD2). Reaching that
+setting would require hardening the gaps above: a signed, access-controlled registry backend, an
+attributable write history for audit, and least-privilege IAM under change control. These are
+incremental improvements to an already-sound design rather than evidence that the design is wrong.
+
+\section{Future Work}
+\label{sec:concl-future}
+
+The following directions are ordered from smallest change with the clearest payoff to the larger
+structural ones.
+
+\begin{enumerate}
+  \item \textbf{Propagate the single-read optimization} into
+  \texttt{AwsInternalFunctionResolver} and \texttt{WorkflowInternalFunctionResolver}, closing the
+  gap between the measured $\Theta(N+R)$ optimum and the $\Theta(N\cdot R)$ cost these classes
+  still pay, and then remove the superseded resolver.
+  \item \textbf{Harden the registry:} a pluggable backend (database or secret/parameter store)
+  behind the current interface, with cross-process locking, per-entry integrity, an in-memory
+  cache with explicit invalidation, and an append-only, attributable write history.
+  \item \textbf{Replace the subprocess boundary} by invoking QuickFaaS in-process as a library,
+  removing the two-build-system coupling and the fragile parsing of subprocess output.
+  \item \textbf{Move to least-privilege, change-controlled IAM,} with pre-provisioned roles and a
+  dry-run mode that reports the IAM changes it would make instead of applying them silently.
+  \item \textbf{Introduce test seams} for the cloud-calling code, extracting the SDK interactions
+  behind narrow interfaces so the deploy/IAM/readiness logic can be unit-tested against fakes.
+  \item \textbf{Extend the provider set,} adding Azure Functions (already a QuickFaaS target)
+  through the existing extension point to further substantiate the portability claim.
+\end{enumerate}
+
+\section{Final Remarks}
+\label{sec:concl-final}
+
+The integration shows that function deployment and workflow orchestration can be driven from a
+single, provider-agnostic definition, with concrete endpoint binding deferred to deployment time
+through an explicit resolution cascade. The overhead of this unification is small and, once the
+identified optimization is applied uniformly, asymptotically linear. What remains is engineering
+maturity --- registry integrity, least-privilege operation, and test coverage of the cloud
+edges --- to take a validated concept from prototype to production.
