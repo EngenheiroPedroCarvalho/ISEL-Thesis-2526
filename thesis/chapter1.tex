@@ -1,0 +1,152 @@
+\chapter{Introduction}
+\label{cha:introduction}
+
+Cloud computing has fundamentally reshaped the landscape of modern information technology, enabling organizations to provision computational resources on demand, scale dynamically and reduce operational burdens associated with physical hardware. Instead of relying on traditional on-premises infrastructures, organizations increasingly turn to cloud providers for compute, storage, networking and application services, benefiting from economies of scale, rapid deployment and global availability.
+
+IBM defines cloud computing as a model for delivering computing services over the internet with flexible consumption, rapid elasticity and centralized management~\cite{ibmCloudComputing}. This shift has accelerated digital transformation across industries, enabling new business models, automated workflows and data-driven operations.
+
+\section{Historical Context and Evolution}
+\label{sec:int_his_con_evo}
+
+Long before the term ``cloud computing'' became common, Parkhill framed the idea of a \emph{computer utility}, computing delivered as a shared service, accessed remotely and operated in a way comparable to other public utilities, while also discussing the technical, economic and organizational challenges of making such a model dependable in practice~\cite{parkhill1966challenge}. 
+
+Attempts to formalize the term ``cloud computing'' emerged much later, in the late 2000s. Vaquero et al.\ contributed an early synthesis of the concept by surveying definitions and highlighting recurring characteristics such as elasticity, abstraction and resource sharing~\cite{vaquero2008breaks}. Armbrust et al.\ further popularized the view of cloud computing as a practical realization of utility-style computing and discussed obstacles including security, performance and availability~\cite{armbrust2010view}. In parallel, Buyya et al.\ promoted the notion of computing as a ``fifth utility'', describing cloud infrastructures as a path toward delivering essential computing capabilities at global scale~\cite{buyya2009cloud}.
+
+The rise of virtualization, large-scale data centers and automated orchestration made cloud computing feasible at unprecedented scale. With the introduction of Amazon EC2 in 2006, followed by similar offerings from Google and Microsoft, cloud computing evolved from a research vision into a dominant commercial model. Organizations embraced the cloud for its ability to reduce capital expenditures, shorten deployment cycles and improve global reach.
+
+\section{Modern Cloud Architectures and Service Models}
+\label{sec:int_mod_clo_arc_ser}
+
+Today, cloud platforms are commonly categorized into three main service models:
+
+\begin{itemize}
+	\item \textbf{Infrastructure as a Service (IaaS)} - virtualized computing resources such as virtual machines, storage and networks.
+	\item \textbf{Platform as a Service (PaaS)} - managed platforms that support application development and deployment without hardware management.
+	\item \textbf{Software as a Service (SaaS)} - complete software solutions delivered over the internet.
+\end{itemize}
+
+Cloud providers operate globally distributed data centers interconnected with high-speed networks. Services are exposed through programmable APIs and managed using orchestration platforms that automate provisioning, monitoring and scaling. Documentation such as AWS whitepapers~\cite{awsWhitepaper2024} describes practices including multi-region replication, auto-scaling, resource isolation and configurable security policies.
+
+Cloud-native paradigms further extend these models. Container orchestration frameworks like Kubernetes, originally developed at Google, support microservices architectures by enabling applications to scale horizontally while maintaining isolation and resilience~\cite{kubernetesDesign}. These approaches emphasize immutability, stateless execution and declarative configuration.
+
+\section{The Emergence of Serverless and Event-Driven Architectures}
+\label{sec:int_eme_ser_eve_dri_arc}
+
+Serverless computing has recently emerged as a transformative paradigm within the cloud ecosystem. Serverless platforms allow developers to deploy fine-grained units of execution, typically called \textit{functions}, that run on demand without requiring explicit management of servers or runtime environments. This model simplifies development, reduces operational costs and provides automatic scaling based on workload frequency.
+
+Shafiei et al.\ present an extensive survey that highlights key challenges in serverless computing, including state management, cold starts and performance unpredictability~\cite{serverlessComputing}. These concerns remain active research areas, particularly in latency-sensitive applications. Additional research highlights the importance of serverless computing for microservices, data-processing pipelines and edge-cloud integration~\cite{jonas2019cloudProgramming}.
+
+\section{Challenges in Unified Serverless Workflow Orchestration}
+\label{sec:int_cha_int_uni_multi}
+
+In this dissertation we focus on a single cloud target, if a workflow is deployed on a provider (e.g., GCP), it should invoke only functions deployed on that same provider.
+Within this scope, QuickFaaS can be viewed as the component that automates the deployment and update of serverless functions, while OmniFlow is responsible for defining the orchestration logic and deploying the workflow to the provider's workflow service.
+The central goal is to unify these two lifecycle concerns, function deployment and workflow deployment, so that developers can deploy a workflow without manually coordinating all function endpoints.
+However, integrating two independently developed systems that operate at different stages of the lifecycle still introduces technical and conceptual challenges.
+
+\subsection{Disjointed Function Deployment Lifecycle}
+Currently, the function deployment lifecycle managed by QuickFaaS is disconnected from the workflow definition lifecycle managed by OmniFlow.
+\begin{itemize}
+	\item \textbf{Manual pre-deployment:} OmniFlow workflow execution relies on functions that are already deployed and reachable. In practice, this forces developers to deploy all required functions beforehand (e.g., using QuickFaaS), obtain their provider-specific invocation identifiers (typically HTTP URLs or resource identifiers) and then update the OmniFlow workflow definition accordingly.
+
+	\item \textbf{Consistency gap:} any change to a function (redeployment, configuration updates, trigger changes, access control changes) may require updating the workflow definition to keep it consistent with the deployed reality. When this update is manual, the risk of drift increases: the workflow can reference an outdated endpoint or an incorrect configuration, leading to deployment-time errors or runtime failures.
+\end{itemize}
+
+\subsection{Provider-Specific Function Identification and Invocation Binding}
+Even when targeting a single provider, serverless functions are invoked through provider-defined identifiers and invocation rules.
+\begin{itemize}
+	\item \textbf{Hard-coded endpoints:} if OmniFlow requires the developer to embed concrete invocation targets directly into the workflow definition (e.g., an HTTP URL), the workflow becomes tightly coupled to a specific deployed instance of the function. This coupling reduces maintainability: renaming a function, redeploying it with a different URL, or changing how it is exposed (for example, changing trigger configuration) can break the workflow unless the workflow file is manually updated.
+
+	\item \textbf{Need for logical references:} the integration therefore requires a mapping mechanism where the workflow references a stable logical identifier and OmniFlow resolves it into a concrete endpoint during deployment. This is the motivation for introducing a registry (as the source of truth for bindings) and for extending the call step with a dedicated \texttt{internalFunction} construct, used when the developer wants OmniFlow to deploy or update a function and refresh the registry binding at deployment time.
+\end{itemize}
+
+\subsection{Automated Artifact and Metadata Generation}
+A smooth unified deployment flow requires consistent data exchange between the workflow tooling and the function deployment tooling.
+\begin{itemize}
+	\item \textbf{Artifact standardization:} OmniFlow must be able to trigger function deployment when the developer requests it (e.g., by declaring an internal call with \texttt{internalFunction} and a deployment descriptor), which implies that OmniFlow must provide QuickFaaS with a deployable function artifact (source path or package reference) and minimal configuration. A consistent packaging/descriptor format is required so that the deployment action can be invoked automatically and repeatably.
+
+	\item \textbf{Metadata synchronization:} after deployment, QuickFaaS returns invocation metadata (e.g., endpoint URL and lightweight provider details). OmniFlow must store this metadata in the registry so that subsequent workflow deployments can resolve \texttt{Call(functionRef)} steps without requiring the developer to manually copy endpoints. Importantly, this synchronization must remain \textit{safe-by-default}, secrets must stay outside the registry and be referenced indirectly (e.g., via \texttt{secretRef}).
+\end{itemize}
+
+
+
+\section{Motivation: Unifying Function Deployment and Workflow Orchestration}
+\label{sec:int_motivation}
+
+Despite the operational benefits of serverless computing, the ecosystem remains fragmented by provider-specific implementations. A significant limitation persists, most serverless platforms enforce a tight coupling between the way functions are deployed and identified and the way workflows invoke and orchestrate those functions. Even when targeting a single provider, this coupling creates friction during development and maintenance, because the workflow definition often depends on concrete function endpoints and provider-specific invocation details.
+
+This leads to two practical challenges:
+\begin{enumerate}
+	\item \textbf{Function lifecycle friction:} deploying and updating functions is a separate process from defining the workflow logic. Developers must ensure that functions exist and remain reachable before deploying a workflow that depends on them.
+	\item \textbf{Workflow binding friction:} workflow definitions frequently embed concrete endpoints (or other provider-specific identifiers), which makes them sensitive to redeployments, configuration changes or endpoint changes. As a result, workflow files can become brittle and require frequent manual edits.
+\end{enumerate}
+
+To address these limitations, this dissertation builds on two complementary tools. \textbf{QuickFaaS} focuses on automating the packaging and deployment of functions, reducing the manual effort required to create and update serverless functions on a chosen provider \cite{rodrigues2022quickfaas}. \textbf{OmniFlow} focuses on defining workflows using a higher-level DSL that can be compiled into a provider-specific workflow definition and deployed to the provider's workflow engine~\cite{costa2023omniflow}.
+
+However, a gap remains: while QuickFaaS handles the \textit{deployment of functions} and OmniFlow manages the \textit{deployment of workflows}, they currently operate in isolation. Consequently, developers typically follow a disjointed manual process: deploy functions with one tool, retrieve the resulting invocation endpoint and manually inject that endpoint into the workflow definition or configuration used by the other tool. This manual coordination increases development time and creates opportunities for inconsistency between what is deployed and what the workflow references.
+
+This dissertation is motivated by the opportunity to bridge this gap by integrating QuickFaaS and OmniFlow into a more unified workflow-first development experience. Such an integration is intended to:
+\begin{itemize}
+	\item \textbf{Establish a unified deployment lifecycle:} enable OmniFlow to deploy workflows while also coordinating function availability through QuickFaaS when the developer explicitly requests it (e.g., by declaring an internal call via the \texttt{internalFunction} construct).
+	\item \textbf{Reduce manual endpoint management:} avoid copying and hardcoding endpoints in workflow definitions by using logical identifiers (\texttt{functionRef}) resolved through a registry.
+	\item \textbf{Improve repeatability and maintainability:} make deployments more predictable by keeping stable workflow definitions while allowing functions to be deployed/updated and their invocation metadata refreshed in a controlled way.
+\end{itemize}
+
+\section{Objectives of This Dissertation}
+\label{sec:int_objectives}
+
+The primary goal of this dissertation is to achieve a more unified development and deployment experience for serverless workflows on a single cloud provider by integrating two complementary tools: QuickFaaS and OmniFlow.
+
+To bridge the gap between these systems and reduce manual coordination, this work aims to:
+
+\begin{enumerate}
+	\item \textbf{Design a unified integration architecture:} define the components and interfaces required for OmniFlow to coordinate workflow deployment with function availability. This includes the introduction of logical function identifiers (\texttt{functionRef}), a registry to store non-secret invocation metadata and an explicit mechanism (the \texttt{internalFunction} construct on the call step) that allows the developer to request function deployment or update through QuickFaaS.
+
+	\item \textbf{Implement an orchestration prototype:} develop a working prototype that integrates the libraries so that a serverless application, comprising both the workflow definition and its function dependencies, can be deployed predictably to a single provider without manually copying endpoints into the workflow definition.
+
+	\item \textbf{Evaluate feasibility and overhead:} validate the prototype through experimental testing using representative workflow scenarios. The evaluation will measure the overhead introduced by the integration steps (registry resolution and on-demand deployment requests), assess correctness (e.g., avoiding missing-function failures) and discuss practical limitations observed during deployment and execution.
+\end{enumerate}
+
+
+\section{Structure of the Work}
+\label{sec:int_structure}
+
+The remainder of this dissertation is organized as follows:
+
+\begin{itemize}
+  \item \textbf{Chapter 1} introduces the problem, motivation, objectives, and scope of the work.
+  \item \textbf{Chapter 2} provides the background on serverless computing, and presents the two base technologies: QuickFaaS (function deployment) and OmniFlow (workflow definition and deployment).
+  \item \textbf{Chapter 3} surveys related work on function deployment automation and workflow composition/orchestration.
+  \item \textbf{Chapter 4} presents the proposed solution: a workflow-first deployment procedure on a single cloud provider, based on logical function references (\texttt{functionRef}), a function registry for endpoint resolution, and the \texttt{internalFunction} construct on the call step, which delegates on-demand function deployment to QuickFaaS.
+  \item \textbf{Chapter 5} describes the implementation of the integration: the function registry and its deployment-time resolution cascade, the AWS Lambda support added to QuickFaaS, and the runtime invocation of internal functions.
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

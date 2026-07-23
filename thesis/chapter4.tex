@@ -1,0 +1,185 @@
+% 
+%  chapter4.tex
+%  ISELthesis
+%  
+%  Created by Matilde Pós-de-Mina Pato on 2012/10/09.
+%
+\chapter{Implementation}
+\label{cha:impl}
+
+
+\section{Function Registry}
+\label{sec:function-registry}
+
+This work introduces a \textit{Function Registry} to decouple workflow definitions from concrete function endpoints, reducing manual coordination between function deployments and workflow orchestration.
+
+Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{NoopInternalFunctionDeployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS, added in this work). Each provider deployer (\texttt{GoogleCloudDeployer}, \texttt{AmazonCloudDeployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{FunctionRegistryStore}, which persists bindings as \texttt{FunctionInvocationMetadata} (\texttt{serviceName} plus \texttt{url}, where \texttt{url} is an HTTPS endpoint on GCP and a Lambda ARN on AWS), and the deployer strategy invoked at Level~3 of the cascade. The \texttt{FunctionRegistryBootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer a clean extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
+  \caption{Class model of the integration layer added to OmniFlow.}
+  \label{fig:omniflow-integration-classes}
+\end{figure}
+
+
+\subsection{Motivation}
+In the original OmniFlow usage model, a \texttt{call} step requires concrete endpoint information (namely \texttt{host} and \texttt{path}). This makes workflows brittle: if a function is redeployed and its endpoint changes, the workflow definition must also be updated. The Function Registry addresses this problem by allowing workflows to reference internal functions using stable logical identifiers, while deferring endpoint binding to deployment time. Beyond endpoint indirection, the registry also serves as the persistence layer for the
+automatic function resolution mechanism described below: entries are created and refreshed
+automatically as functions are discovered on the target provider or deployed through QuickFaaS.
+
+
+
+\subsection{Concept and Conventions}
+Each internal function is identified by a stable logical identifier, referred to as
+\texttt{functionRef} (e.g., \texttt{"fraud-check"}). Instead of embedding the real endpoint
+in the workflow definition, an internal call declares the function through a dedicated DSL
+construct, \texttt{internalFunction(name, deploymentDescriptorPath)}, added to the
+\texttt{call} step in this work. The two construction paths are mutually exclusive and
+enforced at build time:
+
+\begin{itemize}
+    \item \textbf{External calls} provide literal \texttt{host} and \texttt{path} values,
+    exactly as in the original OmniFlow design, and bypass the registry entirely.
+    \item \textbf{Internal calls} provide \texttt{internalFunction(...)} and \emph{must not}
+    set \texttt{host} or \texttt{path}: both fields are filled in automatically at deployment
+    time from the registry. The optional second argument points to a QuickFaaS deployment
+    descriptor, used only when the function cannot be resolved or discovered (see below).
+\end{itemize}
+
+For example, an internal function call is declared as:
+
+\begin{lstlisting}[language=Kotlin,caption={Internal call declared with \texttt{internalFunction}},label={lst:internal-call-registry}]
+call {
+    method(GET)
+    internalFunction(
+        "fraud-check",
+        deploymentDescriptorPath = "./functions/fraud-check/func-deployment.json"
+    )
+    result("fraudResult")
+}
+\end{lstlisting}
+
+External calls are unaffected by this mechanism: they continue using literal \texttt{host} and \texttt{path} values and bypass the registry resolution.
+
+\subsection{Registry File Format}
+The registry is stored as a JSON file, containing only non-secret invocation metadata. It maps each \texttt{functionRef} to the concrete values required to invoke the function (serviceName and url, where url is an HTTPS endpoint on GCP and a Lambda ARN on AWS). The registry also stores an \texttt{updatedAt} timestamp for traceability.
+
+\begin{lstlisting}[language=json,caption={Function registry structure},label={lst:function-registry}]
+{
+  "updatedAt": "2026-02-15T00:00:00Z",
+  "functions": {
+    "fraud-check": {
+      "serviceName": "fraud-check",
+      "url": "https://fraud-check-abc123-ew.a.run.app"
+    },
+    "europe-west1/risk-score": {
+      "serviceName": "risk-score",
+      "url": "https://risk-score-def456-ew.a.run.app"
+    },
+    "hello-lambda-fn": {
+      "serviceName": "hello-lambda-fn",
+      "url": "arn:aws:lambda:eu-west-1:123456789012:function:hello-lambda-fn"
+    }
+  }
+}
+\end{lstlisting}
+
+\subsection{Creation, Bootstrap and Updates}
+The registry management layer provides the following behavior:
+
+\begin{itemize}
+    \item \textbf{Bootstrap by discovery (GCP):} if the registry file does not exist, it is
+    created automatically by listing the HTTP-invocable services already deployed in the
+    target project (via the Cloud Run APIs) and writing one entry per discovered function.
+    \item \textbf{Automatic registration:} when an internal function is not present in the
+    registry but is found on the target provider (Cloud Run service on GCP, Lambda function
+    on AWS), a new entry is written immediately with the discovered metadata.
+    \item \textbf{Post-deployment updates:} after a successful QuickFaaS deployment, the
+    resulting invocation metadata is written to the registry, so subsequent deployments
+    resolve the function without redeploying it.
+    \item \textbf{Drift handling (GCP):} on every registry hit, the stored URL is validated
+    against the live Cloud Run service; if the URL changed, the entry is refreshed, and if
+    the service no longer exists, the stale entry is removed and deployment fails with an
+    explicit diagnostic.
+\end{itemize}
+
+Every write refreshes the top-level \texttt{updatedAt} timestamp.
+
+\subsection{Deployment-Time Endpoint Resolution}
+\label{subsec:endpoint-resolution}
+The registry is consumed at deployment time by an endpoint resolution step. Before rendering the provider-specific workflow artifact (e.g., Google Workflows YAML), OmniFlow inspects each \texttt{CallContext}:
+
+\begin{enumerate}
+    \item OmniFlow traverses the workflow tree (including nested branches, iterations and
+    parallel blocks) and intercepts every \texttt{CallContext} carrying an
+    \texttt{internalFunction} declaration; external calls are left untouched.
+    \item The registry is consulted for the \texttt{functionRef} (exact match first, then
+    suffix match on \texttt{"region/functionRef"}). On a hit, the stored URL is used --- on
+    GCP, after validating it against the live Cloud Run service.
+    \item On a registry miss, the target provider is queried directly (Cloud Run service
+    lookup across regions on GCP; \texttt{GetFunction} on AWS Lambda). If the function
+    exists, its metadata is registered and used --- no deployment is triggered.
+    \item Only if the function is absent from both the registry and the provider, and a
+    \texttt{deploymentDescriptorPath} was declared, is QuickFaaS invoked to deploy the
+    function; the returned metadata is registered and used. Otherwise, deployment fails
+    fast with a diagnostic identifying the unresolved function.
+\end{enumerate}
+
+The resolved URL is finally split into \texttt{host} and \texttt{path} (on AWS, into a
+\texttt{lambda://<arn>} reference consumed by the renderer) and injected into the call step
+before the provider-specific workflow artifact is rendered.
+
+\subsection{Validation and Error Semantics}
+Several correctness constraints are enforced to avoid silent misconfiguration:
+
+\paragraph{Unresolvable function.}
+If a function is absent from the registry and from the target provider, and no deployment
+descriptor was provided, deployment fails fast with a message identifying the function and
+the corrective actions (deploy it first, or provide \texttt{deploymentDescriptorPath}).
+
+\paragraph{Ambiguous references.}
+If a suffix match yields multiple regional entries in the registry, or a function name
+exists in multiple regions on the provider, deployment fails with a message instructing the
+developer to disambiguate using the fully-qualified form
+\texttt{internalFunction("<region>/<functionRef>")}.
+
+\paragraph{Stale registry entries (GCP).}
+If a registry entry points to a Cloud Run service that no longer exists and rediscovery
+fails, the stale entry is removed and deployment aborts with an explicit diagnostic,
+preventing the workflow from being deployed against a dead endpoint.
+
+\subsection{Registry Location}
+The registry file is stored in a writable location at runtime (e.g., the working directory or a configurable path provided to the deployer). This avoids attempting to write into packaged resources (which are typically read-only in production).
+
+\subsection{Summary}
+The Function Registry introduces a stable indirection layer between workflow definitions and deployed function endpoints. Internal workflow calls declare a logical \texttt{functionRef} through the
+\texttt{internalFunction} DSL construct, and concrete endpoint binding is performed at
+deployment time through a resolution cascade (registry, provider discovery, QuickFaaS
+deployment as a last resort). This improves maintainability, supports repeatable deployments, and provides explicit, fail-fast diagnostics when registry bindings are missing or inconsistent.
+
+\section{AWS Lambda Support in QuickFaaS}
+Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment for the most demanding path, where an internal function exists in neither the registry nor AWS. The three \texttt{alt} fragments correspond directly to the three levels of the resolution cascade described in Section~\ref{subsec:endpoint-resolution}. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work that has no GCP equivalent: it resolves or creates the Lambda execution IAM role, patches the resolved role ARN into a temporary copy of the descriptor, determines the effective region from the S3 bucket's location, and invokes QuickFaaS as a subprocess — retrying up to three times with a 20~s back-off to absorb IAM eventual consistency. After the subprocess returns, it polls \texttt{GetFunction} until the function reaches the \texttt{Active} state (bounded by a 180~s timeout), retrieves the ARN, and grants the Step Functions service permission to invoke the function. The ARN is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{CreateStateMachine}. This diagram makes explicit the operational steps that the conceptual cascade abstracts away.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{images/implementation/aws-deploy-sequence.png}
+  \caption{Deployment sequence on AWS for the worst-case path (function absent from
+  both the registry and the provider).}
+  \label{fig:aws-deploy-sequence}
+\end{figure}
+
+\section{Runtime Invocation}
+Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Unlike external calls — which are rendered as \texttt{apigateway:invoke} HTTP tasks — internal calls use the native \texttt{arn:aws:states:::lambda:invoke} integration, with the ARN fixed at deployment time. Step Functions invokes the Lambda directly with the step's payload; the QuickFaaS template entry point adapts the request and delegates to the developer's hook function, and the response is returned under \texttt{\$.Payload}, from which a \texttt{ResultSelector} extracts the value into the step's result variable. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane; this choice is confirmed by the renderer, whose emitted resource for internal calls is \texttt{lambda:invoke} (\texttt{AmazonConstantsUtils}).
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{images/implementation/aws-runtime-invocation.png}
+  \caption{Runtime invocation of an internal function on AWS via the native
+  \texttt{lambda:invoke} integration.}
+  \label{fig:aws-runtime-invocation}
+\end{figure}
+%\lipsum[1-100]
+% \lipsum[1-100]
+% \lipsum[1-100]
+% \lipsum[1-700]
+
