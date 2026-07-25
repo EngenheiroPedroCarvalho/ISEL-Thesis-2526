@@ -32,6 +32,63 @@ In the state introduced by this work (Figure~\ref{fig:architecture-after}), a si
 
 The end-to-end flow proceeds as follows: (1) the developer defines the workflow and one QuickFaaS descriptor per internal function; (2) OmniFlow parses the workflow and, for each internal call, (3) resolves the endpoint from the registry, discovers it directly on the provider, or deploys it through QuickFaaS; (4) the returned metadata is written to the registry; and (5) the resolved workflow is rendered and deployed to the provider's workflow service. External calls bypass the registry entirely.
 
+\section{Design Rationale: Embedding Function Deployment in OmniFlow}
+\label{sec:design-rationale}
+
+A central design decision of this integration is that OmniFlow \emph{drives} QuickFaaS as part of a
+single workflow deployment, rather than the two tools being deployed as independent, long-running
+services that communicate over a network API. This section justifies that choice and states its
+trade-offs explicitly.
+
+\paragraph{Why OmniFlow orchestrates QuickFaaS.}
+The objective of this work is a \emph{workflow-first} deployment: the developer starts from one
+workflow definition and OmniFlow makes the referenced internal functions available before deploying
+the workflow. Only OmniFlow has the information needed to drive this flow --- it owns the
+deployment entry point and the workflow tree, and therefore knows which internal functions the
+workflow references and in what order they must be resolved. QuickFaaS, by contrast, operates at the
+granularity of a single function described by a deployment descriptor and has no notion of a
+workflow. The orchestration must therefore live on the OmniFlow side, with QuickFaaS acting as the
+function-deployment mechanism it invokes on demand. Crucially, this is a \emph{deployment-time},
+client-side, one-shot action performed on the developer's machine, not a recurring runtime
+interaction between two systems.
+
+To keep the two tools decoupled despite this dependency, function deployment is reached through the
+\texttt{InternalFunctionDeployer} strategy interface, whose provider implementations
+(\texttt{QuickFaasDeployer} for GCP, \texttt{AwsLambdaDeployer} for AWS) invoke QuickFaaS as an
+external process. QuickFaaS is thus reused as-is, remaining a separately owned and separately built
+tool (its own repository, Gradle build and Kotlin~1.6.20 toolchain), instead of having its source
+merged into OmniFlow's Maven build.
+
+\paragraph{Why not two independent communicating services.}
+An alternative design would run OmniFlow and QuickFaaS as two standing services that exchange
+messages over a network. This was rejected for several reasons. First, neither tool is a
+long-running service: OmniFlow is a client-side library invoked during a build, and QuickFaaS is a
+self-contained desktop application that consumes a local deployment descriptor and exposes no
+network API. Turning either into a service would require re-architecting it and then hosting,
+securing and keeping it available. Second, doing so would reintroduce precisely the
+``additional runtime layer that must be operated'' which this thesis deliberately avoids
+(Chapter~\ref{ch:related-works}): the contribution is aligned with provider-native execution
+surfaces and adds no new infrastructure of its own. Third, deployment uses the developer's own
+cloud credentials, resolved locally (e.g., application-default credentials or environment
+variables); a service-to-service design would have to transport or delegate those credentials
+across a trust boundary, a security liability with no corresponding benefit for a single-developer,
+single-machine build. Finally, for a task that is inherently sequential, local and ephemeral, a
+direct invocation has far fewer failure modes than a distributed protocol (no network partitions,
+partial failures, or inter-service API to version), and the coupling is in fact looser --- OmniFlow
+depends on the QuickFaaS build artifact, not on a running service.
+
+\paragraph{Trade-off of the current mechanism.}
+In the present prototype the invocation is realised as a subprocess: OmniFlow places the deployment
+descriptor (and the function source) next to the QuickFaaS JAR and launches it with
+\texttt{java\ -jar}, detecting success from the process exit code and a marker printed on its
+output. This is pragmatic --- it reuses QuickFaaS's existing headless entry point without modifying
+it --- but it is also the most brittle part of the integration, since it couples the two build
+systems at run time through a JAR path and parses the child process's output. Importantly, the
+cleaner alternative to the subprocess is \emph{in-process library invocation} (linking QuickFaaS as
+a dependency), which preserves the OmniFlow-drives-QuickFaaS model while removing the process
+boundary; this is discussed as future work (Chapter~\ref{cha:conclusions}) and is a different axis
+from the two-service design rejected above.
+
 \section{DSL Extensions}
 \label{sec:dsl-extensions}
 
