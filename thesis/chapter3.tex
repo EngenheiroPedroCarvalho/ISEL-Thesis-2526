@@ -65,6 +65,24 @@ call was served from the registry, discovered on the provider, or freshly deploy
 class-level realisation of this cascade, including drift handling and ambiguity detection, is
 described in Chapter~\ref{cha:impl}.
 
+\paragraph{Provider and region scope.}
+Cloud providers organise their infrastructure into geographic \emph{regions} (e.g., \texttt{eu-west-1}
+on AWS or \texttt{europe-west1} on GCP), and every resource --- a Lambda function, a Cloud Run
+service, a storage bucket, or the deployed workflow itself --- lives in a specific region, which is
+part of its identity (on AWS the region even appears inside the function ARN). This work is scoped
+to a \emph{single provider per deployment}: a workflow deployed to GCP resolves only GCP functions,
+and one deployed to AWS resolves only AWS Lambdas. Within a provider, the workflow and its internal
+functions are \emph{not} strictly required to share a region --- on GCP a function is invoked over
+an HTTPS URL, so the resolver in fact searches across the project's regions (which is why the
+fully-qualified \texttt{"region/functionRef"} form exists to disambiguate a name that appears in
+more than one region); on AWS the function is invoked by its region-qualified ARN. In practice the
+prototype assumes the workflow and its functions in the same region, both because it is the common
+case and because same-region deployment minimises invocation latency and cross-region data-transfer
+cost, and simplifies data-residency compliance. One co-location constraint is, however, mandatory
+on AWS: a Lambda must reside in the same region as the S3 bucket that holds its deployment package,
+so the AWS deployer derives the effective region from that bucket
+(Chapter~\ref{cha:impl}).
+
 \section{Design Rationale: Embedding Function Deployment in OmniFlow}
 \label{sec:design-rationale}
 
