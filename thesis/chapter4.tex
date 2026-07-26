@@ -186,6 +186,51 @@ preventing the workflow from being deployed against a dead endpoint.
 \subsection{Registry Location}
 The registry file is stored in a writable location at runtime (e.g., the working directory or a configurable path provided to the deployer). This avoids attempting to write into packaged resources (which are typically read-only in production).
 
+\subsection{Evolution of the Registry Design}
+\label{subsec:registry-evolution}
+
+The registry did not arrive at its current form in a single step; the source tree still exposes
+the intermediate stages, which makes the design decisions worth recounting. Four threads describe
+how it evolved.
+
+\paragraph{From literal endpoints to logical indirection.}
+The starting point was the plain OmniFlow \texttt{call} step, which embeds a concrete
+\texttt{host}/\texttt{path}. This couples the workflow definition to a specific deployed instance
+of a function, so any redeployment that changes the endpoint forces an edit to the workflow. The
+first design move was therefore to introduce a level of indirection: the workflow names a function
+through a stable \texttt{functionRef}, and the concrete endpoint is bound from the registry at
+deployment time. The registry exists precisely to hold that binding.
+
+\paragraph{From a two-key model to a metadata record.}
+An early registry design represented each function by two synthetic keys,
+\texttt{"<functionRef>.host"} and \texttt{"<functionRef>.path"}, produced by
+\texttt{FunctionEndpointKeys} and consumed by \texttt{WorkflowInternalCallEndpointResolver}. This
+mirrored the \texttt{host}/\texttt{path} split of the \texttt{call} step but proved awkward: it
+stored two loosely related string fragments per function and pushed the reconstruction of a full
+endpoint onto the resolver. It was superseded by a single structured record per function,
+\texttt{FunctionInvocationMetadata} (a \texttt{serviceName} plus a \texttt{url}), which the two
+production resolvers consume. The earlier classes were never deleted and survive only through their
+unit tests --- a visible archaeological layer of the design, dead on the live deployment path and
+noted as such in the critical assessment (Chapter~\ref{cha:conclusions}).
+
+\paragraph{From provider-specific fields to a uniform endpoint.}
+Collapsing the endpoint into one \texttt{url} field was the change that made the AWS extension
+cheap. Because \texttt{url} is treated as an opaque, provider-interpreted string --- an HTTPS
+endpoint on GCP, a Lambda ARN on AWS --- the registry schema did not have to change when the AWS
+provider was added; only the resolver that reads the field and the renderer that consumes it are
+provider-aware. The registry thus stayed a single, symmetric abstraction across the two clouds.
+
+\paragraph{From a manually edited file to an auto-managed source of truth.}
+Finally, the registry evolved from something the developer would maintain by hand into something the
+integration maintains automatically. It is bootstrapped by discovery when absent, populated on the
+fly when a function is found on the provider, refreshed after a QuickFaaS deployment, corrected when
+a stored URL has drifted, and pruned when an entry becomes stale --- with every write stamping the
+top-level \texttt{updatedAt} field. In parallel, the resolution path itself was refined from
+re-reading the whole file on every lookup (\texttt{resolveUrl}) toward reading it once into a
+snapshot and resolving in memory (\texttt{readAll} + \texttt{resolveUrlIn}); the performance effect
+of that refinement, and the fact that it has not yet been propagated to the two production
+resolvers, are quantified in Chapter~\ref{cha:evaluation}.
+
 \subsection{Summary}
 The Function Registry introduces a stable indirection layer between workflow definitions and deployed function endpoints. Internal workflow calls declare a logical \texttt{functionRef} through the
 \texttt{internalFunction} DSL construct, and concrete endpoint binding is performed at
