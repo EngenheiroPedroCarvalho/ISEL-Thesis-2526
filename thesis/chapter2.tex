@@ -20,6 +20,19 @@ Serverless computing represents a shift in cloud execution models where the clou
 
 Function-as-a-Service (FaaS) is the primary realization of the serverless model. It enables developers to deploy single-purpose, stateless functions that are triggered by specific events (e.g., HTTP requests, database changes). While FaaS offers significant agility, the lack of standardization across providers (e.g., AWS Lambda, Google Cloud Functions, Azure Functions) creates a high risk of vendor lock-in, as function code often becomes tightly coupled to provider-specific SDKs and deployment artifacts~\cite{rodrigues2022quickfaas}.
 
+This coupling manifests along two independent axes, both relevant to this dissertation. The first
+is the \emph{programming model}: each provider defines its own function signature and request/response
+types, so the same logic must be rewritten per provider unless an abstraction hides those
+differences --- the problem QuickFaaS addresses with its uniform hook/template model. The second is
+the \emph{packaging and deployment} axis: providers accept code through different mechanisms
+(inline editing, container images, source archives), with different naming, permission and trigger
+conventions. The compressed source archive (ZIP) is the common denominator across AWS, GCP and
+Azure, which is why QuickFaaS standardises on it. Beyond portability, the statelessness and
+event-driven nature of FaaS also shape how functions are \emph{composed}: because a function holds
+no state between invocations and cannot directly call another, non-trivial applications must lift
+control-flow and data-flow into an external orchestrator --- the workflow layer discussed next ---
+rather than encoding them inside the functions themselves~\cite{serverlessComputing}.
+
 \section{QuickFaaS: Portable Function Deployment}
 \label{sec:background_quickfaas}
 QuickFaaS is a desktop-based tool developed to solve the problem of function portability~\cite{rodrigues2022quickfaas}. Its primary goal is to allow developers to write a function once and deploy it to multiple cloud providers without modifying the source code, targeting the elimination of code-level vendor lock-in.
@@ -295,6 +308,42 @@ A final family focuses on function composition, workflow execution efficiency an
 \textbf{FaaSr}~\cite{park2024faasr} targets event-driven scientific workflows, with a particular focus on R-based functions. It supports composing functions into workflow graphs (DAGs) and coordinates execution using object storage primitives rather than relying on an always-on workflow engine server. This is a strong example of reducing operational burden and enabling workflow execution without managing a dedicated orchestrator. However, it follows a different strategy from OmniFlow: instead of compiling a workflow DSL into a provider-native workflow resource, it introduces a middleware coordination model focused on scientific workflows and storage-based coordination.
 
 Finally, \textbf{Serverless Multicloud}~\cite{zhao2022supporting} proposes an architecture with a library that abstracts access to serverless offerings across vendors and an evaluation component to analyse cost and performance. This work shares the motivation of reducing vendor lock-in but it emphasises API abstractions and SDK-like interfaces rather than a workflow DSL translation model.
+
+Table~\ref{tab:related-comparison} summarises the surveyed families against the five dimensions
+that matter for this thesis. Two observations stand out. First, the columns are rarely satisfied
+together: tooling that automates deployment (IaC) does not address workflow-definition portability,
+while tools that target workflow portability (Serverless Workflow, Temporal, Triggerflow) typically
+execute the workflow on their own runtime instead of a provider-native service. Second, and most
+importantly, no surveyed work provides the last column --- resolving a workflow's logical function
+references into concrete endpoints \emph{at workflow-deployment time}, deploying the missing
+functions on demand. That column is precisely the gap the OmniFlow--QuickFaaS integration fills
+while keeping both the workflow and the functions on provider-native surfaces.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Positioning of the surveyed families against this thesis's dimensions
+  (Y = yes, P = partial, -- = no).}
+  \label{tab:related-comparison}
+  \begin{tabular}{lccccc}
+    \hline
+    \textbf{Approach} & \textbf{Deploy.} & \textbf{Func.} & \textbf{Workflow} & \textbf{Workflow-first} & \textbf{Provider-} \\
+     & \textbf{autom.} & \textbf{portab.} & \textbf{portab.} & \textbf{resolution} & \textbf{native} \\
+    \hline
+    IaC (CloudFormation, Terraform, Serverless, Pulumi) & Y & P & -- & -- & Y \\
+    CODE~\cite{ristov2024code}                          & Y & Y & -- & -- & Y \\
+    OpenFaaS~\cite{openFaaS}                            & Y & Y & -- & -- & -- \\
+    Code transformation~\cite{spillner2017pythonfaas,spillnerDorodko2017javaLambda} & P & P & -- & -- & Y \\
+    SEAPORT~\cite{yussupov2020seaport}                  & -- & -- & -- & -- & -- \\
+    FaaSFlow~\cite{li2022faasflow}                      & -- & -- & P & -- & -- \\
+    Triggerflow~\cite{garciaLopez2020triggerflow}       & -- & -- & Y & -- & -- \\
+    Serverless Workflow / Synapse~\cite{serverlessWorkflowSpec,serverlessworkflowSynapse} & -- & -- & Y & -- & -- \\
+    Temporal~\cite{temporalPlatform}                    & -- & -- & Y & -- & -- \\
+    FaaSr~\cite{park2024faasr}                          & P & P & Y & -- & -- \\
+    Serverless Multicloud~\cite{zhao2022supporting}     & -- & Y & P & -- & -- \\
+    \textbf{OmniFlow + QuickFaaS (this work)}           & Y & Y & Y & Y & Y \\
+    \hline
+  \end{tabular}
+\end{table}
 
 This separation of concerns motivates the proposed integration in this thesis: none of the surveyed works simultaneously (i) translates portable workflow definitions into provider-specific workflow artifacts \emph{and} (ii) provides an on-demand mechanism to ensure the referenced functions exist on the target provider using a provider-agnostic function model.
 The OmniFlow--QuickFaaS integration seeks to combine these complementary capabilities while remaining aligned with provider-native execution surfaces (managed workflows and managed FaaS), avoiding the need to introduce and operate an entirely new workflow runtime layer.
