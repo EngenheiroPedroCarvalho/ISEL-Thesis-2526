@@ -129,6 +129,41 @@ The resolved URL is finally split into \texttt{host} and \texttt{path} (on AWS, 
 \texttt{lambda://<arn>} reference consumed by the renderer) and injected into the call step
 before the provider-specific workflow artifact is rendered.
 
+\subsection{Registry Store and Resolver Internals}
+\label{subsec:store-internals}
+
+The registry file is manipulated exclusively through \texttt{FunctionRegistryStore}, which
+exposes a small, deliberately narrow interface: \texttt{readAll()} parses the whole file into an
+ordered map of \texttt{functionRef} to \texttt{FunctionInvocationMetadata}; \texttt{tryResolveEntry()}
+implements the two-step lookup (exact match on \texttt{functionRef}, then suffix match on
+\texttt{"region/functionRef"}, raising if the suffix match is ambiguous); \texttt{put()} inserts or
+refreshes one entry; and \texttt{remove()} deletes a stale entry. Every mutating operation rewrites
+the top-level \texttt{updatedAt} timestamp. The store keeps no in-memory state between calls, so
+each of these operations re-reads and re-parses the file; the performance consequences of this
+choice, and the single-read mitigation, are analysed in Chapter~\ref{cha:evaluation}.
+
+The two provider resolvers sit on top of this store and differ only in the provider-discovery step,
+which reflects the two clouds' invocation models. \texttt{WorkflowInternalFunctionResolver} (GCP)
+treats a registry hit as provisional: it validates the stored URL against the live Cloud Run
+service and, if the URL has drifted, refreshes the entry; if the service has disappeared, it
+attempts rediscovery across the project's regions and, failing that, removes the stale entry and
+aborts. It also short-circuits validation for first-generation Cloud Functions (identified by a
+\texttt{cloudfunctions.net} URL), which are not Cloud Run services. When a function is absent from
+the registry, it is looked up across regions, and a match in more than one region is reported as
+ambiguous. \texttt{AwsInternalFunctionResolver} is simpler because a Lambda is uniquely named
+within a region: a registry miss triggers a single \texttt{GetFunction} call, and only a genuine
+\texttt{ResourceNotFoundException} (rather than any error) is treated as ``not present''. In both
+resolvers, a hit or a successful discovery writes the metadata back through \texttt{put()} before
+the endpoint is injected into the call, so the registry converges toward a complete set of bindings
+as workflows are deployed.
+
+To keep resolution cheap when a workflow contains many internal calls,
+\texttt{WorkflowInternalCallEndpointResolver} reads the registry once into a snapshot and resolves
+every call against that in-memory map, rather than re-reading the file per call. This is the
+optimisation quantified in Chapter~\ref{cha:evaluation}; as discussed there and in
+Chapter~\ref{cha:conclusions}, it has not yet been folded into the two provider resolvers, which
+still read per call.
+
 \subsection{Validation and Error Semantics}
 Several correctness constraints are enforced to avoid silent misconfiguration:
 
@@ -168,7 +203,73 @@ Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment for the mo
   \label{fig:aws-deploy-sequence}
 \end{figure}
 
+AWS support is realised in two layers that meet at the subprocess boundary: the AWS provider added
+\emph{inside} QuickFaaS (Part~A), which performs the actual Lambda deployment, and the
+\texttt{AwsLambdaDeployer} added \emph{inside} OmniFlow (Part~B), which prepares the environment,
+drives QuickFaaS, and produces the invocation metadata the registry stores.
+
+\subsection{The QuickFaaS AWS Provider}
+\label{subsec:quickfaas-aws-provider}
+
+The AWS provider extends QuickFaaS's existing abstractions (\texttt{CloudProvider},
+\texttt{CloudFunction}, \texttt{CloudRequests}) so that a cloud-agnostic function can be packaged
+and deployed to AWS Lambda through the same ZIP strategy used for GCP and Azure. Its core is
+\texttt{AwsLambdaFunction.deployZip}, which: uploads the packaged archive to the S3 bucket named in
+the descriptor; checks whether the function already exists (\texttt{GetFunction}); and then either
+creates it (\texttt{CreateFunction}, with the code referenced as an S3 object) or updates its code
+(\texttt{UpdateFunctionCode}), in both cases blocking on the AWS SDK waiter until the function is
+active. The handler is fixed to the provider-agnostic entry point \texttt{AwsHttpTemplate}, which
+adapts the Lambda request to the developer's hook, and the supported runtimes are \texttt{java11}
+and \texttt{java17}. Because \texttt{GetBucketLocation} must be issued against the global endpoint,
+the provider resolves the bucket's region from \texttt{us-east-1} and then pins the Lambda client
+to that same region, ensuring the function and its code bucket are co-located. Finally, the
+provider creates (or reuses) a Lambda \emph{Function URL} with \texttt{AuthType = AWS\_IAM}. This
+Function URL is QuickFaaS's own notion of an invocation endpoint; as explained below, the OmniFlow
+integration does not use it, preferring the function ARN.
+
+\subsection{The OmniFlow-Side Deployer}
+\label{subsec:omniflow-aws-deployer}
+
+\texttt{AwsLambdaDeployer} is the AWS implementation of the \texttt{InternalFunctionDeployer}
+strategy. It performs the work that has no GCP equivalent and that must happen \emph{around} the
+QuickFaaS subprocess. From the raw descriptor it resolves or creates the Lambda execution IAM role:
+if \texttt{iamRoleArn} is blank or a placeholder, it creates a managed
+\texttt{OmniFlowLambdaExecutionRole} (attaching \texttt{AWSLambdaBasicExecutionRole}); if a real ARN
+is supplied, it verifies and, if necessary, repairs the role's trust policy so that
+\texttt{lambda.amazonaws.com} can assume it. The resolved ARN is patched into a temporary copy of
+the descriptor, the effective region is taken from the S3 bucket's location, and QuickFaaS is
+invoked as a subprocess --- retried up to three times with a 20-second back-off to absorb IAM
+eventual consistency. After the subprocess returns, the deployer polls \texttt{GetFunction} until
+the function reports the \texttt{Active} state (bounded by a 180-second timeout), retrieves the ARN,
+and grants the Step Functions service principal permission to invoke the function.
+
+A deliberate design choice is visible here: although the QuickFaaS provider produces a Function URL,
+the OmniFlow deployer discards it and stores the \emph{ARN} in the registry, because internal calls
+are rendered with the native \texttt{lambda:invoke} integration (Section~\ref{sec:runtime-invocation})
+rather than as HTTP calls to a Function URL. Listing~\ref{lst:aws-descriptor} shows a minimal AWS
+deployment descriptor: it differs from the GCP descriptor of
+Listing~\ref{lst:quickfaas_json_config} mainly in \texttt{cloudProvider}, the S3 \texttt{bucket},
+the Lambda \texttt{runtime}, and the \texttt{iamRoleArn} field (which may be left as a placeholder to
+request automatic role creation).
+
+\begin{lstlisting}[language=json,caption={Minimal AWS deployment descriptor for an internal function.},label={lst:aws-descriptor}]
+{
+  "cloudProvider": "aws",
+  "project": "123456789012",
+  "iamRoleArn": "<auto>",
+  "function": {
+    "name": "hello-lambda-fn",
+    "location": "eu-west-1",
+    "bucket": "run-sources-tfm2526-eu-west-1",
+    "runtime": "java17",
+    "trigger": { "type": "http" }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}
+\end{lstlisting}
+
 \section{Runtime Invocation}
+\label{sec:runtime-invocation}
 Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Unlike external calls — which are rendered as \texttt{apigateway:invoke} HTTP tasks — internal calls use the native \texttt{arn:aws:states:::lambda:invoke} integration, with the ARN fixed at deployment time. Step Functions invokes the Lambda directly with the step's payload; the QuickFaaS template entry point adapts the request and delegates to the developer's hook function, and the response is returned under \texttt{\$.Payload}, from which a \texttt{ResultSelector} extracts the value into the step's result variable. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane; this choice is confirmed by the renderer, whose emitted resource for internal calls is \texttt{lambda:invoke} (\texttt{AmazonConstantsUtils}).
 
 \begin{figure}[htbp]
@@ -178,6 +279,39 @@ Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoke
   \texttt{lambda:invoke} integration.}
   \label{fig:aws-runtime-invocation}
 \end{figure}
+
+The distinction between the two forms is made entirely by the renderer,
+\texttt{AmazonCallRenderer}, from the \texttt{host} value injected during resolution. If the host
+carries the \texttt{lambda://} prefix (the marker written by \texttt{AwsInternalFunctionResolver}),
+the renderer emits a \texttt{Task} whose \texttt{Resource} is
+\texttt{arn:aws:states:::lambda:invoke} and whose \texttt{Parameters} carry the
+\texttt{FunctionName} taken from the resolved ARN; any query terms are forwarded under a
+\texttt{Payload.queryStringParameters} object. Otherwise it emits the original
+\texttt{apigateway:invoke} task with \texttt{ApiEndpoint}, \texttt{Method} and \texttt{Path}. For
+the Lambda form the result is extracted with a \texttt{ResultSelector} that reads
+\texttt{\$.Payload} into the step's result variable, and the value is scoped under a
+\texttt{ResultPath} named after the step so that later steps can reference it. Listing
+\ref{lst:rendered-lambda} shows the state a \texttt{call} to \texttt{internalFunction("fraud-check")}
+renders to.
+
+\begin{lstlisting}[language=json,caption={Step Functions state rendered for an internal Lambda call.},label={lst:rendered-lambda}]
+"fraud-check": {
+  "Type": "Task",
+  "Resource": "arn:aws:states:::lambda:invoke",
+  "InputPath": "$",
+  "Parameters": {
+    "FunctionName": "arn:aws:lambda:eu-west-1:123456789012:function:fraud-check"
+  },
+  "ResultSelector": { "fraudResult.$": "$.Payload" },
+  "ResultPath": "$.fraud-check",
+  "Next": "external-risk-api"
+}
+\end{lstlisting}
+
+Keeping the internal form as a variant of the existing \texttt{call} renderer --- rather than a new
+state type --- means the control-flow, result-passing and error-handling machinery that OmniFlow
+already emits for external calls applies unchanged to internal ones; only the \texttt{Resource} and
+the parameter shape differ.
 %\lipsum[1-100]
 % \lipsum[1-100]
 % \lipsum[1-100]
