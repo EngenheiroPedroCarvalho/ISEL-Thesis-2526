@@ -152,6 +152,26 @@ $\sim$41$\times$ at $R{=}10$ to $\sim$58$\times$ at $R{=}1000$.
   \end{tabular}
 \end{table}
 
+On a realistic workflow ($F{=}10$, $N{=}50$ fixed), P9 isolates the effect of the registry size:
+the naive cost climbs with $R$ while the optimized cost stays almost flat, so the speedup grows
+from $\sim$41$\times$ at $R{=}10$ to $\sim$58$\times$ at $R{=}1000$ (Table~\ref{tab:eval-p9}).
+
+\begin{table}[htbp]
+  \centering
+  \caption{P9 --- resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
+  \label{tab:eval-p9}
+  \begin{tabular}{rrrr}
+    \hline
+    \textbf{$R$} & \textbf{naive} & \textbf{optimized} & \textbf{speedup} \\
+    \hline
+    10   & 9\,829  & 237 & 41.4 \\
+    50   & 10\,899 & 268 & 40.7 \\
+    200  & 14\,964 & 324 & 46.2 \\
+    1000 & 43\,245 & 749 & 57.8 \\
+    \hline
+  \end{tabular}
+\end{table}
+
 \section{Real Auto-Deploy Resolvers and Write Path}
 \label{sec:eval-real-resolvers}
 
@@ -164,6 +184,29 @@ not the shared registry mechanism). Crucially, these classes still pay the full 
 cost, because each call goes through \texttt{FunctionRegistryStore.tryResolveEntry}, which re-reads
 the whole file: the single-read optimization demonstrated in P7 has not yet been applied to them.
 This is a documented, quantified optimization opportunity rather than an applied change.
+Table~\ref{tab:eval-p10p11} reports both resolvers over the same $F\times N$ grid; the per-call cost
+is flat in $F$ and rises linearly with $N$, and the GCP resolver is consistently a few percent
+dearer than the AWS one.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P10/P11 --- resolution time ($\mu$s) of the real AWS and GCP resolvers, $R{=}F$.}
+  \label{tab:eval-p10p11}
+  \begin{tabular}{lrrrrr}
+    \hline
+    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+    \hline
+    \multicolumn{6}{l}{\emph{AWS --- \texttt{AwsInternalFunctionResolver} (P10)}} \\
+    1  & 356 & 1\,684 & 3\,338 & 17\,806 & 71\,825 \\
+    10 & 355 & 1\,738 & 3\,421 & 17\,509 & 69\,700 \\
+    50 & 383 & 1\,847 & 3\,732 & 22\,396 & 73\,603 \\
+    \multicolumn{6}{l}{\emph{GCP --- \texttt{WorkflowInternalFunctionResolver} (P11)}} \\
+    1  & 398 & 2\,205 & 3\,837 & 19\,908 & 76\,812 \\
+    10 & 395 & 1\,971 & 4\,436 & 19\,744 & 78\,525 \\
+    50 & 428 & 2\,118 & 4\,285 & 20\,811 & 83\,269 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \paragraph{Registry write path (P13, P17).}
 Writing is more expensive than resolving. Every \texttt{put()} re-reads and rewrites the entire
@@ -172,7 +215,28 @@ $\Theta(K\cdot R_0 + K^2)$ (P13). The miss-then-write pattern the real resolvers
 cloud call (\texttt{tryResolveEntry} followed by \texttt{put}) adds a further 24--54\% on top
 (P17), since \texttt{tryResolveEntry} is itself $\Theta(R)$. In absolute terms these values remain
 in the hundreds of microseconds to low hundreds of milliseconds even for $K{=}100$ successive
-writes.
+writes (Table~\ref{tab:eval-p13p17}).
+
+\begin{table}[htbp]
+  \centering
+  \caption{P13/P17 --- total write time ($\mu$s): $K$ successive \texttt{put} (P13) and
+  $K$ miss+\texttt{put} pairs (P17), initial registry size $R_0$.}
+  \label{tab:eval-p13p17}
+  \begin{tabular}{lrrrrr}
+    \hline
+    $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
+    \hline
+    \multicolumn{6}{l}{\emph{P13 --- \texttt{put} only}} \\
+    1   & 2\,673   & 2\,860   & 3\,235   & 4\,139   & 2\,761   \\
+    10  & 27\,691  & 26\,986  & 29\,912  & 39\,164  & 24\,029  \\
+    100 & 329\,757 & 304\,187 & 330\,100 & 419\,531 & 237\,910 \\
+    \multicolumn{6}{l}{\emph{P17 --- miss + \texttt{put}}} \\
+    1   & 3\,309   & 3\,545   & 3\,959   & 5\,122   & 4\,243   \\
+    10  & 35\,107  & 34\,358  & 37\,190  & 47\,631  & 47\,817  \\
+    100 & 410\,389 & 382\,140 & 403\,488 & 511\,878 & 346\,068 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \section{Match Strategy, Mixed Workflows, and Structure}
 \label{sec:eval-secondary}
@@ -180,20 +244,73 @@ writes.
 \paragraph{Exact vs.\ suffix match (P14).}
 The suffix-match path (regional disambiguation) fails the exact lookup and scans the loaded map,
 reintroducing an $\Theta(N\cdot R)$ term, but over an already-loaded map: the ratio to exact match
-grows to only $\sim$1.9$\times$ at $R{=}1000$ and remains cheap in absolute terms.
+grows to only $\sim$1.9$\times$ at $R{=}1000$ and remains cheap in absolute terms
+(Table~\ref{tab:eval-p14}).
+
+\begin{table}[htbp]
+  \centering
+  \caption{P14 --- exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
+  \label{tab:eval-p14}
+  \begin{tabular}{rrrr}
+    \hline
+    \textbf{$R$} & \textbf{exact} & \textbf{suffix} & \textbf{ratio} \\
+    \hline
+    10   & 219 & 228   & 1.04 \\
+    100  & 259 & 333   & 1.29 \\
+    200  & 309 & 442   & 1.43 \\
+    1000 & 768 & 1\,456 & 1.90 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \paragraph{Mixed internal/external workflows (P15, P16).}
 The first workflows to mix internal and external calls confirm that resolution cost scales with
 $I$ (internal calls), not with $N{=}I{+}E$: the $I{=}0$ line stays flat as $E$ grows to 200,
-because external calls incur no registry lookup. The $\Theta(R)$ behaviour proved in P9 is
-unchanged when a fraction of the calls are external (P16).
+because external calls incur no registry lookup (Table~\ref{tab:eval-p15}). The $\Theta(R)$
+behaviour proved in P9 is unchanged when a fraction of the calls are external (P16).
+
+\begin{table}[htbp]
+  \centering
+  \caption{P15 --- resolution time ($\mu$s) of a mixed workflow, $R{=}F{=}10$ fixed;
+  $I$ internal vs.\ $E$ external calls.}
+  \label{tab:eval-p15}
+  \begin{tabular}{rrrrrr}
+    \hline
+    $I\backslash E$ & 0 & 1 & 10 & 50 & 200 \\
+    \hline
+    0   & 181 & 190 & 187 & 183 & 183 \\
+    10  & 189 & 205 & 203 & 189 & 255 \\
+    50  & 217 & 217 & 230 & 219 & 322 \\
+    200 & 326 & 321 & 323 & 315 & 393 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \paragraph{Workflow shape (P18, P19).}
 Nesting depth (P18) leaves the time essentially constant ($\sim$200\,$\mu$s across depths 0--5),
 and parallel width (P19) grows only with the total number of internal leaf calls
-($N = 5\times\text{width}$), in the same order of magnitude as the flat workflows of P8/P15.
-Although the resolver recurses explicitly into \texttt{Iteration} and \texttt{Parallel} contexts,
-the shape of the tree is irrelevant: only the count of internal calls matters.
+($N = 5\times\text{width}$), in the same order of magnitude as the flat workflows of P8/P15
+(Table~\ref{tab:eval-p18p19}). Although the resolver recurses explicitly into \texttt{Iteration}
+and \texttt{Parallel} contexts, the shape of the tree is irrelevant: only the count of internal
+calls matters.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P18/P19 --- resolution time ($\mu$s) vs.\ nesting depth (20 calls fixed) and vs.\
+  parallel width ($N = 5\times$ width), $R{=}F{=}10$.}
+  \label{tab:eval-p18p19}
+  \begin{tabular}{rr@{\qquad}rrr}
+    \hline
+    \multicolumn{2}{l}{\emph{P18 --- depth}} & \multicolumn{3}{l}{\emph{P19 --- parallel width}} \\
+    \textbf{depth} & \textbf{time} & \textbf{branches} & \textbf{$N$} & \textbf{time} \\
+    \hline
+    0 & 207.3 & 1   & 5   & 188.3 \\
+    2 & 200.7 & 10  & 50  & 220.8 \\
+    3 & 200.4 & 20  & 100 & 276.2 \\
+    5 & 199.6 & 100 & 500 & 583.7 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \section{Packaging Overhead (S1)}
 \label{sec:eval-bundle}
