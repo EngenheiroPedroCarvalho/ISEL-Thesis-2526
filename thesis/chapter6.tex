@@ -70,7 +70,9 @@ be stated plainly.
   role and grants invoke permissions as a deployment side effect --- convenient for a demo, but at
   odds with a least-privilege, change-controlled environment.
   \item \textbf{Brittle integration boundary.} QuickFaaS is invoked as a subprocess, coupling two
-  build systems across a process boundary and keying error handling off child-process text.
+  build systems across a process boundary and keying error handling off child-process text; the
+  rationale for this boundary, and the in-process alternative, is discussed in
+  Section~\ref{sec:design-rationale}.
   \item \textbf{Testability of cloud paths.} By design, the classes that call the cloud SDKs have
   no automated coverage, so the integration edges --- where production incidents occur --- are the
   least tested.
