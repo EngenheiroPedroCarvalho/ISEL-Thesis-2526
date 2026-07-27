@@ -44,7 +44,8 @@ The three objectives stated in Section~\ref{sec:int_objectives} were met:
   together with its internal functions to a single provider (GCP or AWS) without manually copying
   endpoints.
   \item \textbf{Evaluate feasibility and overhead} --- Chapter~\ref{cha:evaluation} quantifies the
-  resolution overhead ($\Theta(N\cdot R)$, reducible to $\Theta(N+R)$), the write-path cost, and
+  resolution overhead (proportional to the product of the number of calls and the registry size,
+  reducible to a cost proportional to their sum), the write-path cost, and
   the negligible packaging overhead of the AWS agnostic layer.
 \end{enumerate}
 
@@ -60,9 +61,10 @@ be stated plainly.
   \texttt{FunctionEndpointKeys}) was superseded by the \texttt{serviceName}+\texttt{url} model but
   never removed; it survives only through its tests and is dead on the live deployment path.
   \item \textbf{Optimization not propagated.} The single-read optimization that reduces resolution
-  to $\Theta(N+R)$ lives in the superseded resolver, not in the production
+  to a cost proportional to the sum of the number of calls and the registry size lives in the
+  superseded resolver, not in the production
   \texttt{AwsInternalFunctionResolver} and \texttt{WorkflowInternalFunctionResolver}, which still
-  pay the full $\Theta(N\cdot R)$ cost (Section~\ref{sec:eval-real-resolvers}).
+  pay the full call-times-registry-size cost (Section~\ref{sec:eval-real-resolvers}).
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
   or authenticity guarantee, and no cross-process locking; concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
@@ -99,7 +101,8 @@ structural ones.
 \begin{enumerate}
   \item \textbf{Propagate the single-read optimization} into
   \texttt{AwsInternalFunctionResolver} and \texttt{WorkflowInternalFunctionResolver}, closing the
-  gap between the measured $\Theta(N+R)$ optimum and the $\Theta(N\cdot R)$ cost these classes
+  gap between the measured optimum --- a cost proportional to the sum of the number of calls and
+  the registry size, rather than their product --- and the still-multiplicative cost these classes
   still pay, and then remove the superseded resolver.
   \item \textbf{Harden the registry:} a pluggable backend (database or secret/parameter store)
   behind the current interface, with cross-process locking, per-entry integrity, an in-memory
