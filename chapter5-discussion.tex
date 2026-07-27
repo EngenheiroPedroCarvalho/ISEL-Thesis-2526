@@ -62,19 +62,44 @@ The performance story is the strongest part of the contribution, precisely becau
 the full loop of \emph{identify $\rightarrow$ fix $\rightarrow$ quantify}. Benchmark P3 first
 established that resolving an internal call costs roughly $7.5\,\mu$s and scales
 linearly with the number of calls, because each call re-reads and re-parses the whole registry
-file from disk. P6 isolated the second dimension and characterised the cost as
-$\Theta(N\cdot R)$ (with $N$ calls over an $R$-entry registry): about
-$180\,\mu$s of fixed I/O and parsing per read plus roughly
+file from disk. P6 isolated the second dimension and characterised the cost as growing in direct
+proportion to both the number of calls and the number of registry entries (with $N$ calls over an
+$R$-entry registry): about $180\,\mu$s of fixed I/O and parsing per read plus roughly
 $0.56\,\mu$s per registered entry. P7 then applied the obvious remedy --- read the
-registry once per workflow into an in-memory snapshot and resolve against it --- turning
-$\Theta(N\cdot R)$ into $\Theta(N+R)$ and delivering up to a \(\sim\!200\times\) speedup in the
+registry once per workflow into an in-memory snapshot and resolve against it --- eliminating that
+call-times-registry-size product in favour of a cost that no longer multiplies the two factors
+together (one read proportional to the registry size, plus a cheap constant-time lookup per call),
+delivering up to a \(\sim\!200\times\) speedup in the
 worst corner ($N{=}200$, $R{=}1000$: \(\sim\!105\)\,ms down to \(\sim\!0.54\)\,ms). The
 optimisation is real and lives in \texttt{WorkflowInternalCallEndpointResolver.resolve} and in
 \texttt{FunctionRegistryStore.resolveUrlIn}.
 
+This snapshot-based optimisation is not merely a property of the isolated
+\texttt{FunctionRegistryStore} primitive: P8 exercises the resolution of a real \texttt{Workflow}
+object across a grid of $1$ to $50$ distinct functions and $1$ to $200$ calls, and the same
+pattern holds at the whole-workflow level --- the naive path stays dominated by the number of
+calls and largely indifferent to how many distinct functions are involved (roughly $200\,\mu$s
+per call at low $N$), while the optimised path stays close to flat, with the measured speedup
+climbing from about $1\times$ at $N{=}1$ to about $110\times$ at $N{=}200$. P9 then isolates the
+registry-size effect on the same real workflow, fixing $10$ distinct functions and $50$ calls
+while the registry grows from $10$ to $1000$ entries: the naive cost climbs with the registry
+size while the optimised cost stays essentially flat, so the speedup itself grows, from roughly
+$41\times$ at $R{=}10$ to roughly $58\times$ at $R{=}1000$.
+
 The structural benchmarks reinforce the result: P18 and P19 show that nesting depth and parallel
 width add no measurable cost beyond the number of leaf calls they contain, confirming that
 resolution scales with the \emph{count} of internal calls, not the shape of the workflow tree.
+Two further benchmarks refine the resolution story in ways worth stating precisely. P14 measures
+the fallback path used for regional disambiguation, where an exact-key lookup fails and the
+resolver instead scans the already-loaded in-memory map for a \texttt{"region/functionRef"}
+suffix match: this reintroduces a cost proportional to the registry size, but over data already
+held in memory, so it stays cheap in absolute terms even as the ratio to an exact match grows to
+about $1.9\times$ at a registry of $1000$ entries. P15 and P16 confirm that once a workflow mixes
+internal and external calls, resolution cost tracks only the number of \emph{internal} calls, not
+the workflow's total call count: a workflow with zero internal calls stays flat as the number of
+external calls grows to $200$, because external calls never touch the registry, and the
+registry-size effect measured in P9 is unchanged, within the same order of magnitude, once a
+fraction of the calls are external.
 On the sizing axis, S1 measures the overhead that QuickFaaS's provider-agnostic layer adds to a
 Lambda bundle at roughly $0.9$\,KB --- negligible for any real function, and in line
 with the original QuickFaaS evaluation for GCP and Azure.
@@ -83,9 +108,10 @@ with the original QuickFaaS evaluation for GCP and Azure.
 The single-read optimisation was demonstrated on the standalone store primitive, but the
 resolvers that actually run during deployment --- \texttt{AwsInternalFunctionResolver} and
 \texttt{WorkflowInternalFunctionResolver} --- were never converted. Benchmarks P10 and P11
-measure exactly these classes and confirm they still pay the full $\Theta(N\cdot R)$ cost per
-deployment, because each call goes through \texttt{FunctionRegistryStore.tryResolveEntry}, which
-re-reads the whole file. In other words, the headline \(\sim\!200\times\) speedup is a property
+measure exactly these classes and confirm they still pay the full cost, growing in proportion to
+both the number of calls and the registry size, on every deployment, because each call goes
+through \texttt{FunctionRegistryStore.tryResolveEntry}, which re-reads the whole file. In other
+words, the headline \(\sim\!200\times\) speedup is a property
 of the benchmark harness, not of the shipping resolvers. This is acknowledged in the project's
 own engineering notes, which flags it as ``a known optimization opportunity, not yet applied''.
 It is a modest change --- read once in \texttt{resolve}, thread the snapshot through --- and its
@@ -93,8 +119,10 @@ absence is the clearest example of the prototype's reach exceeding its polish.
 
 \paragraph{Weakness: write path scales poorly.}
 Registration is worse than resolution. Every \texttt{put()} re-reads and rewrites the entire
-registry file, so writing $K$ functions into a registry that already holds $R_0$ entries costs
-$\Theta(K\cdot R_0 + K^2)$ (P13), and the miss-then-write pattern the real resolvers use before
+registry file, so writing $K$ functions into a registry that already holds $R_0$ entries takes
+longer than linear time in $K$ (P13): each successive write pays for a registry that has grown by
+one entry since the write before it, so the cost compounds as $K$ grows, on top of the floor set
+by $R_0$; the miss-then-write pattern the real resolvers use before
 any cloud call adds a further 24--54\% on top (P17). For the small registries this work targets
 this is irrelevant --- the absolute numbers stay in the hundreds of microseconds to low
 hundreds of milliseconds, far below the seconds spent on the actual cloud deployment --- but it
@@ -187,7 +215,8 @@ an \texttt{apigateway:invoke} HTTP task for external ones.
 
 \paragraph{From naive to measured.}
 Finally, the approach evolved under measurement. The registry began as a re-read-per-call file
-(P3, P6), the $\Theta(N\cdot R)$ cost was quantified, and the single-read optimisation
+(P3, P6), the resulting cost --- growing in proportion to both the number of calls and the
+registry size --- was quantified, and the single-read optimisation
 (P7) was designed as a direct response --- the clearest instance of the work using its own
 benchmark suite to drive a concrete refinement, even if that refinement has yet to be
 propagated into the production resolvers.
@@ -267,7 +296,8 @@ clearest payoff to the larger structural ones.
     \texttt{AwsInternalFunctionResolver} and \texttt{WorkflowInternalFunctionResolver} to read
     the registry once per \texttt{resolve} and thread the snapshot through, as
     \texttt{WorkflowInternalCallEndpointResolver} already does. This closes the gap between the
-    measured $\Theta(N+R)$ optimum and the $\Theta(N\cdot R)$ cost these classes still pay
+    measured optimum --- a cost proportional to the sum of the number of calls and the registry
+    size, rather than their product --- and the still-multiplicative cost these classes pay today
     (P10, P11), and removes the incentive to keep the superseded resolver around.
     \item \textbf{Remove the design residue.} Delete
     \texttt{WorkflowInternalCallEndpointResolver} and \texttt{FunctionEndpointKeys} once their
