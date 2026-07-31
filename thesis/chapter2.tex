@@ -69,6 +69,8 @@ The generated ZIP archive serves as a container for all artifacts required for t
 	\label{fig:function_deployment}
 \end{figure}
 
+On GCP specifically, this pipeline provisions a (first-generation) Cloud Function through the \texttt{cloudfunctions.googleapis.com/v1} API, rather than a Cloud Run service --- the platform's newer, container-based serverless product, also marketed as ``second-generation'' Cloud Functions. The resulting function is reachable at a URL of the form \texttt{https://<region>-<project>.cloudfunctions.net/<name>}, and its invocation permissions and deployment status are managed through that same first-generation API. This distinction becomes relevant later in the dissertation (\S\ref{subsec:store-internals}), where the proposed Function Registry has to recognise first-generation Cloud Functions separately from Cloud Run services when validating and discovering endpoints.
+
 
 \subsection{QuickFaaS function deployment example}
 To deploy a function using the current QuickFaaS implementation for Google Cloud Platform (GCP), the developer follows a structured procedure involving specific credential provisioning and JSON configuration.
@@ -241,6 +243,8 @@ val ChainWorkflow = workflow {
 \end{lstlisting}
 
 As shown in Figure~\ref{fig:omniflow_sequence}, once a workflow is defined, OmniFlow renders it into the target provider format (e.g., a YAML workflow for Google Cloud Workflows) and then deploys it via the provider interface~\cite{costa2023omniflow,silva2025advanced}. Importantly, for a single deployment target, the resulting workflow is intended to invoke only endpoints that exist in that same provider account/project.
+
+OmniFlow's call step is itself agnostic to what kind of compute resource answers at that endpoint: on GCP, it invokes whatever HTTP host and path the developer supplies, whether that address belongs to a (first-generation) Cloud Function or a Cloud Run service --- the DSL and the renderer have no notion of the distinction described in Section~\ref{sec:background_quickfaas}. This becomes significant once function endpoints are resolved automatically rather than hard-coded by the developer (Chapter~\ref{ch:proposed_solution}), since an automatic resolution mechanism must itself account for a difference that OmniFlow, by design, never had to.
 
 A practical limitation follows from this design: OmniFlow call steps require concrete invocation targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment time~\cite{silva2025advanced}. If the workflow references an endpoint that does not exist (for example, because the target function has not yet been deployed), workflow deployment may fail or the workflow may fail at runtime. In current usage, developers typically mitigate this by deploying functions first (to obtain their final invocation URLs) and only then completing the workflow definition. This manual synchronization is one of the main motivations for integrating OmniFlow with a function deployment mechanism in the proposed solution chapter.
 
