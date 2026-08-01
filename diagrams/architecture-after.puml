@@ -2,7 +2,7 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 12
-title This work: unified deployment from a single workflow definition
+title Unified deployment from a single workflow definition
 
 actor Developer as D2
 component "OmniFlow DSL\n+ internalFunction construct" as DSL2
