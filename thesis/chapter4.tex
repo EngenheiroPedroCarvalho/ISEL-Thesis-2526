@@ -150,9 +150,14 @@ attempts rediscovery across the project's regions and, failing that, removes the
 aborts. It also short-circuits validation for first-generation Cloud Functions (identified by a
 \texttt{cloudfunctions.net} URL), which are not Cloud Run services. When a function is absent from
 the registry, it is looked up across regions, and a match in more than one region is reported as
-ambiguous. \texttt{AwsInternalFunctionResolver} is simpler because a Lambda is uniquely named
-within a region: a registry miss triggers a single \texttt{GetFunction} call, and only a genuine
-\texttt{ResourceNotFoundException} (rather than any error) is treated as ``not present''. In both
+ambiguous. \texttt{AwsInternalFunctionResolver} treats a registry hit as final rather than
+provisional: unlike the GCP path, a cached URL is returned directly, with no live check against
+the Lambda API. It is simpler on the miss path too, because a Lambda is uniquely named within a
+region: a registry miss triggers a single \texttt{GetFunction} call, and both a
+\texttt{ResourceNotFoundException} \emph{and any other exception} (for example, a permissions or
+network error) are treated as ``not present'' and merely logged as a warning --- in contrast with
+the GCP path, where an equivalent permissions failure aborts deployment outright rather than being
+silently treated as a miss (see \S\ref{subsec:validation-error-semantics}). In both
 resolvers, a hit or a successful discovery writes the metadata back through \texttt{put()} before
 the endpoint is injected into the call, so the registry converges toward a complete set of bindings
 as workflows are deployed.
@@ -165,6 +170,7 @@ Chapter~\ref{cha:conclusions}, it has not yet been folded into the two provider 
 still read per call.
 
 \subsection{Validation and Error Semantics}
+\label{subsec:validation-error-semantics}
 Several correctness constraints are enforced to avoid silent misconfiguration:
 
 \paragraph{Unresolvable function.}
@@ -176,12 +182,22 @@ the corrective actions (deploy it first, or provide \texttt{deploymentDescriptor
 If a suffix match yields multiple regional entries in the registry, or a function name
 exists in multiple regions on the provider, deployment fails with a message instructing the
 developer to disambiguate using the fully-qualified form
-\texttt{internalFunction("<region>/<functionRef>")}.
+\texttt{internalFunction("<region>/<functionRef>")}. Unlike an unresolvable function, this
+failure is not rescued by supplying a \texttt{deploymentDescriptorPath}: ambiguity is a
+data-consistency problem, not an absence one, so QuickFaaS is never invoked to paper over it.
 
 \paragraph{Stale registry entries (GCP).}
 If a registry entry points to a Cloud Run service that no longer exists and rediscovery
 fails, the stale entry is removed and deployment aborts with an explicit diagnostic,
 preventing the workflow from being deployed against a dead endpoint.
+
+\paragraph{Insufficient permissions (GCP).}
+If the live Cloud Run lookup used to validate a registry hit is refused (an authorization
+failure rather than an absence), deployment aborts immediately with a diagnostic naming the
+function; no rediscovery is attempted, since a permissions failure gives no information about
+whether the service still exists. This differs from the corresponding AWS case, where an
+equivalent error from the Lambda API is not distinguished from a genuine miss (see
+\S\ref{subsec:store-internals}).
 
 \subsection{Registry Location}
 The registry file is stored in a writable location at runtime (e.g., the working directory or a configurable path provided to the deployer). This avoids attempting to write into packaged resources (which are typically read-only in production).
