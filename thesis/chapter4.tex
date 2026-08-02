@@ -23,7 +23,7 @@ Figure~\ref{fig:omniflow-integration-classes} details the classes that realise t
 
 
 \subsection{Motivation}
-In the original OmniFlow usage model, a \texttt{call} step requires concrete endpoint information (namely \texttt{host} and \texttt{path}). This makes workflows brittle: if a function is redeployed and its endpoint changes, the workflow definition must also be updated. The Function Registry addresses this problem by allowing workflows to reference internal functions using stable logical identifiers, while deferring endpoint binding to deployment time. Beyond endpoint indirection, the registry also serves as the persistence layer for the
+In the original OmniFlow usage model, a \texttt{call} step requires concrete endpoint information (namely \texttt{host} and \texttt{path}). This makes workflows brittle: if a function is redeployed and its endpoint changes, the workflow definition must also be updated. The Function Registry addresses this problem: workflows reference internal functions through stable logical identifiers instead of concrete endpoints. The actual endpoint is only bound to that identifier at deployment time. Beyond endpoint indirection, the registry also serves as the persistence layer for the
 automatic function resolution mechanism described below: entries are created and refreshed
 automatically as functions are discovered on the target provider or deployed through QuickFaaS.
 
