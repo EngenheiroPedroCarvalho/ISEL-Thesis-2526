@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import costaber.com.github.omniflow.cloud.provider.google.auth.GoogleAccessTokenProvider
 import costaber.com.github.omniflow.jackson.OmniflowObjectMapper
+import costaber.com.github.omniflow.registry.CloudFunctionsCatalog
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import mu.KotlinLogging
 import java.net.URI
@@ -26,11 +27,14 @@ class CloudRunV2RestCatalog(
         mapper = mapper,
         tokenProvider = tokenProvider
     )
-) {
+) : CloudFunctionsCatalog {
 
     private companion object {
         private val logger = KotlinLogging.logger { }
     }
+
+    override fun listHttpFunctions(scope: String): Map<String, FunctionInvocationMetadata> =
+        listHttpServices(scope)
 
     private data class ServiceInfo(
         val region: String,
