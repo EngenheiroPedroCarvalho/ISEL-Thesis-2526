@@ -2,12 +2,15 @@ package costaber.com.github.omniflow.cloud.provider.amazon.deployer
 
 import costaber.com.github.omniflow.cloud.provider.amazon.renderer.AmazonRenderingContext
 import costaber.com.github.omniflow.cloud.provider.amazon.service.AmazonStateMachineService
+import costaber.com.github.omniflow.cloud.provider.amazon.service.LambdaFunctionsCatalog
 import costaber.com.github.omniflow.cloud.provider.amazon.provider.AmazonDefaultStrategyDeciderProvider.createNodeRendererStrategyDecider
 import costaber.com.github.omniflow.deployer.CloudDeployer
 import costaber.com.github.omniflow.internalfunction.InternalFunctionDeployer
 import costaber.com.github.omniflow.internalfunction.NoopInternalFunctionDeployer
 import costaber.com.github.omniflow.internalfunction.quickfaas.AwsInternalFunctionResolver
 import costaber.com.github.omniflow.model.*
+import costaber.com.github.omniflow.registry.CloudFunctionsCatalog
+import costaber.com.github.omniflow.registry.FunctionRegistryBootstrapper
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
 import costaber.com.github.omniflow.resource.util.joinToStringNewLines
 import costaber.com.github.omniflow.traversor.DepthFirstNodeVisitorTraversor
@@ -20,6 +23,7 @@ class AmazonCloudDeployer internal constructor(
     private val contextVisitor: NodeContextVisitor,
     private val amazonStateMachineService: AmazonStateMachineService,
     private val registryPath: Path,
+    private val functionsCatalog: CloudFunctionsCatalog = LambdaFunctionsCatalog(),
     private val internalFunctionDeployer: InternalFunctionDeployer
 ) : CloudDeployer<AmazonDeployContext> {
 
@@ -28,10 +32,14 @@ class AmazonCloudDeployer internal constructor(
         private const val RESET  = "[0m"
         private const val BOLD   = "[1m"
         private const val GREEN  = "[32m"
+        private const val YELLOW = "[33m"
         private const val CYAN   = "[36m"
     }
 
     override fun deploy(workflow: Workflow, deployContext: AmazonDeployContext) {
+        println("$CYAN$BOLD[DEPLOY]$RESET Checking if function-registry exists at '$registryPath'...")
+        bootstrapFunctionRegisterIfMissing(deployContext.region)
+
         val internalCount = countInternalFunctions(workflow)
 
         val resolvedWorkflow = if (internalCount > 0) {
@@ -84,8 +92,32 @@ class AmazonCloudDeployer internal constructor(
         return count
     }
 
+    private fun bootstrapFunctionRegisterIfMissing(region: String) {
+        val store = FunctionRegistryStore(registryPath)
+
+        if (store.exists()) {
+            println("$GREEN  ✓$RESET Function-registry found at '$registryPath' (skipping bootstrap)")
+            logger.info { "Function Registry found at '$registryPath' (skipping bootstrap)." }
+            return
+        }
+
+        println("$YELLOW  !$RESET Function-registry not found — bootstrapping from AWS Lambda APIs for region '$region'...")
+        logger.warn {
+            "Function Registry not found at '$registryPath'. Bootstrapping registry from AWS Lambda APIs for region '$region'..."
+        }
+
+        FunctionRegistryBootstrapper(
+            store = store,
+            catalog = functionsCatalog
+        ).bootstrapIfMissing(region)
+
+        println("$GREEN  ✓$RESET Function-registry created and populated at '$registryPath'")
+        logger.info { "Function Registry created and populated at '$registryPath'." }
+    }
+
     class Builder {
         private var registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json")
+        private var functionsCatalog: CloudFunctionsCatalog = LambdaFunctionsCatalog()
         private var internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
 
         fun registryPath(value: Path) = apply { this.registryPath = value }
@@ -96,6 +128,7 @@ class AmazonCloudDeployer internal constructor(
             contextVisitor = NodeContextVisitor(createNodeRendererStrategyDecider()),
             amazonStateMachineService = AmazonStateMachineService(),
             registryPath = registryPath,
+            functionsCatalog = functionsCatalog,
             internalFunctionDeployer = internalFunctionDeployer
         )
     }
