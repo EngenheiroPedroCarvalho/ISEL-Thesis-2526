@@ -7,6 +7,19 @@
 \chapter{Implementation}
 \label{cha:impl}
 
+This chapter describes how the architecture and resolution cascade introduced in
+Chapter~\ref{ch:proposed_solution} are realised in code. It follows the same two-part structure
+as the contribution itself: the Function Registry and the deployment-time resolution mechanism
+shared by both cloud providers (Part~B), and the AWS Lambda support added to QuickFaaS that the
+AWS-side resolver and deployer depend on (Part~A).
+
+The chapter is organised in three sections. Section~\ref{sec:function-registry} presents the
+Function Registry itself: its file format, how entries are created and kept up to date, and the
+internal behaviour of the two provider resolvers that consult it at deployment time. The
+following section, AWS Lambda Support in QuickFaaS, traces the concrete deployment steps that
+Level~3 of the cascade triggers on AWS --- work that has no equivalent on the GCP path.
+Section~\ref{sec:runtime-invocation} closes the chapter by following a resolved internal call
+through to its actual invocation once the workflow has been deployed.
 
 \section{Function Registry}
 \label{sec:function-registry}
