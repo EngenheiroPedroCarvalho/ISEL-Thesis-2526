@@ -101,9 +101,9 @@ The registry is stored as a JSON file, containing only non-secret invocation met
 The registry management layer provides the following behavior:
 
 \begin{itemize}
-    \item \textbf{Bootstrap by discovery (GCP):} if the registry file does not exist, it is
-    created automatically by listing the HTTP-invocable services already deployed in the
-    target project (via the Cloud Run APIs) and writing one entry per discovered function.
+    \item \textbf{Bootstrap by discovery:} if the registry file does not exist, it is created
+    automatically by listing the functions already deployed on the target provider --- Cloud Run
+    services on GCP, Lambda functions on AWS --- and writing one entry per discovered function.
     \item \textbf{Automatic registration:} when an internal function is not present in the
     registry but is found on the target provider (Cloud Run service on GCP, Lambda function
     on AWS), a new entry is written immediately with the discovered metadata.

@@ -265,9 +265,8 @@ val wf = workflow {
 
 Deploying the \texttt{FraudPipeline} of Listings~\ref{lst:wf-internal-part}
 and~\ref{lst:wf-external-part} makes the cascade concrete. Suppose \texttt{fraud-check} has never
-been deployed and the registry does not yet exist. OmniFlow first bootstraps the registry (on GCP,
-by listing the project's HTTP-invocable services; on AWS it simply starts empty) and then walks the
-workflow tree. The \texttt{external-risk-api} step carries literal \texttt{host}/\texttt{path} and
+been deployed and the registry does not yet exist. OmniFlow first bootstraps the registry --- on GCP by listing the project's HTTP-invocable
+services, on AWS by listing the region's Lambda functions --- and then walks the workflow tree. The \texttt{external-risk-api} step carries literal \texttt{host}/\texttt{path} and
 is skipped by the resolver. The \texttt{fraud-check} step carries an \texttt{internalFunction}, so
 the cascade runs: Level~1 misses (empty registry), Level~2 misses (the function does not exist on
 the provider), and Level~3 fires because the call supplied
