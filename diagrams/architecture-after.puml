@@ -7,8 +7,8 @@ skinparam defaultFontSize 13
 skinparam titleFontSize 16
 skinparam titleFontStyle bold
 skinparam padding 3
-skinparam nodesep 18
-skinparam ranksep 32
+skinparam nodesep 20
+skinparam ranksep 40
 
 skinparam ArrowColor #4D4D4D
 skinparam ArrowFontSize 11
@@ -23,7 +23,6 @@ skinparam component {
   BackgroundColor #F7F7F7
   BorderColor #595959
   FontColor #1A1A1A
-  BorderThickness 1
 }
 skinparam component<<new>> {
   BackgroundColor #E7EFFB
@@ -47,12 +46,6 @@ skinparam cloud {
   FontColor #333333
 }
 
-skinparam note {
-  BackgroundColor #FFFDF5
-  BorderColor #B3A369
-  FontColor #333333
-}
-
 skinparam rectangle {
   BackgroundColor transparent
   BorderColor #999999
@@ -68,52 +61,46 @@ skinparam legend {
 }
 
 title Unified Deployment from a Single Workflow Definition
-left to right direction
 
 actor "Developer" as D2
+component "OmniFlow DSL\n(+ ""internalFunction"" construct)" as DSL2
 
-rectangle "Workflow Definition" {
-  component "OmniFlow DSL\n(+ ""internalFunction"" construct)" as DSL2
-}
-
-rectangle "Deployment Orchestration" {
+rectangle "GCP Deployment Path" {
   component "GoogleCloudDeployer" as GCD2
-  component "AmazonCloudDeployer" as ACD2
-}
-
-rectangle "Resolution & Registry" {
   component "WorkflowInternalFunctionResolver" as WIFR
-  component "AwsInternalFunctionResolver" as AIFR <<new>>
-  database "function-registry.json" as REG
-}
-
-rectangle "Function Deployment" {
   component "QuickFaasDeployer" as QFD
-  component "AwsLambdaDeployer" as ALD <<new>>
-  component "QuickFaaS JAR\n(+ AwsProvider)" as JAR <<extended>>
-}
-
-rectangle "Cloud Provider Targets" {
   cloud "Google Cloud\nWorkflows" as GCW2
   cloud "GCP Cloud\nFunctions" as GFN
+}
+
+rectangle "AWS Deployment Path" {
+  component "AmazonCloudDeployer" as ACD2
+  component "AwsInternalFunctionResolver" as AIFR <<new>>
+  component "AwsLambdaDeployer" as ALD <<new>>
   cloud "AWS Step\nFunctions" as SF2
   cloud "AWS Lambda" as LAM
 }
 
+database "function-registry.json" as REG
+component "QuickFaaS JAR\n(+ AwsProvider)" as JAR <<extended>>
+
 D2 --> DSL2
 DSL2 --> GCD2
 DSL2 --> ACD2
+
 GCD2 --> WIFR
 ACD2 --> AIFR
 WIFR <--> REG : read / write
 AIFR <--> REG : read / write
+
 WIFR --> QFD
 AIFR --> ALD
 QFD ..> JAR : subprocess
 ALD ..> JAR : subprocess
+
 JAR --> GFN
 JAR --> LAM
-SF2 -[hidden]-> LAM
+
 GCD2 --> GCW2 : YAML
 ACD2 --> SF2 : ASL JSON
 SF2 --> LAM : lambda:invoke (ARN)
