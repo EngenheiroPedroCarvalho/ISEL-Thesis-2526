@@ -27,7 +27,7 @@ Three families of experiments are reported:
   function of the number of calls ($N$) and the size of the registry ($R$), and the effect of the
   single-read optimization.
   \item \textbf{Real auto-deploy resolvers} --- the cost of the production resolvers
-  (\texttt{AwsInternalFunctionResolver}, \texttt{WorkflowInternalFunctionResolver}) and of the
+  (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}, \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) and of the
   registry write path.
   \item \textbf{Packaging overhead} --- the size the AWS provider-agnostic layer adds to a Lambda
   deployment bundle.
@@ -227,8 +227,8 @@ from $\sim$41$\times$ at $R{=}10$ to $\sim$58$\times$ at $R{=}1000$ (Table~\ref{
 
 \paragraph{Production resolvers (P10, P11).}
 Experiments P10 and P11 measure the resolvers that actually run during deployment, one per
-provider: \texttt{AwsInternalFunctionResolver} (Table~\ref{tab:eval-p10}) and
-\texttt{WorkflowInternalFunctionResolver} (Table~\ref{tab:eval-p11}), with the
+provider: \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-p10}) and
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-p11}), with the
 registry always hitting ($R{=}F$). Both are dominated by $N$ and are almost indifferent to $F$
 ($\sim$355\,$\mu$s/call on AWS; $\sim$7--8\% more on GCP due to the extra provider-specific glue,
 not the shared registry mechanism). Crucially, these classes still pay the full cost, growing in
@@ -243,7 +243,7 @@ In both tables the per-call cost is flat in $F$ and rises linearly with $N$, and
 \begin{table}[htbp]
   \centering
   \caption{P10 --- AWS provider: resolution time ($\mu$s) of the real resolver
-  (\texttt{AwsInternalFunctionResolver}), $R{=}F$.}
+  (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$.}
   \label{tab:eval-p10}
   \begin{tabular}{lrrrrr}
     \hline
@@ -259,7 +259,7 @@ In both tables the per-call cost is flat in $F$ and rises linearly with $N$, and
 \begin{table}[htbp]
   \centering
   \caption{P11 --- GCP provider: resolution time ($\mu$s) of the real resolver
-  (\texttt{WorkflowInternalFunctionResolver}), $R{=}F$.}
+  (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$.}
   \label{tab:eval-p11}
   \begin{tabular}{lrrrrr}
     \hline

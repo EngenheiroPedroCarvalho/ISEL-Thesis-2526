@@ -26,7 +26,7 @@ through to its actual invocation once the workflow has been deployed.
 
 This work introduces a \textit{Function Registry} to decouple workflow definitions from concrete function endpoints, reducing manual coordination between function deployments and workflow orchestration.
 
-Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{NoopInternalFunctionDeployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS, added in this work). Each provider deployer (\texttt{GoogleCloudDeployer}, \texttt{AmazonCloudDeployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{FunctionRegistryStore}, which persists bindings as \texttt{FunctionInvocationMetadata} (\texttt{serviceName} plus \texttt{url}, where \texttt{url} is an HTTPS endpoint on GCP and a Lambda ARN on AWS), and the deployer strategy. The \texttt{FunctionRegistryBootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer a clean extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
+Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS, added in this work). Each provider deployer (\texttt{GoogleCloudDeployer}, \texttt{AmazonCloudDeployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{FunctionRegistryStore}, which persists bindings as \texttt{FunctionInvocationMetadata} (\texttt{serviceName} plus \texttt{url}, where \texttt{url} is an HTTPS endpoint on GCP and a Lambda ARN on AWS), and the deployer strategy. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer a clean extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
@@ -156,14 +156,14 @@ each of these operations re-reads and re-parses the file; the performance conseq
 choice, and the single-read mitigation, are analysed in Chapter~\ref{cha:evaluation}.
 
 The two provider resolvers sit on top of this store and differ only in the provider-discovery step,
-which reflects the two clouds' invocation models. \texttt{WorkflowInternalFunctionResolver} (GCP)
+which reflects the two clouds' invocation models. \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (GCP)
 treats a registry hit as provisional: it validates the stored URL against the live Cloud Run
 service and, if the URL has drifted, refreshes the entry; if the service has disappeared, it
 attempts rediscovery across the project's regions and, failing that, removes the stale entry and
 aborts. It also short-circuits validation for first-generation Cloud Functions (identified by a
 \texttt{cloudfunctions.net} URL), which are not Cloud Run services. When a function is absent from
 the registry, it is looked up across regions, and a match in more than one region is reported as
-ambiguous. \texttt{AwsInternalFunctionResolver} treats a registry hit as final rather than
+ambiguous. \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} treats a registry hit as final rather than
 provisional: unlike the GCP path, a cached URL is returned directly, with no live check against
 the Lambda API. It is simpler on the miss path too, because a Lambda is uniquely named within a
 region: a registry miss triggers a single \texttt{GetFunction} call, and both a
@@ -176,7 +176,7 @@ the endpoint is injected into the call, so the registry converges toward a compl
 as workflows are deployed.
 
 To keep resolution cheap when a workflow contains many internal calls,
-\texttt{WorkflowInternalCallEndpointResolver} reads the registry once into a snapshot and resolves
+\texttt{Workflow\allowbreak Internal\allowbreak Call\allowbreak Endpoint\allowbreak Resolver} reads the registry once into a snapshot and resolves
 every call against that in-memory map, rather than re-reading the file per call. This is the
 optimisation quantified in Chapter~\ref{cha:evaluation}; as discussed there and in
 Chapter~\ref{cha:conclusions}, it has not yet been folded into the two provider resolvers, which
@@ -233,7 +233,7 @@ deployment time. The registry exists precisely to hold that binding.
 \paragraph{From a two-key model to a metadata record.}
 An early registry design represented each function by two synthetic keys,
 \texttt{"<functionRef>.host"} and \texttt{"<functionRef>.path"}, produced by
-\texttt{FunctionEndpointKeys} and consumed by \texttt{WorkflowInternalCallEndpointResolver}. This
+\texttt{FunctionEndpointKeys} and consumed by \texttt{Workflow\allowbreak Internal\allowbreak Call\allowbreak Endpoint\allowbreak Resolver}. This
 mirrored the \texttt{host}/\texttt{path} split of the \texttt{call} step but proved awkward: it
 stored two loosely related string fragments per function and pushed the reconstruction of a full
 endpoint onto the resolver. It was superseded by a single structured record per function,
@@ -356,7 +356,7 @@ Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoke
 
 The distinction between the two forms is made entirely by the renderer,
 \texttt{AmazonCallRenderer}, from the \texttt{host} value injected during resolution. If the host
-carries the \texttt{lambda://} prefix (the marker written by \texttt{AwsInternalFunctionResolver}),
+carries the \texttt{lambda://} prefix (the marker written by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}),
 the renderer emits a \texttt{Task} whose \texttt{Resource} is
 \texttt{arn:aws:states:::lambda:invoke} and whose \texttt{Parameters} carry the
 \texttt{FunctionName} taken from the resolved ARN; any query terms are forwarded under a
