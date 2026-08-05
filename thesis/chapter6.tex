@@ -12,7 +12,7 @@ assesses the work critically, and outlines future directions.
 
 The work delivered two complementary halves.
 
-\paragraph{Part B --- Unification (core).}
+\paragraph{Unification (core).}
 OmniFlow was extended with a \emph{Function Registry} and a deployment-time \emph{resolution
 cascade}. Internal workflow calls declare a stable logical identifier through the
 \texttt{internalFunction(name, deploymentDescriptorPath)} construct added to the \texttt{call}
@@ -24,7 +24,7 @@ deployment is abstracted behind the \texttt{InternalFunctionDeployer} strategy i
 keeps the two providers symmetric and makes support for a further platform a matter of adding one
 resolver and one deployer.
 
-\paragraph{Part A --- AWS support (complement).}
+\paragraph{AWS support (complement).}
 QuickFaaS, previously limited to GCP and Azure, was extended with an AWS provider, and OmniFlow
 gained an \texttt{AwsLambdaDeployer} that performs the AWS-specific work (IAM execution role,
 region resolution from the S3 bucket, readiness polling, and granting Step Functions permission to

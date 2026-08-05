@@ -278,8 +278,8 @@ Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment for the mo
 \end{figure}
 
 AWS support is realised in two layers that meet at the subprocess boundary: the AWS provider added
-\emph{inside} QuickFaaS (Part~A), which performs the actual Lambda deployment, and the
-\texttt{AwsLambdaDeployer} added \emph{inside} OmniFlow (Part~B), which prepares the environment,
+\emph{inside} QuickFaaS, which performs the actual Lambda deployment, and the
+\texttt{AwsLambdaDeployer} added \emph{inside} OmniFlow, which prepares the environment,
 drives QuickFaaS, and produces the invocation metadata the registry stores.
 
 \subsection{The QuickFaaS AWS Provider}

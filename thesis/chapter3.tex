@@ -21,16 +21,26 @@ In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaa
   \label{fig:architecture-before}
 \end{figure}
 
-In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver — \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} for GCP and \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} for AWS — and both are backed by a shared \texttt{function-registry.json} that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. Once resolved, the rendered Step Functions state machine invokes the Lambda natively by ARN. The two halves of the contribution are visible in a single view: the AWS provider inside QuickFaaS (Part~A) and the resolver–registry layer that unifies function and workflow deployment (Part~B).
+In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver — \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} for GCP and \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} for AWS — and both are backed by a shared \texttt{function-registry.json} that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. Once resolved, the rendered Step Functions state machine invokes the Lambda natively by ARN. The two halves of the contribution are visible in a single view: the AWS provider inside QuickFaaS and the resolver–registry layer that unifies function and workflow deployment.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/architecture/architecture-after.png}
-  \caption{Unified deployment driven from a single workflow definition; components marked as new/extended are the contribution of this work (Parts~A and~B).}
+  \caption{Unified deployment driven from a single workflow definition; components marked as new/extended are the contribution of this work.}
   \label{fig:architecture-after}
 \end{figure}
 
-The end-to-end flow proceeds as follows: (1) the developer defines the workflow and one QuickFaaS descriptor per function to be resolved this way; (2) OmniFlow parses the workflow and, for each such call, (3) resolves the endpoint from the registry, discovers it directly on the provider, or deploys it through QuickFaaS; (4) the returned metadata is written to the registry; and (5) the resolved workflow is rendered and deployed to the provider's workflow service. Calls that already carry a literal endpoint bypass the registry entirely.
+The end-to-end flow proceeds as follows:
+\begin{enumerate}
+  \item the developer defines the workflow and one QuickFaaS descriptor per function to be
+  resolved this way;
+  \item OmniFlow parses the workflow and, for each such call,
+  \item resolves the endpoint from the registry, discovers it directly on the provider, or
+  deploys it through QuickFaaS;
+  \item the returned metadata is written to the registry; and
+  \item the resolved workflow is rendered and deployed to the provider's workflow service.
+\end{enumerate}
+Calls that already carry a literal endpoint bypass the registry entirely.
 
 \subsection{The Resolution Cascade}
 \label{sec:resolution-cascade}
