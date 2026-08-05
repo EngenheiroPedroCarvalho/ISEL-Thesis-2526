@@ -8,11 +8,11 @@ In the reference OmniFlow usage, a \texttt{Call} step is expressed as an HTTP re
 \section{Components Architecture}
 \label{sec:components-architecture}
 
-The proposed integration keeps the original OmniFlow workflow model but extends the toolchain with a small set of additional components that cooperate at deployment time. The goal is to allow the developer to start from a single workflow definition and obtain both the deployed workflow and the deployed internal functions on a single cloud provider, without manually copying endpoints into the DSL.
+The proposed integration keeps the original OmniFlow workflow model but extends the toolchain with a small set of additional components that cooperate at deployment time. The goal is to allow the developer to start from a single workflow definition and obtain both the deployed workflow and the deployed functions on a single cloud provider, without manually copying endpoints into the DSL.
 
 Figures~\ref{fig:architecture-before} and~\ref{fig:architecture-after} contrast the developer workflow before and after the integration proposed in this dissertation.
 
-In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaaS are used independently. The developer first deploys each function with QuickFaaS in a separate manual step, retrieves the resulting invocation endpoint, and copies it by hand into the workflow definition before deploying the workflow. This manual synchronisation is error-prone: any redeployment that changes an endpoint forces a corresponding edit to the workflow. Moreover, QuickFaaS targeted only GCP and Azure, so along the AWS path OmniFlow had no function-deployment capability at all — the corresponding extension point was occupied by a no-op placeholder (\texttt{NoopInternalFunctionDeployer}). The two lifecycle concerns, function deployment and workflow deployment, are therefore completely disconnected.
+In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaaS are used independently. The developer first deploys each function with QuickFaaS in a separate manual step, retrieves the resulting invocation endpoint, and copies it by hand into the workflow definition before deploying the workflow. This manual synchronisation is error-prone: any redeployment that changes an endpoint forces a corresponding edit to the workflow. Moreover, QuickFaaS targeted only GCP and Azure, so along the AWS path OmniFlow had no function-deployment capability at all. The two lifecycle concerns, function deployment and workflow deployment, are therefore completely disconnected.
 
 \begin{figure}[htbp]
   \centering
