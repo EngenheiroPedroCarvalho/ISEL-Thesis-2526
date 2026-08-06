@@ -1,21 +1,19 @@
 package costaber.com.github.omniflow.internalfunction.quickfaas
 
+import costaber.com.github.omniflow.cloud.provider.amazon.service.AwsLambdaFunctionInspector
+import costaber.com.github.omniflow.cloud.provider.amazon.service.LambdaFunctionInspector
 import costaber.com.github.omniflow.internalfunction.InternalFunctionDeployer
 import costaber.com.github.omniflow.internalfunction.NoopInternalFunctionDeployer
 import costaber.com.github.omniflow.model.*
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
 import mu.KotlinLogging
-import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.lambda.LambdaClient
-import software.amazon.awssdk.services.lambda.model.GetFunctionRequest
-import software.amazon.awssdk.services.lambda.model.ResourceNotFoundException
 
 class AwsInternalFunctionResolver(
     private val region: String,
     private val registry: FunctionRegistryStore,
-    private val internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
+    private val internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer,
+    private val inspector: LambdaFunctionInspector = AwsLambdaFunctionInspector(region)
 ) {
     private companion object {
         private val logger = KotlinLogging.logger {}
@@ -66,12 +64,39 @@ class AwsInternalFunctionResolver(
     private fun resolveOrDeploy(functionName: String, internal: InternalFunction): String {
         println("$BLUE  →$RESET Resolving Lambda '$BOLD$functionName$RESET'...")
 
-        // 1. Check registry first
+        // 1. Check registry first, then validate the binding against the live Lambda
         val existing = registry.tryResolveEntry(functionName)
         if (existing != null) {
-            println("$GREEN  ✓$RESET Lambda '$functionName' found in registry → ${existing.second.url}")
-            logger.info { "Registry hit for Lambda '$functionName' → ${existing.second.url}" }
-            return existing.second.url
+            val (key, meta) = existing
+
+            return when (val r = inspector.lookupByFunctionName(meta.serviceName)) {
+                is LambdaFunctionInspector.LookupResult.Found -> {
+                    if (r.arn != meta.url) {
+                        println("$YELLOW  !$RESET Registry drift for '$BOLD$key$RESET' — updating ARN → ${r.arn}")
+                        logger.warn { "Registry drift for '$key': updating ARN" }
+                        registry.put(key, meta.copy(url = r.arn))
+                    } else {
+                        println("$GREEN  ✓$RESET Lambda '$functionName' found in registry → ${r.arn}")
+                        logger.info { "Registry hit for Lambda '$functionName' → ${r.arn}" }
+                    }
+                    r.arn
+                }
+
+                LambdaFunctionInspector.LookupResult.NotFound -> {
+                    registry.remove(key)
+                    throw IllegalStateException(
+                        "Internal function '$functionName' exists in function-registry (key = '$key') " +
+                                "but Lambda '${meta.serviceName}' does not exist in region '$region' (deleted). " +
+                                "Stale registry entry removed. Redeploy the function or update the workflows."
+                    )
+                }
+
+                is LambdaFunctionInspector.LookupResult.Forbidden -> {
+                    throw IllegalStateException(
+                        "Cannot validate internal function '$functionName' via the Lambda API: ${r.message}"
+                    )
+                }
+            }
         }
 
         // 2. Check if Lambda exists in AWS and has a Function URL
@@ -100,18 +125,19 @@ class AwsInternalFunctionResolver(
         )
     }
 
+    /**
+     * Miss-path probe. Unlike the registry-hit path, a permissions failure here is *not*
+     * distinguished from a genuine miss: both yield null so that deployment can proceed.
+     */
     private fun checkLambdaFunctionUrl(functionName: String): String? = try {
-        LambdaClient.builder()
-            .region(Region.of(region))
-            .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
-            .build()
-            .use { client ->
-                client.getFunction(
-                    GetFunctionRequest.builder().functionName(functionName).build()
-                ).configuration().functionArn()
+        when (val r = inspector.lookupByFunctionName(functionName)) {
+            is LambdaFunctionInspector.LookupResult.Found -> r.arn
+            LambdaFunctionInspector.LookupResult.NotFound -> null
+            is LambdaFunctionInspector.LookupResult.Forbidden -> {
+                logger.warn { "Could not check Lambda '$functionName' in AWS: ${r.message}" }
+                null
             }
-    } catch (e: ResourceNotFoundException) {
-        null
+        }
     } catch (e: Exception) {
         logger.warn { "Could not check Lambda '$functionName' in AWS: ${e.message}" }
         null

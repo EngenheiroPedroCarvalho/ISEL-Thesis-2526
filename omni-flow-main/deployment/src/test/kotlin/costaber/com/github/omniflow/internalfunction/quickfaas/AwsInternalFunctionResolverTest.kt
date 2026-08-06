@@ -1,6 +1,7 @@
 package costaber.com.github.omniflow.internalfunction.quickfaas
 
 import costaber.com.github.omniflow.builder.ResultType
+import costaber.com.github.omniflow.cloud.provider.amazon.service.LambdaFunctionInspector
 import costaber.com.github.omniflow.model.AssignContext
 import costaber.com.github.omniflow.model.BranchContext
 import costaber.com.github.omniflow.model.CallContext
@@ -23,6 +24,7 @@ import costaber.com.github.omniflow.registry.FunctionRegistryStore
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import strikt.api.expectThat
+import strikt.api.expectThrows
 import strikt.assertions.hasSize
 import strikt.assertions.isA
 import strikt.assertions.isEqualTo
@@ -32,21 +34,44 @@ import java.nio.file.Path
 /**
  * Unit tests for [AwsInternalFunctionResolver].
  *
- * The resolver short-circuits on a registry hit (local file lookup via
- * [FunctionRegistryStore.tryResolveEntry]) and never reaches the AWS Lambda API in
- * these tests. Every entry is pre-seeded into a @TempDir registry file, so all
- * assertions exercise pure local logic only: no AWS SDK calls, no HTTP, no network.
+ * A registry hit is validated against the live Lambda, so the resolver reaches the AWS Lambda
+ * API through the [LambdaFunctionInspector] seam. These tests inject [FakeInspector] in its
+ * place, so every assertion exercises pure local logic only: entries are pre-seeded into a
+ * @TempDir registry file, and there are no AWS SDK calls, no HTTP and no network.
  */
 internal class AwsInternalFunctionResolverTest {
 
     @TempDir
     lateinit var tempDir: Path
 
+    /** Local stand-in for the Lambda API: answers from a canned map, never leaves the JVM. */
+    private class FakeInspector(
+        private val results: Map<String, LambdaFunctionInspector.LookupResult>
+    ) : LambdaFunctionInspector {
+        override fun lookupByFunctionName(functionName: String): LambdaFunctionInspector.LookupResult =
+            results[functionName] ?: LambdaFunctionInspector.LookupResult.NotFound
+    }
+
     private fun storeWith(vararg entries: Pair<String, FunctionInvocationMetadata>): FunctionRegistryStore {
         val store = FunctionRegistryStore(tempDir.resolve("function-registry.json"))
         store.writeNew(entries.toMap())
         return store
     }
+
+    /** Inspector that reports exactly what the registry already holds, i.e. no drift. */
+    private fun noDriftInspector(vararg entries: Pair<String, FunctionInvocationMetadata>) =
+        FakeInspector(
+            entries.associate { (_, meta) ->
+                meta.serviceName to LambdaFunctionInspector.LookupResult.Found(meta.serviceName, meta.url)
+            }
+        )
+
+    private fun resolverWith(vararg entries: Pair<String, FunctionInvocationMetadata>) =
+        AwsInternalFunctionResolver(
+            region = "eu-west-1",
+            registry = storeWith(*entries),
+            inspector = noDriftInspector(*entries)
+        )
 
     private fun externalCall(result: String = "callResult"): CallContext = CallContext(
         method = HttpMethod.GET,
@@ -88,8 +113,7 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `workflow without internal functions is unchanged in content`() {
-        val store = storeWith("seeded" to FunctionInvocationMetadata("seeded", "arn:aws:lambda:eu-west-1:1:function:seeded"))
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
+        val resolver = resolverWith("seeded" to FunctionInvocationMetadata("seeded", "arn:aws:lambda:eu-west-1:1:function:seeded"))
         val external = externalCall()
         val assign = AssignContext(
             variables = listOf<VariableInitialization<*>>(
@@ -112,13 +136,12 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `internal call is resolved from registry to lambda host`() {
-        val store = storeWith(
+        val resolver = resolverWith(
             "greeting-fn" to FunctionInvocationMetadata(
                 serviceName = "greeting-fn",
                 url = "arn:aws:lambda:eu-west-1:123456789012:function:greeting-fn"
             )
         )
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
         val original = workflow(step("callStep", internalCall("greeting-fn")))
 
         val resolved = resolver.resolve(original)
@@ -136,13 +159,12 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `internal call resolved through regional suffix match`() {
-        val store = storeWith(
+        val resolver = resolverWith(
             "eu-west-1/greeting-fn" to FunctionInvocationMetadata(
                 serviceName = "greeting-fn",
                 url = "arn:aws:lambda:eu-west-1:1:function:greeting-fn"
             )
         )
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
         val original = workflow(step("callStep", internalCall("greeting-fn")))
 
         val resolved = resolver.resolve(original)
@@ -155,8 +177,7 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `internal call inside branch is resolved`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
         val branch = BranchContext(name = "b1", steps = listOf(step("inner", internalCall("fn"))))
         val original = workflow(step("branchStep", branch))
 
@@ -171,8 +192,7 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `internal call inside iteration range is resolved`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
         val iteration = IterationRangeContext(value = "i", steps = listOf(step("inner", internalCall("fn"))), range = Range(1, 5))
         val original = workflow(step("iterStep", iteration))
 
@@ -188,8 +208,7 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `internal call inside iteration forEach is resolved`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
         val iteration = IterationForEachContext(
             value = "i",
             steps = listOf(step("inner", internalCall("fn"))),
@@ -209,8 +228,7 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `internal call inside parallel branches is resolved`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
         val parallel = ParallelBranchContext(
             branches = listOf(BranchContext(name = "b1", steps = listOf(step("inner", internalCall("fn")))))
         )
@@ -227,8 +245,7 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `internal call inside parallel iteration is resolved`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
         val parallel = ParallelIterationContext(
             iterationContext = IterationForEachContext(
                 value = "i",
@@ -249,13 +266,64 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `external call keeps its host and path`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
-        val resolver = AwsInternalFunctionResolver(region = "eu-west-1", registry = store)
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
         val external = externalCall()
         val original = workflow(step("callStep", external))
 
         val resolved = resolver.resolve(original)
 
         expectThat(resolved.steps.first().context).isA<CallContext>().isEqualTo(external)
+    }
+
+    @Test
+    fun `drifted ARN is refreshed in the registry and used`() {
+        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:stale"))
+        val resolver = AwsInternalFunctionResolver(
+            region = "eu-west-1",
+            registry = store,
+            inspector = FakeInspector(
+                mapOf("fn" to LambdaFunctionInspector.LookupResult.Found("fn", "arn:current"))
+            )
+        )
+        val original = workflow(step("callStep", internalCall("fn")))
+
+        val resolved = resolver.resolve(original)
+
+        expectThat(resolved.steps.first().context).isA<CallContext>().and {
+            get { host }.isEqualTo("lambda://arn:current")
+            get { internalFunction }.isNull()
+        }
+        expectThat(store.tryResolveEntry("fn")?.second?.url).isEqualTo("arn:current")
+    }
+
+    @Test
+    fun `missing lambda removes the stale entry and aborts`() {
+        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
+        val resolver = AwsInternalFunctionResolver(
+            region = "eu-west-1",
+            registry = store,
+            inspector = FakeInspector(emptyMap())
+        )
+        val original = workflow(step("callStep", internalCall("fn")))
+
+        expectThrows<IllegalStateException> { resolver.resolve(original) }
+        expectThat(store.tryResolveEntry("fn")).isNull()
+    }
+
+    @Test
+    fun `permission failure aborts instead of being treated as a miss`() {
+        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:fn"))
+        val resolver = AwsInternalFunctionResolver(
+            region = "eu-west-1",
+            registry = store,
+            inspector = FakeInspector(
+                mapOf("fn" to LambdaFunctionInspector.LookupResult.Forbidden("access denied"))
+            )
+        )
+        val original = workflow(step("callStep", internalCall("fn")))
+
+        expectThrows<IllegalStateException> { resolver.resolve(original) }
+        // The entry is a valid binding that could not be checked, so it must survive.
+        expectThat(store.tryResolveEntry("fn")?.second?.url).isEqualTo("arn:fn")
     }
 }
