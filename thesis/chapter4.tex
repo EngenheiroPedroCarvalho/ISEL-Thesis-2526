@@ -223,7 +223,7 @@ The registry file is stored in a writable location at runtime (e.g., the working
 \label{subsec:registry-evolution}
 
 The registry did not arrive at its current form in a single step; the source tree still exposes
-the intermediate stages, which makes the design decisions worth recounting. Four threads describe
+the intermediate stages, which makes the design decisions worth recounting. Five threads describe
 how it evolved.
 
 \paragraph{From literal endpoints to logical indirection.}
@@ -254,7 +254,7 @@ provider was added; only the resolver that reads the field and the renderer that
 provider-aware. The registry thus stayed a single, symmetric abstraction across the two clouds.
 
 \paragraph{From a manually edited file to an auto-managed source of truth.}
-Finally, the registry evolved from something the developer would maintain by hand into something the
+The registry also evolved from something the developer would maintain by hand into something the
 integration maintains automatically. It is bootstrapped by discovery when absent, populated on the
 fly when a function is found on the provider, refreshed after a QuickFaaS deployment, corrected when
 a stored URL has drifted, and pruned when an entry becomes stale --- with every write stamping the
@@ -263,6 +263,21 @@ re-reading the whole file on every lookup (\texttt{resolveUrl}) toward reading i
 snapshot and resolving in memory (\texttt{readAll} + \texttt{resolveUrlIn}); the performance effect
 of that refinement, and the fact that it has not yet been propagated to the two production
 resolvers, are quantified in Chapter~\ref{cha:evaluation}.
+
+\paragraph{From a trusted cache to a verified indirection.}
+The two production resolvers did not always treat a registry hit the same way.
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (GCP) validated every hit against the live
+Cloud Run service from the start, because a Cloud Run lookup needs the project/region/service
+triple that only the registry supplies. \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} initially
+trusted a hit outright, returning the cached ARN with no live check, since a Lambda name is
+already unique within a region and validating brought no discovery benefit on its own. This
+asymmetry was closed by introducing \texttt{Lambda\allowbreak Function\allowbreak Inspector}, the AWS counterpart to
+the Cloud Run inspector: a hit is now confirmed against \texttt{GetFunction} on both providers,
+refreshing a drifted ARN and removing a deleted one. The change did not make the registry
+redundant, only its trust model stricter: the live check answers whether a binding the registry
+already named is still accurate, not what to look up or whether a deployment is owed. Indirection
+and idempotency --- the two properties that motivated the registry in the first place
+(\S\ref{sec:resolution-cascade}) --- are unaffected by whether the hit is trusted or verified.
 
 \subsection{Summary}
 The Function Registry introduces a stable indirection layer between workflow definitions and deployed function endpoints. Internal workflow calls declare a logical \texttt{functionRef} through the
