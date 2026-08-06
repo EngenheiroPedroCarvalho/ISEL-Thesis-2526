@@ -110,10 +110,10 @@ The registry management layer provides the following behavior:
     \item \textbf{Post-deployment updates:} after a successful QuickFaaS deployment, the
     resulting invocation metadata is written to the registry, so subsequent deployments
     resolve the function without redeploying it.
-    \item \textbf{Drift handling (GCP):} on every registry hit, the stored URL is validated
-    against the live Cloud Run service; if the URL changed, the entry is refreshed, and if
-    the service no longer exists, the stale entry is removed and deployment fails with an
-    explicit diagnostic.
+    \item \textbf{Drift handling:} on every registry hit, the stored endpoint is validated
+    against the live resource (Cloud Run service on GCP, Lambda function on AWS); if it
+    changed, the entry is refreshed, and if the resource no longer exists, the stale entry is
+    removed and deployment fails with an explicit diagnostic.
 \end{itemize}
 
 Every write refreshes the top-level \texttt{updatedAt} timestamp.
@@ -163,14 +163,16 @@ attempts rediscovery across the project's regions and, failing that, removes the
 aborts. It also short-circuits validation for first-generation Cloud Functions (identified by a
 \texttt{cloudfunctions.net} URL), which are not Cloud Run services. When a function is absent from
 the registry, it is looked up across regions, and a match in more than one region is reported as
-ambiguous. \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} treats a registry hit as final rather than
-provisional: unlike the GCP path, a cached URL is returned directly, with no live check against
-the Lambda API. It is simpler on the miss path too, because a Lambda is uniquely named within a
-region: a registry miss triggers a single \texttt{GetFunction} call, and both a
-\texttt{ResourceNotFoundException} \emph{and any other exception} (for example, a permissions or
-network error) are treated as ``not present'' and merely logged as a warning --- in contrast with
-the GCP path, where an equivalent permissions failure aborts deployment outright rather than being
-silently treated as a miss (see \S\ref{subsec:validation-error-semantics}). In both
+ambiguous. \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} treats a registry hit as provisional
+in the same way, consulting the Lambda API through a \texttt{Lambda\allowbreak Function\allowbreak Inspector}
+seam: a drifted ARN refreshes the entry, a deleted function removes it and aborts, and a
+permissions failure aborts rather than being mistaken for an absence. It remains simpler than the
+GCP path in one respect, because a Lambda is uniquely named within a region: validation is a single
+\texttt{GetFunction} call and a failed lookup needs no cross-region rediscovery. The asymmetry that
+survives is confined to the \emph{miss} path, where both a \texttt{ResourceNotFoundException}
+\emph{and any other exception} (for example, a permissions or network error) are still treated as
+``not present'' and merely logged as a warning, so that deployment can proceed
+(see \S\ref{subsec:validation-error-semantics}). In both
 resolvers, a hit or a successful discovery writes the metadata back through \texttt{put()} before
 the endpoint is injected into the call, so the registry converges toward a complete set of bindings
 as workflows are deployed.
@@ -199,18 +201,20 @@ developer to disambiguate using the fully-qualified form
 failure is not rescued by supplying a \texttt{deploymentDescriptorPath}: ambiguity is a
 data-consistency problem, not an absence one, so QuickFaaS is never invoked to paper over it.
 
-\paragraph{Stale registry entries (GCP).}
-If a registry entry points to a Cloud Run service that no longer exists and rediscovery
-fails, the stale entry is removed and deployment aborts with an explicit diagnostic,
-preventing the workflow from being deployed against a dead endpoint.
+\paragraph{Stale registry entries.}
+If a registry entry points to a resource that no longer exists --- a Cloud Run service on GCP
+for which rediscovery also fails, or a deleted Lambda on AWS --- the stale entry is removed and
+deployment aborts with an explicit diagnostic, preventing the workflow from being deployed
+against a dead endpoint.
 
-\paragraph{Insufficient permissions (GCP).}
-If the live Cloud Run lookup used to validate a registry hit is refused (an authorization
-failure rather than an absence), deployment aborts immediately with a diagnostic naming the
-function; no rediscovery is attempted, since a permissions failure gives no information about
-whether the service still exists. This differs from the corresponding AWS case, where an
-equivalent error from the Lambda API is not distinguished from a genuine miss (see
-\S\ref{subsec:store-internals}).
+\paragraph{Insufficient permissions.}
+If the live lookup used to validate a registry hit is refused (an authorization failure rather
+than an absence), deployment aborts immediately with a diagnostic naming the function; on GCP no
+rediscovery is attempted, since a permissions failure gives no information about whether the
+service still exists. The same rule now applies on AWS, where a refused \texttt{GetFunction} is
+likewise distinguished from a genuine absence. The distinction is still \emph{not} drawn on the
+AWS miss path, where any error is treated as ``not present'' so that a first deployment can
+proceed (see \S\ref{subsec:store-internals}).
 
 \subsection{Registry Location}
 The registry file is stored in a writable location at runtime (e.g., the working directory or a configurable path provided to the deployer). This avoids attempting to write into packaged resources (which are typically read-only in production).

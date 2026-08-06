@@ -54,9 +54,10 @@ actual deployment is a last resort rather than a default.
   \item \textbf{Level~1 (Registry).} The registry is consulted for the \texttt{functionRef}
   (exact match first, then a suffix match on \texttt{"region/functionRef"}). A hit yields a binding
   without contacting the provider, which is the common case for a function that has already been
-  deployed once. On GCP the stored endpoint is additionally validated against the live service so
-  that a stale binding cannot be used silently; on AWS, by contrast, a registry hit is treated as
-  final and returned directly, with no live check against the Lambda API.
+  deployed once. On both providers the stored endpoint is additionally validated against the live
+  resource --- the Cloud Run service on GCP, the Lambda function on AWS --- so that a stale binding
+  cannot be used silently: a changed endpoint refreshes the entry, and a deleted one removes it and
+  aborts the deployment.
   \item \textbf{Level~2 (Provider discovery).} On a registry miss, the target provider is queried
   directly (a Cloud Run lookup across regions on GCP, a \texttt{GetFunction} call on AWS). If the
   function already exists --- for instance, because it was deployed outside the integration --- its
