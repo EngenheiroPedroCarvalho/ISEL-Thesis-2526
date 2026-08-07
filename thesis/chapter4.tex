@@ -197,7 +197,7 @@ in \S\ref{subsec:store-internals} explicit --- on a \texttt{NotFound} result, th
 attempts one more rediscovery across regions before removing the stale entry, while the AWS path
 (b) removes it directly, since a Lambda name is already unique within its region.
 
-\begin{figure}[htbp]
+\begin{figure}[htb]
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
@@ -223,7 +223,7 @@ resolver (b) performs a single \texttt{GetFunction} call and, on this path only,
 distinguish a \texttt{NotFound} result from a permissions failure, both being treated as a miss
 (\S\ref{subsec:validation-error-semantics}).
 
-\begin{figure}[htbp]
+\begin{figure}[htb]
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
@@ -249,7 +249,7 @@ breakdown of the AWS branch --- the IAM role, the region derived from the S3 buc
 retries, and \texttt{GetFunction} polling --- is traced separately for the worst-case path in
 Figure~\ref{fig:aws-deploy-sequence}, introduced in the AWS Lambda Support section that follows.
 
-\begin{figure}[htbp]
+\begin{figure}[htb]
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
