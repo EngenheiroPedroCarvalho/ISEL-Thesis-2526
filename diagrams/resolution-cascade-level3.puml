@@ -1,0 +1,53 @@
+@startuml resolution-cascade-level3
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution cascade -- Level 3: QuickFaaS deployment
+
+participant "Resolver\n(WorkflowInternalFunctionResolver /\nAwsInternalFunctionResolver)" as R
+participant "InternalFunctionDeployer" as D
+participant "QuickFaasDeployer\n(GCP)" as QFD
+participant "AwsLambdaDeployer\n(AWS)" as ALD
+participant "QuickFaaS JAR\n(subprocess)" as QF
+participant "FunctionRegistryStore" as REG
+
+note over R
+  reached only after a Level 2 miss with a
+  deploymentDescriptorPath supplied
+  (see resolution-cascade-level2.puml)
+end note
+
+R -> D : deployOrUpdate(functionName, deploymentDescriptorPath)
+
+alt GCP (QuickFaasDeployer)
+  D -> QFD : deployOrUpdate(functionName, descriptorPath)
+  QFD -> QFD : load + validate descriptor\n(expectedCloudProvider = "gcp")
+  QFD -> QF : invoke(descriptorPath, accessToken)\n[java -jar QuickFaaS.jar]
+  QF --> QFD : subprocess completed
+  QFD -> QFD : poll Cloud Functions API\nuntil status = ACTIVE\n(readinessTimeoutSeconds / pollIntervalSeconds)
+  opt invokerServiceAccount configured
+    QFD -> QFD : grant roles/cloudfunctions.invoker
+  end
+  QFD --> D : FunctionInvocationMetadata\n(serviceName, url = https://...)
+else AWS (AwsLambdaDeployer)
+  D -> ALD : deployOrUpdate(functionName, descriptorPath)
+  note right of ALD
+    full breakdown (IAM role, S3 bucket region,
+    subprocess retries, GetFunction polling,
+    Step Functions permission grant) is in
+    aws-deploy-sequence.puml
+  end note
+  ALD -> ALD : resolve/create Lambda execution IAM role
+  ALD -> ALD : patch role ARN into descriptor copy
+  ALD -> ALD : determine effective region from S3 bucket
+  ALD -> QF : invoke(descriptor)\n[<=3 attempts, 20s backoff]
+  QF --> ALD : subprocess completed
+  ALD -> ALD : poll GetFunction until State = Active\n(<=180s, 5s interval)
+  ALD -> ALD : grant Step Functions invoke permission
+  ALD --> D : FunctionInvocationMetadata\n(serviceName, url = arn:aws:lambda:...)
+end
+
+D --> R : FunctionInvocationMetadata
+R -> REG : put(functionName, metadata)
+R --> R : return metadata.url
+@enduml

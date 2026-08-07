@@ -1,0 +1,69 @@
+@startuml resolution-cascade-level1
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution cascade -- Level 1: Registry lookup and live validation
+
+participant "Resolver\n(WorkflowInternalFunctionResolver /\nAwsInternalFunctionResolver)" as R
+participant "FunctionRegistryStore" as REG
+participant "CloudRunV2ServiceInspector\n(GCP)" as GI
+participant "LambdaFunctionInspector\n(AWS)" as AI
+
+R -> REG : tryResolveEntry(functionRef)\n[exact match, then "<region>/<functionRef>" suffix]
+alt registry miss
+  REG --> R : null
+  note over R
+    continues at Level 2 - Provider discovery
+    (see resolution-cascade-level2.puml)
+  end note
+else registry hit
+  REG --> R : (key, metadata)
+
+  alt GCP
+    R -> GI : lookupByServiceName(metadata.serviceName)
+    alt Found - same URL
+      GI --> R : Found(serviceName, url == metadata.url)
+      R --> R : return metadata.url
+    else Found - drifted URL
+      GI --> R : Found(serviceName, url != metadata.url)
+      R -> REG : put(key, metadata.copy(url = newUrl))
+      R --> R : return newUrl
+    else NotFound
+      GI --> R : NotFound
+      R -> R : discoverServiceForRef(functionRef)\n[one more attempt across regions]
+      alt rediscovered elsewhere
+        R -> REG : put(key, newMetadata)
+        R --> R : return newUrl
+      else still not found
+        R -> REG : remove(key)
+        R --> R : throw IllegalStateException\n(stale entry removed - deleted service)
+      end
+    else Forbidden
+      GI --> R : Forbidden(message)
+      R --> R : throw IllegalStateException\n(cannot validate via Cloud Run APIs)
+    end
+  else AWS
+    R -> AI : lookupByFunctionName(metadata.serviceName)
+    alt Found - same ARN
+      AI --> R : Found(functionName, arn == metadata.url)
+      R --> R : return metadata.url
+    else Found - drifted ARN
+      AI --> R : Found(functionName, arn != metadata.url)
+      R -> REG : put(key, metadata.copy(url = newArn))
+      R --> R : return newArn
+    else NotFound
+      AI --> R : NotFound
+      note right of R
+        no rediscovery attempt on AWS
+        (Lambda names are unique per region,
+        so a miss is treated as final)
+      end note
+      R -> REG : remove(key)
+      R --> R : throw IllegalStateException\n(stale entry removed - deleted function)
+    else Forbidden
+      AI --> R : Forbidden(message)
+      R --> R : throw IllegalStateException\n(cannot validate via the Lambda API)
+    end
+  end
+end
+@enduml
