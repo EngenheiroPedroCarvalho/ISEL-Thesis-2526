@@ -1,0 +1,33 @@
+@startuml resolution-cascade-level3-gcp
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution cascade -- Level 3: QuickFaaS deployment (GCP)
+
+participant "Resolver\n(WorkflowInternalFunctionResolver)" as R
+participant "InternalFunctionDeployer" as D
+participant "QuickFaasDeployer" as QFD
+participant "QuickFaaS JAR\n(subprocess)" as QF
+participant "FunctionRegistryStore" as REG
+
+note over R
+  reached only after a Level 2 miss with a
+  deploymentDescriptorPath supplied
+  (see resolution-cascade-level2-gcp.puml)
+end note
+
+R -> D : deployOrUpdate(functionName, deploymentDescriptorPath)
+D -> QFD : deployOrUpdate(functionName, descriptorPath)
+QFD -> QFD : load + validate descriptor\n(expectedCloudProvider = "gcp")
+QFD -> QF : invoke(descriptorPath, accessToken)\n[java -jar QuickFaaS.jar]
+QF --> QFD : subprocess completed
+QFD -> QFD : poll Cloud Functions API\nuntil status = ACTIVE\n(readinessTimeoutSeconds / pollIntervalSeconds)
+opt invokerServiceAccount configured
+  QFD -> QFD : grant roles/cloudfunctions.invoker
+end
+QFD --> D : FunctionInvocationMetadata\n(serviceName, url = https://...)
+
+D --> R : FunctionInvocationMetadata
+R -> REG : put(functionName, metadata)
+R --> R : return metadata.url
+@enduml

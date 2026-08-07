@@ -1,0 +1,39 @@
+@startuml resolution-cascade-level2-aws
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution cascade -- Level 2: Provider discovery (AWS)
+
+participant "Resolver\n(AwsInternalFunctionResolver)" as R
+participant "FunctionRegistryStore" as REG
+participant "LambdaFunctionInspector" as AI
+
+note over R
+  reached only on a Level 1 registry miss
+  (see resolution-cascade-level1-aws.puml)
+end note
+
+R -> AI : lookupByFunctionName(functionName)
+alt Found
+  AI --> R : Found(functionName, arn)
+  R -> REG : put(functionName, metadata(url = arn))
+  R --> R : return arn
+else NotFound or Forbidden
+  AI --> R : NotFound / Forbidden
+  note right of R
+    both collapse to "miss" here and are
+    merely logged as a warning -- unlike Level 1,
+    a permissions failure is not distinguished
+    from a genuine absence on this path
+  end note
+end
+
+alt no match found and deploymentDescriptorPath supplied
+  note over R
+    continues at Level 3 - QuickFaaS deployment
+    (see resolution-cascade-level3-aws.puml)
+  end note
+else no match found and no descriptor supplied
+  R --> R : throw IllegalStateException\n(fail fast - deploy it first or provide deploymentDescriptorPath)
+end
+@enduml
