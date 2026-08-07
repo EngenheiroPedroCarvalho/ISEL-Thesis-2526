@@ -184,6 +184,83 @@ optimisation quantified in Chapter~\ref{cha:evaluation}; as discussed there and 
 Chapter~\ref{cha:conclusions}, it has not yet been folded into the two provider resolvers, which
 still read per call.
 
+\subsection{Resolution Cascade Sequences}
+\label{subsec:cascade-sequences}
+
+The description of the two resolvers in \S\ref{subsec:store-internals} is expanded here into six
+sequence diagrams, one per cascade level and provider, making explicit the messages exchanged
+with the registry and with each provider's inspection API.
+
+Figures~\ref{fig:resolution-cascade-level1-gcp} and~\ref{fig:resolution-cascade-level1-aws} detail
+Level~1 on each provider: a registry hit is validated against the live resource before being
+trusted. The two diagrams make the asymmetry noted in \S\ref{subsec:store-internals} explicit ---
+on a \texttt{NotFound} result, the GCP path attempts one more rediscovery across regions before
+removing the stale entry, while the AWS path removes it directly, since a Lambda name is already
+unique within its region.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/implementation/resolution-cascade-level1-gcp.png}
+  \caption{Level~1 (Registry) on GCP: a registry hit is validated against the live Cloud Run
+  service, with rediscovery attempted before a stale entry is removed.}
+  \label{fig:resolution-cascade-level1-gcp}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/implementation/resolution-cascade-level1-aws.png}
+  \caption{Level~1 (Registry) on AWS: a registry hit is validated against \texttt{GetFunction},
+  with no rediscovery attempt on a miss.}
+  \label{fig:resolution-cascade-level1-aws}
+\end{figure}
+
+Figures~\ref{fig:resolution-cascade-level2-gcp} and~\ref{fig:resolution-cascade-level2-aws} detail
+Level~2, reached on a registry miss. The GCP resolver searches across the project's regions (or a
+single region when the fully-qualified \texttt{"region/functionRef"} form is used), reporting more
+than one match as ambiguous; the AWS resolver performs a single \texttt{GetFunction} call and, on
+this path only, does not distinguish a \texttt{NotFound} result from a permissions failure, both
+being treated as a miss (\S\ref{subsec:validation-error-semantics}).
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/implementation/resolution-cascade-level2-gcp.png}
+  \caption{Level~2 (Provider discovery) on GCP: the target Cloud Run service is searched for
+  across the project's regions.}
+  \label{fig:resolution-cascade-level2-gcp}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/implementation/resolution-cascade-level2-aws.png}
+  \caption{Level~2 (Provider discovery) on AWS: a single \texttt{GetFunction} call resolves the
+  target Lambda.}
+  \label{fig:resolution-cascade-level2-aws}
+\end{figure}
+
+Figures~\ref{fig:resolution-cascade-level3-gcp} and~\ref{fig:resolution-cascade-level3-aws} detail
+Level~3, reached only when a \texttt{deploymentDescriptorPath} was supplied and the function was
+found on neither the registry nor the provider. Both diagrams stay at the cascade's conceptual
+level; the full operational breakdown of the AWS branch --- the IAM role, the region derived from
+the S3 bucket, subprocess retries, and \texttt{GetFunction} polling --- is traced separately for
+the worst-case path in Figure~\ref{fig:aws-deploy-sequence}, introduced in the AWS Lambda Support
+section that follows.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/implementation/resolution-cascade-level3-gcp.png}
+  \caption{Level~3 (QuickFaaS deployment) on GCP: \texttt{QuickFaasDeployer} invokes QuickFaaS and
+  polls Cloud Functions until the service is active.}
+  \label{fig:resolution-cascade-level3-gcp}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/implementation/resolution-cascade-level3-aws.png}
+  \caption{Level~3 (QuickFaaS deployment) on AWS: \texttt{AwsLambdaDeployer} invokes QuickFaaS and
+  polls \texttt{GetFunction} until the Lambda is active.}
+  \label{fig:resolution-cascade-level3-aws}
+\end{figure}
+
 \subsection{Validation and Error Semantics}
 \label{subsec:validation-error-semantics}
 Several correctness constraints are enforced to avoid silent misconfiguration:
