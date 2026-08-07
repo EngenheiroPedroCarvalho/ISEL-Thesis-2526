@@ -187,88 +187,32 @@ still read per call.
 \subsection{Resolution Cascade Sequences}
 \label{subsec:cascade-sequences}
 
-The description of the two resolvers in \S\ref{subsec:store-internals} is expanded here into six
-sequence diagrams, one per cascade level and provider, making explicit the messages exchanged
-with the registry and with each provider's inspection API.
+The description of the two resolvers above is expanded into six sequence diagrams, one per
+cascade level and provider, making explicit the messages exchanged with the registry and with
+each provider's inspection API; to keep this chapter's flow uninterrupted, the diagrams themselves
+are collected in Appendix~\ref{app:cascade-sequences} rather than placed inline.
 
-Figure~\ref{fig:resolution-cascade-level1} details Level~1 on each provider: a registry hit is
-validated against the live resource before being trusted. The two panels make the asymmetry noted
-in \S\ref{subsec:store-internals} explicit --- on a \texttt{NotFound} result, the GCP path (a)
-attempts one more rediscovery across regions before removing the stale entry, while the AWS path
-(b) removes it directly, since a Lambda name is already unique within its region.
+Figure~\ref{fig:resolution-cascade-level1} (Appendix~\ref{app:cascade-sequences}) details Level~1
+on each provider: a registry hit is validated against the live resource before being trusted. The
+two panels make the asymmetry noted above explicit --- on a \texttt{NotFound} result, the GCP path
+(a) attempts one more rediscovery across regions before removing the stale entry, while the AWS
+path (b) removes it directly, since a Lambda name is already unique within its region.
 
-\begin{figure}[htb]
-  \centering
-  \begin{minipage}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{images/implementation/resolution-cascade-level1-gcp.png}
-    \par (a) GCP
-  \end{minipage}
-  \hfill
-  \begin{minipage}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{images/implementation/resolution-cascade-level1-aws.png}
-    \par (b) AWS
-  \end{minipage}
-  \caption{Level~1 (Registry): a registry hit is validated against the live Cloud Run service on
-  GCP (a) and against \texttt{GetFunction} on AWS (b); only the GCP path attempts rediscovery
-  before a stale entry is removed.}
-  \label{fig:resolution-cascade-level1}
-\end{figure}
+Figure~\ref{fig:resolution-cascade-level2} (Appendix~\ref{app:cascade-sequences}) details Level~2,
+reached on a registry miss. The GCP resolver (a) searches across the project's regions (or a
+single region when the fully-qualified \texttt{"region/functionRef"} form is used), reporting more
+than one match as ambiguous; the AWS resolver (b) performs a single \texttt{GetFunction} call and,
+on this path only, does not distinguish a \texttt{NotFound} result from a permissions failure,
+both being treated as a miss (\S\ref{subsec:validation-error-semantics}).
 
-Figure~\ref{fig:resolution-cascade-level2} details Level~2, reached on a registry miss. The GCP
-resolver (a) searches across the project's regions (or a single region when the fully-qualified
-\texttt{"region/functionRef"} form is used), reporting more than one match as ambiguous; the AWS
-resolver (b) performs a single \texttt{GetFunction} call and, on this path only, does not
-distinguish a \texttt{NotFound} result from a permissions failure, both being treated as a miss
-(\S\ref{subsec:validation-error-semantics}).
+Figure~\ref{fig:resolution-cascade-level3} (Appendix~\ref{app:cascade-sequences}) details Level~3,
+reached only when a \texttt{deploymentDescriptorPath} was supplied and the function was found on
+neither the registry nor the provider. Both panels stay at the cascade's conceptual level; the
+full operational breakdown of the AWS branch --- the IAM role, the region derived from the S3
+bucket, subprocess retries, and \texttt{GetFunction} polling --- is traced separately for the
+worst-case path in Figure~\ref{fig:aws-deploy-sequence}, introduced in the AWS Lambda Support
+section that follows.
 
-\begin{figure}[htb]
-  \centering
-  \begin{minipage}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{images/implementation/resolution-cascade-level2-gcp.png}
-    \par (a) GCP
-  \end{minipage}
-  \hfill
-  \begin{minipage}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{images/implementation/resolution-cascade-level2-aws.png}
-    \par (b) AWS
-  \end{minipage}
-  \caption{Level~2 (Provider discovery): the target Cloud Run service is searched for across the
-  project's regions on GCP (a); a single \texttt{GetFunction} call resolves the target Lambda on
-  AWS (b).}
-  \label{fig:resolution-cascade-level2}
-\end{figure}
-
-Figure~\ref{fig:resolution-cascade-level3} details Level~3, reached only when a
-\texttt{deploymentDescriptorPath} was supplied and the function was found on neither the registry
-nor the provider. Both panels stay at the cascade's conceptual level; the full operational
-breakdown of the AWS branch --- the IAM role, the region derived from the S3 bucket, subprocess
-retries, and \texttt{GetFunction} polling --- is traced separately for the worst-case path in
-Figure~\ref{fig:aws-deploy-sequence}, introduced in the AWS Lambda Support section that follows.
-
-\begin{figure}[htb]
-  \centering
-  \begin{minipage}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{images/implementation/resolution-cascade-level3-gcp.png}
-    \par (a) GCP
-  \end{minipage}
-  \hfill
-  \begin{minipage}[t]{0.48\textwidth}
-    \centering
-    \includegraphics[width=\textwidth]{images/implementation/resolution-cascade-level3-aws.png}
-    \par (b) AWS
-  \end{minipage}
-  \caption{Level~3 (QuickFaaS deployment): \texttt{QuickFaasDeployer} invokes QuickFaaS and polls
-  Cloud Functions until the service is active on GCP (a); \texttt{AwsLambdaDeployer} invokes
-  QuickFaaS and polls \texttt{GetFunction} until the Lambda is active on AWS (b).}
-  \label{fig:resolution-cascade-level3}
-\end{figure}
-
-\clearpage
 \subsection{Validation and Error Semantics}
 \label{subsec:validation-error-semantics}
 Several correctness constraints are enforced to avoid silent misconfiguration:
