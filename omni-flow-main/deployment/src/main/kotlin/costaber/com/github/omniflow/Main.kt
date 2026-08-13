@@ -78,6 +78,7 @@ fun main() {
         6 -> deployAwsGreetingExample(scan)
         7 -> deployAwsLambdaAutoDeployExample(scan)
         8 -> deployAwsTextAnalysisExample(scan)
+        9 -> deployAwsRegionAgnosticExample(scan)
     }
 }
 
@@ -142,6 +143,22 @@ fun printPrerequisites() {
     C.detail("  export STATE_MACHINE_NAME=AwsTextAnalysisPipeline      # optional")
     println()
 
+    println("  ${C.YELLOW}${C.BOLD}[ AWS Region-Agnostic Example — option 9 ]${C.RESET}")
+    C.detail("Deploys two greeting Lambdas into two DIFFERENT AWS regions (picked by each")
+    C.detail("function's own func-deployment.json, e.g. via its S3 bucket's region) and wires")
+    C.detail("both into one Step Function - with NO AWS_REGION anywhere. Internal function")
+    C.detail("resolution searches every region enabled for the account automatically.")
+    C.detail("Each func-deployment.json must have all fields filled in (same as options 7/8),")
+    C.detail("with function.bucket pointing to a bucket in the region that function should land in.")
+    C.detail("IAM role for Step Functions with permission: lambda:InvokeFunction")
+    C.detail("Environment variables (note: no AWS_REGION):")
+    C.detail("  export AWS_ACCESS_KEY_ID=AKIA...")
+    C.detail("  export AWS_SECRET_ACCESS_KEY=wJalr...")
+    C.detail("  export QUICKFAAS_JAR_PATH=/path/to/QuickFaaS-Deployment-fat.jar")
+    C.detail("  export STEP_FUNCTIONS_ROLE_ARN=arn:aws:iam::ACCOUNT:role/StepFunctionsRole")
+    C.detail("  export STATE_MACHINE_NAME=AwsRegionAgnosticGreeting    # optional")
+    println()
+
     C.separator()
     println()
 }
@@ -159,12 +176,13 @@ fun getSelectedOption(scan: Scanner): Int {
         println("  ${C.YELLOW}6${C.RESET}: Greeting via API Gateway + Lambda")
         println("  ${C.YELLOW}7${C.RESET}: Greeting with QuickFaaS auto-deploy (single Lambda)")
         println("  ${C.YELLOW}8${C.RESET}: Text analysis pipeline with QuickFaaS auto-deploy (3 Lambdas)")
+        println("  ${C.YELLOW}9${C.RESET}: Region-agnostic greeting (2 Lambdas, 2 different regions, no AWS_REGION)")
         println()
         println(" ${C.RED}99${C.RESET}: Exit")
         println()
         print("  ${C.BOLD}Choose an option:${C.RESET} ")
         option = scan.nextInt()
-    } while (option !in listOf(2, 3, 4, 5, 6, 7, 8, 99))
+    } while (option !in listOf(2, 3, 4, 5, 6, 7, 8, 9, 99))
     return option
 }
 
@@ -1095,5 +1113,170 @@ fun deployAwsTextAnalysisExample(scan: Scanner) {
     println()
     C.detail("${C.GREEN}Try:${C.RESET}     Start execution with input  {\"text\": \"Hello World OmniFlow\"}")
     C.detail("${C.GREEN}Expected:${C.RESET} {\"summary\": \"O texto tem 3 palavras e 5.7 caracteres em média.\", ...}")
+    C.separator()
+}
+
+// ===========================================================================
+//  Example 9 — AWS Step Functions: Region-Agnostic Lambda Resolution
+//
+//  Auto-deploys 2 Java Lambda functions via QuickFaaS into two DIFFERENT AWS
+//  regions (each function's own func-deployment.json decides where it lands,
+//  typically via its S3 bucket's region) and creates a Step Function that
+//  calls both - without this example ever asking for or declaring a region.
+//
+//  Internal function resolution searches every AWS region enabled for the
+//  account (AwsInternalFunctionResolver + Ec2AwsRegionsLister), so neither
+//  Lambda's region needs to be known ahead of time.
+//
+//    1. region-a-greeting-fn — deployed in whichever region its bucket is in
+//    2. region-b-greeting-fn — deployed in a DIFFERENT region
+// ===========================================================================
+
+data class AwsRegionAgnosticConfig(
+    val quickFaasJarPath: String,
+    val stepFunctionsRoleArn: String,
+    val stateMachineName: String,
+)
+
+private fun collectAwsRegionAgnosticConfig(
+    scan: Scanner,
+    stageTotal: Int,
+    defaultStateMachineName: String = "AwsRegionAgnosticGreeting",
+): AwsRegionAgnosticConfig? {
+    C.stage(1, stageTotal, "Configuration")
+
+    val awsAccessKey = System.getenv("AWS_ACCESS_KEY_ID")
+    val awsSecretKey = System.getenv("AWS_SECRET_ACCESS_KEY")
+    if (awsAccessKey.isNullOrBlank() || awsSecretKey.isNullOrBlank()) {
+        C.warn("AWS_ACCESS_KEY_ID and/or AWS_SECRET_ACCESS_KEY not set.")
+        C.detail("AWS SDK requires these env vars BEFORE starting the JVM.")
+        C.detail("  Linux/Mac: export AWS_ACCESS_KEY_ID=AKIA...")
+        C.detail("             export AWS_SECRET_ACCESS_KEY=wJalr...")
+        println()
+        print("  Continue anyway? (y/N): ")
+        if (!scan.next().trim().equals("y", ignoreCase = true)) return null
+    } else {
+        C.ok("AWS credentials set")
+    }
+
+    val quickFaasJarPath = System.getenv("QUICKFAAS_JAR_PATH")
+        ?: run {
+            print("  Enter path to QuickFaaS-Deployment JAR: ")
+            scan.next().trim()
+        }
+    require(Path.of(quickFaasJarPath).toFile().exists()) {
+        "QuickFaaS JAR not found at '$quickFaasJarPath'"
+    }
+    C.ok("QuickFaaS JAR found")
+
+    val stepFunctionsRoleArn = System.getenv("STEP_FUNCTIONS_ROLE_ARN")
+        ?: run {
+            print("  Enter Step Functions IAM Role ARN: ")
+            scan.next().trim()
+        }
+
+    val stateMachineName = System.getenv("STATE_MACHINE_NAME")
+        ?: run {
+            print("  Enter State Machine name [$defaultStateMachineName]: ")
+            scan.next().trim().ifEmpty { defaultStateMachineName }
+        }
+
+    C.ok("QuickFaaS JAR: ${C.BOLD}$quickFaasJarPath${C.RESET}")
+    C.ok("Role:          ${C.BOLD}$stepFunctionsRoleArn${C.RESET}")
+    C.ok("State Machine: ${C.BOLD}$stateMachineName${C.RESET}")
+    C.detail("No AWS region collected — functions are searched for across every region enabled for this account.")
+    println()
+
+    return AwsRegionAgnosticConfig(quickFaasJarPath, stepFunctionsRoleArn, stateMachineName)
+}
+
+private val Example9Workflow = workflow {
+    name("AwsRegionAgnosticGreeting")
+    description("Calls two Lambdas auto-deployed in two different AWS regions without declaring either region")
+    steps(
+        step {
+            name("call-hello-region-a")
+            description("Call a greeting Lambda auto-deployed in its bucket's region")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "region-a-greeting-fn",
+                        deploymentDescriptorPath = "./functions/region-a-greeting-fn/func-deployment.json"
+                    )
+                    query("lang" to value("pt"))
+                    authentication(authentication { type("IAM_ROLE") })
+                    result("greetingResultA")
+                    resultType(ResultType.BODY)
+                }
+            )
+        },
+        step {
+            name("call-hello-region-b")
+            description("Call a greeting Lambda auto-deployed in a different bucket's region")
+            context(
+                call {
+                    method(GET)
+                    internalFunction(
+                        "region-b-greeting-fn",
+                        deploymentDescriptorPath = "./functions/region-b-greeting-fn/func-deployment.json"
+                    )
+                    query("lang" to value("en"))
+                    authentication(authentication { type("IAM_ROLE") })
+                    result("greetingResultB")
+                    resultType(ResultType.BODY)
+                }
+            )
+        }
+    )
+    result("greetingResultB")
+}
+
+fun deployAwsRegionAgnosticExample(scan: Scanner) {
+    val stages = 3
+    C.banner("Example 9 — AWS Region-Agnostic Lambda Resolution")
+    C.info("Auto-deploys two greeting Lambdas — each into whichever region its own")
+    C.info("func-deployment.json points to — then creates a single Step Function that")
+    C.info("calls both. No AWS region is ever collected from you: internal function")
+    C.info("resolution searches every region enabled for this account automatically.")
+    println()
+    C.separator()
+    println("  ${C.YELLOW}Flow:${C.RESET}  QuickFaaS deploy (2 regions) → region search → Step Functions state machine")
+    C.separator()
+    println()
+
+    val config = collectAwsRegionAgnosticConfig(scan, stages) ?: return
+
+    C.stage(2, stages, "Lambda deployment + region-agnostic resolution")
+    C.info("Deploying ${C.BOLD}region-a-greeting-fn${C.RESET} and ${C.BOLD}region-b-greeting-fn${C.RESET} via QuickFaaS...")
+    C.info("Resolving internal functions by searching every AWS region enabled for this account...")
+
+    val lambdaDeployer = AwsLambdaDeployer(
+        quickFaasJarPath = Path.of(config.quickFaasJarPath),
+        // Fallback only: real per-function target region comes from each descriptor's
+        // function.bucket (see printPrerequisites for option 9).
+        region = "us-east-1",
+        roleArn = config.stepFunctionsRoleArn,
+    )
+    val deployer = AmazonCloudDeployer.Builder()
+        .internalFunctionDeployer(lambdaDeployer)
+        .build()
+    val context = AmazonDeployContext(
+        roleArn = config.stepFunctionsRoleArn,
+        tags = mapOf("environment" to "testing", "app" to "omni-flow"),
+        stateMachineName = config.stateMachineName,
+    )
+    deployer.deploy(Example9Workflow, context)
+
+    C.ok("Both Lambdas deployed (in their own regions) and state machine created")
+    println()
+
+    C.stage(3, stages, "Complete")
+    C.success("Example 9 deployed successfully!")
+    C.separator()
+    C.detail("State Machine: ${C.BOLD}${config.stateMachineName}${C.RESET}")
+    println()
+    C.detail("${C.GREEN}Try:${C.RESET} Start execution with input  {}")
+    C.detail("${C.GREEN}Expected:${C.RESET} both greetings returned, each resolved from a different AWS region")
     C.separator()
 }

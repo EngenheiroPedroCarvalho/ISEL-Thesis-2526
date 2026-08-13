@@ -75,7 +75,7 @@ open class BenchmarkAwsInternalFunctionResolution {
             )
         }
         store.writeNew(functions)
-        resolver = AwsInternalFunctionResolver(region = "us-east-1", registry = store)
+        resolver = AwsInternalFunctionResolver(preferredRegion = "us-east-1", registry = store)
 
         // N calls distributed round-robin over the f registered functions.
         workflow = WorkflowGenerator.withDistinctInternalCalls(n, f, BASE)

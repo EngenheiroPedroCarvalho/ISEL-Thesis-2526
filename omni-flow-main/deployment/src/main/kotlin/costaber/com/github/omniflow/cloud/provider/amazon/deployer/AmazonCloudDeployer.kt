@@ -45,7 +45,7 @@ class AmazonCloudDeployer internal constructor(
         val resolvedWorkflow = if (internalCount > 0) {
             println("$CYAN$BOLD[DEPLOY]$RESET Detected $BOLD$internalCount$RESET internal Lambda function(s) — resolving...")
             AwsInternalFunctionResolver(
-                region = deployContext.region,
+                preferredRegion = deployContext.region,
                 registry = FunctionRegistryStore(registryPath),
                 internalFunctionDeployer = internalFunctionDeployer
             ).resolve(workflow)

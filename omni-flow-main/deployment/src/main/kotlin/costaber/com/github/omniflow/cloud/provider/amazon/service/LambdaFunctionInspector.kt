@@ -21,7 +21,7 @@ interface LambdaFunctionInspector {
         data class Forbidden(val message: String) : LookupResult()
     }
 
-    fun lookupByFunctionName(functionName: String): LookupResult
+    fun lookup(region: String, functionName: String): LookupResult
 }
 
 /**
@@ -29,14 +29,13 @@ interface LambdaFunctionInspector {
  *
  * Uses:
  *  GetFunction(functionName)
- * in the configured region. The client is built per call so that constructing this class never
- * touches AWS credentials.
+ * in the given region. The client is built per call, for the region passed to [lookup], so that
+ * constructing this class never touches AWS credentials and a single instance can validate
+ * functions across regions.
  */
-class AwsLambdaFunctionInspector(
-    private val region: String
-) : LambdaFunctionInspector {
+class AwsLambdaFunctionInspector : LambdaFunctionInspector {
 
-    override fun lookupByFunctionName(functionName: String): LambdaFunctionInspector.LookupResult =
+    override fun lookup(region: String, functionName: String): LambdaFunctionInspector.LookupResult =
         try {
             LambdaClient.builder()
                 .region(Region.of(region))
