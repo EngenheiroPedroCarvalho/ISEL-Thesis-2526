@@ -6,7 +6,7 @@
   "function": {
     "name": "region-b-greeting-fn",
     "location": "eu-central-1",
-    "bucket": "<REPLACE_WITH_S3_BUCKET_IN_EU_CENTRAL_1>",
+    "bucket": "omniflow-region-b-025064823406",
     "runtime": "java17",
     "trigger": {
       "type": "http"
