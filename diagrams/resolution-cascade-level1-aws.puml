@@ -17,8 +17,9 @@ alt registry miss
   end note
 else registry hit
   REG --> R : (key, metadata)
+  R -> R : region = regionFromArn(metadata.url)
 
-  R -> AI : lookupByFunctionName(metadata.serviceName)
+  R -> AI : lookup(region, metadata.serviceName)
   alt Found - same ARN
     AI --> R : Found(functionName, arn == metadata.url)
     R --> R : return metadata.url
@@ -26,15 +27,16 @@ else registry hit
     AI --> R : Found(functionName, arn != metadata.url)
     R -> REG : put(key, metadata.copy(url = newArn))
     R --> R : return newArn
-  else NotFound
+  else NotFound (or region unparseable)
     AI --> R : NotFound
-    note right of R
-      no rediscovery attempt on AWS
-      (Lambda names are unique per region,
-      so a miss is treated as final)
-    end note
-    R -> REG : remove(key)
-    R --> R : throw IllegalStateException\n(stale entry removed - deleted function)
+    R -> R : discoverFunctionForRef(functionRef)\n[scan every region enabled for the account]
+    alt rediscovered elsewhere
+      R -> REG : put(key, newMetadata)
+      R --> R : return newArn
+    else still not found
+      R -> REG : remove(key)
+      R --> R : throw IllegalStateException\n(stale entry removed - deleted function)
+    end
   else Forbidden
     AI --> R : Forbidden(message)
     R --> R : throw IllegalStateException\n(cannot validate via the Lambda API)

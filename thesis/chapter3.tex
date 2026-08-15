@@ -59,7 +59,9 @@ actual deployment is a last resort rather than a default.
   cannot be used silently: a changed endpoint refreshes the entry, and a deleted one removes it and
   aborts the deployment.
   \item \textbf{Level~2 (Provider discovery).} On a registry miss, the target provider is queried
-  directly (a Cloud Run lookup across regions on GCP, a \texttt{GetFunction} call on AWS). If the
+  directly (a Cloud Run lookup across regions on GCP; on AWS, a \texttt{GetFunction} lookup across
+  every region enabled for the account, or a single call when the caller supplies the
+  fully-qualified \texttt{"region/functionRef"} form). If the
   function already exists --- for instance, because it was deployed outside the integration --- its
   metadata is recorded in the registry and used, again \emph{without} triggering a deployment.
   \item \textbf{Level~3 (QuickFaaS deployment).} Only when the function is absent from both the
@@ -84,10 +86,15 @@ service, a storage bucket, or the deployed workflow itself --- lives in a specif
 part of its identity (on AWS the region even appears inside the function ARN). This work is scoped
 to a \emph{single provider per deployment}: a workflow deployed to GCP resolves only GCP functions,
 and one deployed to AWS resolves only AWS Lambdas. Within a provider, the workflow and its registry-resolved
-functions are \emph{not} strictly required to share a region --- on GCP a function is invoked over
-an HTTPS URL, so the resolver in fact searches across the project's regions (which is why the
-fully-qualified \texttt{"region/functionRef"} form exists to disambiguate a name that appears in
-more than one region); on AWS the function is invoked by its region-qualified ARN. In practice the
+functions are \emph{not} strictly required to share a region, and on neither provider is the
+developer required to declare one: on GCP a function is invoked over an HTTPS URL, so the resolver
+searches across the project's regions; on AWS, although the function is ultimately invoked by its
+region-qualified ARN, the resolver mirrors this behaviour by discovering every region enabled for
+the account (via the EC2 \texttt{DescribeRegions} API) and searching across all of them, optionally
+trying a caller-supplied preferred region first. On both providers, the fully-qualified
+\texttt{"region/functionRef"} form exists to disambiguate a name that appears in more than one
+region, and lets the developer pin the lookup to a single region instead of scanning every one. In
+practice the
 prototype assumes the workflow and its functions in the same region, both because it is the common
 case and because same-region deployment minimises invocation latency and cross-region data-transfer
 cost, and simplifies data-residency compliance. One co-location constraint is, however, mandatory
@@ -275,7 +282,7 @@ val wf = workflow {
 Deploying the \texttt{FraudPipeline} of Listings~\ref{lst:wf-internal-part}
 and~\ref{lst:wf-external-part} makes the cascade concrete. Suppose \texttt{fraud-check} has never
 been deployed and the registry does not yet exist. OmniFlow first bootstraps the registry --- on GCP by listing the project's HTTP-invocable
-services, on AWS by listing the region's Lambda functions --- and then walks the workflow tree. The \texttt{external-risk-api} step carries literal \texttt{host}/\texttt{path} and
+services, on AWS by listing the Lambda functions across every region enabled for the account --- and then walks the workflow tree. The \texttt{external-risk-api} step carries literal \texttt{host}/\texttt{path} and
 is skipped by the resolver. The \texttt{fraud-check} step carries an \texttt{internalFunction}, so
 the cascade runs: Level~1 misses (empty registry), Level~2 misses (the function does not exist on
 the provider), and Level~3 fires because the call supplied

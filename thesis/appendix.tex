@@ -19,8 +19,8 @@ resolvers in \S\ref{subsec:store-internals}, one per level of the resolution cas
     \par (b) AWS
   \end{minipage}
   \caption{Level~1 (Registry): a registry hit is validated against the live Cloud Run service on
-  GCP (a) and against \texttt{GetFunction} on AWS (b); only the GCP path attempts rediscovery
-  before a stale entry is removed.}
+  GCP (a) and against \texttt{GetFunction} on AWS (b); on a \texttt{NotFound} result, both paths
+  now attempt rediscovery across every region before a stale entry is removed.}
   \label{fig:resolution-cascade-level1}
 \end{figure}
 
@@ -38,8 +38,9 @@ resolvers in \S\ref{subsec:store-internals}, one per level of the resolution cas
     \par (b) AWS
   \end{minipage}
   \caption{Level~2 (Provider discovery): the target Cloud Run service is searched for across the
-  project's regions on GCP (a); a single \texttt{GetFunction} call resolves the target Lambda on
-  AWS (b).}
+  project's regions on GCP (a); the target Lambda is searched for across every region enabled for
+  the account on AWS (b), or resolved with a single \texttt{GetFunction} call when the
+  fully-qualified \texttt{"region/functionRef"} form is used.}
   \label{fig:resolution-cascade-level2}
 \end{figure}
 

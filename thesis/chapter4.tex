@@ -103,7 +103,10 @@ The registry management layer provides the following behavior:
 \begin{itemize}
     \item \textbf{Bootstrap by discovery:} if the registry file does not exist, it is created
     automatically by listing the functions already deployed on the target provider --- Cloud Run
-    services on GCP, Lambda functions on AWS --- and writing one entry per discovered function.
+    services on GCP, Lambda functions on AWS --- and writing one entry per discovered function; on
+    AWS this scans every region enabled for the account and, mirroring the GCP catalog, promotes a
+    function name seen in more than one region from a bare key to a \texttt{"region/name"} key for
+    each occurrence.
     \item \textbf{Automatic registration:} when an internal function is not present in the
     registry but is found on the target provider (Cloud Run service on GCP, Lambda function
     on AWS), a new entry is written immediately with the discovered metadata.
@@ -130,7 +133,8 @@ The registry is consumed at deployment time by an endpoint resolution step. Befo
     suffix match on \texttt{"region/functionRef"}). On a hit, the stored URL is used --- on
     GCP, after validating it against the live Cloud Run service.
     \item On a registry miss, the target provider is queried directly (Cloud Run service
-    lookup across regions on GCP; \texttt{GetFunction} on AWS Lambda). If the function
+    lookup across regions on GCP; on AWS, a \texttt{GetFunction} lookup across every region
+    enabled for the account, or a single call when the fully-qualified form is used). If the function
     exists, its metadata is registered and used --- no deployment is triggered.
     \item Only if the function is absent from both the registry and the provider, and a
     \texttt{deploymentDescriptorPath} was declared, is QuickFaaS invoked to deploy the
@@ -155,27 +159,46 @@ the top-level \texttt{updatedAt} timestamp. The store keeps no in-memory state b
 each of these operations re-reads and re-parses the file; the performance consequences of this
 choice, and the single-read mitigation, are analysed in Chapter~\ref{cha:evaluation}.
 
-The two provider resolvers sit on top of this store and differ only in the provider-discovery step,
-which reflects the two clouds' invocation models. \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (GCP)
-treats a registry hit as provisional: it validates the stored URL against the live Cloud Run
-service and, if the URL has drifted, refreshes the entry; if the service has disappeared, it
-attempts rediscovery across the project's regions and, failing that, removes the stale entry and
-aborts. It also short-circuits validation for first-generation Cloud Functions (identified by a
-\texttt{cloudfunctions.net} URL), which are not Cloud Run services. When a function is absent from
-the registry, it is looked up across regions, and a match in more than one region is reported as
-ambiguous. \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} treats a registry hit as provisional
-in the same way, consulting the Lambda API through a \texttt{Lambda\allowbreak Function\allowbreak Inspector}
-seam: a drifted ARN refreshes the entry, a deleted function removes it and aborts, and a
-permissions failure aborts rather than being mistaken for an absence. It remains simpler than the
-GCP path in one respect, because a Lambda is uniquely named within a region: validation is a single
-\texttt{GetFunction} call and a failed lookup needs no cross-region rediscovery. The asymmetry that
-survives is confined to the \emph{miss} path, where both a \texttt{ResourceNotFoundException}
-\emph{and any other exception} (for example, a permissions or network error) are still treated as
-``not present'' and merely logged as a warning, so that deployment can proceed
-(see \S\ref{subsec:validation-error-semantics}). In both
-resolvers, a hit or a successful discovery writes the metadata back through \texttt{put()} before
-the endpoint is injected into the call, so the registry converges toward a complete set of bindings
-as workflows are deployed.
+The two provider resolvers sit on top of this store and are now symmetric in shape, differing only
+in the provider-discovery calls that reflect the two clouds' invocation models.
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (GCP) treats a registry hit as provisional: it
+validates the stored URL against the live Cloud Run service and, if the URL has drifted, refreshes
+the entry; if the service has disappeared, it attempts rediscovery across the project's regions
+and, failing that, removes the stale entry and aborts. It also short-circuits validation for
+first-generation Cloud Functions (identified by a \texttt{cloudfunctions.net} URL), which are not
+Cloud Run services. When a function is absent from the registry, it is looked up across regions,
+and a match in more than one region is reported as ambiguous.
+\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} follows the same shape: it treats a registry hit
+as provisional, resolving the region to validate from the stored ARN and consulting the Lambda API
+through a \texttt{Lambda\allowbreak Function\allowbreak Inspector} seam; a drifted ARN refreshes the entry, and a
+permissions failure aborts rather than being mistaken for an absence. What used to be the one
+AWS-only shortcut --- a Lambda name is unique within its region, so a hit's validation was a single
+\texttt{GetFunction} call with no cross-region fallback --- no longer holds: on a \texttt{NotFound}
+result (or an unparseable stored ARN), the resolver now mirrors the GCP path and attempts
+rediscovery, searching every region enabled for the account before removing the stale entry and
+aborting. Region discovery is itself provider-specific: GCP already exposed a project-scoped
+locations API, whereas AWS has no equivalent for Lambda, so a dedicated
+\texttt{Ec2Aws\allowbreak Regions\allowbreak Lister}, backed by the EC2 \texttt{DescribeRegions} call, was added to
+play that role; an optional preferred region, when supplied, is tried first in both the
+rediscovery and the miss-path scan described next. On a registry miss, the AWS resolver now performs
+the same style of scan as GCP: it searches every enabled region for a function-name match,
+disambiguating a name found in more than one region, unless the caller supplies the
+fully-qualified \texttt{"<region>/<functionRef>"} form, which resolves a single region directly. A
+region reporting \texttt{ResourceNotFoundException} and one reporting a permissions failure are
+both simply excluded from the candidate set while the scan runs, but the two are told apart at the
+end, exactly as on the GCP path: if the function is found in no region and at least one of the
+scanned regions was inaccessible, the resolver raises a diagnostic naming those regions instead of
+concluding the function is absent everywhere; the absence conclusion is only drawn when every
+scanned region reported a clean \texttt{NotFound}. This closes the asymmetry the miss path used to
+have, where a single \texttt{GetFunction} call collapsed a genuine absence and a permissions
+failure into the same outcome (see \S\ref{subsec:validation-error-semantics}). What now
+distinguishes the two resolvers is only the underlying provider API each one calls --- the Cloud
+Run Locations API versus EC2 \texttt{DescribeRegions} for region discovery, a Cloud Run lookup
+versus \texttt{GetFunction} for the per-region check --- and the GCP-only short-circuit for
+first-generation Cloud Functions noted above, which has no AWS counterpart. In both resolvers, a hit or a
+successful discovery writes the metadata back through \texttt{put()} before the endpoint is
+injected into the call, so the registry converges toward a complete set of bindings as workflows
+are deployed.
 
 To keep resolution cheap when a workflow contains many internal calls,
 \texttt{Workflow\allowbreak Internal\allowbreak Call\allowbreak Endpoint\allowbreak Resolver} reads the registry once into a snapshot and resolves
@@ -194,16 +217,19 @@ are collected in Appendix~\ref{app:cascade-sequences} rather than placed inline.
 
 Figure~\ref{fig:resolution-cascade-level1} (Appendix~\ref{app:cascade-sequences}) details Level~1
 on each provider: a registry hit is validated against the live resource before being trusted. The
-two panels make the asymmetry noted above explicit --- on a \texttt{NotFound} result, the GCP path
-(a) attempts one more rediscovery across regions before removing the stale entry, while the AWS
-path (b) removes it directly, since a Lambda name is already unique within its region.
+two panels now show matching behaviour on a \texttt{NotFound} result --- both the GCP path (a) and
+the AWS path (b) attempt rediscovery across every region before removing the stale entry and
+aborting, now that AWS validation is no longer pinned to the region recorded in the stored ARN.
 
 Figure~\ref{fig:resolution-cascade-level2} (Appendix~\ref{app:cascade-sequences}) details Level~2,
-reached on a registry miss. The GCP resolver (a) searches across the project's regions (or a
-single region when the fully-qualified \texttt{"region/functionRef"} form is used), reporting more
-than one match as ambiguous; the AWS resolver (b) performs a single \texttt{GetFunction} call and,
-on this path only, does not distinguish a \texttt{NotFound} result from a permissions failure,
-both being treated as a miss (\S\ref{subsec:validation-error-semantics}).
+reached on a registry miss. Both resolvers now search across every region --- the GCP path (a)
+across the project's regions, the AWS path (b) across every region enabled for the account,
+discovered via EC2 \texttt{DescribeRegions} --- or a single region when the fully-qualified
+\texttt{"region/functionRef"} form is used, reporting more than one match as ambiguous. On both
+paths, a per-region permissions failure is not distinguished from a genuine absence in that region
+while at least one other region remains reachable, but if no match is found anywhere and at least
+one region was inaccessible, the resolver reports the inaccessible regions explicitly rather than
+treating the miss as a plain absence (\S\ref{subsec:validation-error-semantics}).
 
 Figure~\ref{fig:resolution-cascade-level3} (Appendix~\ref{app:cascade-sequences}) details Level~3,
 reached only when a \texttt{deploymentDescriptorPath} was supplied and the function was found on
@@ -231,19 +257,23 @@ failure is not rescued by supplying a \texttt{deploymentDescriptorPath}: ambigui
 data-consistency problem, not an absence one, so QuickFaaS is never invoked to paper over it.
 
 \paragraph{Stale registry entries.}
-If a registry entry points to a resource that no longer exists --- a Cloud Run service on GCP
-for which rediscovery also fails, or a deleted Lambda on AWS --- the stale entry is removed and
-deployment aborts with an explicit diagnostic, preventing the workflow from being deployed
-against a dead endpoint.
+If a registry entry points to a resource that no longer exists --- a Cloud Run service on GCP, or
+a Lambda on AWS, for which rediscovery across every region also fails --- the stale entry is
+removed and deployment aborts with an explicit diagnostic, preventing the workflow from being
+deployed against a dead endpoint.
 
 \paragraph{Insufficient permissions.}
 If the live lookup used to validate a registry hit is refused (an authorization failure rather
 than an absence), deployment aborts immediately with a diagnostic naming the function; on GCP no
 rediscovery is attempted, since a permissions failure gives no information about whether the
 service still exists. The same rule now applies on AWS, where a refused \texttt{GetFunction} is
-likewise distinguished from a genuine absence. The distinction is still \emph{not} drawn on the
-AWS miss path, where any error is treated as ``not present'' so that a first deployment can
-proceed (see \S\ref{subsec:store-internals}).
+likewise distinguished from a genuine absence. The distinction is drawn more coarsely on the
+miss-path region scan, on both providers: while the scan is running, a region where the lookup is
+refused is simply excluded from the candidate set, the same as a region where the function is
+absent, so a permissions gap in one region does not by itself stop a match found elsewhere; but if
+the scan ends with no match anywhere and at least one region could not be checked, it surfaces a
+diagnostic naming the inaccessible regions instead of silently concluding the function is absent
+everywhere (see \S\ref{subsec:store-internals}).
 
 \subsection{Registry Location}
 The registry file is stored in a writable location at runtime (e.g., the working directory or a configurable path provided to the deployer). This avoids attempting to write into packaged resources (which are typically read-only in production).
