@@ -23,7 +23,7 @@ flowchart 3 (Validation & Error Semantics).
 title Resolution Cascade — resolving an internalFunction call
 
 start
-:internalFunction("functionRef"[, "region"])\nintercepted at deploy time;
+:internalFunction("functionRef" | "region/functionRef")\nintercepted at deploy time;
 
 :Level 1 — Registry lookup\n(exact match, then suffix match "region/functionRef");
 if (registry hit?) then (yes)
