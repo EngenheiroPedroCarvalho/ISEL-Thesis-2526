@@ -13,7 +13,6 @@ import costaber.com.github.omniflow.internalfunction.WorkflowInternalFunctionRes
 import costaber.com.github.omniflow.model.*
 import costaber.com.github.omniflow.registry.FunctionRegistryBootstrapper
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import costaber.com.github.omniflow.resource.util.joinToStringNewLines
 import costaber.com.github.omniflow.traversor.DepthFirstNodeVisitorTraversor
 import costaber.com.github.omniflow.visitor.NodeContextVisitor

@@ -153,11 +153,15 @@ The registry file is manipulated exclusively through \texttt{FunctionRegistrySto
 exposes a small, deliberately narrow interface: \texttt{readAll()} parses the whole file into an
 ordered map of \texttt{functionRef} to \texttt{FunctionInvocationMetadata}; \texttt{tryResolveEntry()}
 implements the two-step lookup (exact match on \texttt{functionRef}, then suffix match on
-\texttt{"region/functionRef"}, raising if the suffix match is ambiguous); \texttt{put()} inserts or
-refreshes one entry; and \texttt{remove()} deletes a stale entry. Every mutating operation rewrites
-the top-level \texttt{updatedAt} timestamp. The store keeps no in-memory state between calls, so
-each of these operations re-reads and re-parses the file; the performance consequences of this
-choice, and the single-read mitigation, are analysed in Chapter~\ref{cha:evaluation}.
+\texttt{"region/functionRef"}, raising if the suffix match is ambiguous) by re-reading the file and
+delegating to its pure counterpart, \texttt{tryResolveEntryIn()}, which runs the same two-step
+lookup against an already-loaded map with no I/O of its own --- the same split \texttt{resolveUrl()}/
+\texttt{resolveUrlIn()} already had; \texttt{put()} inserts or refreshes one entry; and
+\texttt{remove()} deletes a stale entry. Every mutating operation rewrites the top-level
+\texttt{updatedAt} timestamp. The store itself keeps no in-memory state between calls, so
+\texttt{readAll()}/\texttt{tryResolveEntry()} re-read and re-parse the file on every call; the
+performance consequences of this choice, and the single-read mitigation built on
+\texttt{tryResolveEntryIn()}, are analysed in Chapter~\ref{cha:evaluation}.
 
 The two provider resolvers sit on top of this store and are now symmetric in shape, differing only
 in the provider-discovery calls that reflect the two clouds' invocation models.
@@ -200,12 +204,15 @@ successful discovery writes the metadata back through \texttt{put()} before the 
 injected into the call, so the registry converges toward a complete set of bindings as workflows
 are deployed.
 
-To keep resolution cheap when a workflow contains many internal calls,
-\texttt{Workflow\allowbreak Internal\allowbreak Call\allowbreak Endpoint\allowbreak Resolver} reads the registry once into a snapshot and resolves
-every call against that in-memory map, rather than re-reading the file per call. This is the
-optimisation quantified in Chapter~\ref{cha:evaluation}; as discussed there and in
-Chapter~\ref{cha:conclusions}, it has not yet been folded into the two provider resolvers, which
-still read per call.
+To keep resolution cheap when a workflow contains many internal calls, both provider resolvers
+read the registry once into a snapshot at the start of \texttt{resolve()} and resolve every call
+against that in-memory map, keeping it in sync with every subsequent \texttt{put()}/\texttt{remove()}
+so that two calls to the same function within one workflow still observe each other's writes,
+rather than re-reading the file per call. This is the optimisation quantified in
+Chapter~\ref{cha:evaluation} (Section~\ref{sec:eval-real-resolvers}), first demonstrated on a
+now-removed reference resolver (\S\ref{subsec:store-internals}) and since folded into
+\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} themselves.
 
 \subsection{Resolution Cascade Sequences}
 \label{subsec:cascade-sequences}
@@ -301,9 +308,16 @@ mirrored the \texttt{host}/\texttt{path} split of the \texttt{call} step but pro
 stored two loosely related string fragments per function and pushed the reconstruction of a full
 endpoint onto the resolver. It was superseded by a single structured record per function,
 \texttt{FunctionInvocationMetadata} (a \texttt{serviceName} plus a \texttt{url}), which the two
-production resolvers consume. The earlier classes were never deleted and survive only through their
-unit tests --- a visible archaeological layer of the design, dead on the live deployment path and
-noted as such in the critical assessment (Chapter~\ref{cha:conclusions}).
+production resolvers consume. \texttt{FunctionEndpointKeys} was simply deleted once nothing
+referenced it, but \texttt{Workflow\allowbreak Internal\allowbreak Call\allowbreak Endpoint\allowbreak Resolver} held something worth
+keeping first: the single-read registry optimization it demonstrated (Section~\ref{sec:eval-resolution})
+was propagated into \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}
+(Section~\ref{sec:eval-real-resolvers}), after which the now-redundant class was removed from the
+production code entirely. Its resolution logic survives only as a benchmark fixture,
+\texttt{OptimizedEndpointResolver}, kept because the local-resolution benchmark suite still relies
+on it as a pure, provider-agnostic reference implementation, deliberately decoupled from the
+live-validation step the real resolvers must perform against a cloud API.
 
 \paragraph{From provider-specific fields to a uniform endpoint.}
 Collapsing the endpoint into one \texttt{url} field was the change that made the AWS extension
@@ -320,8 +334,8 @@ a stored URL has drifted, and pruned when an entry becomes stale --- with every 
 top-level \texttt{updatedAt} field. In parallel, the resolution path itself was refined from
 re-reading the whole file on every lookup (\texttt{resolveUrl}) toward reading it once into a
 snapshot and resolving in memory (\texttt{readAll} + \texttt{resolveUrlIn}); the performance effect
-of that refinement, and the fact that it has not yet been propagated to the two production
-resolvers, are quantified in Chapter~\ref{cha:evaluation}.
+of that refinement, and its propagation into the two production resolvers, are quantified in
+Chapter~\ref{cha:evaluation}.
 
 \paragraph{From a trusted cache to a verified indirection.}
 The two production resolvers did not always treat a registry hit the same way.

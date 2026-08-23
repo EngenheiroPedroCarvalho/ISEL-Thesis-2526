@@ -229,29 +229,33 @@ from $\sim$41$\times$ at $R{=}10$ to $\sim$58$\times$ at $R{=}1000$ (Table~\ref{
 Experiments P10 and P11 measure the resolvers that actually run during deployment, one per
 provider: \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-p10}) and
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-p11}), with the
-registry always hitting ($R{=}F$). Both are dominated by $N$ and are almost indifferent to $F$
-($\sim$355\,$\mu$s/call on AWS; $\sim$7--8\% more on GCP due to the extra provider-specific glue,
-not the shared registry mechanism). Crucially, these classes still pay the full cost, growing in
-proportion to both the number of calls and the registry size,
-because each call goes through \texttt{FunctionRegistryStore.tryResolveEntry}, which re-reads
-the whole file: the single-read optimization demonstrated in P7 has not yet been applied to them.
-This is a documented, quantified optimization opportunity rather than an applied change.
-In both tables the per-call cost is flat in $F$ and rises linearly with $N$, and the GCP resolver
-(Table~\ref{tab:eval-p11}) is consistently a few percent dearer than the AWS one
-(Table~\ref{tab:eval-p10}).
+registry always hitting ($R{=}F$). Both now carry the single-read optimization demonstrated in
+P7--P9 (\S\ref{sec:eval-resolution}): each resolver reads the registry once into a snapshot per
+\texttt{resolve()} call and looks up every internal call against it
+(\texttt{FunctionRegistryStore.tryResolveEntryIn}) instead of re-reading the file per call. The
+result is the same shape as the already-optimized reference implementation: cost is dominated by
+$N$ and roughly flat in $F$, at magnitudes comparable to P8's optimized path rather than the
+naive, call-times-registry-size cost the unoptimized versions of these classes used to pay. The
+two providers land in the same broad range (a few tens to a few thousand microseconds depending on
+$N$), with no consistent directional gap between them once the registry-read cost is amortized
+--- what asymmetry remains is within the run-to-run noise of this evaluation's shared,
+non-dedicated machine (\S\ref{sec:eval-methodology}), most visible at $F{=}10,N{=}5$ in
+Table~\ref{tab:eval-p10} and $F{=}50,N{=}50$, both flagged by their own unusually wide error
+margins rather than reflecting a code effect.
 
 \begin{table}[htbp]
   \centering
   \caption{P10 --- AWS provider: resolution time ($\mu$s) of the real resolver
-  (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$.}
+  (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, after the
+  single-read optimization was propagated into it.}
   \label{tab:eval-p10}
   \begin{tabular}{lrrrrr}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
     \hline
-    1  & 356 & 1\,684 & 3\,338 & 17\,806 & 71\,825 \\
-    10 & 355 & 1\,738 & 3\,421 & 17\,509 & 69\,700 \\
-    50 & 383 & 1\,847 & 3\,732 & 22\,396 & 73\,603 \\
+    1  & 17 & 44  & 124 & 1\,240 & 3\,486 \\
+    10 & 19 & 171 & 85  & 424    & 1\,702 \\
+    50 & 52 & 48  & 98  & 1\,669 & 1\,889 \\
     \hline
   \end{tabular}
 \end{table}
@@ -259,15 +263,16 @@ In both tables the per-call cost is flat in $F$ and rises linearly with $N$, and
 \begin{table}[htbp]
   \centering
   \caption{P11 --- GCP provider: resolution time ($\mu$s) of the real resolver
-  (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$.}
+  (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, after
+  the single-read optimization was propagated into it.}
   \label{tab:eval-p11}
   \begin{tabular}{lrrrrr}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
     \hline
-    1  & 398 & 2\,205 & 3\,837 & 19\,908 & 76\,812 \\
-    10 & 395 & 1\,971 & 4\,436 & 19\,744 & 78\,525 \\
-    50 & 428 & 2\,118 & 4\,285 & 20\,811 & 83\,269 \\
+    1  & 20 & 47  & 83  & 353 & 1\,417 \\
+    10 & 47 & 105 & 213 & 963 & 2\,966 \\
+    50 & 31 & 61  & 99  & 402 & 1\,573 \\
     \hline
   \end{tabular}
 \end{table}
@@ -463,8 +468,9 @@ registry file until $R \approx 320$. Second, the single-read optimization elimin
 call-times-registry-size product, reducing resolution to a cost proportional only to the sum of
 the number of calls and the registry size, with a $\sim$200$\times$ speedup in the worst case
 (P7, P8, P9) --- a full \emph{identify (P3/P6) $\rightarrow$ fix $\rightarrow$ quantify (P7)} loop.
-Third, this optimization has not yet been propagated to the production resolvers (P10, P11), which
-still pay the full cost; doing so is a small, well-scoped change and is listed as future work.
+Third, this optimization has since been propagated to the production resolvers (P10, P11), which
+now show the same dominated-by-$N$, flat-in-$F$ shape as the optimized reference path rather than
+the call-times-registry-size cost they used to pay.
 Fourth, the AWS agnostic packaging layer adds negligible size (S1). Fifth, resolution cost tracks
 the number of internal calls rather than the workflow's total call count: external calls add only
 the shared tree-traversal cost, never a registry lookup (P15, P16). Sixth, neither nesting depth
@@ -475,9 +481,9 @@ is free in practice (P18, P19).
 \paragraph{Global framing.}
 All measured values lie between microseconds and, in the worst non-optimized write case,
 a few hundred milliseconds. Endpoint resolution is therefore not the bottleneck of an integrated
-deployment: the dominant cost is the actual cloud deployment (seconds). Once the single-read
-optimization is applied uniformly, the overhead of the unification is asymptotically linear and
-practically irrelevant in real operation.
+deployment: the dominant cost is the actual cloud deployment (seconds). With the single-read
+optimization now applied uniformly across both production resolvers, the overhead of the
+unification is asymptotically linear and practically irrelevant in real operation.
 
 \section{Threats to Validity}
 \label{sec:eval-threats}

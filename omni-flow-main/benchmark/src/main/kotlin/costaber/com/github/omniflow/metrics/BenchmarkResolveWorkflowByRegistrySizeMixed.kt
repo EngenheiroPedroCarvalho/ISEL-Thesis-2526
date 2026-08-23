@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -49,7 +48,7 @@ open class BenchmarkResolveWorkflowByRegistrySizeMixed {
     var r: Int = 0
 
     private lateinit var registryFile: Path
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
+    private lateinit var store: FunctionRegistryStore
     private lateinit var workflow: Workflow
 
     private val internalCallExtractor: (CallContext) -> String? =
@@ -58,7 +57,7 @@ open class BenchmarkResolveWorkflowByRegistrySizeMixed {
     @Setup(Level.Trial)
     fun setupWorkflow() {
         registryFile = Files.createTempFile("omniflow-bench-p16-registry", ".json")
-        val store = FunctionRegistryStore(registryFile)
+        store = FunctionRegistryStore(registryFile)
 
         // Registry padded to R entries; the workflow's internal calls reference only the first F.
         val functions = (0 until r).associate { idx ->
@@ -69,7 +68,6 @@ open class BenchmarkResolveWorkflowByRegistrySizeMixed {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         // FIXED_INTERNAL internal calls (round-robin over FIXED_FUNCTIONS) interleaved with
         // FIXED_EXTERNAL external calls.
@@ -84,7 +82,7 @@ open class BenchmarkResolveWorkflowByRegistrySizeMixed {
     /** Optimized resolution (single registry read, then per-call lookups) of a mixed I/E workflow. */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
-        blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
+        blackhole.consume(OptimizedEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
     companion object {

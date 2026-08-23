@@ -45,39 +45,45 @@ class WorkflowInternalFunctionResolver(
         else listOf(preferredRegion) + all.filterNot { it == preferredRegion }
     }
 
-    fun resolve(workflow: Workflow): Workflow =
-        workflow.copy(steps = workflow.steps.toList().map { resolveStep(it) })
+    fun resolve(workflow: Workflow): Workflow {
+        // Read the registry ONCE per workflow instead of once per internal call, then keep this
+        // snapshot in sync with every write (put/remove) so later calls in the same workflow see
+        // earlier ones' results without another file read. Turns resolution from O(N*M) (N calls,
+        // each re-reading the whole M-entry registry) into O(N+M).
+        val snapshot = registry.readAll().toMutableMap()
+        return workflow.copy(steps = workflow.steps.toList().map { resolveStep(it, snapshot) })
+    }
 
-    private fun resolveStep(step: Step): Step =
-        step.copy(context = resolveContext(step.context))
+    private fun resolveStep(step: Step, snapshot: MutableMap<String, FunctionInvocationMetadata>): Step =
+        step.copy(context = resolveContext(step.context, snapshot))
 
-    private fun resolveContext(ctx: StepContext): StepContext =
+    private fun resolveContext(ctx: StepContext, snapshot: MutableMap<String, FunctionInvocationMetadata>): StepContext =
         when (ctx){
-            is CallContext -> resolveCall(ctx)
+            is CallContext -> resolveCall(ctx, snapshot)
 
-            is BranchContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it) })
+            is BranchContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it, snapshot) })
 
-            is IterationRangeContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it) })
+            is IterationRangeContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it, snapshot) })
 
-            is IterationForEachContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it) })
+            is IterationForEachContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it, snapshot) })
 
-            is IterationContext -> IterationContext(ctx.value, ctx.steps.map { resolveStep(it) })
+            is IterationContext -> IterationContext(ctx.value, ctx.steps.map { resolveStep(it, snapshot) })
 
-            is ParallelBranchContext -> ctx.copy(branches = ctx.branches.map { b -> b.copy(steps = b.steps.map { resolveStep(it) }) })
+            is ParallelBranchContext -> ctx.copy(branches = ctx.branches.map { b -> b.copy(steps = b.steps.map { resolveStep(it, snapshot) }) })
 
-            is ParallelIterationContext -> ctx.copy(iterationContext = resolveIteration(ctx.iterationContext))
+            is ParallelIterationContext -> ctx.copy(iterationContext = resolveIteration(ctx.iterationContext, snapshot))
 
             else -> ctx
         }
 
-    private fun resolveIteration(itCtx: IterationContext): IterationContext =
+    private fun resolveIteration(itCtx: IterationContext, snapshot: MutableMap<String, FunctionInvocationMetadata>): IterationContext =
         when (itCtx) {
-            is IterationRangeContext -> itCtx.copy(steps = itCtx.steps.map { resolveStep(it) })
-            is IterationForEachContext -> itCtx.copy(steps = itCtx.steps.map { resolveStep(it) })
-            else -> IterationContext(itCtx.value, itCtx.steps.map { resolveStep(it) })
+            is IterationRangeContext -> itCtx.copy(steps = itCtx.steps.map { resolveStep(it, snapshot) })
+            is IterationForEachContext -> itCtx.copy(steps = itCtx.steps.map { resolveStep(it, snapshot) })
+            else -> IterationContext(itCtx.value, itCtx.steps.map { resolveStep(it, snapshot) })
         }
 
-    private fun resolveCall(call: CallContext): CallContext{
+    private fun resolveCall(call: CallContext, snapshot: MutableMap<String, FunctionInvocationMetadata>): CallContext{
         val internal = call.internalFunction ?: return call
 
         val functionRef = extractFunctionRef(internal)
@@ -88,7 +94,7 @@ class WorkflowInternalFunctionResolver(
                         "Remove host/path from this call step."
             )
         }
-        val resolvedUrl = resolveOrDiscoverInternal(functionRef, internal)
+        val resolvedUrl = resolveOrDiscoverInternal(functionRef, internal, snapshot)
 
         val (host, path) = splitUrl(resolvedUrl)
 
@@ -102,11 +108,15 @@ class WorkflowInternalFunctionResolver(
     private fun extractFunctionRef(internal: InternalFunction): String = internal.name
 
 
-    private fun resolveOrDiscoverInternal(functionRef: String, internal: InternalFunction): String{
+    private fun resolveOrDiscoverInternal(
+        functionRef: String,
+        internal: InternalFunction,
+        snapshot: MutableMap<String, FunctionInvocationMetadata>
+    ): String{
         //1) If registry has entry -> validate against Cloud Run get(serviceName)
         println("$BLUE  →$RESET Resolving internal function '$BOLD$functionRef$RESET'...")
         println("$BLUE  →$RESET Checking function-registry for '$functionRef'...")
-        val existing = registry.tryResolveEntry(functionRef)
+        val existing = registry.tryResolveEntryIn(functionRef, snapshot)
 
         if (existing != null) {
             val (key, meta) = existing
@@ -121,7 +131,9 @@ class WorkflowInternalFunctionResolver(
                 is CloudRunV2ServiceInspector.LookupResult.Found -> {
                     if(r.url != meta.url){
                         logger.warn{"Registry drift for '$key': updating URL"}
-                        registry.put(key, meta.copy(url = r.url))
+                        val updated = meta.copy(url = r.url)
+                        registry.put(key, updated)
+                        snapshot[key] = updated
                     }
                     r.url
                 }
@@ -131,6 +143,7 @@ class WorkflowInternalFunctionResolver(
                     val found = discoverServiceForRef(functionRef)
                     if (found.isEmpty()) {
                         registry.remove(key)
+                        snapshot.remove(key)
                         throw IllegalStateException(
                             "Internal function '$functionRef' exists in function-registry (key = '$key') " +
                                     "but Cloud Run service '${meta.serviceName}' does not exist (deleted). " +
@@ -138,7 +151,13 @@ class WorkflowInternalFunctionResolver(
                         )
                     }
                     val chosen = chooseSingleOrFail(functionRef, found)
-                    registry.put(key, FunctionInvocationMetadata(serviceName = chosen.serviceName, url = chosen.url))
+                    if (key != functionRef) {
+                        registry.remove(key)
+                        snapshot.remove(key)
+                    }
+                    val newMeta = FunctionInvocationMetadata(serviceName = chosen.serviceName, url = chosen.url)
+                    registry.put(functionRef, newMeta)
+                    snapshot[functionRef] = newMeta
                     chosen.url
                 }
 
@@ -169,6 +188,7 @@ class WorkflowInternalFunctionResolver(
             logger.info { "Function '$functionRef' not deployed. Triggering QuickFaaS deployment..." }
             val meta = internalFunctionDeployer.deployOrUpdate(functionRef, internal.deploymentDescriptorPath)
             registry.put(functionRef, meta)
+            snapshot[functionRef] = meta
             println("$GREEN  ✓$RESET Function '$BOLD$functionRef$RESET' deployed and registered → ${meta.url}")
             logger.info { "Function '$functionRef' deployed and registered (url=${meta.url})" }
             return meta.url
@@ -177,7 +197,9 @@ class WorkflowInternalFunctionResolver(
         val chosen = chooseSingleOrFail(functionRef, found)
 
         println("$GREEN  ✓$RESET Function '$BOLD$functionRef$RESET' found in Cloud Run (${chosen.region}) → ${chosen.url}")
-        registry.put(functionRef, FunctionInvocationMetadata(serviceName = chosen.serviceName, url = chosen.url))
+        val newMeta = FunctionInvocationMetadata(serviceName = chosen.serviceName, url = chosen.url)
+        registry.put(functionRef, newMeta)
+        snapshot[functionRef] = newMeta
         logger.info("Added '$functionRef' to function-registry (region=${chosen.region})")
         return chosen.url
     }
@@ -191,7 +213,7 @@ class WorkflowInternalFunctionResolver(
         val ref = functionRef.trim()
         if (ref.contains("/")){
             val region = ref.substringBefore("/").trim()
-            val serviceId = ref.substringBefore("/").trim()
+            val serviceId = ref.substringAfter("/").trim()
             if (region.isBlank() || serviceId.isBlank()) {
                 throw IllegalStateException("Invalid internal function reference '$functionRef'. Use 'region/service'.")
             }

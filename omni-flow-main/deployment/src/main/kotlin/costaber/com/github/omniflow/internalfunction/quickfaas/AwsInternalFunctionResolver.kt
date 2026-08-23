@@ -53,47 +53,57 @@ class AwsInternalFunctionResolver(
         else listOf(preferredRegion) + all.filterNot { it == preferredRegion }
     }
 
-    fun resolve(workflow: Workflow): Workflow =
-        workflow.copy(steps = workflow.steps.toList().map { resolveStep(it) })
+    fun resolve(workflow: Workflow): Workflow {
+        // Read the registry ONCE per workflow instead of once per internal call, then keep this
+        // snapshot in sync with every write (put/remove) so later calls in the same workflow see
+        // earlier ones' results without another file read. Turns resolution from O(N*M) (N calls,
+        // each re-reading the whole M-entry registry) into O(N+M).
+        val snapshot = registry.readAll().toMutableMap()
+        return workflow.copy(steps = workflow.steps.toList().map { resolveStep(it, snapshot) })
+    }
 
-    private fun resolveStep(step: Step): Step =
-        step.copy(context = resolveContext(step.context))
+    private fun resolveStep(step: Step, snapshot: MutableMap<String, FunctionInvocationMetadata>): Step =
+        step.copy(context = resolveContext(step.context, snapshot))
 
-    private fun resolveContext(ctx: StepContext): StepContext = when (ctx) {
-        is CallContext -> resolveCall(ctx)
-        is BranchContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it) })
-        is IterationRangeContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it) })
-        is IterationForEachContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it) })
-        is IterationContext -> IterationContext(ctx.value, ctx.steps.map { resolveStep(it) })
+    private fun resolveContext(ctx: StepContext, snapshot: MutableMap<String, FunctionInvocationMetadata>): StepContext = when (ctx) {
+        is CallContext -> resolveCall(ctx, snapshot)
+        is BranchContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it, snapshot) })
+        is IterationRangeContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it, snapshot) })
+        is IterationForEachContext -> ctx.copy(steps = ctx.steps.map { resolveStep(it, snapshot) })
+        is IterationContext -> IterationContext(ctx.value, ctx.steps.map { resolveStep(it, snapshot) })
         is ParallelBranchContext -> ctx.copy(branches = ctx.branches.map { b ->
-            b.copy(steps = b.steps.map { resolveStep(it) })
+            b.copy(steps = b.steps.map { resolveStep(it, snapshot) })
         })
-        is ParallelIterationContext -> ctx.copy(iterationContext = resolveIteration(ctx.iterationContext))
+        is ParallelIterationContext -> ctx.copy(iterationContext = resolveIteration(ctx.iterationContext, snapshot))
         else -> ctx
     }
 
-    private fun resolveIteration(itCtx: IterationContext): IterationContext = when (itCtx) {
-        is IterationRangeContext -> itCtx.copy(steps = itCtx.steps.map { resolveStep(it) })
-        is IterationForEachContext -> itCtx.copy(steps = itCtx.steps.map { resolveStep(it) })
-        else -> IterationContext(itCtx.value, itCtx.steps.map { resolveStep(it) })
+    private fun resolveIteration(itCtx: IterationContext, snapshot: MutableMap<String, FunctionInvocationMetadata>): IterationContext = when (itCtx) {
+        is IterationRangeContext -> itCtx.copy(steps = itCtx.steps.map { resolveStep(it, snapshot) })
+        is IterationForEachContext -> itCtx.copy(steps = itCtx.steps.map { resolveStep(it, snapshot) })
+        else -> IterationContext(itCtx.value, itCtx.steps.map { resolveStep(it, snapshot) })
     }
 
-    private fun resolveCall(call: CallContext): CallContext {
+    private fun resolveCall(call: CallContext, snapshot: MutableMap<String, FunctionInvocationMetadata>): CallContext {
         val internal = call.internalFunction ?: return call
         if (call.host.isNotBlank() || call.path.isNotBlank()) {
             throw IllegalStateException(
                 "Invalid workflow: internalFunction('${internal.name}') cannot be combined with host/path."
             )
         }
-        val arn = resolveOrDeploy(internal.name, internal)
+        val arn = resolveOrDeploy(internal.name, internal, snapshot)
         return call.copy(host = "lambda://$arn", path = "", internalFunction = null)
     }
 
-    private fun resolveOrDeploy(functionRef: String, internal: InternalFunction): String {
+    private fun resolveOrDeploy(
+        functionRef: String,
+        internal: InternalFunction,
+        snapshot: MutableMap<String, FunctionInvocationMetadata>
+    ): String {
         println("$BLUE  →$RESET Resolving Lambda '$BOLD$functionRef$RESET'...")
 
         // 1. Check registry first, then validate the binding against the live Lambda
-        val existing = registry.tryResolveEntry(functionRef)
+        val existing = registry.tryResolveEntryIn(functionRef, snapshot)
         if (existing != null) {
             val (key, meta) = existing
             val knownRegion = regionFromArn(meta.url)
@@ -104,7 +114,9 @@ class AwsInternalFunctionResolver(
                     if (liveResult.arn != meta.url) {
                         println("$YELLOW  !$RESET Registry drift for '$BOLD$key$RESET' — updating ARN → ${liveResult.arn}")
                         logger.warn { "Registry drift for '$key': updating ARN" }
-                        registry.put(key, meta.copy(url = liveResult.arn))
+                        val updated = meta.copy(url = liveResult.arn)
+                        registry.put(key, updated)
+                        snapshot[key] = updated
                     } else {
                         println("$GREEN  ✓$RESET Lambda '$functionRef' found in registry → ${liveResult.arn}")
                         logger.info { "Registry hit for Lambda '$functionRef' → ${liveResult.arn}" }
@@ -124,6 +136,7 @@ class AwsInternalFunctionResolver(
                     val found = discoverFunctionForRef(functionRef)
                     if (found.isEmpty()) {
                         registry.remove(key)
+                        snapshot.remove(key)
                         throw IllegalStateException(
                             "Internal function '$functionRef' exists in function-registry (key = '$key') " +
                                     "but Lambda '${meta.serviceName}' does not exist in AWS (deleted). " +
@@ -131,7 +144,13 @@ class AwsInternalFunctionResolver(
                         )
                     }
                     val chosen = chooseSingleOrFail(functionRef, found)
-                    registry.put(key, FunctionInvocationMetadata(serviceName = chosen.functionName, url = chosen.arn))
+                    if (key != functionRef) {
+                        registry.remove(key)
+                        snapshot.remove(key)
+                    }
+                    val newMeta = FunctionInvocationMetadata(serviceName = chosen.functionName, url = chosen.arn)
+                    registry.put(functionRef, newMeta)
+                    snapshot[functionRef] = newMeta
                     return chosen.arn
                 }
             }
@@ -157,13 +176,16 @@ class AwsInternalFunctionResolver(
             logger.info { "Lambda '$functionRef' not deployed. Triggering QuickFaaS deployment..." }
             val meta = internalFunctionDeployer.deployOrUpdate(functionRef, internal.deploymentDescriptorPath)
             registry.put(functionRef, meta)
+            snapshot[functionRef] = meta
             println("$GREEN  ✓$RESET Lambda '$BOLD$functionRef$RESET' deployed → ${meta.url}")
             return meta.url
         }
 
         val chosen = chooseSingleOrFail(functionRef, found)
         println("$GREEN  ✓$RESET Lambda '$BOLD$functionRef$RESET' found in AWS (${chosen.region}) → ${chosen.arn}")
-        registry.put(functionRef, FunctionInvocationMetadata(serviceName = chosen.functionName, url = chosen.arn))
+        val newMeta = FunctionInvocationMetadata(serviceName = chosen.functionName, url = chosen.arn)
+        registry.put(functionRef, newMeta)
+        snapshot[functionRef] = newMeta
         logger.info { "Added '$functionRef' to function-registry (region=${chosen.region})" }
         return chosen.arn
     }

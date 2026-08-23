@@ -1,8 +1,8 @@
-package costaber.com.github.omniflow.internalfunction.quickfaas
+package costaber.com.github.omniflow.internalfunction
 
 import costaber.com.github.omniflow.builder.ResultType
-import costaber.com.github.omniflow.cloud.provider.amazon.service.AwsRegionsLister
-import costaber.com.github.omniflow.cloud.provider.amazon.service.LambdaFunctionInspector
+import costaber.com.github.omniflow.cloud.provider.google.service.CloudRunLocationsV1RestClient
+import costaber.com.github.omniflow.cloud.provider.google.service.CloudRunV2ServiceInspector
 import costaber.com.github.omniflow.model.AssignContext
 import costaber.com.github.omniflow.model.BranchContext
 import costaber.com.github.omniflow.model.CallContext
@@ -22,6 +22,8 @@ import costaber.com.github.omniflow.model.VariableInitialization
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
+import io.mockk.every
+import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import org.junit.jupiter.api.Test
@@ -36,39 +38,20 @@ import strikt.assertions.isNull
 import java.nio.file.Path
 
 /**
- * Unit tests for [AwsInternalFunctionResolver].
+ * Unit tests for [WorkflowInternalFunctionResolver].
  *
- * A registry hit is validated against the live Lambda, and a registry miss is searched for across
- * every AWS region, so the resolver reaches AWS through the [LambdaFunctionInspector] and
- * [AwsRegionsLister] seams. These tests inject [FakeInspector] and [FakeRegionsLister] in their
- * place, so every assertion exercises pure local logic only: entries are pre-seeded into a
- * @TempDir registry file, and there are no AWS SDK calls, no HTTP and no network.
+ * A registry hit is validated against the live Cloud Run service (unless the stored URL is a
+ * 1st-gen Cloud Function, which short-circuits before any Cloud Run call), and a registry miss is
+ * searched for across every Cloud Run location, so the resolver reaches GCP through the
+ * [CloudRunV2ServiceInspector] and [CloudRunLocationsV1RestClient] seams. Both are concrete
+ * classes (not interfaces), so they are mocked with MockK here rather than hand-rolled fakes; every
+ * assertion still exercises pure local logic only: entries are pre-seeded into a @TempDir registry
+ * file, and there are no Cloud Run/HTTP calls, no network.
  */
-internal class AwsInternalFunctionResolverTest {
+internal class WorkflowInternalFunctionResolverTest {
 
     @TempDir
     lateinit var tempDir: Path
-
-    /** Local stand-in for the Lambda API: answers from a canned (region, functionName) map. */
-    private class FakeInspector(
-        private val results: Map<Pair<String, String>, LambdaFunctionInspector.LookupResult> = emptyMap()
-    ) : LambdaFunctionInspector {
-        override fun lookup(region: String, functionName: String): LambdaFunctionInspector.LookupResult =
-            results[region to functionName] ?: results[ANY_REGION to functionName] ?: LambdaFunctionInspector.LookupResult.NotFound
-
-        companion object {
-            private const val ANY_REGION = "*"
-
-            /** Seeds results that match regardless of which region is queried. */
-            fun byName(byName: Map<String, LambdaFunctionInspector.LookupResult>): FakeInspector =
-                FakeInspector(byName.mapKeys { (name, _) -> ANY_REGION to name })
-        }
-    }
-
-    /** Local stand-in for AWS region discovery: returns a fixed, injected region list. */
-    private class FakeRegionsLister(private val regions: List<String>) : AwsRegionsLister {
-        override fun listRegions(bootstrapRegion: String): List<String> = regions
-    }
 
     private fun storeWith(vararg entries: Pair<String, FunctionInvocationMetadata>): FunctionRegistryStore {
         val store = FunctionRegistryStore(tempDir.resolve("function-registry.json"))
@@ -76,20 +59,29 @@ internal class AwsInternalFunctionResolverTest {
         return store
     }
 
+    private fun locationsClient(vararg regions: String): CloudRunLocationsV1RestClient {
+        val client = mockk<CloudRunLocationsV1RestClient>()
+        every { client.listProjectLocations(any()) } returns regions.toList()
+        return client
+    }
+
     /** Inspector that reports exactly what the registry already holds, i.e. no drift. */
-    private fun noDriftInspector(vararg entries: Pair<String, FunctionInvocationMetadata>) =
-        FakeInspector.byName(
-            entries.associate { (_, meta) ->
-                meta.serviceName to LambdaFunctionInspector.LookupResult.Found(meta.serviceName, meta.url)
-            }
-        )
+    private fun noDriftInspector(vararg entries: Pair<String, FunctionInvocationMetadata>): CloudRunV2ServiceInspector {
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        entries.forEach { (_, meta) ->
+            every { inspector.lookupByServiceName(meta.serviceName) } returns
+                CloudRunV2ServiceInspector.LookupResult.Found(meta.serviceName, meta.url)
+        }
+        return inspector
+    }
 
     private fun resolverWith(vararg entries: Pair<String, FunctionInvocationMetadata>) =
-        AwsInternalFunctionResolver(
+        WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = storeWith(*entries),
             inspector = noDriftInspector(*entries),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1"))
+            locationsClient = locationsClient("eu-west-1")
         )
 
     private fun externalCall(result: String = "callResult"): CallContext = CallContext(
@@ -132,7 +124,7 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `workflow without internal functions is unchanged in content`() {
-        val resolver = resolverWith("seeded" to FunctionInvocationMetadata("seeded", "arn:aws:lambda:eu-west-1:1:function:seeded"))
+        val resolver = resolverWith("seeded" to FunctionInvocationMetadata("seeded", "https://seeded-abc-ew.a.run.app"))
         val external = externalCall()
         val assign = AssignContext(
             variables = listOf<VariableInitialization<*>>(
@@ -154,11 +146,11 @@ internal class AwsInternalFunctionResolverTest {
     }
 
     @Test
-    fun `internal call is resolved from registry to lambda host`() {
+    fun `internal call is resolved from registry to Cloud Run host`() {
         val resolver = resolverWith(
             "greeting-fn" to FunctionInvocationMetadata(
                 serviceName = "greeting-fn",
-                url = "arn:aws:lambda:eu-west-1:123456789012:function:greeting-fn"
+                url = "https://greeting-fn-abc123-ew.a.run.app"
             )
         )
         val original = workflow(step("callStep", internalCall("greeting-fn")))
@@ -166,7 +158,7 @@ internal class AwsInternalFunctionResolverTest {
         val resolved = resolver.resolve(original)
 
         expectThat(resolved.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-west-1:123456789012:function:greeting-fn")
+            get { host }.isEqualTo("https://greeting-fn-abc123-ew.a.run.app")
             get { path }.isEqualTo("")
             get { internalFunction }.isNull()
             // Other fields are preserved.
@@ -177,11 +169,38 @@ internal class AwsInternalFunctionResolverTest {
     }
 
     @Test
+    fun `1st-gen Cloud Function registry hit skips Cloud Run validation`() {
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        // No `every {}` stub registered for lookupByServiceName -> calling it would throw a
+        // MockKException; a passing test proves the short-circuit avoided calling it at all.
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
+            preferredRegion = "eu-west-1",
+            registry = storeWith(
+                "legacy-fn" to FunctionInvocationMetadata(
+                    "legacy-fn", "https://us-central1-proj.cloudfunctions.net/legacy-fn"
+                )
+            ),
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1")
+        )
+        val original = workflow(step("callStep", internalCall("legacy-fn")))
+
+        val resolved = resolver.resolve(original)
+
+        expectThat(resolved.steps.first().context).isA<CallContext>().and {
+            get { host }.isEqualTo("https://us-central1-proj.cloudfunctions.net")
+            get { path }.isEqualTo("/legacy-fn")
+        }
+        verify(exactly = 0) { inspector.lookupByServiceName(any()) }
+    }
+
+    @Test
     fun `internal call resolved through regional suffix match`() {
         val resolver = resolverWith(
             "eu-west-1/greeting-fn" to FunctionInvocationMetadata(
                 serviceName = "greeting-fn",
-                url = "arn:aws:lambda:eu-west-1:1:function:greeting-fn"
+                url = "https://greeting-fn-abc-ew.a.run.app"
             )
         )
         val original = workflow(step("callStep", internalCall("greeting-fn")))
@@ -189,14 +208,14 @@ internal class AwsInternalFunctionResolverTest {
         val resolved = resolver.resolve(original)
 
         expectThat(resolved.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-west-1:1:function:greeting-fn")
+            get { host }.isEqualTo("https://greeting-fn-abc-ew.a.run.app")
             get { internalFunction }.isNull()
         }
     }
 
     @Test
     fun `internal call inside branch is resolved`() {
-        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
         val branch = BranchContext(name = "b1", steps = listOf(step("inner", internalCall("fn"))))
         val original = workflow(step("branchStep", branch))
 
@@ -204,14 +223,14 @@ internal class AwsInternalFunctionResolverTest {
 
         val branchCtx = resolved.steps.first().context as BranchContext
         expectThat(branchCtx.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-west-1:1:function:fn")
+            get { host }.isEqualTo("https://fn-ew.a.run.app")
             get { internalFunction }.isNull()
         }
     }
 
     @Test
     fun `internal call inside iteration range is resolved`() {
-        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
         val iteration = IterationRangeContext(value = "i", steps = listOf(step("inner", internalCall("fn"))), range = Range(1, 5))
         val original = workflow(step("iterStep", iteration))
 
@@ -220,14 +239,14 @@ internal class AwsInternalFunctionResolverTest {
         val iterCtx = resolved.steps.first().context as IterationRangeContext
         expectThat(iterCtx.range).isEqualTo(Range(1, 5))
         expectThat(iterCtx.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-west-1:1:function:fn")
+            get { host }.isEqualTo("https://fn-ew.a.run.app")
             get { internalFunction }.isNull()
         }
     }
 
     @Test
     fun `internal call inside iteration forEach is resolved`() {
-        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
         val iteration = IterationForEachContext(
             value = "i",
             steps = listOf(step("inner", internalCall("fn"))),
@@ -240,14 +259,14 @@ internal class AwsInternalFunctionResolverTest {
         val iterCtx = resolved.steps.first().context as IterationForEachContext
         expectThat(iterCtx.forEachVariable.name).isEqualTo("items")
         expectThat(iterCtx.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-west-1:1:function:fn")
+            get { host }.isEqualTo("https://fn-ew.a.run.app")
             get { internalFunction }.isNull()
         }
     }
 
     @Test
     fun `internal call inside parallel branches is resolved`() {
-        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
         val parallel = ParallelBranchContext(
             branches = listOf(BranchContext(name = "b1", steps = listOf(step("inner", internalCall("fn")))))
         )
@@ -257,14 +276,14 @@ internal class AwsInternalFunctionResolverTest {
 
         val parCtx = resolved.steps.first().context as ParallelBranchContext
         expectThat(parCtx.branches.first().steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-west-1:1:function:fn")
+            get { host }.isEqualTo("https://fn-ew.a.run.app")
             get { internalFunction }.isNull()
         }
     }
 
     @Test
     fun `internal call inside parallel iteration is resolved`() {
-        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
         val parallel = ParallelIterationContext(
             iterationContext = IterationForEachContext(
                 value = "i",
@@ -278,14 +297,14 @@ internal class AwsInternalFunctionResolverTest {
 
         val parCtx = resolved.steps.first().context as ParallelIterationContext
         expectThat(parCtx.iterationContext.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-west-1:1:function:fn")
+            get { host }.isEqualTo("https://fn-ew.a.run.app")
             get { internalFunction }.isNull()
         }
     }
 
     @Test
     fun `external call keeps its host and path`() {
-        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
+        val resolver = resolverWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
         val external = externalCall()
         val original = workflow(step("callStep", external))
 
@@ -295,35 +314,41 @@ internal class AwsInternalFunctionResolverTest {
     }
 
     @Test
-    fun `drifted ARN is refreshed in the registry and used`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn-stale"))
-        val resolver = AwsInternalFunctionResolver(
+    fun `drifted URL is refreshed in the registry and used`() {
+        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "https://fn-stale-ew.a.run.app"))
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookupByServiceName("fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Found("fn", "https://fn-current-ew.a.run.app")
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = store,
-            inspector = FakeInspector.byName(
-                mapOf("fn" to LambdaFunctionInspector.LookupResult.Found("fn", "arn:aws:lambda:eu-west-1:1:function:fn-current"))
-            ),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1"))
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1")
         )
         val original = workflow(step("callStep", internalCall("fn")))
 
         val resolved = resolver.resolve(original)
 
         expectThat(resolved.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-west-1:1:function:fn-current")
+            get { host }.isEqualTo("https://fn-current-ew.a.run.app")
             get { internalFunction }.isNull()
         }
-        expectThat(store.tryResolveEntry("fn")?.second?.url).isEqualTo("arn:aws:lambda:eu-west-1:1:function:fn-current")
+        expectThat(store.tryResolveEntry("fn")?.second?.url).isEqualTo("https://fn-current-ew.a.run.app")
     }
 
     @Test
-    fun `missing lambda removes the stale entry and aborts`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
-        val resolver = AwsInternalFunctionResolver(
+    fun `missing Cloud Run service removes the stale entry and aborts`() {
+        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookupByServiceName("fn") } returns CloudRunV2ServiceInspector.LookupResult.NotFound
+        every { inspector.lookup(any(), any(), any()) } returns CloudRunV2ServiceInspector.LookupResult.NotFound
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = store,
-            inspector = FakeInspector(),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1"))
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1")
         )
         val original = workflow(step("callStep", internalCall("fn")))
 
@@ -333,120 +358,123 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `permission failure aborts instead of being treated as a miss`() {
-        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
-        val resolver = AwsInternalFunctionResolver(
+        val store = storeWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookupByServiceName("fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Forbidden("access denied")
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = store,
-            inspector = FakeInspector.byName(
-                mapOf("fn" to LambdaFunctionInspector.LookupResult.Forbidden("access denied"))
-            ),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1"))
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1")
         )
         val original = workflow(step("callStep", internalCall("fn")))
 
         expectThrows<IllegalStateException> { resolver.resolve(original) }
         // The entry is a valid binding that could not be checked, so it must survive.
-        expectThat(store.tryResolveEntry("fn")?.second?.url).isEqualTo("arn:aws:lambda:eu-west-1:1:function:fn")
+        expectThat(store.tryResolveEntry("fn")?.second?.url).isEqualTo("https://fn-ew.a.run.app")
     }
 
     @Test
     fun `function found only in a non-preferred region is discovered and registered`() {
         val store = storeWith()
-        val resolver = AwsInternalFunctionResolver(
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookup("proj", "eu-west-1", "fn") } returns CloudRunV2ServiceInspector.LookupResult.NotFound
+        every { inspector.lookup("proj", "eu-central-1", "fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Found("fn", "https://fn-ec.a.run.app")
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = store,
-            inspector = FakeInspector(
-                mapOf(
-                    ("eu-west-1" to "fn") to LambdaFunctionInspector.LookupResult.NotFound,
-                    ("eu-central-1" to "fn") to LambdaFunctionInspector.LookupResult.Found(
-                        "fn", "arn:aws:lambda:eu-central-1:1:function:fn"
-                    )
-                )
-            ),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1", "eu-central-1"))
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1", "eu-central-1")
         )
         val original = workflow(step("callStep", internalCall("fn")))
 
         val resolved = resolver.resolve(original)
 
         expectThat(resolved.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-central-1:1:function:fn")
+            get { host }.isEqualTo("https://fn-ec.a.run.app")
             get { internalFunction }.isNull()
         }
-        expectThat(store.tryResolveEntry("fn")?.second?.url).isEqualTo("arn:aws:lambda:eu-central-1:1:function:fn")
+        expectThat(store.tryResolveEntry("fn")?.second?.url).isEqualTo("https://fn-ec.a.run.app")
     }
 
     @Test
     fun `function found in multiple regions is ambiguous`() {
         val store = storeWith()
-        val resolver = AwsInternalFunctionResolver(
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookup("proj", "eu-west-1", "fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Found("fn", "https://fn-ew.a.run.app")
+        every { inspector.lookup("proj", "eu-central-1", "fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Found("fn", "https://fn-ec.a.run.app")
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = store,
-            inspector = FakeInspector(
-                mapOf(
-                    ("eu-west-1" to "fn") to LambdaFunctionInspector.LookupResult.Found(
-                        "fn", "arn:aws:lambda:eu-west-1:1:function:fn"
-                    ),
-                    ("eu-central-1" to "fn") to LambdaFunctionInspector.LookupResult.Found(
-                        "fn", "arn:aws:lambda:eu-central-1:1:function:fn"
-                    )
-                )
-            ),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1", "eu-central-1"))
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1", "eu-central-1")
         )
         val original = workflow(step("callStep", internalCall("fn")))
 
         val thrown = expectThrows<IllegalStateException> { resolver.resolve(original) }
         thrown.get { message }.isEqualTo(
-            "Internal function 'fn' exists in multiple AWS regions: eu-west-1, eu-central-1. " +
+            "Internal function 'fn' exists in multiple Cloud Run regions: eu-west-1, eu-central-1. " +
                     "Disambiguate using internalFunction(\"<region>/fn\")"
         )
     }
 
     @Test
-    fun `explicit region-slash-name reference bypasses scanning`() {
+    fun `explicit region-slash-service reference bypasses scanning`() {
+        // Regression test for a region/serviceId parsing bug: discoverServiceForRef used to read
+        // BOTH region and serviceId via substringBefore("/"), so a qualified ref looked itself up
+        // under the region's name instead of the service's. With the fix, "eu-central-1/fn" must
+        // resolve to serviceId "fn" in region "eu-central-1" - stubbing only that exact call means
+        // the old bug (looking up serviceId "eu-central-1") would hit an unstubbed MockK call and
+        // fail the test.
         val store = storeWith()
-        val resolver = AwsInternalFunctionResolver(
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookup("proj", "eu-central-1", "fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Found("fn", "https://fn-ec.a.run.app")
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = null,
             registry = store,
-            inspector = FakeInspector(
-                mapOf(
-                    ("eu-central-1" to "fn") to LambdaFunctionInspector.LookupResult.Found(
-                        "fn", "arn:aws:lambda:eu-central-1:1:function:fn"
-                    )
-                )
-            ),
-            regionsLister = FakeRegionsLister(emptyList())
+            inspector = inspector,
+            locationsClient = locationsClient()
         )
         val original = workflow(step("callStep", internalCall("eu-central-1/fn")))
 
         val resolved = resolver.resolve(original)
 
         expectThat(resolved.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-central-1:1:function:fn")
+            get { host }.isEqualTo("https://fn-ec.a.run.app")
             get { internalFunction }.isNull()
         }
+        verify { inspector.lookup("proj", "eu-central-1", "fn") }
     }
 
     @Test
     fun `all candidate regions forbidden and nothing found raises a distinct error`() {
         val store = storeWith()
-        val resolver = AwsInternalFunctionResolver(
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookup("proj", "eu-west-1", "fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Forbidden("access denied")
+        every { inspector.lookup("proj", "eu-central-1", "fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Forbidden("access denied")
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = store,
-            inspector = FakeInspector(
-                mapOf(
-                    ("eu-west-1" to "fn") to LambdaFunctionInspector.LookupResult.Forbidden("access denied"),
-                    ("eu-central-1" to "fn") to LambdaFunctionInspector.LookupResult.Forbidden("access denied")
-                )
-            ),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1", "eu-central-1"))
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1", "eu-central-1")
         )
         val original = workflow(step("callStep", internalCall("fn")))
 
         val thrown = expectThrows<IllegalStateException> { resolver.resolve(original) }
         thrown.get { message }.isEqualTo(
-            "Internal function 'fn' is not in function-registry and could not be confirmed in AWS Lambda. " +
+            "Internal function 'fn' is not in function-registry and could not be confirmed in Cloud Run. " +
                     "Some regions were not accessible: eu-west-1, eu-central-1. " +
                     "Tip: specify the region explicitly: internalFunction(\"<region>/fn\")."
         )
@@ -454,14 +482,14 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `registry is read once per workflow regardless of the number of internal calls`() {
-        val store = spyk(
-            storeWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn"))
-        )
-        val resolver = AwsInternalFunctionResolver(
+        val store = spyk(storeWith("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app")))
+        val inspector = noDriftInspector("fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = store,
-            inspector = noDriftInspector("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn")),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1"))
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1")
         )
         val original = workflow(
             step("call1", internalCall("fn")),
@@ -476,28 +504,25 @@ internal class AwsInternalFunctionResolverTest {
 
     @Test
     fun `suffix-matched stale entry rediscovered in a different region replaces the key`() {
-        val store = storeWith(
-            "eu-west-1/fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn")
-        )
-        val resolver = AwsInternalFunctionResolver(
+        val store = storeWith("eu-west-1/fn" to FunctionInvocationMetadata("fn", "https://fn-ew.a.run.app"))
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookupByServiceName("fn") } returns CloudRunV2ServiceInspector.LookupResult.NotFound
+        every { inspector.lookup("proj", "eu-west-1", "fn") } returns CloudRunV2ServiceInspector.LookupResult.NotFound
+        every { inspector.lookup("proj", "eu-central-1", "fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Found("fn", "https://fn-ec.a.run.app")
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = store,
-            inspector = FakeInspector(
-                mapOf(
-                    ("eu-west-1" to "fn") to LambdaFunctionInspector.LookupResult.NotFound,
-                    ("eu-central-1" to "fn") to LambdaFunctionInspector.LookupResult.Found(
-                        "fn", "arn:aws:lambda:eu-central-1:1:function:fn"
-                    )
-                )
-            ),
-            regionsLister = FakeRegionsLister(listOf("eu-west-1", "eu-central-1"))
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1", "eu-central-1")
         )
         val original = workflow(step("callStep", internalCall("fn")))
 
         val resolved = resolver.resolve(original)
 
         expectThat(resolved.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("lambda://arn:aws:lambda:eu-central-1:1:function:fn")
+            get { host }.isEqualTo("https://fn-ec.a.run.app")
             get { internalFunction }.isNull()
         }
         // The stale "eu-west-1/fn" key (now pointing at the wrong region) is gone, replaced by
