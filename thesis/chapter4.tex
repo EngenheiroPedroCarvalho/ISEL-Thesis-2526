@@ -152,11 +152,11 @@ before the provider-specific workflow artifact is rendered.
 The registry file is manipulated exclusively through \texttt{FunctionRegistryStore}, which
 exposes a small, deliberately narrow interface: \texttt{readAll()} parses the whole file into an
 ordered map of \texttt{functionRef} to \texttt{FunctionInvocationMetadata}; \texttt{tryResolveEntry()}
-implements the two-step lookup (exact match on \texttt{functionRef}, then suffix match on
-\texttt{"region/functionRef"}, raising if the suffix match is ambiguous) by re-reading the file and
-delegating to its pure counterpart, \texttt{tryResolveEntryIn()}, which runs the same two-step
-lookup against an already-loaded map with no I/O of its own --- the same split \texttt{resolveUrl()}/
-\texttt{resolveUrlIn()} already had; \texttt{put()} inserts or refreshes one entry; and
+re-reads the file via \texttt{readAll()} and delegates the two-step lookup (exact match on
+\texttt{functionRef}, then suffix match on \texttt{"region/functionRef"}, raising if the suffix
+match is ambiguous) entirely to its pure counterpart, \texttt{tryResolveEntryIn()}, which performs
+that lookup against an already-loaded map with no I/O of its own --- the same split
+\texttt{resolveUrl()}/\texttt{resolveUrlIn()} already had; \texttt{put()} inserts or refreshes one entry; and
 \texttt{remove()} deletes a stale entry. Every mutating operation rewrites the top-level
 \texttt{updatedAt} timestamp. The store itself keeps no in-memory state between calls, so
 \texttt{readAll()}/\texttt{tryResolveEntry()} re-read and re-parse the file on every call; the
