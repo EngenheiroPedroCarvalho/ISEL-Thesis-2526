@@ -15,8 +15,9 @@ DSL that renders and deploys workflows to AWS Step Functions and GCP Workflows) 
 
 The document uses the `iselthesis` LaTeX class (template v4.x).
 
-**This folder is not a git repository.** Edits cannot be undone. Prefer small `Edit`s over
-rewriting whole files, and never delete or overwrite files without asking.
+This folder is a git repository (branch `main`, no remote yet). Commit only when the user asks.
+Prefer small `Edit`s over rewriting whole files, and never delete files without asking. Build
+output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` are git-ignored.
 
 ## Where things are
 

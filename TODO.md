@@ -135,4 +135,5 @@ quoted phrases.
 
 ## 7. Housekeeping
 
-- [ ] Put this thesis folder under git (it has no version control).
+- [x] Put this thesis folder under git (`main`, initial commit `a225e86`).
+- [ ] Add a private remote (for example on GitHub) so the thesis is backed up off this machine.
