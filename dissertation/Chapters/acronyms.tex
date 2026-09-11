@@ -32,5 +32,7 @@
 \newacronym{yaml}{YAML}{YAML Ain't Markup Language}
 
 % The text writes acronyms as plain text, not with \gls, so add every entry to the list
-% explicitly; glsignore drops the page number the list would otherwise show.
-\AtBeginDocument{\glsaddall[types={\acronymtype},format=glsignore]}
+% explicitly; glsignore drops the page number the list would otherwise show. This runs at the
+% end of the document: at the start, its write to the .aux file produced a blank page before
+% the cover.
+\AtEndDocument{\glsaddall[types={\acronymtype},format=glsignore]}
