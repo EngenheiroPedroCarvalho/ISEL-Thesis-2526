@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-Guidance for AI agents working on this MSc dissertation. Open work is tracked in `TODO.md`.
+Guidance for AI agents working on this MSc dissertation. Open work (thesis and code) is tracked in
+`../TODO.md`. Code-level guidance, including the resolution behaviour the thesis must match, is in
+`../CLAUDE.md`, which Claude Code also loads when you work here.
 
 ## What this is
 
@@ -57,7 +59,9 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 ## Related code (the source of truth for technical claims)
 
 The code is in the same repository, one level up (`..` is
-`/Users/pedrocarvalho/IdeaProjects/ISEL-Thesis-2526`, with its own `CLAUDE.md`):
+`/Users/pedrocarvalho/IdeaProjects/ISEL-Thesis-2526`). `../CLAUDE.md` describes its packages, how
+the resolution cascade behaves (the facts the thesis text must stay consistent with), and how to
+run its tests, including the `JAVA_HOME` workaround for this Mac's terminal.
 
 - `../omni-flow-main/` is OmniFlow (Maven modules `deployment/` and `benchmark/`; tests are
   documented in `../omni-flow-main/TESTING.md`).
@@ -81,28 +85,6 @@ Key classes, under `../omni-flow-main/deployment/src/main/kotlin/costaber/com/gi
 | Registry | `registry/FunctionRegistryStore.kt`, `registry/FunctionRegistryBootstrapper.kt` |
 | Entry points, default registry paths | `cloud/provider/{google,amazon}/deployer/*CloudDeployer.kt` |
 | Benchmarks (P-numbers) | `../omni-flow-main/benchmark/.../metrics/Benchmark*.kt`; the mapping is in `../omni-flow-main/TESTING.md` |
-
-Code behaviour that the thesis text must stay consistent with (verified 2026-09-11):
-
-- On GCP, Level 3 deploys **first-generation Cloud Functions** (`cloudfunctions.net` URLs), but GCP
-  validation, discovery and bootstrap use only the Cloud Run APIs. This is documented in the thesis
-  as a limitation.
-- Registries are per provider: `function-registry.gcp.json` and `function-registry.aws.json` in the
-  working directory.
-- A discovery error (for example, inaccessible regions) never falls through to a deployment.
-- A stale registry entry aborts the deployment, even when a descriptor is present.
-- Level 3 runs only when the function is absent. The cascade never updates an existing function.
-- Binding is static: the resolved endpoint is embedded in the rendered workflow at deployment time.
-
-To run the code's tests: this shell's `/usr/bin/java` is the macOS placeholder and hangs silently.
-Use:
-
-```sh
-cd /Users/pedrocarvalho/IdeaProjects/ISEL-Thesis-2526/omni-flow-main
-JAVA_HOME=/opt/homebrew/opt/openjdk@26/libexec/openjdk.jdk/Contents/Home ./mvnw -o -pl deployment test
-```
-
-This currently runs 173 tests (5 skipped). IntelliJ uses its own bundled JDK 25.
 
 ## Writing conventions
 

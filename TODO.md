@@ -1,8 +1,9 @@
-# TODO: thesis improvements
+# TODO: thesis and code improvements
 
 Ideas from the logical-flow review of 2026-09-11. Chapter numbers are those of the PDF; see
-`CLAUDE.md` for the file-to-chapter map. Line numbers drift as text is edited, so search for the
-quoted phrases.
+`dissertation/CLAUDE.md` for the file-to-chapter map. Thesis paths (`Chapters/…`, `Config/…`,
+`images/…`) are relative to `dissertation/`; code paths are relative to the repo root. Line numbers
+drift as text is edited, so search for the quoted phrases.
 
 ## Done
 
