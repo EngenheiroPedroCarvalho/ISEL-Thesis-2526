@@ -732,7 +732,8 @@ number of calls and the number of registry entries.
 \paragraph{Effect of registry size.}
 Fixing the workflow and varying the registry size shows that the per-call cost grows with $R$ and
 is essentially independent of $N$: about $180\,\mu$s of fixed I/O and parsing per read plus about
-$0.56\,\mu$s per registered entry (Table~\ref{tab:eval-p6}). The four $N$ curves collapse onto a
+$0.56\,\mu$s per registered entry (Table~\ref{tab:eval-p6}). The four $N$ curves in
+Figure~\ref{fig:eval-p6} collapse onto a
 single line, confirming that the cost grows in direct proportion to both the number of calls and
 the registry size, where the fixed cost of reopening the file dominates for realistic registry
 sizes.
@@ -757,9 +758,9 @@ sizes.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.8\textwidth]{images/P6_registry_scaling.png}
-  \caption{Runtime invocation of an internal function on AWS via the native
-  \texttt{lambda:invoke} integration.}
-  \label{fig:aws-runtime-invocation}
+  \caption{Per-call resolution cost as a function of registry size $R$, for $N \in \{1, 10, 50,
+  200\}$ internal calls; the external-call control does not read the registry.}
+  \label{fig:eval-p6}
 \end{figure}
 
 

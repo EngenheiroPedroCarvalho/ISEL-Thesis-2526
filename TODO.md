@@ -17,15 +17,22 @@ drift as text is edited, so search for the quoted phrases.
 - [x] Edits that existed only in `ISEL-Thesis-2526/thesis/` are merged: Ch1's 8-chapter structure
       list, Ch5's corrected "propagation" sentence, Ch7's punctuation and listing fixes, and Ch8's
       closing sentence.
+- [x] The P6 figure in Ch6 has its own caption and label (`fig:eval-p6`), and the text references it.
+- [x] The lorem-ipsum Appendix B and Annex I are no longer built (commented out in
+      `Config/_files.tex`; the files stay on disk).
+- [x] `TESTING.md`'s P10/P11 rows describe the single-read resolvers; the `GoogleCloudDeployer`
+      bootstrap log prints the path and says "Bootstrapping … Cloud Run APIs".
+- [x] `acronyms.tex` defines the thesis's acronyms, and all of them are printed (`\glsaddall`),
+      because the text writes them as plain text. `glossary.tex` keeps its template entries,
+      which nothing uses, so no glossary is printed.
 
 ## 1. Blockers before submission
 
 - [ ] Write the English and Portuguese abstracts (both are still template text). Write them last:
       problem → approach → evidence → implication, at most 300 words.
-- [ ] Fix the P6 figure in Ch6: its caption was copied from the runtime-invocation figure, and it
-      reuses the label `fig:aws-runtime-invocation`.
-- [ ] Replace or remove the remaining template placeholders: acronyms, glossary, `appendix2`,
-      `annex2`, and check statement/acknowledgments/dedicatory.
+- [ ] Write the acknowledgments (`acknowledgments.tex` is still template text).
+- [ ] Decide on the dedicatory: `dedicatory_.tex` ("To my family and friends") isn't built because
+      of the trailing underscore; rename it to `dedicatory.tex` to include it.
 - [ ] Decide on the four commented-out Background figures in Ch2 (QuickFaaS deployment pipeline,
       OmniFlow components, abstract workflow model, OmniFlow sequence diagram). Their images exist
       nowhere under `IdeaProjects`: recover the originals from the QuickFaaS/OmniFlow reports, or
@@ -91,8 +98,8 @@ drift as text is edited, so search for the quoted phrases.
 - [ ] Re-run JMH with `-f 3`, report error margins, and remove the "not thesis-grade" caveat.
 - [ ] P3: it runs the single-read resolver (`BenchmarkInternalCallResolution.kt:89`), not a
       re-read on every call. Fix the explanation.
-- [ ] P6: add the per-N figure, or drop the "four N curves collapse" sentence. Derive R≈320 here,
-      not in the Discussion.
+- [ ] P6: derive R≈320 here, not in the Discussion. (The per-N figure is `fig:eval-p6`; its axis
+      labels are in Portuguese, so regenerate it in English with `plot_benchmarks.py`.)
 - [ ] P10/P11: say they use a fake inspector. Explain the growth in N as per-call validation, and
       drop "comparable to P8".
 - [ ] P13/P17: recompute the percentages (the tables give 22–99%), drop "monotonic", and explain
@@ -129,9 +136,6 @@ drift as text is edited, so search for the quoted phrases.
 - [ ] Invoke QuickFaaS in-process instead of as a subprocess.
 - [ ] Least-privilege IAM: pre-provisioned roles and a dry-run mode.
 - [ ] Test seams for the classes that call cloud APIs.
-- [ ] `TESTING.md`: the P10 row still says the single-read fix was never applied.
-- [ ] `GoogleCloudDeployer` bootstrap log prints the literal text `'registryPath'` (missing `$`)
-      and says "Boothstrapping".
 - [ ] Add a migration note: an old `function-registry.json` is no longer read.
 
 ## 7. Housekeeping

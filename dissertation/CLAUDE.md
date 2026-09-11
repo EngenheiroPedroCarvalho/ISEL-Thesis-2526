@@ -40,8 +40,12 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
   match the names there and are silently skipped. `appendix1.tex` (the template's R example) stays
   on disk but is no longer built.
 - Several files still contain **template placeholder text**, not thesis content: `abstract-en.tex`,
-  `abstract-pt.tex`, `acronyms.tex`, `glossary.tex`, and `appendix2.tex` and `annex2.tex` (lorem
-  ipsum, still built as Appendix B and Annex I). Check a file's content before relying on it.
+  `abstract-pt.tex`, `acknowledgments.tex` and `glossary.tex` (which prints nothing, because the
+  text never uses `\gls`). `acronyms.tex` holds the real acronyms and prints them all with
+  `\glsaddall`; add an entry there when the text introduces a new acronym. `appendix2.tex`,
+  `annex1_.tex` and `annex2.tex`
+  are lorem ipsum and are commented out in `Config/_files.tex`. Check a file's content before
+  relying on it.
 - Figures: `images/<topic>/*.png`. Their PlantUML sources are in `../diagrams/`.
 - Bibliography: `Bibliography/bibliography.bib` (biblatex with the BibTeX backend).
 - Template internals (`iselthesis.cls`, `ISELthesis-files/`, `Logo/`, `Config/_*.tex` apart from
@@ -52,9 +56,8 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 - `make pdf` runs latexmk/pdflatex (with `-shell-escape`, batch mode) and produces `template.pdf`
   (about 80 pages). The tools are in `/Library/TeX/texbin`. `make clean` removes auxiliary files.
 - After editing, check the log:
-  `grep -nE "undefined|multiply defined|^!" template.log`.
-  Known pre-existing issue: `fig:aws-runtime-invocation` is defined twice (the Evaluation's P6
-  figure reuses that label and caption).
+  `grep -nE "undefined|multiply defined|^!" template.log`. A clean build reports none (a
+  `T1/lmss/c/n` font-shape warning is harmless).
 
 ## Related code (the source of truth for technical claims)
 

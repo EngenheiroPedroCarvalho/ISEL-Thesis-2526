@@ -111,7 +111,7 @@ class GoogleCloudDeployer internal constructor(
 
         println("$YELLOW  !$RESET Function-registry not found — bootstrapping from Cloud Run APIs for project '$projectId'...")
         logger.warn{
-            "Function Registry not found at 'registryPath'. Boothstrapping registry from Cloud Functions APIs for project '$projectId'... "
+            "Function Registry not found at '$registryPath'. Bootstrapping registry from Cloud Run APIs for project '$projectId'..."
         }
 
         FunctionRegistryBootstrapper(
