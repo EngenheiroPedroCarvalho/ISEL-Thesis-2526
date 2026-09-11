@@ -36,7 +36,7 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 - File numbers don't match chapter numbers. `chapter4.tex` is about 1,600 lines, with long runs of
   blank lines between chapters, so `grep -n '\\chapter{'` first and read with `offset`/`limit`.
 - `Config/_files.tex` decides which files are included (`\addfile`, `\appendixfile`, `\annexfile`,
-  …). Files with a trailing underscore (`dedicatory_.tex`, `annex1_.tex`, `ganttdiagram_.tex`) don't
+  …). Files with a trailing underscore (`annex1_.tex`, `ganttdiagram_.tex`) don't
   match the names there and are silently skipped. `appendix1.tex` (the template's R example) stays
   on disk but is no longer built.
 - Several files still contain **template placeholder text**, not thesis content: `abstract-en.tex`,
@@ -54,7 +54,13 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 ## Build and check
 
 - `make pdf` runs latexmk/pdflatex (with `-shell-escape`, batch mode) and produces `template.pdf`
-  (about 80 pages). The tools are in `/Library/TeX/texbin`. `make clean` removes auxiliary files.
+  (about 80 pages). The tools are in `/Library/TeX/texbin`.
+- After adding or renaming an included file, force a rebuild with `make pdf FLAGS=-g`: latexmk
+  only tracks files it has already read, so a plain `make pdf` reports success without picking up
+  the new file.
+- Avoid `make clean`: it deletes every `template.*` file except the `.tex` and `.pdf`, including
+  the tracked, hand-filled PDF/A metadata `template.xmpdata`. If it runs, restore that file with
+  `git checkout -- template.xmpdata`.
 - After editing, check the log:
   `grep -nE "undefined|multiply defined|^!" template.log`. A clean build reports none (a
   `T1/lmss/c/n` font-shape warning is harmless).

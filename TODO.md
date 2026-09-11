@@ -25,14 +25,14 @@ drift as text is edited, so search for the quoted phrases.
 - [x] `acronyms.tex` defines the thesis's acronyms, and all of them are printed (`\glsaddall`),
       because the text writes them as plain text. `glossary.tex` keeps its template entries,
       which nothing uses, so no glossary is printed.
+- [x] The dedicatory is built (`dedicatory_.tex` renamed to `dedicatory.tex`). Its text is still
+      the template's "To my family and friends ⋯"; personalise it if you like.
 
 ## 1. Blockers before submission
 
 - [ ] Write the English and Portuguese abstracts (both are still template text). Write them last:
       problem → approach → evidence → implication, at most 300 words.
 - [ ] Write the acknowledgments (`acknowledgments.tex` is still template text).
-- [ ] Decide on the dedicatory: `dedicatory_.tex` ("To my family and friends") isn't built because
-      of the trailing underscore; rename it to `dedicatory.tex` to include it.
 - [ ] Decide on the four commented-out Background figures in Ch2 (QuickFaaS deployment pipeline,
       OmniFlow components, abstract workflow model, OmniFlow sequence diagram). Their images exist
       nowhere under `IdeaProjects`: recover the originals from the QuickFaaS/OmniFlow reports, or
