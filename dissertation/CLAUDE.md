@@ -61,6 +61,12 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 - Avoid `make clean`: it deletes every `template.*` file except the `.tex` and `.pdf`, including
   the tracked, hand-filled PDF/A metadata `template.xmpdata`. If it runs, restore that file with
   `git checkout -- template.xmpdata`.
+- After adding a bibliography entry, check its number: biblatex runs with `defernumbers=true`, so
+  numbers from earlier runs are kept in `template.aux` and a new entry is printed as `[0]`, with no
+  warning in the log. Check with `grep -c abx@aux@number template.aux` (it should equal the number
+  of cited entries). To fix, delete `template.aux`, `template.bbl` and `template.fdb_latexmk` (all
+  untracked) and run `pdflatex -shell-escape`, `bibtex`, then `pdflatex` twice; deleting only the
+  `.aux` leaves latexmk's state inconsistent and `make pdf` fails with a BibTeX error.
 - After editing, check the log:
   `grep -nE "undefined|multiply defined|^!" template.log`. A clean build reports none (a
   `T1/lmss/c/n` font-shape warning is harmless).

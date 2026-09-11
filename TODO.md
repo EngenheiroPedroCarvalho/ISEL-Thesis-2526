@@ -65,6 +65,12 @@ drift as text is edited, so search for the quoted phrases.
       Discussion says in-place model updates keep the endpoint and need no registry. Ch4 (intro,
       architecture), Ch5 (motivation, registry evolution) and Ch8 Applicability no longer argue
       from "redeploying changes the endpoint".
+- [x] Related Works: the IaC section acknowledges deployment-time binding in AWS SAM
+      (`DefinitionSubstitutions`), the Serverless Framework Step Functions plugin (`Fn::GetAtt`),
+      Terraform (interpolated references) and Pulumi (outputs as inputs), each cited to its docs;
+      the comparison table replaces "Workflow-first resolution" with "Deploy-time binding" (Y for
+      the IaC tools), splits the IaC row, and footnotes that this work's portability marks come
+      from OmniFlow and QuickFaaS.
 
 ## 1. Blockers before submission
 
@@ -74,10 +80,6 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 2. Argument (highest impact)
 
-- [ ] Related Works: acknowledge deployment-time reference resolution in Terraform, AWS SAM
-      (`DefinitionSubstitutions`) and the Serverless Framework step-functions plugin. Replace the
-      "Workflow-first resolution" column with honest dimensions, and footnote that the portability
-      marks come from OmniFlow and QuickFaaS.
 
 ## 3. Contradictions to fix
 

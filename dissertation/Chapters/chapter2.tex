@@ -250,7 +250,31 @@ A first family of approaches focuses on automating resource deployment and confi
 
 \textbf{CODE}~\cite{ristov2024code} is a more recent framework in this family. It proposes an application-centric DSL aimed at reducing repetitive configuration when deploying the same serverless function packages across different targets (e.g., multiple regions and provider accounts). A key idea is the integration with provider storage systems and the automation of deployment package movement, following a ``code once, deploy everywhere'' principle. While this approach reduces deployment duplication and scripting effort, it remains primarily \textit{deployment-oriented}: it does not address workflow definition portability nor does it provide a workflow-first mechanism that resolves logical function references into concrete endpoints during workflow deployment.
 
-Overall, this category primarily addresses \textit{deployment automation}. It helps reduce manual work but it does not fully solve the problem targeted by this thesis: keeping workflows stable and provider-agnostic while automatically ensuring that the referenced functions exist and can be resolved at deployment time.
+These tools also resolve references between resources at deployment time, including the endpoint
+through which a workflow calls a function. In AWS SAM, the \texttt{DefinitionSubstitutions} property
+of a state machine maps placeholders in its Amazon States Language definition to values such as
+\texttt{!GetAtt MyFunction.Arn}, injecting the ARN of a function declared in the same
+template~\cite{awsSamStateMachine}. The Step Functions plugin for the Serverless Framework accepts
+\texttt{Fn::GetAtt: [hello, Arn]} as the \texttt{Resource} of a task, the ARN of a function declared
+in the same service~\cite{serverlessStepFunctionsPlugin}. In Terraform, a state machine definition
+can interpolate \texttt{\$\{aws\_lambda\_function.lambda.arn\}}~\cite{terraformSfnStateMachine}, and
+such a reference creates an implicit dependency between the two resources~\cite{terraformReferences};
+Pulumi likewise records a dependency when one resource's output is passed as another's input, and
+orders their creation accordingly~\cite{pulumiInputsOutputs}. In each case the function is declared
+alongside the workflow and deployed with it, and its endpoint is written into the workflow at
+deployment time --- the same static binding this work performs (\S\ref{sec:resolution-cascade}).
+These tools also update a function whose code changed, which this work does not; conversely, they
+bind a workflow only to functions declared or explicitly referenced in the same template or
+configuration, whereas the resolution cascade also discovers a function deployed by other means.
+What none of them offers is a workflow definition independent of the provider: the state machine is
+written in the Amazon States Language, and a GCP workflow would be a separate definition in another
+language, with its own references to its own functions.
+
+Overall, this category primarily addresses \textit{deployment automation}, and within one template
+it already binds workflows to functions at deployment time. What it does not provide is the
+combination targeted by this thesis: a single workflow definition that can be deployed to more than
+one provider, calling functions written against a provider-agnostic model, with their endpoints
+bound at deployment time on each provider.
 
 \section{Portable Execution Layers and Code Transformation to FaaS}
 
@@ -284,27 +308,33 @@ A final family focuses on function composition, workflow execution efficiency an
 
 Finally, \textbf{Serverless Multicloud}~\cite{zhao2022supporting} proposes an architecture with a library that abstracts access to serverless offerings across vendors and an evaluation component to analyse cost and performance. This work shares the motivation of reducing vendor lock-in but it emphasises API abstractions and SDK-like interfaces rather than a workflow DSL translation model.
 
-Table~\ref{tab:related-comparison} summarises the surveyed families against the five dimensions
-that matter for this thesis. Two observations stand out. First, the columns are rarely satisfied
+Table~\ref{tab:related-comparison} summarises the surveyed families against five dimensions that
+matter for this thesis. Two observations stand out. First, the columns are rarely satisfied
 together: tooling that automates deployment (IaC) does not address workflow-definition portability,
 while tools that target workflow portability (Serverless Workflow, Temporal, Triggerflow) typically
-execute the workflow on their own runtime instead of a provider-native service. Second, and most
-importantly, no surveyed work provides the last column --- resolving a workflow's logical function
-references into concrete endpoints \emph{at workflow-deployment time}, deploying the missing
-functions on demand. That column is precisely the gap the OmniFlow--QuickFaaS integration fills
-while keeping both the workflow and the functions on provider-native surfaces.
+execute the workflow on their own runtime instead of a provider-native service. Second,
+deployment-time binding is not new in itself: the IaC tools already write a function's endpoint into
+the workflow when both are deployed. What no surveyed work combines is that binding with a workflow
+definition deployable to more than one provider-native service and with functions written against a
+provider-agnostic model. The two portability marks in this work's row come from OmniFlow and
+QuickFaaS; the contribution of this work is the binding across both providers, together with the
+AWS path that makes it available on AWS.
 
 \begin{table}[htbp]
   \centering
+  \small
   \caption{Positioning of the surveyed families against this thesis's dimensions
   (Y = yes, P = partial, -- = no).}
   \label{tab:related-comparison}
-  \begin{tabular}{lccccc}
+  \begin{tabular}{p{0.36\textwidth}ccccc}
     \hline
-    \textbf{Approach} & \textbf{Deploy.} & \textbf{Func.} & \textbf{Workflow} & \textbf{Workflow-first} & \textbf{Provider-} \\
-     & \textbf{autom.} & \textbf{portab.} & \textbf{portab.} & \textbf{resolution} & \textbf{native} \\
+    \textbf{Approach} & \textbf{Deploy.} & \textbf{Func.} & \textbf{Workflow} & \textbf{Deploy-time} & \textbf{Provider-} \\
+     & \textbf{autom.} & \textbf{portab.} & \textbf{portab.} & \textbf{binding} & \textbf{native} \\
     \hline
-    IaC (CloudFormation, Terraform, Serverless, Pulumi) & Y & P & -- & -- & Y \\
+    CloudFormation / AWS SAM~\cite{awsCloudFormation,awsSamStateMachine} & Y & -- & -- & Y & Y \\
+    Terraform~\cite{terraform,terraformSfnStateMachine}  & Y & P & -- & Y & Y \\
+    Serverless Framework + Step Functions plugin~\cite{serverlessFramework,serverlessStepFunctionsPlugin} & Y & P & -- & Y & Y \\
+    Pulumi~\cite{pulumi,pulumiInputsOutputs}             & Y & P & -- & Y & Y \\
     CODE~\cite{ristov2024code}                          & Y & Y & -- & -- & Y \\
     OpenFaaS~\cite{openFaaS}                            & Y & Y & -- & -- & -- \\
     Code transformation~\cite{spillner2017pythonfaas,spillnerDorodko2017javaLambda} & P & P & -- & -- & Y \\
@@ -315,9 +345,14 @@ while keeping both the workflow and the functions on provider-native surfaces.
     Temporal~\cite{temporalPlatform}                    & -- & -- & Y & -- & -- \\
     FaaSr~\cite{park2024faasr}                          & P & P & Y & -- & -- \\
     Serverless Multicloud~\cite{zhao2022supporting}     & -- & Y & P & -- & -- \\
-    \textbf{OmniFlow + QuickFaaS (this work)}           & Y & Y & Y & Y & Y \\
+    \textbf{OmniFlow + QuickFaaS (this work)}           & Y & Y\textsuperscript{a} & Y\textsuperscript{a} & Y & Y \\
     \hline
   \end{tabular}
+
+  \smallskip
+  \parbox{\textwidth}{\footnotesize \textsuperscript{a}\,Inherited from QuickFaaS (function
+  portability) and OmniFlow (workflow portability); this work adds the deployment-time binding on
+  both providers.}
 \end{table}
 
 This separation of concerns motivates the proposed integration in this thesis: none of the surveyed works simultaneously (i) translates portable workflow definitions into provider-specific workflow artifacts \emph{and} (ii) provides an on-demand mechanism to ensure the referenced functions exist on the target provider using a provider-agnostic function model.
