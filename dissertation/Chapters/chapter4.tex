@@ -36,7 +36,7 @@ Figure~\ref{fig:omniflow-integration-classes} details the classes that realise t
 
 
 \subsection{Motivation}
-In the original OmniFlow usage model, a \texttt{call} step requires concrete endpoint information (namely \texttt{host} and \texttt{path}). This makes workflows brittle: if a function is redeployed and its endpoint changes, the workflow definition must also be updated. The Function Registry addresses this problem: workflows reference internal functions through stable logical identifiers instead of concrete endpoints. The actual endpoint is only bound to that identifier at deployment time. Beyond endpoint indirection, the registry also serves as the persistence layer for the
+In the original OmniFlow usage model, a \texttt{call} step requires concrete endpoint information (namely \texttt{host} and \texttt{path}). This ties the workflow definition to one deployment of each function: the endpoint is known only after the function is deployed, and it differs for each account, project and provider (Section~\ref{sec:int_cha_int_uni_multi}). The Function Registry addresses this problem: workflows reference internal functions through stable logical identifiers instead of concrete endpoints. The actual endpoint is only bound to that identifier at deployment time. Beyond endpoint indirection, the registry also serves as the persistence layer for the
 automatic function resolution mechanism described below: entries are created and refreshed
 automatically as functions are discovered on the target provider or deployed through QuickFaaS.
 
@@ -307,7 +307,8 @@ how it evolved.
 \paragraph{From literal endpoints to logical indirection.}
 The starting point was the plain OmniFlow \texttt{call} step, which embeds a concrete
 \texttt{host}/\texttt{path}. This couples the workflow definition to a specific deployed instance
-of a function, so any redeployment that changes the endpoint forces an edit to the workflow. The
+of a function, so deploying that function anywhere else --- another region, account, project or
+provider --- forces an edit to the workflow. The
 first design move was therefore to introduce a level of indirection: the workflow names a function
 through a stable \texttt{functionRef}, and the concrete endpoint is bound from the registry at
 deployment time. The registry exists precisely to hold that binding.
@@ -1323,8 +1324,9 @@ yet fit --- an actual banking environment.
 The chapter is organised as follows. Section~\ref{sec:case-scenario} sets out the business
 requirements a payment-authorization workflow imposes and why they line up with the problem this
 work addresses. Section~\ref{sec:case-design} defines the workflow in the OmniFlow DSL.
-Section~\ref{sec:case-deployment} walks the resolution cascade through two deployments of that
-same workflow --- first to AWS, then to GCP --- to make the provider-symmetry claim concrete.
+Section~\ref{sec:case-deployment} walks the resolution cascade through three deployments of that
+same workflow --- to a test and a production AWS account, then to GCP --- to show how the bindings
+follow the deployment target.
 Section~\ref{sec:case-runtime} follows a transaction through the deployed workflow at runtime, and
 Section~\ref{sec:case-discussion} discusses the scenario's relevance and its limits, connecting
 back to the gaps already identified in Chapter~\ref{cha:conclusions}.
@@ -1345,20 +1347,21 @@ Three requirements are characteristic of this setting and motivate the integrati
 this dissertation:
 
 \begin{itemize}
-    \item \textbf{Frequent, independent model updates.} Fraud-detection models are retrained and
-    redeployed far more often than the orchestration logic that calls them --- sometimes daily, in
-    response to newly observed fraud patterns. If the workflow definition embedded a concrete
-    endpoint for \texttt{fraud-check}, every redeployment of the model would risk requiring a
-    matching workflow redeployment, exactly the coupling problem motivating the Function Registry
-    (Section~\ref{subsec:endpoint-resolution}).
-    \item \textbf{Multi-cloud posture.} Operational-resilience regulation applicable to EU banks,
-    notably the Digital Operational Resilience Act (DORA), pushes institutions to avoid
-    concentration risk on a single cloud provider for critical functions. A fraud-screening
-    workflow is a plausible candidate for a documented ability to run on a second provider, which
-    requires the orchestration and the functions it calls to be portable, not just the
-    infrastructure underneath them.
+    \item \textbf{One workflow, several accounts.} Suppose the bank keeps development, testing and
+    production in separate cloud accounts (or projects), a common way to isolate environments, and
+    promotes the workflow from one to the next. A function deployed in each account has a different
+    endpoint there: its ARN contains the account ID. If the workflow definition embedded those
+    endpoints, every promotion would require editing them by hand, and the functions would have to
+    be deployed in the new account before the workflow could even be completed --- the two problems
+    that motivate the Function Registry (Section~\ref{sec:int_cha_int_uni_multi}).
+    \item \textbf{An exit strategy.} The Digital Operational Resilience Act (DORA) requires EU
+    financial entities to put in place exit strategies for ICT services supporting critical or
+    important functions, and to assess ICT concentration risk before contracting such
+    services~\cite[Arts.~28(8) and~29]{dora2022}. A fraud-screening workflow is a plausible
+    candidate for such a function. Exiting a provider is easier if the orchestration and the
+    functions it calls can be deployed elsewhere, not just the infrastructure underneath them.
     \item \textbf{Auditability of bindings.} A bank's change-management process typically requires
-    a record of which concrete function version and endpoint served a given deployment, which the
+    a record of which endpoint each deployment was bound to, which the
     registry's \texttt{updatedAt}-stamped entries provide in embryonic form
     (Section~\ref{subsec:registry-evolution}), even though a production deployment would need the
     stronger guarantees discussed in Section~\ref{sec:case-discussion}.
@@ -1452,11 +1455,11 @@ through the QuickFaaS descriptors referenced by \texttt{internalFunction} and th
 provider deployer. This is what makes the same definition deployable to either provider, as
 Section~\ref{sec:case-deployment} shows next.
 
-\section{Deploying the Same Workflow to Two Providers}
+\section{Deploying Across Accounts and Providers}
 \label{sec:case-deployment}
 
 Suppose neither \texttt{fraud-check} nor \texttt{risk-score} has been deployed yet, and the bank
-deploys \texttt{PaymentAuthorization} to AWS first. OmniFlow bootstraps an AWS registry by
+deploys \texttt{PaymentAuthorization} to its AWS test account first. OmniFlow bootstraps an AWS registry by
 listing Lambda functions across every enabled region, finds it empty for both functions, and the
 cascade reaches Level~3 for each: QuickFaaS deploys \texttt{fraud-check} and \texttt{risk-score}
 as Lambda functions from the descriptors referenced in the workflow, following the AWS deployment
@@ -1464,16 +1467,19 @@ sequence detailed in Figure~\ref{fig:aws-deploy-sequence} --- IAM role resolutio
 invocation, \texttt{GetFunction} polling and Step Functions invoke permissions. Both ARNs are
 written to the registry, and \texttt{PaymentAuthorization} is deployed as a state machine.
 
-A week later, the fraud team retrains and redeploys \texttt{fraud-check} with an updated model,
-using QuickFaaS directly against the same \texttt{functionRef}; the redeployment updates the
-Lambda's code (\texttt{UpdateFunctionCode}) without changing its ARN, so the registry entry stays
-valid. The next time \texttt{PaymentAuthorization} is deployed --- unchanged, from the developer's
-point of view --- \texttt{fraud-check} resolves as a Level~1 registry hit and no redeployment is
-triggered by the workflow deployment itself; the workflow definition never had to change to pick
-up the new model.
+The bank then promotes \texttt{PaymentAuthorization} to its production account. The workflow
+definition does not change; only the descriptors do, since they name the production account's
+deployment bucket (and, optionally, its execution role). The production deployment uses its own
+registry file (the deployers accept a registry path, so one per account is a configuration
+choice): OmniFlow bootstraps it from the production account, finds neither scoring function, and
+Level~3 deploys both there, recording ARNs that carry the production account ID. No endpoint is
+copied between accounts. The registry file must not be shared between the two accounts: an entry
+written for the test account names a function the production account does not have, so its
+validation fails, the entry is treated as stale, and the production deployment aborts
+(\S\ref{subsec:validation-error-semantics}).
 
-Now suppose the bank wants a documented ability to run the same fraud-screening workflow on a
-second provider, per the multi-cloud requirement in Section~\ref{sec:case-scenario}. Because
+Now suppose the bank's exit strategy calls for the same fraud-screening workflow to run on a
+second provider (Section~\ref{sec:case-scenario}). Because
 \texttt{PaymentAuthorization} names no provider, deploying it to GCP requires no change to
 Listing~\ref{lst:case-payment-workflow} --- only different QuickFaaS descriptors (targeting Cloud
 Functions instead of Lambda) and the GCP deployer. On this first GCP deployment, the GCP registry is
@@ -1510,12 +1516,14 @@ is exactly the boundary Section~\ref{sec:runtime-invocation} identified as provi
 \label{sec:case-discussion}
 
 This scenario exercises the integration's central claim in a setting where it plausibly matters:
-a bank can retrain and redeploy a fraud model on its own cadence without touching the
-orchestration that calls it, and can retarget the same workflow definition at a second cloud
-provider by changing deployment descriptors rather than the workflow itself. Both properties speak
-directly to the two motivating forces in Section~\ref{sec:case-scenario} --- independent model
-lifecycles and a documented multi-provider posture --- without requiring the fraud or platform
-teams to hand-maintain endpoint bindings across redeployments.
+a bank can promote the same workflow definition across its accounts and, as part of an exit
+strategy, deploy it on a second cloud provider, changing deployment descriptors rather than the
+workflow itself. In each new target the missing functions are deployed and their endpoints bound
+without anyone copying an ARN or URL by hand. The fraud team's frequent model updates are a
+different matter: retraining \texttt{fraud-check} and redeploying it in place with QuickFaaS keeps
+its ARN or URL, so the deployed workflow calls the new model without any change, with or without
+the registry. Conversely, a workflow deployment never deploys the new model itself, because the
+cascade only deploys missing functions (Section~\ref{sec:concl-critical}).
 
 The scenario equally exposes why this remains illustrative rather than production-ready. The
 gaps already identified in Section~\ref{sec:concl-critical} are not hypothetical here: a registry
@@ -1734,10 +1742,10 @@ The implementation is that of a prototype, and several limitations should be sta
 \label{sec:concl-applicability}
 
 The shape of the solution --- logical indirection between workflows and endpoints, provider
-symmetry, and explicit fail-fast diagnostics --- fits the needs of an organisation that must keep
-orchestration definitions stable while functions are redeployed, and that values a credible
-multi-provider posture (for example, to satisfy operational-resilience regulation such as the EU
-Digital Operational Resilience Act, or to expose open-banking functions under PSD2). Reaching that
+symmetry, and explicit fail-fast diagnostics --- fits the needs of an organisation that deploys the same
+orchestration to several accounts or projects, and that must be able to move it to another provider
+(for example, to meet the exit-strategy requirements of the EU Digital Operational Resilience
+Act~\cite{dora2022}, or to expose open-banking functions under PSD2). Reaching that
 setting would require hardening the gaps above: a signed, access-controlled registry backend, an
 attributable write history for audit, and least-privilege IAM under change control. None of these
 changes the resolution cascade itself; they harden the parts around it.

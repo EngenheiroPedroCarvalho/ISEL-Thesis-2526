@@ -59,6 +59,12 @@ drift as text is edited, so search for the quoted phrases.
       partially on GCP, 4 partially met); "the design is sound", "already-sound design" and
       "validated concept" are gone; the Critical Assessment adds static binding and the missing
       update path, and Future Work adds the update path.
+- [x] Case Study: the requirements are "one workflow, several accounts", "an exit strategy" (DORA
+      Arts. 28(8) and 29, new bib entry `dora2022`) and auditability; the "redeploy a week later"
+      example is replaced by promotion to a production account (with its own registry file); the
+      Discussion says in-place model updates keep the endpoint and need no registry. Ch4 (intro,
+      architecture), Ch5 (motivation, registry evolution) and Ch8 Applicability no longer argue
+      from "redeploying changes the endpoint".
 
 ## 1. Blockers before submission
 
@@ -68,18 +74,10 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 2. Argument (highest impact)
 
-- [ ] Ch1 now argues from "the endpoint exists only after deployment and depends on the target",
-      but later chapters still argue from redeployment: Ch5's opening ("This makes workflows
-      brittle: if a function is redeployed…") and registry-design section ("any redeployment that
-      changes the endpoint forces an edit"), and the Case Study's "redeployed far more often"
-      requirement. Align them when working on those chapters.
 - [ ] Related Works: acknowledge deployment-time reference resolution in Terraform, AWS SAM
       (`DefinitionSubstitutions`) and the Serverless Framework step-functions plugin. Replace the
       "Workflow-first resolution" column with honest dimensions, and footnote that the portability
       marks come from OmniFlow and QuickFaaS.
-- [ ] Case Study: replace the "redeploy a week later" example (the ARN doesn't change, so it shows
-      nothing). Reframe "multi-cloud posture" as exit/portability, and cite DORA
-      (Regulation (EU) 2022/2554).
 
 ## 3. Contradictions to fix
 
