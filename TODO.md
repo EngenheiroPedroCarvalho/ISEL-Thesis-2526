@@ -44,6 +44,13 @@ drift as text is edited, so search for the quoted phrases.
       endpoint change: on AWS the next deployment picks it up; on GCP first-gen it doesn't.
 - [x] Ch4's "Stale binding" edge case covers both providers, says it aborts even with a
       descriptor, and notes that stale GCP first-gen entries go undetected.
+- [x] Ch4 contradictions: Level 1 explains what the registry buys (validation is one lookup in a
+      known region, not a scan); the region-scope paragraph says the search starts in the
+      workflow's region and co-location is expected, not required; the architecture text, both
+      registry listings (now per provider, with `cloudfunctions.net` URLs for QuickFaaS-deployed
+      GCP functions and full Cloud Run resource names) and `architecture-after.puml`/`.png` show
+      one registry per provider. The PNG was rendered with the PlantUML 1.2024.7 jar and
+      `-Playout=smetana` (Graphviz isn't installed).
 
 ## 1. Blockers before submission
 
@@ -73,24 +80,12 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 3. Contradictions to fix
 
-- [ ] Ch4 Level 1 says both "without contacting the provider" and "validated against the live
-      resource". Explain what the registry buys given validation: it remembers the region and gives
-      validation a target.
 - [ ] Ch5 "Deployment-Time Endpoint Resolution", step 2, says a stale entry "falls through to the
       next step", but it aborts. Also explain why a deleted function isn't redeployed even with a
       descriptor (the deletion may have been deliberate).
 - [ ] "Safe by default" now appears only in Ch4, meaning non-mutating discovery (Ch1's use, about
       secrets, is gone). Note there that AWS repairs the trust policy of a role you supply.
-- [ ] Ch4 region-scope paragraph: "no region required, all regions searched" contradicts "the
-      prototype assumes the same region".
 - [ ] Say what happens when `functionRef` differs from the descriptor's `function.name`.
-- [ ] Text still describing one shared registry: the Ch4 architecture section ("shared
-      `function-registry.json`"), and the registry listings that mix GCP and AWS entries in one file
-      (Ch4 `lst:registry-structure`, Ch5 `lst:function-registry`). Also update
-      `diagrams/architecture-after.puml` in the code repo and regenerate
-      `images/architecture/architecture-after.png`.
-- [ ] The registry listings show `a.run.app` URLs for functions deployed by QuickFaaS. On GCP these
-      are `cloudfunctions.net` URLs.
 
 ## 4. Evaluation (Ch6)
 

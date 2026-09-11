@@ -75,23 +75,19 @@ call {
 External calls are unaffected by this mechanism, they continue using literal \texttt{host} and \texttt{path} values and bypass the registry resolution.
 
 \subsection{Registry File Format}
-The registry is stored as a JSON file, containing only non-secret invocation metadata. It maps each \texttt{functionRef} to the concrete values required to invoke the function (serviceName and url, where url is an HTTPS endpoint on GCP and a Lambda ARN on AWS). The registry also stores an \texttt{updatedAt} timestamp for traceability.
+Each provider has its own registry, stored as a JSON file (\texttt{function-registry.gcp.json} or \texttt{function-registry.aws.json} in the working directory by default) and containing only non-secret invocation metadata. It maps each \texttt{functionRef} to the concrete values required to invoke the function (serviceName and url, where url is an HTTPS endpoint on GCP and a Lambda ARN on AWS). The registry also stores an \texttt{updatedAt} timestamp for traceability. Listing~\ref{lst:function-registry} shows a GCP registry holding a function deployed by QuickFaaS (a first-generation Cloud Function) and a Cloud Run service found by discovery under a region-qualified key; an AWS registry has the same structure, with Lambda ARNs as \texttt{url} values.
 
-\begin{lstlisting}[language=json,caption={Function registry structure},label={lst:function-registry}]
+\begin{lstlisting}[language=json,caption={Function registry structure (GCP)},label={lst:function-registry},basicstyle=\ttfamily\footnotesize]
 {
   "updatedAt": "2026-02-15T00:00:00Z",
   "functions": {
     "fraud-check": {
       "serviceName": "fraud-check",
-      "url": "https://fraud-check-abc123-ew.a.run.app"
+      "url": "https://europe-west1-proj.cloudfunctions.net/fraud-check"
     },
     "europe-west1/risk-score": {
-      "serviceName": "risk-score",
+      "serviceName": "projects/proj/locations/europe-west1/services/risk-score",
       "url": "https://risk-score-def456-ew.a.run.app"
-    },
-    "hello-lambda-fn": {
-      "serviceName": "hello-lambda-fn",
-      "url": "arn:aws:lambda:eu-west-1:123456789012:function:hello-lambda-fn"
     }
   }
 }

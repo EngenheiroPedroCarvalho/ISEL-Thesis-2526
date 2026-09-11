@@ -71,6 +71,7 @@ rectangle "GCP Deployment Path" {
   component "QuickFaasDeployer" as QFD
   cloud "Google Cloud\nWorkflows" as GCW2
   cloud "GCP Cloud\nFunctions" as GFN
+  database "function-registry.gcp.json" as REGG
 }
 
 rectangle "AWS Deployment Path" {
@@ -79,9 +80,9 @@ rectangle "AWS Deployment Path" {
   component "AwsLambdaDeployer" as ALD <<new>>
   cloud "AWS Step\nFunctions" as SF2
   cloud "AWS Lambda" as LAM
+  database "function-registry.aws.json" as REGA
 }
 
-database "function-registry.json" as REG
 component "QuickFaaS JAR\n(+ AwsProvider)" as JAR <<extended>>
 
 D2 --> DSL2
@@ -90,8 +91,8 @@ DSL2 --> ACD2
 
 GCD2 --> WIFR
 ACD2 --> AIFR
-WIFR <--> REG : read / write
-AIFR <--> REG : read / write
+WIFR <--> REGG : read / write
+AIFR <--> REGA : read / write
 
 WIFR --> QFD
 AIFR --> ALD

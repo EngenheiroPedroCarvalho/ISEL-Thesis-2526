@@ -21,7 +21,7 @@ In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaa
   \label{fig:architecture-before}
 \end{figure}
 
-In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver — \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} for GCP and \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} for AWS — and both are backed by a shared \texttt{function-registry.json} that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. Once resolved, the rendered Step Functions state machine invokes the Lambda natively by ARN. The two halves of the contribution are visible in a single view: the AWS provider inside QuickFaaS and the resolver–registry layer that unifies function and workflow deployment.
+In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver — \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} for GCP and \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} for AWS — and each is backed by its own registry file (\texttt{function-registry.gcp.json} and \texttt{function-registry.aws.json} by default) that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. Once resolved, the rendered Step Functions state machine invokes the Lambda natively by ARN. The two halves of the contribution are visible in a single view: the AWS provider inside QuickFaaS and the resolver–registry layer that unifies function and workflow deployment.
 
 \begin{figure}[htbp]
   \centering
@@ -52,12 +52,14 @@ actual deployment is a last resort rather than a default.
 
 \begin{enumerate}
   \item \textbf{Level~1 (Registry).} The registry is consulted for the \texttt{functionRef}
-  (exact match first, then a suffix match on \texttt{"region/functionRef"}). A hit yields a binding
-  without contacting the provider, which is the common case for a function that has already been
-  deployed once. On both providers the stored endpoint is additionally validated against the live
-  resource --- the Cloud Run service on GCP, the Lambda function on AWS --- so that a stale binding
-  cannot be used silently: a changed endpoint refreshes the entry, and a deleted one removes it and
-  aborts the deployment. On GCP this validation, like the discovery of Level~2, currently covers
+  (exact match first, then a suffix match on \texttt{"region/functionRef"}). A hit is the common
+  case for a function that has already been deployed once. The stored endpoint is then validated
+  against the live resource --- the Cloud Run service on GCP, the Lambda function on AWS --- so that
+  a stale binding cannot be used silently: a changed endpoint refreshes the entry, and a deleted one
+  removes it and aborts the deployment. Validation contacts the provider, but the registry keeps it
+  cheap: an entry records where the function lives (the region inside the Lambda ARN, the full
+  resource name of the Cloud Run service), so validation is one lookup in a known place rather than
+  the search across every region that Level~2 performs. On GCP this validation, like the discovery of Level~2, currently covers
   Cloud Run services only: a binding to a first-generation Cloud Function, which is what QuickFaaS
   deploys on GCP, is trusted without a live check. This limitation is described in
   \S\ref{subsec:store-internals}.
@@ -108,14 +110,14 @@ functions are \emph{not} strictly required to share a region, and on neither pro
 developer required to declare one: on GCP a function is invoked over an HTTPS URL, so the resolver
 searches across the project's regions; on AWS, although the function is ultimately invoked by its
 region-qualified ARN, the resolver mirrors this behaviour by discovering every region enabled for
-the account (via the EC2 \texttt{DescribeRegions} API) and searching across all of them, optionally
-trying a caller-supplied preferred region first. On both providers, the fully-qualified
+the account (via the EC2 \texttt{DescribeRegions} API) and searching across all of them. On both
+providers the search starts with the region the workflow is being deployed to. The fully-qualified
 \texttt{"region/functionRef"} form exists to disambiguate a name that appears in more than one
-region, and lets the developer pin the lookup to a single region instead of scanning every one. In
-practice the
-prototype assumes the workflow and its functions in the same region, both because it is the common
-case and because same-region deployment minimises invocation latency and cross-region data-transfer
-cost, and simplifies data-residency compliance. One co-location constraint is, however, mandatory
+region, and lets the developer pin the lookup to a single region instead of scanning every one.
+Starting the search in the workflow's region reflects the expected deployment, in which the
+workflow and its functions share a region: the resolver does not require it, but same-region
+deployment minimises invocation latency and cross-region data-transfer cost, and simplifies
+data-residency compliance. One co-location constraint is, however, mandatory
 on AWS: a Lambda must reside in the same region as the S3 bucket that holds its deployment package,
 so the AWS deployer derives the effective region from that bucket
 (Chapter~\ref{cha:impl}).
@@ -212,16 +214,24 @@ Whether a call's endpoint is filled in automatically depends on who owns the tar
 A function reference (\texttt{functionRef}) is a stable logical identifier used to name a function whose endpoint is resolved through the registry (e.g., \texttt{"fraud-check"}). This identifier is used consistently across the workflow definition, the registry metadata and the deployment descriptors. It is not an endpoint, it is a name that allows OmniFlow to bind a call to the concrete endpoint during deployment.
 
 \paragraph{Function Registry.}
-The function registry is a file that contains invocation metadata only for functions resolved this way. Conceptually, it maps each such \texttt{functionRef} to the concrete values required to invoke it. These values are not written manually; when the corresponding function is deployed or updated through QuickFaaS, the integration records or refreshes the entry in the registry. Functions invoked through a literal endpoint are excluded from the registry. A minimal JSON-based structure for this registry is illustrated in Listing~\ref{lst:registry-structure}.
+The function registry is a file, one per provider, that contains invocation metadata only for functions resolved this way. Conceptually, it maps each such \texttt{functionRef} to the concrete values required to invoke it. These values are not written manually; when the corresponding function is deployed or updated through QuickFaaS, the integration records or refreshes the entry in the registry. Functions invoked through a literal endpoint are excluded from the registry. A minimal JSON-based structure for this registry is illustrated in Listing~\ref{lst:registry-structure}.
 
-\begin{lstlisting}[caption={Example structure of the function registry (registry-managed functions only).},label={lst:registry-structure},basicstyle=\ttfamily\small,breaklines=false]
+\begin{lstlisting}[caption={Example registry files, one per provider (registry-managed functions only).},label={lst:registry-structure},basicstyle=\ttfamily\footnotesize,breaklines=false]
+function-registry.gcp.json:
 {
   "updatedAt": "2026-02-12T18:40:00Z",
   "functions": {
     "fraud-check": {
       "serviceName": "fraud-check",
-      "url": "https://fraud-check-abc123-ew.a.run.app/v1/fraud-check"
-    },
+      "url": "https://europe-west1-proj.cloudfunctions.net/fraud-check"
+    }
+  }
+}
+
+function-registry.aws.json:
+{
+  "updatedAt": "2026-02-12T18:40:00Z",
+  "functions": {
     "hello-lambda-fn": {
       "serviceName": "hello-lambda-fn",
       "url": "arn:aws:lambda:eu-west-1:123456789012:function:hello-lambda-fn"
