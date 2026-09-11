@@ -51,6 +51,8 @@ ISEL-Thesis-2526/
 │   ├── quickfaas-essentials/QuickFaaS-Deployment/   # QuickFaaS deployer (Gradle, Kotlin 1.6.20)
 │   │   └── src/{main,test}/kotlin/model/    # cloud providers: AwsProvider, GcpProvider, ...
 │   └── TESTING.md                           # full testing documentation (read this)
+├── dissertation/                            # MSc dissertation LaTeX sources (canonical; see its CLAUDE.md)
+├── thesis/                                  # older split copy of the chapters (superseded; do not edit)
 └── quickfaas-essentials/                    # reference clone of the original QuickFaaS (do not edit)
 ```
 

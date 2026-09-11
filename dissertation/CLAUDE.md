@@ -15,9 +15,11 @@ DSL that renders and deploys workflows to AWS Step Functions and GCP Workflows) 
 
 The document uses the `iselthesis` LaTeX class (template v4.x).
 
-This folder is a git repository (branch `main`, no remote yet). Commit only when the user asks.
-Prefer small `Edit`s over rewriting whole files, and never delete files without asking. Build
-output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` are git-ignored.
+This folder is `dissertation/` inside the ISEL-Thesis-2526 git repository (GitHub remote `origin`,
+branch `claude/progress-report-compliance-e4damf`). Commit only when the user asks, and treat a
+commit as published: commits in this repo have been pushed to GitHub automatically (probably by
+IntelliJ). Prefer small `Edit`s over rewriting whole files, and never delete files without asking.
+Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` are git-ignored.
 
 ## Where things are
 
@@ -38,7 +40,7 @@ output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` are git
 - Several files still contain **template placeholder text**, not thesis content: `abstract-en.tex`,
   `abstract-pt.tex`, `acronyms.tex`, `glossary.tex`, and `appendix2.tex` and `annex2.tex` (lorem
   ipsum, still built as Appendix B and Annex I). Check a file's content before relying on it.
-- Figures: `images/<topic>/*.png`. Their PlantUML sources are in the code repo under `diagrams/`.
+- Figures: `images/<topic>/*.png`. Their PlantUML sources are in `../diagrams/`.
 - Bibliography: `Bibliography/bibliography.bib` (biblatex with the BibTeX backend).
 - Template internals (`iselthesis.cls`, `ISELthesis-files/`, `Logo/`, `Config/_*.tex` apart from
   `_files.tex`): don't edit.
@@ -54,19 +56,22 @@ output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` are git
 
 ## Related code (the source of truth for technical claims)
 
-The code repo is `/Users/pedrocarvalho/IdeaProjects/ISEL-Thesis-2526` (under git, with its own
-`CLAUDE.md` and `TESTING.md`):
+The code is in the same repository, one level up (`..` is
+`/Users/pedrocarvalho/IdeaProjects/ISEL-Thesis-2526`, with its own `CLAUDE.md`):
 
-- `omni-flow-main/` is OmniFlow (Maven modules `deployment/` and `benchmark/`).
-- `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/` is the QuickFaaS deployer (Gradle,
+- `../omni-flow-main/` is OmniFlow (Maven modules `deployment/` and `benchmark/`; tests are
+  documented in `../omni-flow-main/TESTING.md`).
+- `../omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/` is the QuickFaaS deployer (Gradle,
   Kotlin 1.6.20).
-- `ISEL-Thesis-2526/thesis/` is an **older split copy** of these chapters (Aug 2026). The canonical
-  text is this folder's `Chapters/`. Don't edit the old copy. Everything in it was merged here on
-  2026-09-11 (its appendix is now `Chapters/appendix-cascade.tex`), so there's nothing left to take
-  from it. Four Background figures are commented out in `chapter2.tex` because their images
-  (`images/QuickFaaS_Test/`, `images/Omniflow/`) exist in neither folder.
+- `../thesis/` is an **older split copy** of these chapters (Aug 2026), kept at the user's request.
+  The canonical text is this folder's `Chapters/`. Don't edit the old copy. Everything in it was
+  merged here on 2026-09-11 (its appendix is now `Chapters/appendix-cascade.tex`), so there's
+  nothing left to take from it. Four Background figures are commented out in `chapter2.tex`
+  because their images (`images/QuickFaaS_Test/`, `images/Omniflow/`) exist in neither folder.
+- `/Users/pedrocarvalho/IdeaProjects/iselthesis-master` is this folder's previous location, kept
+  until the user deletes it. Don't edit it.
 
-Key classes, under `omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
+Key classes, under `../omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
 
 | Concern | Path |
 |---|---|
@@ -75,7 +80,7 @@ Key classes, under `omni-flow-main/deployment/src/main/kotlin/costaber/com/githu
 | Level 3 deployers | `internalfunction/quickfaas/` (`QuickFaasDeployer`, `AwsLambdaDeployer`) |
 | Registry | `registry/FunctionRegistryStore.kt`, `registry/FunctionRegistryBootstrapper.kt` |
 | Entry points, default registry paths | `cloud/provider/{google,amazon}/deployer/*CloudDeployer.kt` |
-| Benchmarks (P-numbers) | `omni-flow-main/benchmark/.../metrics/Benchmark*.kt`; the mapping is in `TESTING.md` |
+| Benchmarks (P-numbers) | `../omni-flow-main/benchmark/.../metrics/Benchmark*.kt`; the mapping is in `../omni-flow-main/TESTING.md` |
 
 Code behaviour that the thesis text must stay consistent with (verified 2026-09-11):
 

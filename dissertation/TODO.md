@@ -135,5 +135,6 @@ quoted phrases.
 
 ## 7. Housekeeping
 
-- [x] Put this thesis folder under git (`main`, initial commit `a225e86`).
-- [ ] Add a private remote (for example on GitHub) so the thesis is backed up off this machine.
+- [x] Put the thesis under git, then add it to the ISEL-Thesis-2526 repository as `dissertation/`
+      (commit `5cb6328`), so it's on GitHub with the code.
+- [ ] Once you're happy working here, delete the old `iselthesis-master` folder.
