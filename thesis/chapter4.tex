@@ -208,11 +208,7 @@ To keep resolution cheap when a workflow contains many internal calls, both prov
 read the registry once into a snapshot at the start of \texttt{resolve()} and resolve every call
 against that in-memory map, keeping it in sync with every subsequent \texttt{put()}/\texttt{remove()}
 so that two calls to the same function within one workflow still observe each other's writes,
-rather than re-reading the file per call. This is the optimisation quantified in
-Chapter~\ref{cha:evaluation} (Section~\ref{sec:eval-real-resolvers}), first demonstrated on a
-now-removed reference resolver (\S\ref{subsec:store-internals}) and since folded into
-\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
-\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} themselves.
+rather than re-reading the file per call.
 
 \subsection{Resolution Cascade Sequences}
 \label{subsec:cascade-sequences}
@@ -300,24 +296,19 @@ first design move was therefore to introduce a level of indirection: the workflo
 through a stable \texttt{functionRef}, and the concrete endpoint is bound from the registry at
 deployment time. The registry exists precisely to hold that binding.
 
-\paragraph{From a two-key model to a metadata record.}
-An early registry design represented each function by two synthetic keys,
-\texttt{"<functionRef>.host"} and \texttt{"<functionRef>.path"}, produced by
-\texttt{FunctionEndpointKeys} and consumed by \texttt{Workflow\allowbreak Internal\allowbreak Call\allowbreak Endpoint\allowbreak Resolver}. This
-mirrored the \texttt{host}/\texttt{path} split of the \texttt{call} step but proved awkward: it
-stored two loosely related string fragments per function and pushed the reconstruction of a full
-endpoint onto the resolver. It was superseded by a single structured record per function,
+\paragraph{A metadata record per function.}
+Each function is represented in the registry by a single structured record,
 \texttt{FunctionInvocationMetadata} (a \texttt{serviceName} plus a \texttt{url}), which the two
-production resolvers consume. \texttt{FunctionEndpointKeys} was simply deleted once nothing
-referenced it, but \texttt{Workflow\allowbreak Internal\allowbreak Call\allowbreak Endpoint\allowbreak Resolver} held something worth
-keeping first: the single-read registry optimization it demonstrated (Section~\ref{sec:eval-resolution})
-was propagated into \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
-\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}
-(Section~\ref{sec:eval-real-resolvers}), after which the now-redundant class was removed from the
-production code entirely. Its resolution logic survives only as a benchmark fixture,
-\texttt{OptimizedEndpointResolver}, kept because the local-resolution benchmark suite still relies
-on it as a pure, provider-agnostic reference implementation, deliberately decoupled from the
-live-validation step the real resolvers must perform against a cloud API.
+production resolvers, \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly.
+Both resolvers read the registry once into an in-memory snapshot per \texttt{resolve()} call and
+resolve every internal call against that snapshot, kept in sync with every subsequent
+\texttt{put()}/\texttt{remove()}, instead of re-reading the file per call
+(Section~\ref{sec:eval-real-resolvers}). The same single-read strategy, isolated from any
+cloud-side validation, is also implemented by a benchmark fixture,
+\texttt{OptimizedEndpointResolver}, which the local-resolution benchmark suite uses as a pure,
+provider-agnostic reference implementation, deliberately decoupled from the live-validation step
+the real resolvers must perform against a cloud API.
 
 \paragraph{From provider-specific fields to a uniform endpoint.}
 Collapsing the endpoint into one \texttt{url} field was the change that made the AWS extension

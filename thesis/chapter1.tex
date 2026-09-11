@@ -122,7 +122,8 @@ The remainder of this dissertation is organized as follows:
   \item \textbf{Chapter 4} presents the proposed solution: a workflow-first deployment procedure on a single cloud provider, based on logical function references (\texttt{functionRef}), a function registry for endpoint resolution, and the \texttt{internalFunction} construct on the call step, which delegates on-demand function deployment to QuickFaaS.
   \item \textbf{Chapter 5} describes the implementation of the integration: the function registry and its deployment-time resolution cascade, the AWS Lambda support added to QuickFaaS, and the runtime invocation of registry-resolved functions.
   \item \textbf{Chapter 6} evaluates the prototype, measuring the resolution overhead and its scalability, the registry write path, and the packaging overhead of the AWS agnostic layer.
-  \item \textbf{Chapter 7} concludes the dissertation, revisits the objectives, assesses the work critically, and outlines future work.
+  \item \textbf{Chapter 7} presents an illustrative case study --- real-time fraud detection for card payments --- that grounds the registry and resolution cascade in a concrete banking scenario, deployed to both AWS and GCP.
+  \item \textbf{Chapter 8} concludes the dissertation, revisits the objectives, assesses the work critically, and outlines future work.
 \end{itemize}
 
 
