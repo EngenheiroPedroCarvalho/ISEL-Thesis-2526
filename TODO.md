@@ -29,6 +29,11 @@ drift as text is edited, so search for the quoted phrases.
       the template's "To my family and friends ⋯"; personalise it if you like.
 - [x] The four commented-out Background figures in Ch2 (their images were never recovered) and
       the commented-out references to them are deleted.
+- [x] Ch1 §1.4–1.5 argue from three points: the endpoint exists only after deployment, it depends
+      on the account/project/provider, and the manual steps are real (citing Ch2's QuickFaaS
+      procedure, now labelled `subsec:quickfaas-example`). Ch1 no longer mentions `secretRef`,
+      promises "deploy or update" (only "deploy if missing"), or claims "most serverless platforms
+      enforce a tight coupling".
 
 ## 1. Blockers before submission
 
@@ -38,10 +43,11 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 2. Argument (highest impact)
 
-- [ ] Reframe the problem premise (Ch1 §1.4–1.5) around three points: the endpoint is unknown
-      before the first deployment, it differs per account/project/provider, and the manual steps
-      are real (use Ch2's QuickFaaS procedure as evidence). Drop "redeploying changes the endpoint"
-      as the main premise.
+- [ ] Ch1 now argues from "the endpoint exists only after deployment and depends on the target",
+      but later chapters still argue from redeployment: Ch5's opening ("This makes workflows
+      brittle: if a function is redeployed…") and registry-design section ("any redeployment that
+      changes the endpoint forces an edit"), and the Case Study's "redeployed far more often"
+      requirement. Align them when working on those chapters.
 - [ ] Add research questions (RQ1: feasibility and correctness; RQ2: overhead) and answer them
       explicitly in Ch6 and Ch8.
 - [ ] Make AWS support an explicit objective in Ch1 and give the reason for it (OmniFlow and
@@ -49,13 +55,12 @@ drift as text is edited, so search for the quoted phrases.
 - [ ] State that binding is static (Ch4): the rendered workflow embeds the endpoint, so an endpoint
       change after deployment needs a re-deploy. Qualify the walkthrough's claim that the registry
       "would have absorbed" the change.
-- [ ] Narrow the "deploy or update" promises in Ch1 to "deploy if missing"; move updating to
-      future work.
+- [ ] Add updating an existing function to Ch8 Future Work (Ch1 now promises only "deploy if
+      missing"); the code idea is the source-hash update path in §6.
 - [ ] Related Works: acknowledge deployment-time reference resolution in Terraform, AWS SAM
       (`DefinitionSubstitutions`) and the Serverless Framework step-functions plugin. Replace the
       "Workflow-first resolution" column with honest dimensions, and footnote that the portability
       marks come from OmniFlow and QuickFaaS.
-- [ ] Remove `secretRef` from Ch1, or move it to future work (it doesn't exist in the code).
 - [ ] Case Study: replace the "redeploy a week later" example (the ARN doesn't change, so it shows
       nothing). Reframe "multi-cloud posture" as exit/portability, and cite DORA
       (Regulation (EU) 2022/2554).
@@ -71,8 +76,8 @@ drift as text is edited, so search for the quoted phrases.
 - [ ] Ch5 "Deployment-Time Endpoint Resolution", step 2, says a stale entry "falls through to the
       next step", but it aborts. Also explain why a deleted function isn't redeployed even with a
       descriptor (the deletion may have been deliberate).
-- [ ] "Safe by default" means secrets in Ch1 and non-mutating discovery in Ch4. Define it once, and
-      note that AWS repairs the trust policy of a role you supply.
+- [ ] "Safe by default" now appears only in Ch4, meaning non-mutating discovery (Ch1's use, about
+      secrets, is gone). Note there that AWS repairs the trust policy of a role you supply.
 - [ ] Ch4 region-scope paragraph: "no region required, all regions searched" contradicts "the
       prototype assumes the same region".
 - [ ] Ch4 edge-case list: "Stale binding (GCP)" now applies to AWS as well.
@@ -114,7 +119,6 @@ drift as text is edited, so search for the quoted phrases.
 
 - [ ] Ch1 order: context → tools → manual process → consequences → research questions and
       objectives → contributions → structure. Trim §1.1–1.2, or connect them to the problem.
-- [ ] Cite or soften "most serverless platforms enforce a tight coupling" (Ch1 Motivation).
 - [ ] Ch2: fix the intro; order the sections FaaS → workflows (merge the two workflow sections) →
       QuickFaaS → OmniFlow.
 - [ ] Ch5: replace its restatements of Ch4 (conventions, cascade, error semantics) with references,
