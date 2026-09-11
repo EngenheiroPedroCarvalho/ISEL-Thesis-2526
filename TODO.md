@@ -27,16 +27,14 @@ drift as text is edited, so search for the quoted phrases.
       which nothing uses, so no glossary is printed.
 - [x] The dedicatory is built (`dedicatory_.tex` renamed to `dedicatory.tex`). Its text is still
       the template's "To my family and friends ⋯"; personalise it if you like.
+- [x] The four commented-out Background figures in Ch2 (their images were never recovered) and
+      the commented-out references to them are deleted.
 
 ## 1. Blockers before submission
 
 - [ ] Write the English and Portuguese abstracts (both are still template text). Write them last:
       problem → approach → evidence → implication, at most 300 words.
 - [ ] Write the acknowledgments (`acknowledgments.tex` is still template text).
-- [ ] Decide on the four commented-out Background figures in Ch2 (QuickFaaS deployment pipeline,
-      OmniFlow components, abstract workflow model, OmniFlow sequence diagram). Their images exist
-      nowhere under `IdeaProjects`: recover the originals from the QuickFaaS/OmniFlow reports, or
-      delete the commented-out blocks.
 
 ## 2. Argument (highest impact)
 

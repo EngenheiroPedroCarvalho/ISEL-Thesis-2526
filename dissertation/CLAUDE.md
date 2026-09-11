@@ -79,8 +79,7 @@ run its tests, including the `JAVA_HOME` workaround for this Mac's terminal.
 - `../thesis/` is an **older split copy** of these chapters (Aug 2026), kept at the user's request.
   The canonical text is this folder's `Chapters/`. Don't edit the old copy. Everything in it was
   merged here on 2026-09-11 (its appendix is now `Chapters/appendix-cascade.tex`), so there's
-  nothing left to take from it. Four Background figures are commented out in `chapter2.tex`
-  because their images (`images/QuickFaaS_Test/`, `images/Omniflow/`) exist in neither folder.
+  nothing left to take from it.
 - `/Users/pedrocarvalho/IdeaProjects/iselthesis-master` is this folder's previous location, kept
   until the user deletes it. Don't edit it.
 

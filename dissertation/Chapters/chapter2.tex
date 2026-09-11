@@ -58,17 +58,10 @@ To achieve portability, QuickFaaS introduces a Uniform Programming Model that ab
 \subsection{FaaS Deployment Model: The ZIP Strategy}
 While different cloud providers offer various methods for deploying code (such as inline editing, container images, or git syncing), the upload of a compressed source archive (ZIP) remains the most common denominator supported across AWS, Google Cloud and Azure. By standardizing on this format, QuickFaaS bypasses the need for complex container orchestration on the user's machine, maintaining the lightweight nature of the tool.
 
-The deployment of a cloud-agnostic function in QuickFaaS follows a structured pipeline that converts source code into a cloud-ready artifact. % , a process visually represented in Figure \ref{fig:function_deployment}.
+The deployment of a cloud-agnostic function in QuickFaaS follows a structured pipeline that converts source code into a cloud-ready artifact.
 For a Java-based deployment to Google Cloud Platform (GCP), the flow is initiated by the \texttt{buildAndZip} operation, which creates the hook function file by integrating the developer's logic, such as \texttt{MyFunctionClass.java}, into a temporary project structure. This is followed by the Maven packaging stage, where the source code is compiled into an executable JAR file like \texttt{gcp-http-faas.jar}. All necessary libraries, templates and compiled code are subsequently bundled into a \texttt{function-source.zip} archive during the zip sources phase. The process continues with the upload of this archive to a storage bucket, which, as shown in the configuration context, corresponds to a predefined location. A bucket in Google Cloud is a globally unique container within Google Cloud Storage (GCS), used to store any type of data as an object~\cite{GCP_bucket}. In this case it is going to store the zip file. Finally, the GCP platform loads the source code from this bucket during deployment to provision the serverless function.
 
 The generated ZIP archive serves as a container for all artifacts required for the function's execution in the cloud. It includes a \texttt{pom.xml} file that contains project metadata and Maven configurations, such as dependencies and build directories. The core logic resides in the \texttt{MyFunctionClass.java} hook function, while the \texttt{GcpHttpTemplate.java} serves as the predefined entry point for HTTP events, adhering to a naming convention based on the provider and trigger type. Execution-time properties are managed through the \texttt{function-configs.json} file, which is accessed via QuickFaaS libraries. The archive also incorporates several specialized JAR files: \texttt{quickfaas-triggers.jar} and \texttt{quickfaas-gcp-trigger-http.jar} establish and implement event trigger contracts, whereas \texttt{quickfaas-resources.jar} and \texttt{quickfaas-gcp-resources.jar} handle the contracts and implementation for interacting with cloud services. To conclude the deployment setup, developers must ensure that the Cloud Resource Manager API is enabled on GCP to allow for the programmatic management of resource metadata.
-
-% \begin{figure}[hbt!]
-% 	\centering
-% 	\includegraphics[width=0.8\textwidth]{images/QuickFaaS_Test/FaaS_Deployment.png}
-% 	\caption{FaaS deployment to GCP. Adapted from~\cite{rodrigues2022quickfaas}}
-% 	\label{fig:function_deployment}
-% \end{figure}
 
 On GCP specifically, this pipeline provisions a (first-generation) Cloud Function through the \texttt{cloudfunctions.googleapis.com/v1} API, rather than a Cloud Run service --- the platform's newer, container-based serverless product, also marketed as ``second-generation'' Cloud Functions. The resulting function is reachable at a URL of the form \texttt{https://<region>-<project>.cloudfunctions.net/<name>}, and its invocation permissions and deployment status are managed through that same first-generation API. This distinction becomes relevant later in the dissertation (\S\ref{subsec:store-internals}): the proposed Function Registry validates and discovers GCP endpoints through the Cloud Run API, so first-generation Cloud Functions have to be recognised separately, and they are not yet covered by that validation and discovery.
 
@@ -150,15 +143,6 @@ OmniFlow is a Kotlin-based library and Domain Specific Language (DSL) for defini
 \subsection{Components Overview}
 OmniFlow is designed as a client-side library integrated into the developer’s application. Conceptually, the library can be understood as a pipeline with three major responsibilities: (i) the DSL used to define the workflow, (ii) an internal representation of that workflow and (iii) a rendering and deployment layer that produces and deploys the provider-specific workflow artifact~\cite{silva2025advanced}.
 
-% Figure~\ref{fig:omniflow_components} summarizes these components.
-
-% \begin{figure}[htbp]
-% 	\centering
-% 	\includegraphics[width=0.9\textwidth]{./images/Omniflow/omniflow_components.png}
-% 	\caption{OmniFlow component diagram illustrating internal modules and external interactions. Adapted from~\cite{costa2023omniflow,silva2025advanced}.}
-% 	\label{fig:omniflow_components}
-% \end{figure}
-
 \begin{enumerate}
 	\item \textbf{Domain Specific Language (DSL):} the developer-facing interface used to define workflows in Kotlin. OmniFlow relies on Kotlin’s \emph{type-safe builder} style to provide a structured and readable syntax for declaring workflow metadata and steps~\cite{type-safe_builders}. In OmniFlow, a workflow definition typically contains a \texttt{name}, \texttt{description}, \texttt{input}, \texttt{steps} and a \texttt{result}~\cite{silva2025advanced}.
 
@@ -170,19 +154,10 @@ OmniFlow is designed as a client-side library integrated into the developer’s 
 \end{enumerate}
 
 \subsection{Workflow Entity Model}
-OmniFlow models a workflow as a root \textbf{Workflow} entity that is \emph{composed by} one or more steps. % , as illustrated in the abstract model of Figure~\ref{fig:abstract-workflow-definition}.
-At the DSL level, the workflow root typically includes a \texttt{name}, a \texttt{description}, an input variable and a result variable~\cite{silva2025advanced}. In the ER view, these are captured by two explicit entities: input, representing the data received by the workflow, and output, representing the value returned at the end of execution. A workflow therefore \emph{receives} exactly one input and \emph{returns} exactly one output in each execution.
+OmniFlow models a workflow as a root \textbf{Workflow} entity that is \emph{composed by} one or more steps.
+At the DSL level, the workflow root typically includes a \texttt{name}, a \texttt{description}, an input variable and a result variable~\cite{silva2025advanced}. OmniFlow's model captures these as two entities: input, representing the data received by the workflow, and output, representing the value returned at the end of execution. A workflow therefore \emph{receives} exactly one input and \emph{returns} exactly one output in each execution.
 
-% \begin{figure}[H]
-%   \centering
-%   % adjust the path/width as needed
-%   \includegraphics[width=0.95\textwidth]{images/Omniflow/abstract-definition-workflow.png}
-%   \caption{Abstract workflow entity model. Adapted from~\cite{silva2025advanced}}
-%   \label{fig:abstract-workflow-definition}
-% \end{figure}
-
-
-Each \textbf{Step} represents a unit of behaviour inside the workflow. The abstract model makes explicit that a step can belong to one of four disjoint categories:
+Each \textbf{Step} represents a unit of behaviour inside the workflow. A step belongs to one of four disjoint categories:
 
 \begin{itemize}
   \item \textbf{Execution Step} - steps that perform concrete work such as HTTP calls or variable assignments (for example, the Call and Assign constructs in the OmniFlow DSL).
@@ -193,7 +168,6 @@ Each \textbf{Step} represents a unit of behaviour inside the workflow. The abstr
 
 The specialisation is \emph{disjoint}, each step instance is exactly one of these four kinds, which clarifies that a given step cannot simultaneously be, for example, both an execution and a conditional step. This abstract view aligns with the concrete DSL described in~\cite{silva2025advanced, costa2023omniflow}, where execution-oriented constructs (Call, Assign), control-flow constructs (Switch) and structuring constructs (Iteration, Parallel) are all represented as steps that differ only in their role within the workflow.
 
-% Although Figure~\ref{fig:abstract-workflow-definition} hides low-level fields,
 The underlying implementation still associates each step with metadata such as a \texttt{name} and, internally, a context object that captures the details of the chosen step kind. For execution steps, this context includes parameters such as HTTP method, host and path or variable assignments; for conditional, iteration and parallel steps, the context describes the nested branches or bodies to be executed. This abstraction allows the rest of the dissertation to reason about workflows in terms of a small set of step categories while remaining compatible with the richer, concrete model implemented by OmniFlow and used for rendering provider-specific workflow definitions.
 
 
@@ -245,19 +219,11 @@ val ChainWorkflow = workflow {
 }
 \end{lstlisting}
 
-% As shown in Figure~\ref{fig:omniflow_sequence},
 Once a workflow is defined, OmniFlow renders it into the target provider format (e.g., a YAML workflow for Google Cloud Workflows) and then deploys it via the provider interface~\cite{costa2023omniflow,silva2025advanced}. Importantly, for a single deployment target, the resulting workflow is intended to invoke only endpoints that exist in that same provider account/project.
 
 OmniFlow's call step is itself agnostic to what kind of compute resource answers at that endpoint: on GCP, it invokes whatever HTTP host and path the developer supplies, whether that address belongs to a (first-generation) Cloud Function or a Cloud Run service --- the DSL and the renderer have no notion of the distinction described in Section~\ref{sec:background_quickfaas}. This becomes significant once function endpoints are resolved automatically rather than hard-coded by the developer (Chapter~\ref{ch:proposed_solution}), since an automatic resolution mechanism must itself account for a difference that OmniFlow, by design, never had to.
 
 A practical limitation follows from this design: OmniFlow call steps require concrete invocation targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment time~\cite{silva2025advanced}. If the workflow references an endpoint that does not exist (for example, because the target function has not yet been deployed), workflow deployment may fail or the workflow may fail at runtime. In current usage, developers typically mitigate this by deploying functions first (to obtain their final invocation URLs) and only then completing the workflow definition. This manual synchronization is one of the main motivations for integrating OmniFlow with a function deployment mechanism in the proposed solution chapter.
-
-% \begin{figure}[htbp]
-% 	\centering
-% 	\includegraphics[width=0.95\textwidth]{images/Omniflow/omniFlow_sequence_diagram.png}
-% 	\caption{OmniFlow sequence diagram illustrating interactions between the developer, the library and the cloud provider. Adapted from~\cite{costa2023omniflow}.}
-% 	\label{fig:omniflow_sequence}
-% \end{figure}
 
 \chapter{Related Works}
 \label{ch:related-works}
