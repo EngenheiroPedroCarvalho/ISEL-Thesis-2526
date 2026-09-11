@@ -1,0 +1,119 @@
+# CLAUDE.md
+
+Guidance for AI agents working on this MSc dissertation. Open work is tracked in `TODO.md`.
+
+## What this is
+
+ISEL MSc dissertation (English, `docdegree=msc`, `lang=en`) on integrating **OmniFlow** (Kotlin
+DSL that renders and deploys workflows to AWS Step Functions and GCP Workflows) with **QuickFaaS**
+(portable deployment of serverless functions). The contribution has two parts:
+
+1. **Unification:** a Function Registry and a three-level *resolution cascade* (registry →
+   provider discovery → QuickFaaS deployment), triggered by
+   `internalFunction(name, deploymentDescriptorPath)` on the OmniFlow `call` step.
+2. **AWS support:** an AWS Lambda provider added to QuickFaaS.
+
+The document uses the `iselthesis` LaTeX class (template v4.x).
+
+This folder is a git repository (branch `main`, no remote yet). Commit only when the user asks.
+Prefer small `Edit`s over rewriting whole files, and never delete files without asking. Build
+output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` are git-ignored.
+
+## Where things are
+
+| File | PDF chapter(s) | Label(s) |
+|---|---|---|
+| `Chapters/chapter1.tex` | 1 Introduction | `cha:introduction` |
+| `Chapters/chapter2.tex` | 2 Background, 3 Related Works | `cha:background`, `ch:related-works` |
+| `Chapters/chapter3.tex` | 4 Proposed Solution | `ch:proposed_solution` |
+| `Chapters/chapter4.tex` | 5 Implementation, 6 Evaluation, 7 Case Study, 8 Conclusions | `cha:impl`, `cha:evaluation`, `cha:case-study`, `cha:conclusions` |
+| `Chapters/appendix-cascade.tex` | Appendix A: Resolution Cascade Sequence Diagrams | `app:cascade-sequences` |
+
+- File numbers don't match chapter numbers. `chapter4.tex` is about 1,600 lines, with long runs of
+  blank lines between chapters, so `grep -n '\\chapter{'` first and read with `offset`/`limit`.
+- `Config/_files.tex` decides which files are included (`\addfile`, `\appendixfile`, `\annexfile`,
+  …). Files with a trailing underscore (`dedicatory_.tex`, `annex1_.tex`, `ganttdiagram_.tex`) don't
+  match the names there and are silently skipped. `appendix1.tex` (the template's R example) stays
+  on disk but is no longer built.
+- Several files still contain **template placeholder text**, not thesis content: `abstract-en.tex`,
+  `abstract-pt.tex`, `acronyms.tex`, `glossary.tex`, and `appendix2.tex` and `annex2.tex` (lorem
+  ipsum, still built as Appendix B and Annex I). Check a file's content before relying on it.
+- Figures: `images/<topic>/*.png`. Their PlantUML sources are in the code repo under `diagrams/`.
+- Bibliography: `Bibliography/bibliography.bib` (biblatex with the BibTeX backend).
+- Template internals (`iselthesis.cls`, `ISELthesis-files/`, `Logo/`, `Config/_*.tex` apart from
+  `_files.tex`): don't edit.
+
+## Build and check
+
+- `make pdf` runs latexmk/pdflatex (with `-shell-escape`, batch mode) and produces `template.pdf`
+  (about 80 pages). The tools are in `/Library/TeX/texbin`. `make clean` removes auxiliary files.
+- After editing, check the log:
+  `grep -nE "undefined|multiply defined|^!" template.log`.
+  Known pre-existing issue: `fig:aws-runtime-invocation` is defined twice (the Evaluation's P6
+  figure reuses that label and caption).
+
+## Related code (the source of truth for technical claims)
+
+The code repo is `/Users/pedrocarvalho/IdeaProjects/ISEL-Thesis-2526` (under git, with its own
+`CLAUDE.md` and `TESTING.md`):
+
+- `omni-flow-main/` is OmniFlow (Maven modules `deployment/` and `benchmark/`).
+- `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/` is the QuickFaaS deployer (Gradle,
+  Kotlin 1.6.20).
+- `ISEL-Thesis-2526/thesis/` is an **older split copy** of these chapters (Aug 2026). The canonical
+  text is this folder's `Chapters/`. Don't edit the old copy. Everything in it was merged here on
+  2026-09-11 (its appendix is now `Chapters/appendix-cascade.tex`), so there's nothing left to take
+  from it. Four Background figures are commented out in `chapter2.tex` because their images
+  (`images/QuickFaaS_Test/`, `images/Omniflow/`) exist in neither folder.
+
+Key classes, under `omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
+
+| Concern | Path |
+|---|---|
+| GCP cascade | `internalfunction/WorkflowInternalFunctionResolver.kt` |
+| AWS cascade | `internalfunction/quickfaas/AwsInternalFunctionResolver.kt` |
+| Level 3 deployers | `internalfunction/quickfaas/` (`QuickFaasDeployer`, `AwsLambdaDeployer`) |
+| Registry | `registry/FunctionRegistryStore.kt`, `registry/FunctionRegistryBootstrapper.kt` |
+| Entry points, default registry paths | `cloud/provider/{google,amazon}/deployer/*CloudDeployer.kt` |
+| Benchmarks (P-numbers) | `omni-flow-main/benchmark/.../metrics/Benchmark*.kt`; the mapping is in `TESTING.md` |
+
+Code behaviour that the thesis text must stay consistent with (verified 2026-09-11):
+
+- On GCP, Level 3 deploys **first-generation Cloud Functions** (`cloudfunctions.net` URLs), but GCP
+  validation, discovery and bootstrap use only the Cloud Run APIs. This is documented in the thesis
+  as a limitation.
+- Registries are per provider: `function-registry.gcp.json` and `function-registry.aws.json` in the
+  working directory.
+- A discovery error (for example, inaccessible regions) never falls through to a deployment.
+- A stale registry entry aborts the deployment, even when a descriptor is present.
+- Level 3 runs only when the function is absent. The cascade never updates an existing function.
+- Binding is static: the resolved endpoint is embedded in the rendered workflow at deployment time.
+
+To run the code's tests: this shell's `/usr/bin/java` is the macOS placeholder and hangs silently.
+Use:
+
+```sh
+cd /Users/pedrocarvalho/IdeaProjects/ISEL-Thesis-2526/omni-flow-main
+JAVA_HOME=/opt/homebrew/opt/openjdk@26/libexec/openjdk.jdk/Contents/Home ./mvnw -o -pl deployment test
+```
+
+This currently runs 173 tests (5 skipped). IntelliJ uses its own bundled JDK 25.
+
+## Writing conventions
+
+- English, mostly British spelling (*realise*, *organise*, *behaviour*). Match the surrounding text.
+- Cross-references use `Chapter~\ref{}`, `Section~\ref{}` and `\S\ref{}`. Label prefixes are
+  `sec:`, `subsec:`, `fig:`, `tab:`, `lst:`, `app:`. Chapter labels mix `cha:` and `ch:`: reuse the
+  existing labels and never rename them.
+- Put class and method names in `\texttt{}`, and break long ones with `\allowbreak`
+  (`Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver`).
+- Listings use `lstlisting` with `language=Kotlin` or `language=json`. Tables are plain `tabular`
+  with `\hline`, with thousands written as `1\,234`.
+- Newer prose is hard-wrapped at about 100 columns.
+- Terminology: an *internal call* uses `internalFunction`; an *external call* has a literal
+  `host`/`path`. Also `functionRef`, *Function Registry*, and *resolution cascade* with Level 1/2/3.
+- Technical claims must match the code. When discussing them with the user, cite `file:line`.
+- When evaluation numbers change, update the table and the prose together; the Discussion and
+  Conclusions restate numbers.
+- Describe the final state of the design, not its history ("now", "used to"). History belongs only
+  in the "Evolution of the Registry Design" subsection.
