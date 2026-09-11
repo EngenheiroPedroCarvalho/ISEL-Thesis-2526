@@ -129,9 +129,13 @@ parallel blocks) and intercepts every \texttt{CallContext} carrying an
 suffix match on \texttt{"region/functionRef"}). On a hit, the stored URL is used ---
 after validating it against the live service (a Cloud Run lookup on GCP, a Lambda
 \texttt{GetFunction} call on AWS). If validation detects drift (e.g., a changed ARN)
-the registry entry is updated accordingly; if the target no longer exists, the stale
-entry is discarded and resolution falls through to the next step.
-\item On a registry miss (or a discarded stale entry), the target provider is queried
+the registry entry is updated accordingly. If the target no longer exists where the entry
+says, the function is searched for in the other regions: if it is found there, the entry is
+replaced; otherwise the stale entry is removed and deployment aborts, even when the call
+declares a \texttt{deploymentDescriptorPath}. The function existed and was removed, possibly
+on purpose, so redeploying it automatically could undo a deliberate deletion; the diagnostic
+asks the developer to redeploy the function or update the workflow instead.
+\item On a registry miss, the target provider is queried
 directly (Cloud Run service lookup across regions on GCP; on AWS, a
 \texttt{GetFunction} lookup across every region enabled for the account, or a single
 call when the fully-qualified form is used). If the function exists, its metadata is

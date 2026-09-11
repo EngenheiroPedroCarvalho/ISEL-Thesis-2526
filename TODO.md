@@ -51,6 +51,10 @@ drift as text is edited, so search for the quoted phrases.
       GCP functions and full Cloud Run resource names) and `architecture-after.puml`/`.png` show
       one registry per provider. The PNG was rendered with the PlantUML 1.2024.7 jar and
       `-Playout=smetana` (Graphviz isn't installed).
+- [x] The last three §3 contradictions: Ch5 step 2 says a stale entry is rediscovered or aborts
+      (even with a descriptor) and why; Ch4's "safe by default" covers validation and discovery
+      and says what a deployment changes (permissions, including AWS trust-policy repair); Ch4
+      explains the `functionRef` vs `function.name` mismatch (deploys, then times out).
 
 ## 1. Blockers before submission
 
@@ -80,12 +84,6 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 3. Contradictions to fix
 
-- [ ] Ch5 "Deployment-Time Endpoint Resolution", step 2, says a stale entry "falls through to the
-      next step", but it aborts. Also explain why a deleted function isn't redeployed even with a
-      descriptor (the deletion may have been deliberate).
-- [ ] "Safe by default" now appears only in Ch4, meaning non-mutating discovery (Ch1's use, about
-      secrets, is gone). Note there that AWS repairs the trust policy of a role you supply.
-- [ ] Say what happens when `functionRef` differs from the descriptor's `function.name`.
 
 ## 4. Evaluation (Ch6)
 
@@ -129,6 +127,9 @@ drift as text is edited, so search for the quoted phrases.
 
 - [ ] A Cloud Functions v1 client on GCP for validation, discovery and bootstrap (closes the
       documented limitation).
+- [ ] Fail fast when a descriptor's `function.name` differs from the `functionRef` (for example in
+      `QuickFaasDescriptorLoader.validate`); today the deployment runs and then times out waiting
+      for a function that was deployed under another name.
 - [ ] An update path: store a source hash in each registry entry, and redeploy when the
       descriptor's function file changes.
 - [ ] Registry hardening: cross-process locking, integrity checks, a pluggable backend, an

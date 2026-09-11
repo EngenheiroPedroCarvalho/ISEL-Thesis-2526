@@ -77,8 +77,13 @@ actual deployment is a last resort rather than a default.
 
 This ordering gives the integration three desirable properties. It is \emph{idempotent} at the
 level that matters --- re-deploying the same workflow re-resolves from the registry (or the
-provider) and does not redeploy an unchanged function. It is \emph{safe by default} --- discovery
-never mutates the provider, and a deployment happens only on an explicit descriptor. And it is
+provider) and does not redeploy an unchanged function. It is \emph{safe by default} --- validation
+and discovery never mutate the provider, and a deployment happens only on an explicit descriptor
+and only after the function's absence is confirmed. A deployment does change more than the
+function itself: it also adjusts permissions --- on GCP, when an invoker service account is
+configured, by granting it permission to invoke the function; on AWS, by creating or reusing an
+execution role, repairing the trust policy of a role the developer supplies, and granting Step
+Functions permission to invoke the function (\S\ref{subsec:omniflow-aws-deployer}). And it is
 \emph{observable} --- each level emits an explicit diagnostic, so the developer can see whether a
 call was served from the registry, discovered on the provider, or freshly deployed. The concrete
 class-level realisation of this cascade, including drift handling and ambiguity detection, is
@@ -347,6 +352,14 @@ any provider artifact is rendered:
   rather than emit a workflow bound to a dead endpoint. On GCP, entries for first-generation Cloud
   Functions are not validated, so a stale one goes undetected (\S\ref{subsec:store-internals}).
 \end{itemize}
+
+One misconfiguration is not caught before deployment: a \texttt{functionRef} that differs from the
+\texttt{function.name} in its descriptor. The resolver passes the \texttt{functionRef} to the
+deployer as the function's name, while QuickFaaS deploys the function under the descriptor's name,
+and nothing checks that the two agree. When they differ, QuickFaaS deploys the function under the
+descriptor's name, OmniFlow then waits for a function named after the \texttt{functionRef}, and the
+deployment fails when that wait times out; the function that was deployed is not recorded in the
+registry. The two names must therefore be kept equal.
 
 
 
