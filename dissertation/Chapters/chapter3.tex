@@ -82,6 +82,21 @@ call was served from the registry, discovered on the provider, or freshly deploy
 class-level realisation of this cascade, including drift handling and ambiguity detection, is
 described in Chapter~\ref{cha:impl}.
 
+\paragraph{Static binding.}
+The cascade runs only when the workflow is deployed. The endpoint it resolves is written into the
+rendered workflow --- as the \texttt{url} of an HTTP call in a GCP Workflows definition, and as the
+\texttt{FunctionName} ARN of a \texttt{lambda:invoke} task in a Step Functions state machine ---
+and the deployed workflow never consults the registry at run time. The binding is therefore
+\emph{static}: if a function's endpoint changes after the workflow has been deployed, the deployed
+workflow keeps calling the old endpoint until it is deployed again. On that next deployment,
+Level~1 validation detects the change and binds the call to the new endpoint, except for GCP
+first-generation Cloud Functions, whose bindings are not validated. In practice an endpoint changes
+less often than a function's code: updating a Lambda's code in place keeps its ARN, and
+redeploying a Cloud Function or Cloud Run service under the same name and region keeps its URL. It
+changes when the function is recreated under another name, region, account or project. Resolving
+endpoints at run time instead would require every workflow execution to look the function up,
+which is outside the scope of this work.
+
 \paragraph{Provider and region scope.}
 Cloud providers organise their infrastructure into geographic \emph{regions} (e.g., \texttt{eu-west-1}
 on AWS or \texttt{europe-west1} on GCP), and every resource --- a Lambda function, a Cloud Run
@@ -296,8 +311,13 @@ the provider artifact and deploys the workflow.
 
 A second deployment of the same workflow behaves very differently and illustrates the value of the
 indirection: \texttt{fraud-check} is now a Level~1 registry hit, no descriptor is consulted, and no
-function is redeployed --- the workflow definition did not change even though, in the meantime, the
-function could have been redeployed to a new endpoint, which the registry would have absorbed.
+function is redeployed. The workflow definition did not change, and it would not have to change if,
+in the meantime, \texttt{fraud-check} had been recreated at a new endpoint (for example, in another
+region): on AWS, Level~1 validation would find the function at its new endpoint, refresh the
+registry entry and bind the call to it. On GCP, where QuickFaaS deploys a first-generation Cloud
+Function, the entry would be trusted without that check and the call bound to the old URL. In
+both cases the workflow deployed earlier keeps calling the old endpoint until this re-deployment,
+because the binding is static (\S\ref{sec:resolution-cascade}).
 
 \paragraph{Error and edge cases.}
 The same procedure defines a small number of failure modes, all fail-fast and all reported before

@@ -39,6 +39,9 @@ drift as text is edited, so search for the quoted phrases.
       validity), and Ch8's Objectives Revisited restates the answers.
 - [x] AWS support is Ch1's Objective 3, with its reason: OmniFlow targets AWS and GCP, QuickFaaS
       targeted GCP and Azure, so they overlapped only on GCP. Ch8 lists it among four objectives.
+- [x] Ch4 states that binding is static (new "Static binding" paragraph in the resolution-cascade
+      section), and the walkthrough no longer claims the registry "would have absorbed" an
+      endpoint change: on AWS the next deployment picks it up; on GCP first-gen it doesn't.
 
 ## 1. Blockers before submission
 
@@ -53,9 +56,6 @@ drift as text is edited, so search for the quoted phrases.
       brittle: if a function is redeployed…") and registry-design section ("any redeployment that
       changes the endpoint forces an edit"), and the Case Study's "redeployed far more often"
       requirement. Align them when working on those chapters.
-- [ ] State that binding is static (Ch4): the rendered workflow embeds the endpoint, so an endpoint
-      change after deployment needs a re-deploy. Qualify the walkthrough's claim that the registry
-      "would have absorbed" the change.
 - [ ] Add updating an existing function to Ch8 Future Work (Ch1 now promises only "deploy if
       missing"); the code idea is the source-hash update path in §6.
 - [ ] Related Works: acknowledge deployment-time reference resolution in Terraform, AWS SAM
