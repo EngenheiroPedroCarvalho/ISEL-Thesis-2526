@@ -158,6 +158,14 @@ To answer them, and to bridge the gap between these systems and reduce manual co
 
 	\item \textbf{Implement an orchestration prototype:} develop a working prototype that integrates the libraries so that a serverless application, comprising both the workflow definition and its function dependencies, can be deployed predictably to a single provider without manually copying endpoints into the workflow definition.
 
+	\item \textbf{Extend QuickFaaS to AWS Lambda:} OmniFlow renders and deploys workflows for both
+	AWS Step Functions and GCP Workflows~\cite{costa2023omniflow,silva2025advanced}, while QuickFaaS
+	deploys functions to GCP and Azure~\cite{rodrigues2022quickfaas}. The two tools therefore
+	overlap only on GCP, and a unification built on them as they stand would cover a single
+	provider. Adding an AWS Lambda provider to QuickFaaS, and a matching function deployer to
+	OmniFlow, makes the unification available on both providers that OmniFlow supports, and lets
+	the evaluation check the design on two providers rather than one.
+
 	\item \textbf{Evaluate feasibility and overhead:} answer RQ1 by checking the decision the
 	resolution takes in each situation it can meet (a valid, drifted or stale registry entry; a
 	function found in one region, in several or in none; inaccessible regions) on both providers,

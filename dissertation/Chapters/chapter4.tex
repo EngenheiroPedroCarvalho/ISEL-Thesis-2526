@@ -1671,7 +1671,7 @@ The two research questions of Section~\ref{sec:int_objectives} are answered as f
   discovery and deployment make.
 \end{itemize}
 
-The three objectives stated in Section~\ref{sec:int_objectives} were met:
+The four objectives stated in Section~\ref{sec:int_objectives} were met:
 \begin{enumerate}
   \item \textbf{Design a unified integration architecture} --- achieved through the registry,
   the \texttt{functionRef} indirection, the \texttt{internalFunction} construct, and the resolver
@@ -1679,6 +1679,10 @@ The three objectives stated in Section~\ref{sec:int_objectives} were met:
   \item \textbf{Implement an orchestration prototype} --- a working prototype deploys a workflow
   together with its internal functions to a single provider (GCP or AWS) without manually copying
   endpoints.
+  \item \textbf{Extend QuickFaaS to AWS Lambda} --- QuickFaaS gained an AWS provider and OmniFlow an
+  \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
+  and~\ref{subsec:omniflow-aws-deployer}), so the unification is available on both AWS and GCP,
+  and the resolver tests cover both providers (Section~\ref{sec:eval-correctness}).
   \item \textbf{Evaluate feasibility and overhead} --- Chapter~\ref{cha:evaluation} quantifies the
   resolution overhead (proportional to the product of the number of calls and the registry size,
   reducible to a cost proportional to their sum), the write-path cost, and

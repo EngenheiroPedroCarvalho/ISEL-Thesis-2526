@@ -37,6 +37,8 @@ drift as text is edited, so search for the quoted phrases.
 - [x] Research questions: Ch1 states RQ1 (feasibility and correctness) and RQ2 (overhead); Ch6
       answers them (new correctness section, "Answer to RQ1/RQ2" in the Discussion, a threat to
       validity), and Ch8's Objectives Revisited restates the answers.
+- [x] AWS support is Ch1's Objective 3, with its reason: OmniFlow targets AWS and GCP, QuickFaaS
+      targeted GCP and Azure, so they overlapped only on GCP. Ch8 lists it among four objectives.
 
 ## 1. Blockers before submission
 
@@ -51,8 +53,6 @@ drift as text is edited, so search for the quoted phrases.
       brittle: if a function is redeployed…") and registry-design section ("any redeployment that
       changes the endpoint forces an edit"), and the Case Study's "redeployed far more often"
       requirement. Align them when working on those chapters.
-- [ ] Make AWS support an explicit objective in Ch1 and give the reason for it (OmniFlow and
-      QuickFaaS only overlapped on GCP).
 - [ ] State that binding is static (Ch4): the rendered workflow embeds the endpoint, so an endpoint
       change after deployment needs a re-deploy. Qualify the walkthrough's claim that the registry
       "would have absorbed" the change.
