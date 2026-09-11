@@ -42,6 +42,8 @@ drift as text is edited, so search for the quoted phrases.
 - [x] Ch4 states that binding is static (new "Static binding" paragraph in the resolution-cascade
       section), and the walkthrough no longer claims the registry "would have absorbed" an
       endpoint change: on AWS the next deployment picks it up; on GCP first-gen it doesn't.
+- [x] Ch4's "Stale binding" edge case covers both providers, says it aborts even with a
+      descriptor, and notes that stale GCP first-gen entries go undetected.
 
 ## 1. Blockers before submission
 
@@ -81,7 +83,6 @@ drift as text is edited, so search for the quoted phrases.
       secrets, is gone). Note there that AWS repairs the trust policy of a role you supply.
 - [ ] Ch4 region-scope paragraph: "no region required, all regions searched" contradicts "the
       prototype assumes the same region".
-- [ ] Ch4 edge-case list: "Stale binding (GCP)" now applies to AWS as well.
 - [ ] Say what happens when `functionRef` differs from the descriptor's `function.name`.
 - [ ] Text still describing one shared registry: the Ch4 architecture section ("shared
       `function-registry.json`"), and the registry listings that mix GCP and AWS entries in one file

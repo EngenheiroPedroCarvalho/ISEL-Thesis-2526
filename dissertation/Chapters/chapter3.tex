@@ -331,9 +331,11 @@ any provider artifact is rendered:
   use the fully-qualified \texttt{"region/functionRef"} form.
   \item \textbf{Mutually exclusive forms} --- a call that sets both \texttt{internalFunction} and
   \texttt{host}/\texttt{path}: rejected at DSL build time and again at resolution time.
-  \item \textbf{Stale binding (GCP)} --- a registry entry whose Cloud Run service no longer exists
-  and cannot be rediscovered: the entry is removed and deployment aborts rather than emit a
-  workflow bound to a dead endpoint.
+  \item \textbf{Stale binding} --- a registry entry whose function no longer exists (a deleted
+  Lambda function on AWS, a deleted Cloud Run service on GCP) and cannot be rediscovered in another
+  region: the entry is removed and deployment aborts, even when the call supplies a descriptor,
+  rather than emit a workflow bound to a dead endpoint. On GCP, entries for first-generation Cloud
+  Functions are not validated, so a stale one goes undetected (\S\ref{subsec:store-internals}).
 \end{itemize}
 
 
