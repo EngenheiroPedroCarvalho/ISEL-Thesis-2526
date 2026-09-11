@@ -34,6 +34,9 @@ drift as text is edited, so search for the quoted phrases.
       procedure, now labelled `subsec:quickfaas-example`). Ch1 no longer mentions `secretRef`,
       promises "deploy or update" (only "deploy if missing"), or claims "most serverless platforms
       enforce a tight coupling".
+- [x] Research questions: Ch1 states RQ1 (feasibility and correctness) and RQ2 (overhead); Ch6
+      answers them (new correctness section, "Answer to RQ1/RQ2" in the Discussion, a threat to
+      validity), and Ch8's Objectives Revisited restates the answers.
 
 ## 1. Blockers before submission
 
@@ -48,8 +51,6 @@ drift as text is edited, so search for the quoted phrases.
       brittle: if a function is redeployed…") and registry-design section ("any redeployment that
       changes the endpoint forces an edit"), and the Case Study's "redeployed far more often"
       requirement. Align them when working on those chapters.
-- [ ] Add research questions (RQ1: feasibility and correctness; RQ2: overhead) and answer them
-      explicitly in Ch6 and Ch8.
 - [ ] Make AWS support an explicit objective in Ch1 and give the reason for it (OmniFlow and
       QuickFaaS only overlapped on GCP).
 - [ ] State that binding is static (Ch4): the rendered workflow embeds the endpoint, so an endpoint
@@ -92,9 +93,10 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 4. Evaluation (Ch6)
 
-- [ ] Add a correctness section: a scenario matrix (first deploy, redeploy, registry lost, drift,
-      deleted, ambiguous name, no descriptor, both forms set, forbidden region) × AWS/GCP, with
-      expected and observed results.
+- [ ] Correctness (RQ1): Ch6 "Correctness of the Resolution Cascade" (`tab:eval-correctness`)
+      reports the resolver unit tests. Still open: tests for "absent, no descriptor" and "both
+      `internalFunction` and host/path set" (both resolvers throw, untested), and evidence
+      against the real providers (the two `@Ignore`d full-deployment tests in `WorkflowTest`).
 - [ ] Count the provider API calls per cascade level (worked out from the code).
 - [ ] Time a few end-to-end deployments (L1/L2/L3 × AWS/GCP; report median and range).
 - [ ] Compare manual effort before and after (manual actions and hand-copied values).

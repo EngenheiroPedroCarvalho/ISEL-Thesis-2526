@@ -78,7 +78,8 @@ the provider assigns and whose form it defines.
 	\item \textbf{The endpoint depends on the deployment target:} the identifier records where the
 	function was deployed. On AWS, a Lambda function is invoked through an Amazon Resource Name
 	(ARN) that contains the region and the account ID
-	(\texttt{arn:aws:lambda:<region>:<account-id>:function:<name>}); on GCP, a Cloud Function's URL
+	(\texttt{arn:\allowbreak aws:\allowbreak lambda:\allowbreak <region>:\allowbreak%
+	<account-id>:\allowbreak function:\allowbreak <name>}); on GCP, a Cloud Function's URL
 	contains the region and the project (\S\ref{sec:background_quickfaas}). The same function
 	deployed to another account, project or provider therefore has a different endpoint, and a
 	workflow that embeds concrete endpoints is tied to a single deployment target: deploying it
@@ -137,19 +138,31 @@ This dissertation is motivated by the opportunity to bridge this gap by integrat
 	deployed and their invocation metadata recorded in the registry.
 \end{itemize}
 
-\section{Objectives of This Dissertation}
+\section{Research Questions and Objectives}
 \label{sec:int_objectives}
 
-The primary goal of this dissertation is to achieve a more unified development and deployment experience for serverless workflows on a single cloud provider by integrating two complementary tools: QuickFaaS and OmniFlow.
+The primary goal of this dissertation is to achieve a more unified development and deployment experience for serverless workflows on a single cloud provider by integrating two complementary tools: QuickFaaS and OmniFlow. Two research questions guide the work:
 
-To bridge the gap between these systems and reduce manual coordination, this work aims to:
+\begin{description}
+	\item[RQ1 (feasibility and correctness):] can OmniFlow, from a single workflow definition, bind
+	each internal function call to the right endpoint at deployment time, on both AWS and GCP, and
+	deploy a function through QuickFaaS only when it is confirmed to be missing?
+	\item[RQ2 (overhead):] how much does this resolution add to a workflow deployment, and how does
+	its cost grow with the number of calls and the size of the registry?
+\end{description}
+
+To answer them, and to bridge the gap between these systems and reduce manual coordination, this work aims to:
 
 \begin{enumerate}
 	\item \textbf{Design a unified integration architecture:} define the components and interfaces required for OmniFlow to coordinate workflow deployment with function availability. This includes the introduction of logical function identifiers (\texttt{functionRef}), a registry to store non-secret invocation metadata and an explicit mechanism (the \texttt{internalFunction} construct on the call step) that allows the developer to have QuickFaaS deploy a function that does not exist yet.
 
 	\item \textbf{Implement an orchestration prototype:} develop a working prototype that integrates the libraries so that a serverless application, comprising both the workflow definition and its function dependencies, can be deployed predictably to a single provider without manually copying endpoints into the workflow definition.
 
-	\item \textbf{Evaluate feasibility and overhead:} validate the prototype through experimental testing using representative workflow scenarios. The evaluation will measure the overhead introduced by the integration steps (registry resolution and on-demand deployment requests), assess correctness (e.g., avoiding missing-function failures) and discuss practical limitations observed during deployment and execution.
+	\item \textbf{Evaluate feasibility and overhead:} answer RQ1 by checking the decision the
+	resolution takes in each situation it can meet (a valid, drifted or stale registry entry; a
+	function found in one region, in several or in none; inaccessible regions) on both providers,
+	and answer RQ2 by measuring the cost that resolution adds to a deployment and how that cost
+	scales. The evaluation also discusses the practical limitations of the prototype.
 \end{enumerate}
 
 
@@ -164,7 +177,7 @@ The remainder of this dissertation is organized as follows:
   \item \textbf{Chapter 3} surveys related work on function deployment automation and workflow composition/orchestration.
   \item \textbf{Chapter 4} presents the proposed solution: a workflow-first deployment procedure on a single cloud provider, based on logical function references (\texttt{functionRef}), a function registry for endpoint resolution, and the \texttt{internalFunction} construct on the call step, which delegates on-demand function deployment to QuickFaaS.
   \item \textbf{Chapter 5} describes the implementation of the integration: the function registry and its deployment-time resolution cascade, the AWS Lambda support added to QuickFaaS, and the runtime invocation of registry-resolved functions.
-  \item \textbf{Chapter 6} evaluates the prototype, measuring the resolution overhead and its scalability, the registry write path, and the packaging overhead of the AWS agnostic layer.
+  \item \textbf{Chapter 6} evaluates the prototype and answers the research questions: it checks the decisions of the resolution cascade on both providers, and measures the resolution overhead and its scalability, the registry write path, and the packaging overhead of the AWS agnostic layer.
   \item \textbf{Chapter 7} presents an illustrative case study --- real-time fraud detection for card payments --- that grounds the registry and resolution cascade in a concrete banking scenario, deployed to both AWS and GCP.
   \item \textbf{Chapter 8} concludes the dissertation, revisits the objectives, assesses the work critically, and outlines future work.
 \end{itemize}
