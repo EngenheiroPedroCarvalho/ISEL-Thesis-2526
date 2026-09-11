@@ -1,0 +1,118 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Config/_package.tex
+%% ISEL thesis configuration file
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{NT FILE Config/_packages.tex}%
+
+% \nclangsetup{pt/contentsname=O MEU ÍNDICE}
+% \nclangsetup{en/contentsname=MY LITTLE TOC}
+
+\usepackage{pgfgantt}
+\usepackage{xcolor}
+
+% Color Definitions for the Gantt Chart
+\definecolor{iselpurple}{RGB}{98, 43, 114} 
+\definecolor{barblue}{RGB}{51, 102, 153}
+\definecolor{groupblue}{RGB}{51, 102, 153}
+\definecolor{linkred}{RGB}{165, 0, 33}
+\definecolor{bargray}{RGB}{220, 220, 220}
+
+%%============================================================
+%%  FOR DEMO PURPOSES ONLY --- YOU SHOULD REMOVE THESE PACKAGES
+%%============================================================
+% \usepackage{float}        % FOR DEMO PURPOSES ONLY --- PLEASE REMOVE
+% \restylefloat{figure}     % FOR DEMO PURPOSES ONLY --- PLEASE REMOVE
+
+
+%%============================================================
+%%  ADD YOUR PACKAGES AND OTHER CUSTOMIZATIONS HERE
+%%============================================================
+
+% \usepackage[orphans/prevent, widows/prevent]{widows-and-orphans} % add warnings about widows and orphans to “template.log”
+% \usepackage{refcheck}     % list used and unused labels
+
+\usepackage{makecell}      % Multiline table cells and control vertical and horizontal alignment
+
+\usepackage{tcolorbox}    % pretty print color boxes
+
+%------------------------------------------------------------------
+% Customization of some packages
+%------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+%%% ---------------
+
+%%% ------
+% Where to look for figures
+% \prependtographicspath{{some-folder-here}}
+
+% Setup of listings, for more information check the 'listings' package manual
+% \lstset{
+%     captionpos=t,
+%     basicstyle={\ttfamily\footnotesize},
+%     numbers=left,
+%     numberstyle={\ttfamily\tiny},
+%     tabsize=2,
+%     language=Java,
+%     float,
+%     frame=single,
+% }
+
+% --- Define Kotlin Language for Listings ---
+\lstdefinelanguage{Kotlin}{
+	keywords={package, as, typealias, class, interface, this, super, val, operator, var, fun, for, is, in, This, return, throw, when, it, import, while, if, else, null, try, break, continue, object, package, abstract, final, enum, open, annotation, override, private, public, protected, internal, implies, receiver, inc, impl, result, vararg, suspend, coroutine, data, companion},
+	keywordstyle=\color{purple}\bfseries,
+	ndkeywords={@Deprecated, @JvmName, @JvmStatic, @JvmOverloads, @JvmField, @JvmSynthetic, Iterable, Int, Integer, Float, Double, String, Runnable, dynamic},
+	ndkeywordstyle=\color{orange}\bfseries,
+	emph={println, return@, forEach, map, mapOf, listOf, orElse, binding, get, getReader, lines, reduce, trim, split, put, getOrDefault, add, getAsJsonObject, getAsString, split, write, readValue, service, setContentType, getWriter, deploy, build},
+	emphstyle={\color{blue}},
+	identifierstyle=\color{black},
+	sensitive=true,
+	commentstyle=\color{gray}\ttfamily,
+	comment=[l]{//},
+	morecomment=[s]{/*}{*/},
+	stringstyle=\color{green!60!black}\ttfamily,
+	morestring=[b]",
+	morestring=[b]'
+}
+
+\lstdefinelanguage{yaml}{
+	keywords={true,false,null,y,n},
+	keywordstyle=\color{darkgray}\bfseries,
+	basicstyle=\ttfamily\footnotesize, % basic font setting
+	sensitive=false,
+	comment=[l]{\#},
+	morecomment=[s]{/*}{*/},
+	commentstyle=\color{purple}\ttfamily,
+	stringstyle=\color{blue}\ttfamily,
+	morestring=[b]',
+	morestring=[b]"
+}
+
+\lstdefinelanguage{json}{
+	basicstyle=\ttfamily\footnotesize,
+	numbers=left,
+	numberstyle=\scriptsize,
+	stepnumber=1,
+	numbersep=8pt,
+	showstringspaces=false,
+	breaklines=true,
+	frame=lines,
+	stringstyle=\color{blue},
+	keywordstyle=\color{black}\bfseries,
+	morestring=[b]",
+	literate=
+	*{:}{{{\color{black}{:}}}}{1}
+	{,}{{{\color{black}{,}}}}{1}
+	{\{}{{{\color{black}{\{}}}}{1}
+	{\}}{{{\color{black}{\}}}}}{1}
+	{[}{{{\color{black}{[}}}}{1}
+	{]}{{{\color{black}{]}}}}{1},
+}
+
+
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, calc, shadows}
+\usepackage{graphicx}
