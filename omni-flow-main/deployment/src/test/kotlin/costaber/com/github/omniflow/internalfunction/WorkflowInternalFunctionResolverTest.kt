@@ -97,7 +97,11 @@ internal class WorkflowInternalFunctionResolverTest {
         resultType = ResultType.BODY
     )
 
-    private fun internalCall(functionName: String, result: String = "internalResult"): CallContext = CallContext(
+    private fun internalCall(
+        functionName: String,
+        result: String = "internalResult",
+        descriptor: String? = null
+    ): CallContext = CallContext(
         method = HttpMethod.POST,
         host = "",
         path = "",
@@ -108,7 +112,7 @@ internal class WorkflowInternalFunctionResolverTest {
         timeoutInSeconds = 15L,
         result = result,
         resultType = ResultType.BODY,
-        internalFunction = InternalFunction(name = functionName)
+        internalFunction = InternalFunction(name = functionName, deploymentDescriptorPath = descriptor)
     )
 
     private fun step(name: String, context: StepContext): Step =
@@ -528,5 +532,63 @@ internal class WorkflowInternalFunctionResolverTest {
         // The stale "eu-west-1/fn" key (now pointing at the wrong region) is gone, replaced by
         // a plain "fn" key consistent with how a fresh discovery would key it.
         expectThat(store.readAll().keys.toList()).containsExactly("fn")
+    }
+
+    @Test
+    fun `function absent from registry and Cloud Run is deployed from its descriptor and registered`() {
+        val store = storeWith()
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookup("proj", any(), "fn") } returns CloudRunV2ServiceInspector.LookupResult.NotFound
+        val deployed = FunctionInvocationMetadata("fn", "https://eu-west-1-proj.cloudfunctions.net/fn")
+        val deployer = mockk<InternalFunctionDeployer>()
+        every { deployer.deployOrUpdate("fn", "./deploy/fn.json") } returns deployed
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
+            preferredRegion = "eu-west-1",
+            registry = store,
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1", "eu-central-1"),
+            internalFunctionDeployer = deployer
+        )
+        val original = workflow(step("callStep", internalCall("fn", descriptor = "./deploy/fn.json")))
+
+        val resolved = resolver.resolve(original)
+
+        expectThat(resolved.steps.first().context).isA<CallContext>().and {
+            get { host }.isEqualTo("https://eu-west-1-proj.cloudfunctions.net")
+            get { path }.isEqualTo("/fn")
+            get { internalFunction }.isNull()
+        }
+        expectThat(store.readAll()).isEqualTo(mapOf("fn" to deployed))
+        verify(exactly = 1) { deployer.deployOrUpdate("fn", "./deploy/fn.json") }
+    }
+
+    @Test
+    fun `inaccessible regions block deployment even when a descriptor is available`() {
+        val store = storeWith()
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookup("proj", "eu-west-1", "fn") } returns CloudRunV2ServiceInspector.LookupResult.NotFound
+        every { inspector.lookup("proj", "eu-central-1", "fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Forbidden("access denied")
+        val deployer = mockk<InternalFunctionDeployer>()
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
+            preferredRegion = "eu-west-1",
+            registry = store,
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1", "eu-central-1"),
+            internalFunctionDeployer = deployer
+        )
+        val original = workflow(step("callStep", internalCall("fn", descriptor = "./deploy/fn.json")))
+
+        val thrown = expectThrows<IllegalStateException> { resolver.resolve(original) }
+        thrown.get { message }.isEqualTo(
+            "Internal function 'fn' is not in function-registry and could not be confirmed in Cloud Run. " +
+                    "Some regions were not accessible: eu-central-1. " +
+                    "Tip: specify the region explicitly: internalFunction(\"<region>/fn\")."
+        )
+        // Absence was never confirmed in eu-central-1, so deploying could duplicate the function.
+        verify(exactly = 0) { deployer.deployOrUpdate(any(), any()) }
+        expectThat(store.readAll()).isEqualTo(emptyMap())
     }
 }

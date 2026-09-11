@@ -116,7 +116,7 @@ class AmazonCloudDeployer internal constructor(
     }
 
     class Builder {
-        private var registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json")
+        private var registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.aws.json")
         private var functionsCatalog: CloudFunctionsCatalog = LambdaFunctionsCatalog()
         private var internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
 

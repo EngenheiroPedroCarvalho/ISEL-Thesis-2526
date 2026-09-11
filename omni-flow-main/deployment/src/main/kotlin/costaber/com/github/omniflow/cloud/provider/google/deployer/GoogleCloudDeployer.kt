@@ -23,7 +23,7 @@ class GoogleCloudDeployer internal constructor(
     private val nodeTraversor: DepthFirstNodeVisitorTraversor,
     private val contextVisitor: NodeContextVisitor,
     private val googleWorkflowService: GoogleWorkflowService,
-    private val registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json"),
+    private val registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.gcp.json"),
     private val functionsCatalog: CloudRunV2RestCatalog = CloudRunV2RestCatalog(),
     private val internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
 ) : CloudDeployer<GoogleDeployContext> {
@@ -126,7 +126,7 @@ class GoogleCloudDeployer internal constructor(
 
 
     class Builder {
-        private var registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json")
+        private var registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.gcp.json")
         private var functionsCatalog: CloudRunV2RestCatalog = CloudRunV2RestCatalog()
         private var internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
 

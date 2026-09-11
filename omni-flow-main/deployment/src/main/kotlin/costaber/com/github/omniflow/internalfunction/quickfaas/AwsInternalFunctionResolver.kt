@@ -12,7 +12,8 @@ import costaber.com.github.omniflow.registry.FunctionRegistryStore
 import mu.KotlinLogging
 
 /**
- * Resolves CallContext.internalFunction using function-registry.json and the AWS Lambda API.
+ * Resolves CallContext.internalFunction using the AWS function registry (function-registry.aws.json
+ * by default) and the AWS Lambda API.
  *
  * Unlike a single fixed AWS region, functions are searched for across every region enabled for
  * the account (discovered via [regionsLister]), with [preferredRegion] - if set - tried first.
@@ -158,17 +159,9 @@ class AwsInternalFunctionResolver(
 
         // 2. Not in registry — search AWS Lambda across every enabled region
         println("$YELLOW  !$RESET '$functionRef' not in registry — searching AWS Lambda across regions...")
-        val found = try {
-            discoverFunctionForRef(functionRef)
-        } catch (e: IllegalStateException) {
-            if (internal.deploymentDescriptorPath != null) {
-                println("$YELLOW  !$RESET AWS Lambda discovery failed for '$functionRef' — deployment descriptor available")
-                logger.info { "Lambda discovery failed for '$functionRef', but deployment descriptor is available. Proceeding to QuickFaaS deployment." }
-                emptyList()
-            } else {
-                throw e
-            }
-        }
+        // A discovery failure (e.g. inaccessible regions) means absence was NOT confirmed, so it
+        // must not fall through to a QuickFaaS deployment, even when a descriptor is available.
+        val found = discoverFunctionForRef(functionRef)
 
         // 3. Deploy via QuickFaaS if descriptor available
         if (found.isEmpty() && internal.deploymentDescriptorPath != null) {

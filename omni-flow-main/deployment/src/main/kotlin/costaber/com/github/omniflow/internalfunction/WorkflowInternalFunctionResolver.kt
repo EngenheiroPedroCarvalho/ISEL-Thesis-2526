@@ -10,7 +10,8 @@ import java.net.URI
 
 
 /**
- * Resolves CallContext.internalFunction using function-registry.json and Cloud Run APIs.
+ * Resolves CallContext.internalFunction using the GCP function registry (function-registry.gcp.json
+ * by default) and Cloud Run APIs.
  *
  * When a function is not found in the registry or Cloud Run, and its [InternalFunction.deploymentDescriptorPath]
  * is set, the [internalFunctionDeployer] is invoked to deploy the function via QuickFaaS before continuing.
@@ -170,17 +171,9 @@ class WorkflowInternalFunctionResolver(
         }
         //2) Missing in registry -> confirm via Cloud Run APIs and auto-populate
         println("$YELLOW  !$RESET Function '$functionRef' not in registry — searching Cloud Run services...")
-        val found = try {
-            discoverServiceForRef(functionRef)
-        } catch (e: IllegalStateException) {
-            if (internal.deploymentDescriptorPath != null) {
-                println("$YELLOW  !$RESET Cloud Run discovery failed for '$functionRef' — deployment descriptor available")
-                logger.info { "Cloud Run discovery failed for '$functionRef', but deployment descriptor is available. Proceeding to QuickFaaS deployment." }
-                emptyList()
-            } else {
-                throw e
-            }
-        }
+        // A discovery failure (e.g. inaccessible regions) means absence was NOT confirmed, so it
+        // must not fall through to a QuickFaaS deployment, even when a descriptor is available.
+        val found = discoverServiceForRef(functionRef)
 
         //3) Not found in Cloud Run and descriptor path is provided -> deploy via QuickFaaS
         if (found.isEmpty() && internal.deploymentDescriptorPath != null) {
