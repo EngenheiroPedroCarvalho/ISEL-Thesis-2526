@@ -1671,31 +1671,46 @@ The two research questions of Section~\ref{sec:int_objectives} are answered as f
   discovery and deployment make.
 \end{itemize}
 
-The four objectives stated in Section~\ref{sec:int_objectives} were met:
+Against the four objectives stated in Section~\ref{sec:int_objectives}, the work stands as
+follows:
 \begin{enumerate}
-  \item \textbf{Design a unified integration architecture} --- achieved through the registry,
-  the \texttt{functionRef} indirection, the \texttt{internalFunction} construct, and the resolver
-  strategy described in Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}.
-  \item \textbf{Implement an orchestration prototype} --- a working prototype deploys a workflow
-  together with its internal functions to a single provider (GCP or AWS) without manually copying
-  endpoints.
-  \item \textbf{Extend QuickFaaS to AWS Lambda} --- QuickFaaS gained an AWS provider and OmniFlow an
-  \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
-  and~\ref{subsec:omniflow-aws-deployer}), so the unification is available on both AWS and GCP,
-  and the resolver tests cover both providers (Section~\ref{sec:eval-correctness}).
-  \item \textbf{Evaluate feasibility and overhead} --- Chapter~\ref{cha:evaluation} quantifies the
-  resolution overhead (proportional to the product of the number of calls and the registry size,
-  reducible to a cost proportional to their sum), the write-path cost, and
-  the negligible packaging overhead of the AWS agnostic layer.
+  \item \textbf{Design a unified integration architecture} --- \emph{met.} The registry, the
+  \texttt{functionRef} indirection, the \texttt{internalFunction} construct and the resolver
+  strategy (Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}) let a single workflow
+  definition drive both function and workflow deployment, binding endpoints when the workflow is
+  deployed (\S\ref{sec:resolution-cascade}).
+  \item \textbf{Implement an orchestration prototype} --- \emph{met on AWS, partially met on GCP.}
+  The prototype resolves the internal functions of a workflow on both providers, and deploys the
+  missing ones, without endpoints being copied by hand. On GCP, however, the first-generation Cloud
+  Functions that QuickFaaS deploys are not covered by validation or discovery: a stale binding to
+  one of them goes undetected, and a binding lost from the registry cannot be rediscovered
+  (\S\ref{subsec:store-internals}).
+  \item \textbf{Extend QuickFaaS to AWS Lambda} --- \emph{met.} QuickFaaS gained an AWS provider
+  and OmniFlow an \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
+  and~\ref{subsec:omniflow-aws-deployer}). The provider-agnostic packaging layer adds about
+  0.9\,KB to a Lambda bundle (Table~\ref{tab:eval-s1}), and the resolver tests cover both
+  providers (Section~\ref{sec:eval-correctness}).
+  \item \textbf{Evaluate feasibility and overhead} --- \emph{partially met.}
+  Chapter~\ref{cha:evaluation} checks the decisions of the resolution cascade on both providers
+  and measures the resolution overhead, the registry write path and the packaging size. The
+  evidence is local only: the correctness checks simulate the provider, the benchmarks ran with a
+  short configuration on a shared machine, and neither end-to-end deployment times nor the
+  provider calls that validation and discovery make were measured.
 \end{enumerate}
 
 \section{Critical Assessment}
 \label{sec:concl-critical}
 
-The design is sound but the implementation is that of a prototype, and several limitations should
-be stated plainly.
+The implementation is that of a prototype, and several limitations should be stated plainly.
 
 \begin{itemize}
+  \item \textbf{Static binding.} Endpoints are resolved when the workflow is deployed and embedded
+  in the rendered artifact (\S\ref{sec:resolution-cascade}). An endpoint that changes afterwards
+  reaches a deployed workflow only when that workflow is deployed again; nothing resolves
+  endpoints at run time.
+  \item \textbf{No update path.} The cascade deploys a function only when it is missing and never
+  updates one that exists: a change to a function's code is not deployed by a workflow deployment,
+  and has to be deployed separately (for example, with QuickFaaS directly).
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
   or authenticity guarantee, and no cross-process locking; concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
@@ -1724,8 +1739,8 @@ orchestration definitions stable while functions are redeployed, and that values
 multi-provider posture (for example, to satisfy operational-resilience regulation such as the EU
 Digital Operational Resilience Act, or to expose open-banking functions under PSD2). Reaching that
 setting would require hardening the gaps above: a signed, access-controlled registry backend, an
-attributable write history for audit, and least-privilege IAM under change control. These are
-incremental improvements to an already-sound design rather than evidence that the design is wrong.
+attributable write history for audit, and least-privilege IAM under change control. None of these
+changes the resolution cascade itself; they harden the parts around it.
 Chapter~\ref{cha:case-study} works through a concrete instance of this setting --- a card-payment
 fraud-screening workflow --- to illustrate both the value of the integration and the extent of
 this hardening.
@@ -1740,6 +1755,9 @@ structural ones.
   \item \textbf{Cover first-generation Cloud Functions on GCP} with a Cloud Functions~v1 client
   used for validation, discovery and bootstrap, giving the GCP path the same drift detection and
   rediscovery guarantees as the AWS path.
+  \item \textbf{Add an update path:} record a hash of each function's source in its registry entry
+  and redeploy the function through QuickFaaS when the source its descriptor points to changes, so
+  that a workflow deployment also brings its functions up to date.
   \item \textbf{Harden the registry:} a pluggable backend (database or secret/parameter store)
   behind the current interface, with cross-process locking, per-entry integrity, an in-memory
   cache with explicit invalidation, and an append-only, attributable write history.
@@ -1758,7 +1776,8 @@ structural ones.
 
 The integration shows that function deployment and workflow orchestration can be driven from a
 single, provider-agnostic definition, with concrete endpoint binding deferred to deployment time
-through an explicit resolution cascade. The overhead of this unification is small and, with the
-single-read optimization now applied uniformly across both production resolvers, asymptotically
-linear. What remains is engineering maturity --- registry integrity, least-privilege operation, and
-test coverage of the cloud edges --- to take a validated concept from prototype to production.
+through an explicit resolution cascade. In local measurements the overhead of this unification is
+small and, with the single-read optimization applied in both production resolvers, grows linearly.
+What remains is evidence against the real providers and engineering maturity --- registry
+integrity, least-privilege operation, test coverage of the cloud edges and an update path --- to
+take the prototype to production.

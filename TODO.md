@@ -55,6 +55,10 @@ drift as text is edited, so search for the quoted phrases.
       (even with a descriptor) and why; Ch4's "safe by default" covers validation and discovery
       and says what a deployment changes (permissions, including AWS trust-policy repair); Ch4
       explains the `functionRef` vs `function.name` mismatch (deploys, then times out).
+- [x] Conclusions: each objective has a verdict with evidence (1 and 3 met, 2 met on AWS and
+      partially on GCP, 4 partially met); "the design is sound", "already-sound design" and
+      "validated concept" are gone; the Critical Assessment adds static binding and the missing
+      update path, and Future Work adds the update path.
 
 ## 1. Blockers before submission
 
@@ -69,8 +73,6 @@ drift as text is edited, so search for the quoted phrases.
       brittle: if a function is redeployed…") and registry-design section ("any redeployment that
       changes the endpoint forces an edit"), and the Case Study's "redeployed far more often"
       requirement. Align them when working on those chapters.
-- [ ] Add updating an existing function to Ch8 Future Work (Ch1 now promises only "deploy if
-      missing"); the code idea is the source-hash update path in §6.
 - [ ] Related Works: acknowledge deployment-time reference resolution in Terraform, AWS SAM
       (`DefinitionSubstitutions`) and the Serverless Framework step-functions plugin. Replace the
       "Workflow-first resolution" column with honest dimensions, and footnote that the portability
@@ -78,9 +80,6 @@ drift as text is edited, so search for the quoted phrases.
 - [ ] Case Study: replace the "redeploy a week later" example (the ARN doesn't change, so it shows
       nothing). Reframe "multi-cloud posture" as exit/portability, and cite DORA
       (Regulation (EU) 2022/2554).
-- [ ] Conclusions: mark each objective as met or partially met, with evidence. Drop "validated
-      concept" and "the design is sound". Add static binding and the missing update path to the
-      Critical Assessment.
 
 ## 3. Contradictions to fix
 
