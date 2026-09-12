@@ -11,12 +11,31 @@ chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
 > (largura de Parallel), mas do lado da **resolução** de funções internas (contribuição da tese),
 > não da renderização.
 
+> **⚠ Números desatualizados (2026-09-12).** As tabelas e os comentários deste documento vêm das
+> execuções de agosto de 2026, feitas em várias sessões com `-f 1`. Foram substituídos por **uma
+> única execução de toda a suite com `-f 3`**, em `jmh-results-f3.csv` (e nos ficheiros
+> `jmh-results-p*.csv`, regerados a partir dela); os gráficos `P*.png` já são dessa execução. A
+> análise atualizada está no Capítulo 7 da dissertação (`dissertation/Chapters/chapter7.tex`).
+> Quatro conclusões deste documento mudaram e **não devem ser citadas daqui**:
+>
+> 1. Os valores absolutos são uma a duas ordens de grandeza menores (ex.: P13 com K=1/R0=0 passou de
+>    4682 µs para 45,5 µs) — as execuções antigas estavam contaminadas por carga da máquina.
+> 2. P6: o ponto de equilíbrio entre custo fixo e custo por entrada é R≈60, não R≈320
+>    (10,3 µs fixos + 0,17 µs por entrada).
+> 3. P13: o custo por escrita **não** é aproximadamente fixo — cresce com o tamanho do registo
+>    (45 µs a R0=0, 490 µs a R0=1000). O que é aproximadamente constante é o custo por escrita ao
+>    longo de K. O agravamento de P17 sobre P13 é de 26–62%, a crescer com R0, não 22–27%.
+> 4. P10/P11: a maior parte do custo por chamada é o `println` de progresso dentro do método medido
+>    (~2,3 µs por linha impressa, contra 0,22 µs de resolução). A diferença entre AWS e GCP é
+>    exatamente uma linha impressa a mais no GCP, não uma diferença de cascata.
+
 ## Metodologia
 
 - **Ferramenta:** JMH 1.37, modo `AverageTime`, unidade µs/op, com `Blackhole` a consumir cada
   resultado para impedir *dead-code elimination*.
-- **Execução:** `-f 1 -wi 3 -i 5 -w 1 -r 1` — uma *fork* da JVM, 3 iterações de aquecimento e 5 de
-  medição (1 s cada), para medir o código já compilado pelo JIT.
+- **Execução (números abaixo, obsoletos):** `-f 1 -wi 3 -i 5 -w 1 -r 1` — uma *fork* da JVM, 3
+  iterações de aquecimento e 5 de medição (1 s cada), para medir o código já compilado pelo JIT.
+  A execução canónica atual é `-f 3 -wi 3 -i 5 -w 1 -r 1`, toda a suite numa só sessão.
 - **Dados brutos:** `jmh-results.csv` (P3, um só `@Param`), `jmh-results-p6.csv` (P6,
   com a dimensão `Param: r`), `jmh-results-p7.csv` (P7 antes/depois), `jmh-results-p8.csv`/
   `jmh-results-p9.csv` (P8–P9, resolução do workflow real), `jmh-results-p10.csv`/`jmh-results-p11.csv`
