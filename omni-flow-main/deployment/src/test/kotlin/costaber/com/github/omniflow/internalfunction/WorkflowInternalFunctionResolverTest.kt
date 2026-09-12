@@ -318,6 +318,29 @@ internal class WorkflowInternalFunctionResolverTest {
     }
 
     @Test
+    fun `internal call combined with host or path is rejected`() {
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        // No `every {}` stub registered -> any lookup would throw a MockKException; the call is
+        // rejected before the cascade starts, so none is made.
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
+            preferredRegion = "eu-west-1",
+            registry = storeWith(),
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1")
+        )
+        val conflicting = internalCall("fn").copy(host = "https://external.example.com", path = "/api")
+        val original = workflow(step("callStep", conflicting))
+
+        val thrown = expectThrows<IllegalStateException> { resolver.resolve(original) }
+        thrown.get { message }.isEqualTo(
+            "Invalid workflow: internalFunction('fn') cannot be combined with host/path. " +
+                    "Remove host/path from this call step."
+        )
+        verify(exactly = 0) { inspector.lookup(any(), any(), any()) }
+    }
+
+    @Test
     fun `drifted URL is refreshed in the registry and used`() {
         val store = storeWith("fn" to FunctionInvocationMetadata("fn", "https://fn-stale-ew.a.run.app"))
         val inspector = mockk<CloudRunV2ServiceInspector>()
@@ -561,6 +584,32 @@ internal class WorkflowInternalFunctionResolverTest {
         }
         expectThat(store.readAll()).isEqualTo(mapOf("fn" to deployed))
         verify(exactly = 1) { deployer.deployOrUpdate("fn", "./deploy/fn.json") }
+    }
+
+    @Test
+    fun `function absent from registry and Cloud Run without a descriptor aborts`() {
+        val store = storeWith()
+        val inspector = mockk<CloudRunV2ServiceInspector>()
+        every { inspector.lookup("proj", any(), "fn") } returns CloudRunV2ServiceInspector.LookupResult.NotFound
+        val deployer = mockk<InternalFunctionDeployer>()
+        val resolver = WorkflowInternalFunctionResolver(
+            projectId = "proj",
+            preferredRegion = "eu-west-1",
+            registry = store,
+            inspector = inspector,
+            locationsClient = locationsClient("eu-west-1", "eu-central-1"),
+            internalFunctionDeployer = deployer
+        )
+        val original = workflow(step("callStep", internalCall("fn")))
+
+        val thrown = expectThrows<IllegalStateException> { resolver.resolve(original) }
+        thrown.get { message }.isEqualTo(
+            "Internal function 'fn' is not in function-registry and does not exist in Cloud Run. " +
+                    "Deploy it first (QuickFaaS) or create it in the console."
+        )
+        // Absence is confirmed here, but without a descriptor there is nothing to deploy.
+        verify(exactly = 0) { deployer.deployOrUpdate(any(), any()) }
+        expectThat(store.readAll()).isEqualTo(emptyMap())
     }
 
     @Test

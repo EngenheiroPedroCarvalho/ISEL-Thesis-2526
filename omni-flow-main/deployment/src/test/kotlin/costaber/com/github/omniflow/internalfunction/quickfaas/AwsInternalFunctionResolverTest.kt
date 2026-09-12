@@ -310,6 +310,26 @@ internal class AwsInternalFunctionResolverTest {
     }
 
     @Test
+    fun `internal call combined with host or path is rejected`() {
+        val store = storeWith()
+        val resolver = AwsInternalFunctionResolver(
+            preferredRegion = "eu-west-1",
+            registry = store,
+            inspector = FakeInspector(),
+            regionsLister = FakeRegionsLister(listOf("eu-west-1"))
+        )
+        val conflicting = internalCall("fn").copy(host = "https://external.example.com", path = "/api")
+        val original = workflow(step("callStep", conflicting))
+
+        val thrown = expectThrows<IllegalStateException> { resolver.resolve(original) }
+        thrown.get { message }.isEqualTo(
+            "Invalid workflow: internalFunction('fn') cannot be combined with host/path."
+        )
+        // The call is rejected before the cascade starts, so nothing is registered.
+        expectThat(store.readAll()).isEqualTo(emptyMap())
+    }
+
+    @Test
     fun `drifted ARN is refreshed in the registry and used`() {
         val store = storeWith("fn" to FunctionInvocationMetadata("fn", "arn:aws:lambda:eu-west-1:1:function:fn-stale"))
         val resolver = AwsInternalFunctionResolver(
@@ -542,6 +562,29 @@ internal class AwsInternalFunctionResolverTest {
         }
         expectThat(store.readAll()).isEqualTo(mapOf("fn" to deployed))
         expectThat(deployer.calls).containsExactly("fn" to "./deploy/fn.json")
+    }
+
+    @Test
+    fun `function absent from registry and AWS without a descriptor aborts`() {
+        val store = storeWith()
+        val deployer = FakeDeployer()
+        val resolver = AwsInternalFunctionResolver(
+            preferredRegion = "eu-west-1",
+            registry = store,
+            internalFunctionDeployer = deployer,
+            inspector = FakeInspector(),
+            regionsLister = FakeRegionsLister(listOf("eu-west-1", "eu-central-1"))
+        )
+        val original = workflow(step("callStep", internalCall("fn")))
+
+        val thrown = expectThrows<IllegalStateException> { resolver.resolve(original) }
+        thrown.get { message }.isEqualTo(
+            "Lambda 'fn' not found in registry or AWS and no deployment descriptor was provided. " +
+                    "Deploy it first or provide deploymentDescriptorPath in internalFunction()."
+        )
+        // Absence is confirmed here, but without a descriptor there is nothing to deploy.
+        expectThat(deployer.calls).hasSize(0)
+        expectThat(store.readAll()).isEqualTo(emptyMap())
     }
 
     @Test
