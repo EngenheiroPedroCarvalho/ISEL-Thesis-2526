@@ -74,8 +74,11 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 1. Blockers before submission
 
-- [ ] Write the English and Portuguese abstracts (both are still template text). Write them last:
-      problem → approach → evidence → implication, at most 300 words.
+- [x] Abstracts written (2026-09-12), both following problem → approach → evidence → implication:
+      `Chapters/abstract-en.tex` (296 words) and `Chapters/abstract-pt.tex` (300 words, the limit),
+      each with keywords. They deliberately cite no absolute benchmark figure — only the shape
+      ("milliseconds", "linear in the number of internal calls, not in the registry size") — so the
+      `-f 3` re-run cannot invalidate them. Re-read them once the final numbers are in.
 - [ ] Write the acknowledgments (`acknowledgments.tex` is still template text).
 
 ## 2. Argument (highest impact)

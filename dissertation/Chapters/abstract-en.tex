@@ -5,21 +5,31 @@
 %%
 %% Abstract in English
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-The dissertation must contain two versions of the abstract, one in the same language as the main text, another in a different language.  The package assumes that the two languages under consideration are always Portuguese and English.
+A serverless workflow is written before the functions it calls exist. Its endpoint --- a Cloud Run URL, a Lambda
+ARN --- is produced by its deployment and depends on the account, project, region and provider it
+was deployed to. The developer therefore deploys the functions with one tool, reads the endpoints
+it produced, and copies them by hand into the workflow definition consumed by another. The copying is repeated whenever a function moves between regions, accounts or
+providers, and a mistyped endpoint yields a workflow that deploys successfully and only fails when
+it runs.
 
-The package will sort the abstracts in the appropriate order. This means that the first abstract will be in the same language as the main text, followed by the abstract in the other language, and then followed by the main text. For example, if the dissertation is written in Portuguese, first will come the summary in Portuguese and then in English, followed by the main text in Portuguese. If the dissertation is written in English, first will come the summary in English and then in Portuguese, followed by the main text in English.
+This dissertation removes that step by unifying the two tools: QuickFaaS, which deploys portable
+serverless functions, and OmniFlow, a Kotlin DSL that renders and deploys workflows to AWS Step
+Functions and Google Cloud Workflows. A workflow call names a function by a stable logical
+identifier rather than by an endpoint, and a three-level resolution cascade binds that identifier
+when the workflow is deployed: it reads a per-provider function registry and validates the entry
+against the live function; failing that, it searches the provider's regions; and only when absence
+is confirmed does it deploy the function through QuickFaaS from a deployment descriptor. QuickFaaS,
+previously limited to Google Cloud and Azure, was also extended with an AWS Lambda provider,
+covering the same two clouds as OmniFlow.
 
-The abstract should not exceed one page and should answer the following questions:
-
-The format of your abstract will depend on the discipline in which you are working. However, all abstracts generally cover the following five sections:
-\begin{itemize}
-	\item The purpose of the research (what’s it about and why’s that important)
-	\item The methodology (how you carried out the research)
-	\item The key research findings (what answers you found)
-	\item The implications of these findings (what these answers mean)
-\end{itemize}
-\textbf{Maximum of words: 300}
+The prototype is evaluated for correctness and for overhead. Forty-five resolver unit tests cover
+every path of the cascade on both providers, and benchmarks show that local resolution costs
+milliseconds for workflows of up to two hundred internal calls, growing linearly with the number of
+internal calls and not with the size of the registry. Deploying a serverless application from a
+single definition is therefore feasible, and the resolution it adds is small beside the cloud
+deployment it precedes.
 % Palavras-chave do resumo em Inglês
 \begin{keywords}
-Keywords (in English) \ldots -- minimum of 3 (three)
-\end{keywords} 
+Serverless computing, Function-as-a-Service, Workflow orchestration, Multi-cloud portability,
+Deployment-time endpoint binding, AWS Lambda, Google Cloud
+\end{keywords}

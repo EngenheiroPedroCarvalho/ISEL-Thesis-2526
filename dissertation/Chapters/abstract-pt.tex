@@ -5,25 +5,34 @@
 %%
 %% Abstract in Portuguese
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Independentemente da língua em que está escrita a dissertação, é necessário um resumo na língua do texto principal e um resumo noutra língua.  Assume-se que as duas línguas em questão serão sempre o Português e o Inglês.
+Um \emph{workflow} \emph{serverless} é escrito antes de existirem as funções que invoca. O
+\emph{endpoint} de uma função --- um URL do Cloud Run, um ARN do Lambda --- é produzido pela sua
+implantação e depende da conta, do projeto, da região e do fornecedor onde foi implantada. O
+programador implanta as funções com uma ferramenta, lê os \emph{endpoints} produzidos e copia-os
+à mão para a definição do \emph{workflow}, consumida por outra. A cópia repete-se sempre que a
+função muda de região, de conta ou de fornecedor, e um \emph{endpoint} mal copiado só falha em
+execução.
 
-O \emph{template} colocará automaticamente em primeiro lugar o resumo na língua do texto principal e depois o resumo na outra língua.  Por exemplo, se a dissertação está escrita em Português, primeiro aparecerá o resumo em Português, depois em Inglês, seguido do texto principal em Português. Se a dissertação está escrita em Inglês, primeiro aparecerá o resumo em Inglês, depois em Português, seguido do texto principal em Inglês.
+Esta dissertação elimina esse passo unificando as duas ferramentas: o QuickFaaS, que implanta
+funções \emph{serverless} portáveis, e o OmniFlow, uma DSL em Kotlin que gera e implanta
+\emph{workflows} no AWS Step Functions e no Google Cloud Workflows. Uma chamada identifica a
+função por um identificador lógico estável, e uma cascata de resolução em três níveis liga-o no
+momento da implantação: consulta um registo de
+funções por fornecedor e valida a entrada contra a função existente; se falhar, procura a função
+nas regiões do fornecedor; e só com a ausência confirmada a implanta através do QuickFaaS, a partir
+de um descritor. O QuickFaaS, até aqui limitado ao Google Cloud e ao Azure, foi estendido com um
+fornecedor para o AWS Lambda, cobrindo as mesmas duas \emph{clouds} que o OmniFlow.
 
-O resumo não deve exceder uma página e deve responder às seguintes questões:
-\begin{itemize}
-% What's the problem?
-	\item Qual é o problema?
-% Why is it interesting?
-	\item Porque é que ele é interessante?
-% What's the solution?
-	\item Qual é a solução?
-% What follows from the solution?
-	\item O que resulta (implicações) da solução?
-\end{itemize}
+O protótipo é avaliado quanto à correção e ao custo. Quarenta e cinco testes unitários
+cobrem todos os caminhos da cascata nos dois fornecedores, e os testes de desempenho mostram que a
+resolução local custa milissegundos em \emph{workflows} com até duzentas chamadas internas,
+crescendo linearmente com esse número e não com a dimensão do registo. Implantar
+uma aplicação \emph{serverless} a partir de uma única definição é, assim, exequível, e a resolução
+acrescentada é pequena face à implantação na \emph{cloud}.
 
-\textbf{Máximo de palavras: 300}
 % Palavras-chave do resumo em Português
 \begin{keywords}
-Palavras-chave (em Português) \ldots -- mínimo de 3 (três)
+Computação \emph{serverless}, \emph{Function-as-a-Service}, Orquestração de \emph{workflows},
+Portabilidade \emph{multi-cloud}, Ligação de \emph{endpoints} em tempo de implantação, AWS Lambda,
+Google Cloud
 \end{keywords}
-% to add an extra black line
