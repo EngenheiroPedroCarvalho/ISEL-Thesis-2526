@@ -123,7 +123,6 @@ class AmazonCallRenderer(
             addEmptyLine()
             addLine(title)
             tab {
-                AMAZON_START_RESULT_PATH
                 val mutableMap = mapToRender.toMutableMap()
                 val last = mutableMap.entries.lastOrNull()
                 last?.let { mutableMap.remove(last.key) }

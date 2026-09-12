@@ -1,0 +1,50 @@
+@startuml resolution-cascade-level2-aws
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution cascade -- Level 2: Provider discovery (AWS)
+
+participant "Resolver\n(AwsInternalFunctionResolver)" as R
+participant "LambdaFunctionInspector" as AI
+participant "Ec2AwsRegionsLister\n(region list)" as AL
+participant "FunctionRegistryStore" as REG
+
+note over R
+  reached only on a Level 1 registry miss
+  (see resolution-cascade-level1-aws.puml)
+end note
+
+alt functionRef is "<region>/<functionName>"
+  R -> AI : lookup(region, functionName)
+else bare functionRef
+  R -> AL : listRegions(bootstrapRegion)
+  AL --> R : regions (preferred region first, if set)
+  loop for each region, until >1 match found
+    R -> AI : lookup(region, functionRef)
+    AI --> R : Found / NotFound / Forbidden
+  end
+end
+
+alt exactly one match
+  R -> REG : put(functionRef, metadata)
+  R --> R : return arn
+else more than one match
+  R --> R : throw IllegalStateException\n(ambiguous - disambiguate with "<region>/<functionRef>")
+else no match, some regions Forbidden
+  R --> R : throw IllegalStateException\n(cannot confirm - some regions not accessible)
+else no match, all regions checked cleanly
+  note right of R
+    empty result, no exception --
+    falls through to Level 3 below
+  end note
+end
+
+alt no match found and deploymentDescriptorPath supplied
+  note over R
+    continues at Level 3 - QuickFaaS deployment
+    (see resolution-cascade-level3-aws.puml)
+  end note
+else no match found and no descriptor supplied
+  R --> R : throw IllegalStateException\n(fail fast - deploy it first or provide deploymentDescriptorPath)
+end
+@enduml

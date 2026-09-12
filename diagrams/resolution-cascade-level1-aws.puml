@@ -1,0 +1,45 @@
+@startuml resolution-cascade-level1-aws
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution cascade -- Level 1: Registry lookup and live validation (AWS)
+
+participant "Resolver\n(AwsInternalFunctionResolver)" as R
+participant "FunctionRegistryStore" as REG
+participant "LambdaFunctionInspector" as AI
+
+R -> REG : tryResolveEntry(functionRef)\n[exact match, then "<region>/<functionRef>" suffix]
+alt registry miss
+  REG --> R : null
+  note over R
+    continues at Level 2 - Provider discovery
+    (see resolution-cascade-level2-aws.puml)
+  end note
+else registry hit
+  REG --> R : (key, metadata)
+  R -> R : region = regionFromArn(metadata.url)
+
+  R -> AI : lookup(region, metadata.serviceName)
+  alt Found - same ARN
+    AI --> R : Found(functionName, arn == metadata.url)
+    R --> R : return metadata.url
+  else Found - drifted ARN
+    AI --> R : Found(functionName, arn != metadata.url)
+    R -> REG : put(key, metadata.copy(url = newArn))
+    R --> R : return newArn
+  else NotFound (or region unparseable)
+    AI --> R : NotFound
+    R -> R : discoverFunctionForRef(functionRef)\n[scan every region enabled for the account]
+    alt rediscovered elsewhere
+      R -> REG : put(key, newMetadata)
+      R --> R : return newArn
+    else still not found
+      R -> REG : remove(key)
+      R --> R : throw IllegalStateException\n(stale entry removed - deleted function)
+    end
+  else Forbidden
+    AI --> R : Forbidden(message)
+    R --> R : throw IllegalStateException\n(cannot validate via the Lambda API)
+  end
+end
+@enduml

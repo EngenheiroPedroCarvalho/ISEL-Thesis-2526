@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repository.
+Guidance for Claude Code when working in this repository. Open work (thesis and code) is tracked
+in `TODO.md`.
 
 ## Behavioral guidelines (Karpathy-inspired)
 
@@ -51,7 +52,11 @@ ISEL-Thesis-2526/
 │   ├── quickfaas-essentials/QuickFaaS-Deployment/   # QuickFaaS deployer (Gradle, Kotlin 1.6.20)
 │   │   └── src/{main,test}/kotlin/model/    # cloud providers: AwsProvider, GcpProvider, ...
 │   └── TESTING.md                           # full testing documentation (read this)
-└── quickfaas-essentials/                    # reference clone of the original QuickFaaS (do not edit)
+├── dissertation/                            # MSc dissertation LaTeX sources (canonical; see its CLAUDE.md)
+├── diagrams/                                # PlantUML sources and PNGs for the thesis figures
+├── thesis/                                  # older split copy of the chapters (superseded; do not edit)
+├── quickfaas-essentials/                    # reference clone of the original QuickFaaS (do not edit)
+└── TODO.md                                  # open work on the thesis and the code
 ```
 
 Two build systems: `deployment/` and `benchmark/` are **Maven**; `QuickFaaS-Deployment/` is
@@ -59,12 +64,47 @@ Two build systems: `deployment/` and `benchmark/` are **Maven**; `QuickFaaS-Depl
 
 ## Key packages (the contribution's code)
 
-- `deployment/.../registry/` — function registry + endpoint resolution
-  (`WorkflowInternalCallEndpointResolver`, `FunctionRegistryStore`, `FunctionEndpointKeys`).
-- `deployment/.../internalfunction/` — auto-deploy glue (`AwsLambdaDeployer`,
-  `AwsInternalFunctionResolver`, `QuickFaasDescriptorLoader`).
-- `deployment/.../cloud/provider/{amazon,google}/` — provider renderers/deployers.
-- `QuickFaaS-Deployment/.../model/Aws*` — the AWS provider added to QuickFaaS.
+Under `omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
+
+- `registry/` — the Function Registry: `FunctionRegistryStore` (JSON file I/O and lookups),
+  `FunctionRegistryBootstrapper` and `CloudFunctionsCatalog` (populate a missing registry from the
+  provider), `FunctionInvocationMetadata`.
+- `internalfunction/` — `WorkflowInternalFunctionResolver` (GCP cascade) and the
+  `InternalFunctionDeployer` strategy (with `NoopInternalFunctionDeployer`).
+- `internalfunction/quickfaas/` — `AwsInternalFunctionResolver` (AWS cascade), the Level 3
+  deployers `QuickFaasDeployer` (GCP) and `AwsLambdaDeployer` (AWS), `QuickFaasDescriptor` /
+  `QuickFaasDescriptorLoader`, and `QuickFaasProcessInvoker` (runs the QuickFaaS jar as a
+  subprocess).
+- `cloud/provider/{amazon,google}/` — renderers; the entry-point deployers `AmazonCloudDeployer`
+  and `GoogleCloudDeployer` (bootstrap the registry, run the resolver, deploy the workflow); and
+  provider lookups (`LambdaFunctionInspector`, `LambdaFunctionsCatalog`, `AwsRegionsLister`;
+  `CloudRunV2ServiceInspector`, `CloudRunV2RestCatalog`, `CloudRunLocationsV1RestClient`).
+
+Under `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/src/main/kotlin/model/`: the AWS
+provider added to QuickFaaS (`AwsProvider`, `AwsLambdaFunction`, `AwsRequests`, `AwsS3Bucket`, …).
+
+## How the resolution cascade behaves (verified 2026-09-11)
+
+The dissertation describes this behaviour, so keep the code and `dissertation/` consistent.
+
+- **Levels:** 1 = registry hit, validated against the live function; 2 = provider discovery
+  across regions (or one region with the `"region/name"` form); 3 = QuickFaaS deployment, only
+  when the call supplies a `deploymentDescriptorPath`.
+- **Registries are per provider:** `function-registry.gcp.json` and `function-registry.aws.json`
+  in the working directory (override with the deployer builders' `registryPath(...)`).
+- **Single read:** both resolvers read the registry once per `resolve()` into a snapshot, look
+  calls up with `tryResolveEntryIn`, and keep the snapshot in sync with `put`/`remove`.
+- **No deployment without confirmed absence:** a discovery error (for example, inaccessible
+  regions) aborts; it never falls through to Level 3. A stale registry entry also aborts, even when
+  a descriptor is present.
+- **No updates:** Level 3 runs only when the function is absent; the cascade never updates an
+  existing function.
+- **Static binding:** the resolved endpoint is embedded in the rendered workflow at deployment
+  time.
+- **GCP limitation:** `QuickFaasDeployer` creates first-generation Cloud Functions
+  (`cloudfunctions.net` URLs), but validation, discovery and bootstrap query only Cloud Run. Bindings
+  to first-gen functions skip validation and can't be rediscovered. This is documented in the
+  thesis; the fix idea is in `TODO.md`.
 
 ## Build, test, coverage
 
@@ -78,6 +118,14 @@ cd omni-flow-main
 cd omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment
 ./gradlew test                                # run unit tests
 ./gradlew jacocoTestReport                    # + coverage -> build/reports/jacoco/test/html/index.html
+```
+
+The code targets Java 17. On this Mac, IntelliJ runs the tests with its bundled JDK 25, but in a
+terminal `/usr/bin/java` is only the macOS placeholder: Maven then hangs silently. Set `JAVA_HOME`
+first, and add `-o` to run offline:
+
+```bash
+JAVA_HOME=/opt/homebrew/opt/openjdk@26/libexec/openjdk.jdk/Contents/Home ./mvnw -o -pl deployment test
 ```
 
 ## Performance benchmarks (JMH)
@@ -112,15 +160,14 @@ For thesis-grade numbers use `-f 3` on a dedicated machine.
 
 - **`junit-vintage-engine`** must stay in `deployment/pom.xml`: many existing tests use
   `kotlin-test-junit` (JUnit 4) and won't run under Surefire (JUnit 5) without it.
-- **JDK 21 runtime.** `System.setSecurityManager` is unavailable, so code paths that call
-  `kotlin.system.exitProcess` (e.g. `logPropertyMissing` via `setProjectData("")`) are **not
-  unit-testable in-process** — leave them untested and documented.
-- **`FunctionRegistryStore.resolveUrl`/`tryResolveEntry`/`resolveEntry` re-read and re-parse the
-  whole registry file on every call** (no in-memory cache). Fine for small registries; O(N·M) if
-  the registry grows. `resolveUrl` is exercised by benchmarks P3/P6/P7; `tryResolveEntry` is the
-  same anti-pattern reached from the real auto-deploy resolvers
-  (`AwsInternalFunctionResolver`/`WorkflowInternalFunctionResolver`), quantified by P10/P11 — a
-  known optimization opportunity, not yet applied to those two classes.
+- **Tests run on JDK 21 or newer** (bytecode targets 17). `System.setSecurityManager` is
+  unavailable, so code paths that call `kotlin.system.exitProcess` (e.g. `logPropertyMissing` via
+  `setProjectData("")`) are **not unit-testable in-process** — leave them untested and documented.
+- **`FunctionRegistryStore` has no cache.** `readAll`, `tryResolveEntry`, `resolveEntry` and
+  `resolveUrl` re-read and re-parse the whole file on every call, and every `put`/`remove` rewrites
+  it. The production resolvers avoid the read cost by reading once per `resolve()` and using the
+  pure `tryResolveEntryIn`/`resolveUrlIn`. Benchmarks P6/P7 measure the per-call read path, P10/P11
+  the resolvers, and P13/P17 the write path.
 - **`GoogleAccessTokenProvider`'s default constructor arg calls `GoogleCredentials.getApplicationDefault()`
   eagerly** — and so do `CloudRunV2ServiceInspector()`/`CloudRunLocationsV1RestClient()`, which
   default-construct a `GoogleAccessTokenProvider` themselves. Just *instantiating* either class
@@ -135,7 +182,9 @@ For thesis-grade numbers use `-f 3` on a dedicated machine.
 ## Conventions
 
 - Never push to `main`. Development happens on feature branches
-  (current: `OmniFlow-QuickFaaS-Test`).
+  (current: `claude/progress-report-compliance-e4damf`).
+- Commit only when the user asks, and treat a commit as published: commits on this branch have been
+  pushed to GitHub automatically (probably by IntelliJ).
 - Don't edit `quickfaas-essentials/` at the repo root — it's a read-only reference clone; the
   active QuickFaaS code is under `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/`.
 - Prefer minimal production changes; confirm before altering behaviour of colleagues' code.

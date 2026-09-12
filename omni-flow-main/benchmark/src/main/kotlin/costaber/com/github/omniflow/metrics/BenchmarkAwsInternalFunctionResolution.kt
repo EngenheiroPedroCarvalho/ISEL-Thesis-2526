@@ -1,5 +1,6 @@
 package costaber.com.github.omniflow.metrics
 
+import costaber.com.github.omniflow.cloud.provider.amazon.service.LambdaFunctionInspector
 import costaber.com.github.omniflow.generator.WorkflowGenerator
 import costaber.com.github.omniflow.internalfunction.quickfaas.AwsInternalFunctionResolver
 import costaber.com.github.omniflow.model.Workflow
@@ -27,18 +28,18 @@ import java.util.concurrent.TimeUnit
  * P10 - Cost of the REAL AWS auto-deploy resolver, [AwsInternalFunctionResolver.resolve], vs the
  * number of internal calls (N) and registry size (R=F), same grid as P8.
  *
- * Unlike P6-P9 (which benchmark [FunctionRegistryStore] or the already-corrected
- * [costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver]),
- * this exercises the actual "unification" glue that decides whether an internal function should
- * be reused or deployed. It has never been fixed with the single-read optimization: every call
- * to `resolveOrDeploy` hits `registry.tryResolveEntry`, which re-reads and re-parses the whole
- * registry file (no caching) - the same Θ(N*R) anti-pattern as P6-P9's `resolveUrl`, but on the
- * real production path.
+ * This exercises the actual "unification" glue that decides whether an internal function should
+ * be reused or deployed. It now carries the single-read optimization from
+ * [OptimizedEndpointResolver] (the former P7-P9 reference implementation): `resolve()` reads the
+ * registry once into an in-memory snapshot and every call's `resolveOrDeploy` looks up against
+ * that snapshot (`registry.tryResolveEntryIn`) instead of re-reading the file, so per-call cost is
+ * Θ(1) against the snapshot rather than Θ(R) - the same fix as P7-P9, now applied on the real
+ * production path.
  *
  * The registry is pre-populated with exactly the F functions the workflow references (R=F, as in
- * P8), so `tryResolveEntry` always hits on step 1 of `resolveOrDeploy` and the benchmark never
- * reaches step 2 (`checkLambdaFunctionUrl`, a real AWS Lambda SDK call) - pure local file I/O,
- * no AWS SDK calls, no network.
+ * P8), each with an ARN-shaped URL so `regionFromArn` resolves a region and the registry-hit path
+ * validates against [FakeInspector] instead of the real [costaber.com.github.omniflow.cloud.provider.amazon.service.AwsLambdaFunctionInspector]/EC2
+ * region listing default - pure local file I/O, no AWS SDK calls, no network.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -66,16 +67,21 @@ open class BenchmarkAwsInternalFunctionResolution {
         val store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the F functions the workflow references (R = F) -> always a
-        // registry hit, so resolveOrDeploy never reaches the AWS Lambda SDK call.
+        // registry hit. Entries use an ARN-shaped URL so `regionFromArn` resolves a region, and
+        // FakeInspector confirms it locally, so resolveOrDeploy never reaches the AWS Lambda SDK.
         val functions = (0 until f).associate { idx ->
             val name = "$BASE$idx"
             name to FunctionInvocationMetadata(
                 serviceName = name,
-                url = "https://lambda-url.us-east-1.on.aws/$name"
+                url = "arn:aws:lambda:us-east-1:123456789012:function:$name"
             )
         }
         store.writeNew(functions)
-        resolver = AwsInternalFunctionResolver(region = "us-east-1", registry = store)
+        resolver = AwsInternalFunctionResolver(
+            preferredRegion = "us-east-1",
+            registry = store,
+            inspector = FakeInspector(functions)
+        )
 
         // N calls distributed round-robin over the f registered functions.
         workflow = WorkflowGenerator.withDistinctInternalCalls(n, f, BASE)
@@ -89,6 +95,17 @@ open class BenchmarkAwsInternalFunctionResolution {
     @Benchmark
     fun resolveAwsInternal(blackhole: Blackhole) {
         blackhole.consume(resolver.resolve(workflow))
+    }
+
+    /** Local stand-in for the Lambda API: confirms every registered function with no drift. */
+    private class FakeInspector(
+        private val functions: Map<String, FunctionInvocationMetadata>
+    ) : LambdaFunctionInspector {
+        override fun lookup(region: String, functionName: String): LambdaFunctionInspector.LookupResult {
+            val meta = functions.values.find { it.serviceName == functionName }
+            return if (meta != null) LambdaFunctionInspector.LookupResult.Found(functionName, meta.url)
+            else LambdaFunctionInspector.LookupResult.NotFound
+        }
     }
 
     companion object {

@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -37,7 +36,7 @@ import java.util.concurrent.TimeUnit
  *
  * The registry holds exactly the [FIXED_FUNCTIONS] functions the internal calls reference (R=F,
  * the "right-sized" registry case, as in P8/P10/P11). Only the ALREADY-OPTIMIZED resolver (single
- * registry read, `WorkflowInternalCallEndpointResolver`) is measured here - the naive-vs-optimized
+ * registry read, [OptimizedEndpointResolver]) is measured here - the naive-vs-optimized
  * comparison is already exhaustively established in P6/P7/P8/P9; the point of P15 is to isolate
  * whether resolution cost tracks I (internal calls, the only ones that touch the registry) or the
  * full N, now that a single workflow contains both. Pure local file I/O - no AWS/GCP SDK, no
@@ -60,7 +59,7 @@ open class BenchmarkResolveWorkflowByInternalExternalMix {
     var e: Int = 0
 
     private lateinit var registryFile: Path
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
+    private lateinit var store: FunctionRegistryStore
     private lateinit var workflow: Workflow
 
     private val internalCallExtractor: (CallContext) -> String? =
@@ -69,7 +68,7 @@ open class BenchmarkResolveWorkflowByInternalExternalMix {
     @Setup(Level.Trial)
     fun setupWorkflow() {
         registryFile = Files.createTempFile("omniflow-bench-p15-registry", ".json")
-        val store = FunctionRegistryStore(registryFile)
+        store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the FIXED_FUNCTIONS functions the internal calls reference (R=F).
         val functions = (0 until FIXED_FUNCTIONS).associate { idx ->
@@ -80,7 +79,6 @@ open class BenchmarkResolveWorkflowByInternalExternalMix {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         // I internal calls (round-robin over FIXED_FUNCTIONS) interleaved with E external calls.
         workflow = WorkflowGenerator.withMixedCalls(i, e, FIXED_FUNCTIONS, BASE)
@@ -94,7 +92,7 @@ open class BenchmarkResolveWorkflowByInternalExternalMix {
     /** Optimized resolution (single registry read, then per-call lookups) of a mixed I/E workflow. */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
-        blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
+        blackhole.consume(OptimizedEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
     companion object {

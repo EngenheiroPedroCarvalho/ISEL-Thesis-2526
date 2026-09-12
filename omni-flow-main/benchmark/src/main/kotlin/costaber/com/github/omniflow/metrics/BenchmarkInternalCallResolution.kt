@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -27,7 +26,7 @@ import java.util.concurrent.TimeUnit
 /**
  * P3 - Local internal-call endpoint resolution.
  *
- * Measures ONLY the cost of [WorkflowInternalCallEndpointResolver.resolve]
+ * Measures ONLY the cost of [OptimizedEndpointResolver.resolve]
  * (registry lookup + URL splitting + tree rebuild) - NO rendering, NO
  * deployment, NO AWS/GCP SDK or network. The AWS-specific resolver
  * (AwsInternalFunctionResolver) is intentionally NOT used here because it
@@ -51,7 +50,7 @@ open class BenchmarkInternalCallResolution {
     var n: Int = 0
 
     private lateinit var registryFile: Path
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
+    private lateinit var store: FunctionRegistryStore
 
     private lateinit var internalWorkflow: Workflow
     private lateinit var externalWorkflow: Workflow
@@ -66,7 +65,7 @@ open class BenchmarkInternalCallResolution {
         // reads this single-entry registry during resolution; we never write
         // to it in the hot path.
         registryFile = Files.createTempFile("omniflow-bench-registry", ".json")
-        val store = FunctionRegistryStore(registryFile)
+        store = FunctionRegistryStore(registryFile)
         store.writeNew(
             mapOf(
                 FUNCTION_NAME to FunctionInvocationMetadata(
@@ -75,7 +74,6 @@ open class BenchmarkInternalCallResolution {
                 )
             )
         )
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         internalWorkflow = WorkflowGenerator.withInternalCalls(n, FUNCTION_NAME)
         externalWorkflow = WorkflowGenerator.withExternalCalls(n)
@@ -88,13 +86,13 @@ open class BenchmarkInternalCallResolution {
 
     @Benchmark
     fun resolveAllInternal(blackhole: Blackhole) {
-        val resolved = resolver.resolve(internalWorkflow, internalCallExtractor)
+        val resolved = OptimizedEndpointResolver.resolve(internalWorkflow, store, internalCallExtractor)
         blackhole.consume(resolved)
     }
 
     @Benchmark
     fun resolveAllExternal(blackhole: Blackhole) {
-        val resolved = resolver.resolve(externalWorkflow, internalCallExtractor)
+        val resolved = OptimizedEndpointResolver.resolve(externalWorkflow, store, internalCallExtractor)
         blackhole.consume(resolved)
     }
 

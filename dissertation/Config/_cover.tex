@@ -1,0 +1,89 @@
+% %!TEX root = ../template.tex
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %% Config/_cover.tex
+% %% ISEL thesis configuration file
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{NT FILE Config/_cover.tex}%
+
+%%==================================================================
+ %%  THESIS/DISSERTATION COVER DATA
+%%==================================================================
+
+% -------------------------------------------------------------------
+% AUTHOR customization
+%     Author gender, full name, abd abbreviated name
+% SYNTAX: \ncauthorname(gender){full name}{abbreviated name}
+%          Use [f] for female and [m] for male
+% -------------------------------------------------------------------
+%%% IMPORTANT: The cover must be written in Portuguese. All information must be presented in Portuguese. Any content presented in English must be translated to comply with the rules defined by ISEL's CTC. %%% 
+
+\ncauthorname(m){Pedro Miguel Pratas de Carvalho}{Pedro Carvalho}
+
+% -------------------------------------------------------------------
+% COURSE SELECTION
+% Available acronyms: meic, meb, meec, ...
+% Sets: major field (pt/en), department and cover images automatically
+% -------------------------------------------------------------------
+\iselthesis@setcourse{meic}
+
+% -------------------------------------------------------------------
+% AUTHOR previous degree
+% SYNTAX: \ncauthordegree{degree}
+% -------------------------------------------------------------------
+
+\ncauthordegree(en){Graduated} 
+\ncauthordegree(pt){Licenciado}
+
+% -------------------------------------------------------------------
+
+% Thesis/Dissertation title (valid for all languages unless redefined as below)
+% SYNTAX: \nctitle(type,lang){title}
+%         For [type] use: [main]  for main title
+%                         [sub]   for sub-title
+%                         [spine] for a book spine version of the title
+%                                 (if omitted defaults to main title without line breaks)
+% -------------------------------------------------------------------
+
+%        You may use "\\" to force line breaks
+% -------------------------------------------------------------------
+
+% Just a heads-up: at ISEL, we don't translate dissertation names, so I'd suggest keeping it in the original language.
+\nctitle(main,en){Unified Orchestration of Multi-Cloud Serverless Workflows using QuickFaaS and Omniflow }%
+\nctitle(main,pt){Unified Orchestration of Multi-Cloud Serverless Workflows using QuickFaaS and Omniflow}%
+
+% -------------------------------------------------------------------
+% SUBMISSION DATE
+% -------------------------------------------------------------------
+\dateday{30}
+\datemonth{September}
+\dateyear{2026}
+
+% -------------------------------------------------------------------
+% ADVISER LIST customization
+%     Adviser's gender, full name, position and school
+% SYNTAX: \ncmember(role,gender){Position & Full Name}{Affiliation} 
+%         For [role] use:   [a] for adviser
+%         For [gender] use: [f] for female and [m] for male
+% use "\\&" if necessary to break the lines in the apprpriate place
+\ncmember(a,m){Prof. José Manuel de Campos Lages Garcia Simão}{ISEL} 
+% % you may use "\newline" to force a new line
+\ncmember(a,m){Prof. Filipe Bastos de Freitas}{ISEL}
+%\ncmember(a,m){Prof. Doutor John Doe Third Adviser Name}{Some University}
+
+% -------------------------------------------------------------------
+% COMMITTEE MEMBERS (maximum of 3 elements)
+% SYNTAX: \ncmember(role,gender){Position & Full Name}{School}
+%         For [role] use: [c] for committee chair
+%                         [r] for rapporteurs and one adviser
+%         For [gender] use: [f] for female and [m] for male
+% You may use "\\" to force line breaks
+% President of the committee
+%\ncmember(c,m){Prof. Doutor John Committee Chairperson Name Doe Male}{Some University}
+% Main Raporteur and include one Adviser in this list
+%\ncmember(r,m){Prof. Doutor John Raporteur Name Doe Name}{Some University}
+%\ncmember(r,f){Prof. Doutor Elisabeth Adviser Name Doe}{Some %University}
+
+
+% INCLUDE IMAGE. ADD FILE IN CHAPTERS-> IMG
+\workimage{phdcomics}

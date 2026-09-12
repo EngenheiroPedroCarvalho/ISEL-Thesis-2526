@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -38,7 +37,7 @@ import java.util.concurrent.TimeUnit
  * so rendering would just be a shared constant baseline that shifts both curves:
  *  - [resolveNaive]     resolves with [NaiveEndpointResolver] (re-reads the whole
  *                       registry file per call, legacy `resolveUrl`)      -> O(N*R)
- *  - [resolveOptimized] resolves with [WorkflowInternalCallEndpointResolver]
+ *  - [resolveOptimized] resolves with [OptimizedEndpointResolver]
  *                       (reads once, `readAll` + `resolveUrlIn` per call)  -> O(N+R)
  *
  * Both paths produce an IDENTICAL resolved workflow, so the measured gap is purely
@@ -62,7 +61,6 @@ open class BenchmarkResolveWorkflowByFunctionsAndCalls {
 
     private lateinit var registryFile: Path
     private lateinit var store: FunctionRegistryStore
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
     private lateinit var workflow: Workflow
 
     private val internalCallExtractor: (CallContext) -> String? =
@@ -82,7 +80,6 @@ open class BenchmarkResolveWorkflowByFunctionsAndCalls {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         // N calls distributed round-robin over the f registered functions.
         workflow = WorkflowGenerator.withDistinctInternalCalls(n, f, BASE)
@@ -102,7 +99,7 @@ open class BenchmarkResolveWorkflowByFunctionsAndCalls {
     /** Optimized resolution: one registry read, then N pure lookups -> O(N+R). */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
-        blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
+        blackhole.consume(OptimizedEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
     companion object {

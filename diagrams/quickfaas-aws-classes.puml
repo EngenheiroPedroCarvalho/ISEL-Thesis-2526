@@ -1,0 +1,71 @@
+@startuml quickfaas-aws-classes
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+title QuickFaaS provider model extended with AWS Lambda support (Part A)
+
+interface CloudProvider {
+  +companion : CloudCompanion
+  +project : CloudProject
+  +cloudSpecifics : CloudSpecifics[0..1]
+  +requestProjects() : List<ProjectData>
+  +setProjectData(name)
+}
+
+class GcpProvider
+class MsAzureProvider
+
+class AwsProvider <<new in this work>> {
+  +companion : AwsCompanion
+  +project : AwsProject
+  +cloudSpecifics : AwsSpecifics
+}
+
+class AwsSpecifics <<new in this work>> {
+  +awsAccessKeyId : String
+  +awsSecretAccessKey : String
+  +awsRegion : String
+}
+
+class AwsRequests <<new in this work>> {
+  -lambdaClient : LambdaClient
+  -s3Client : S3Client
+  +uploadZipToS3(bucket, key, bytes)
+  +createLambdaFunction(config) : Arn
+  +updateLambdaFunctionCode(...)
+  +createFunctionUrlConfig(name)
+  +addResourcePolicy(name, principal)
+}
+
+class AwsProject <<new in this work>> {
+  +function : AwsLambdaFunction
+  +requestBuckets()
+}
+
+class AwsLambdaFunction <<new in this work>> {
+  +name : String
+  +iamRoleArn : String
+  +deployZip(zipPath, projData)
+  +getTriggerUrl(projData)
+}
+
+class AwsS3Bucket <<new in this work>> {
+  +uploadToBucket(zipPath, fn) : String
+}
+
+CloudProvider <|.. GcpProvider
+CloudProvider <|.. MsAzureProvider
+CloudProvider <|.. AwsProvider
+AwsProvider --> AwsSpecifics
+AwsProvider --> AwsProject
+AwsProvider --> AwsRequests
+AwsProject --> AwsLambdaFunction
+AwsLambdaFunction --> AwsS3Bucket
+
+note bottom of AwsProvider
+  Plugs into the pre-existing CloudProvider
+  contract: no change to GcpProvider or
+  MsAzureProvider was required (open-closed)
+end note
+@enduml

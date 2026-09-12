@@ -235,22 +235,27 @@ Speedup sobe de ~41× (R=10) a ~58× (R=1000), confirmando Θ(N+R).
 
 | F \ N | 1 | 5 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 356 | 1 684 | 3 338 | 17 806 | 71 825 |
-| 2 | 369 | 1 744 | 3 413 | 17 205 | 83 141 |
-| 5 | 349 | 1 730 | 3 419 | 16 961 | 67 808 |
-| 10 | 355 | 1 738 | 3 421 | 17 509 | 69 700 |
-| 20 | 352 | 1 779 | 3 488 | 17 455 | 69 627 |
-| 50 | 383 | 1 847 | 3 732 | 22 396 | 73 603 |
+| 1 | 17 | 44 | 124 | 1 240 | 3 486 |
+| 2 | 37 | 92 | 184 | 889 | 3 507 |
+| 5 | 32 | 40 | 85 | 427 | 1 752 |
+| 10 | 19 | 171 | 85 | 424 | 1 702 |
+| 20 | 23 | 135 | 89 | 434 | 1 800 |
+| 50 | 52 | 48 | 98 | 1 669 | 1 889 |
 
 ![P10 — Resolução real AWS](P10_aws_internal_resolution.png)
 
 *(máquina partilhada, não dedicada — margens de erro largas nesta configuração rápida; ver nota
-sobre `-f 3` no `TESTING.md`. Os pontos são consistentes entre si e com a forma Θ(N·R) esperada.)*
+sobre `-f 3` no `TESTING.md`. Os pontos F=10,N=5 e F=50,N=50 fogem à monotonia esperada, sinalizados
+pelas suas próprias margens de erro invulgarmente largas — ruído da máquina partilhada, não um
+efeito de código; os restantes são consistentes entre si e com a forma Θ(N+R) esperada após a
+otimização.)*
 
-**Resumo.** Mede o custo real do glue de auto-deploy AWS (AwsInternalFunctionResolver), nunca antes
-medido, com registo sempre em hit (R=F). Dominado por N, quase indiferente a F (~355–360
-µs/chamada) — mais caro que o resolver isolado do P8 pelo overhead do glue, sem a otimização do P7;
-speedup projetado ~200×.
+**Resumo.** Mede o custo real do glue de auto-deploy AWS (AwsInternalFunctionResolver), que agora
+lê o registo uma só vez por `resolve()` e resolve cada chamada contra esse snapshot
+(`tryResolveEntryIn`) em vez de reler o ficheiro por chamada — a mesma otimização do P7,
+entretanto propagada para este resolver de produção. Continua dominado por N e aproximadamente
+plano em F, em magnitudes comparáveis ao caminho já otimizado do P8, em vez do custo integral
+N·R que pagava antes.
 
 ## P11 — Custo real do resolver de auto-deploy GCP (`WorkflowInternalFunctionResolver`)
 
@@ -260,21 +265,22 @@ speedup projetado ~200×.
 
 | F \ N | 1 | 5 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 398 | 2 205 | 3 837 | 19 908 | 76 812 |
-| 2 | 400 | 1 952 | 3 959 | 20 418 | 79 856 |
-| 5 | 459 | 2 068 | 4 001 | 24 333 | 78 215 |
-| 10 | 395 | 1 971 | 4 436 | 19 744 | 78 525 |
-| 20 | 402 | 2 045 | 3 955 | 20 143 | 78 037 |
-| 50 | 428 | 2 118 | 4 285 | 20 811 | 83 269 |
+| 1 | 20 | 47 | 83 | 353 | 1 417 |
+| 2 | 22 | 50 | 107 | 587 | 2 757 |
+| 5 | 42 | 105 | 77 | 338 | 1 331 |
+| 10 | 47 | 105 | 213 | 963 | 2 966 |
+| 20 | 38 | 51 | 84 | 352 | 1 401 |
+| 50 | 31 | 61 | 99 | 402 | 1 573 |
 
 ![P11 — Resolução real GCP](P11_google_internal_resolution.png)
 
-*(mesma máquina/ressalva de margens de erro do P10.)*
+*(mesma máquina/ressalva de margens de erro do P10; forma Θ(N+R) após a otimização.)*
 
-**Resumo.** Gémeo GCP do P10: mede WorkflowInternalFunctionResolver.resolve, também nunca
-otimizado, com URLs de 1ª geração para evitar chamadas reais à API. Mesmo padrão Θ(N·R), ~7–8% mais
-caro por chamada que o AWS — a diferença é o glue específico do GCP (verificações extra), não o
-mecanismo de registo, partilhado.
+**Resumo.** Gémeo GCP do P10: mede WorkflowInternalFunctionResolver.resolve, com URLs de 1ª geração
+para evitar chamadas reais à API, agora também com leitura única do registo por `resolve()`. Mesmo
+padrão dominado por N e plano em F que o P10; os dois fornecedores ficam na mesma ordem de
+grandeza, sem uma diferença direcional consistente entre eles uma vez amortizado o custo de
+leitura — a assimetria residual está dentro do ruído desta máquina partilhada.
 
 ---
 
@@ -501,9 +507,10 @@ não-determinística de jar, validado por teste.
 3. A otimização de leitura única (P7) elimina o produto N·R: a resolução passa de **Θ(N·R)** para
    **Θ(N+R)**, com *speedup* de ~200× no pior canto (de ~150 ms para ~0,75 ms) — identificar
    (P3/P6) → corrigir → quantificar (P7).
-4. Os resolvers reais de auto-deploy (P10 AWS, P11 GCP) ainda não receberam essa otimização e
-   pagam o custo Θ(N·R) integral em produção — oportunidade de otimização documentada, não
-   aplicada.
+4. Os resolvers reais de auto-deploy (P10 AWS, P11 GCP) já receberam essa otimização: leem o
+   registo uma só vez por `resolve()` e resolvem cada chamada contra esse snapshot, mostrando a
+   mesma forma **Θ(N+R)** do caminho já otimizado em vez do custo Θ(N·R) integral que pagavam
+   antes.
 5. Tamanho (S1): a camada AWS agnóstica acrescenta ao *bundle* apenas ~0,9 KB — overhead
    negligenciável em funções reais, em linha com a avaliação original do QuickFaaS para GCP/Azure.
 6. O eixo I/E (P15/P16), o primeiro workflow realmente misto (chamadas internas e externas no mesmo

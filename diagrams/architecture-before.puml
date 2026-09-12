@@ -1,0 +1,29 @@
+@startuml architecture-before
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 12
+title OmniFlow and QuickFaaS as disjoint tools
+
+actor Developer as D1
+component "OmniFlow DSL" as DSL1
+component "GoogleCloudDeployer" as GCD1
+component "AmazonCloudDeployer" as ACD1
+component "QuickFaaS\n(GCP / Azure only)" as QF1
+cloud "Google Cloud Workflows" as GCW1
+cloud "AWS Step Functions" as SF1
+cloud "Cloud Functions" as FN1
+
+D1 --> DSL1
+D1 --> QF1 : separate manual step
+D1 ..> DSL1 : manual endpoint copy
+DSL1 --> GCD1
+DSL1 --> ACD1
+GCD1 --> GCW1 : YAML
+ACD1 --> SF1 : ASL JSON
+QF1 --> FN1
+
+note bottom of ACD1
+  No function-deployment capability on AWS
+  (NoopInternalFunctionDeployer)
+end note
+@enduml

@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -54,7 +53,6 @@ open class BenchmarkResolveWorkflowByRegistrySize {
 
     private lateinit var registryFile: Path
     private lateinit var store: FunctionRegistryStore
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
     private lateinit var workflow: Workflow
 
     private val internalCallExtractor: (CallContext) -> String? =
@@ -74,7 +72,6 @@ open class BenchmarkResolveWorkflowByRegistrySize {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         // FIXED_CALLS calls distributed round-robin over the first FIXED_FUNCTIONS functions.
         workflow = WorkflowGenerator.withDistinctInternalCalls(FIXED_CALLS, FIXED_FUNCTIONS, BASE)
@@ -94,7 +91,7 @@ open class BenchmarkResolveWorkflowByRegistrySize {
     /** Optimized resolution: one registry read, then N pure lookups -> O(N+R). */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
-        blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
+        blackhole.consume(OptimizedEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
     companion object {

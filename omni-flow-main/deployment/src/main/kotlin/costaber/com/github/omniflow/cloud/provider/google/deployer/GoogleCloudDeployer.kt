@@ -13,7 +13,6 @@ import costaber.com.github.omniflow.internalfunction.WorkflowInternalFunctionRes
 import costaber.com.github.omniflow.model.*
 import costaber.com.github.omniflow.registry.FunctionRegistryBootstrapper
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import costaber.com.github.omniflow.resource.util.joinToStringNewLines
 import costaber.com.github.omniflow.traversor.DepthFirstNodeVisitorTraversor
 import costaber.com.github.omniflow.visitor.NodeContextVisitor
@@ -24,7 +23,7 @@ class GoogleCloudDeployer internal constructor(
     private val nodeTraversor: DepthFirstNodeVisitorTraversor,
     private val contextVisitor: NodeContextVisitor,
     private val googleWorkflowService: GoogleWorkflowService,
-    private val registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json"),
+    private val registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.gcp.json"),
     private val functionsCatalog: CloudRunV2RestCatalog = CloudRunV2RestCatalog(),
     private val internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
 ) : CloudDeployer<GoogleDeployContext> {
@@ -112,7 +111,7 @@ class GoogleCloudDeployer internal constructor(
 
         println("$YELLOW  !$RESET Function-registry not found — bootstrapping from Cloud Run APIs for project '$projectId'...")
         logger.warn{
-            "Function Registry not found at 'registryPath'. Boothstrapping registry from Cloud Functions APIs for project '$projectId'... "
+            "Function Registry not found at '$registryPath'. Bootstrapping registry from Cloud Run APIs for project '$projectId'..."
         }
 
         FunctionRegistryBootstrapper(
@@ -127,7 +126,7 @@ class GoogleCloudDeployer internal constructor(
 
 
     class Builder {
-        private var registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.json")
+        private var registryPath: Path = Path.of(System.getProperty("user.dir")).resolve("function-registry.gcp.json")
         private var functionsCatalog: CloudRunV2RestCatalog = CloudRunV2RestCatalog()
         private var internalFunctionDeployer: InternalFunctionDeployer = NoopInternalFunctionDeployer
 

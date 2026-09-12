@@ -341,9 +341,10 @@ def _load_single_method(csv_path, cls):
 
 def _plot_internal_resolution(csv_path, out_dir, cls, title, fname):
     """P10/P11 - cost of a REAL auto-deploy resolver (not a benchmark-only stand-in like
-    NaiveEndpointResolver) vs N calls x R registry size (R=F), one curve per F. Unlike P8/P9
-    there is only one strategy: neither resolver was ever fixed with the single-read
-    optimization, so this measures the actual production cost of the unification glue."""
+    NaiveEndpointResolver/OptimizedEndpointResolver) vs N calls x R registry size (R=F), one
+    curve per F. Unlike P8/P9 there is only one strategy: both resolvers now carry the
+    single-read optimization, so this measures the actual (optimized) production cost of the
+    unification glue."""
     if not os.path.exists(csv_path):
         print(f"  [skip] no csv at {csv_path}")
         return None

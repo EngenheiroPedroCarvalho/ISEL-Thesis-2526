@@ -1,0 +1,69 @@
+@startuml resolution-cascade
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 12
+title Deployment-time resolution cascade for internal function calls
+
+start
+:CallContext intercepted during
+workflow tree traversal;
+if (internalFunction declared?) then (no - external call)
+  :host/path left untouched
+  (no registry access);
+else (yes - internal call)
+  if (invariant: host = e AND path = e ?) then (violated)
+    :fail fast:
+    internalFunction() cannot be
+    combined with host()/path();
+    end
+  else (holds)
+    partition "Level 1 - Registry lookup" {
+      :tryResolveEntry(functionRef)
+      exact match, then suffix match
+      <region>/<functionRef>;
+    }
+    switch (outcome?)
+    case (hit)
+      :GCP only: validate stored URL against
+      live Cloud Run service
+      (refresh on drift; remove stale entry);
+    case (ambiguous)
+      :fail fast: disambiguate with
+      internalFunction("<region>/<functionRef>");
+      end
+    case (miss)
+      partition "Level 2 - Provider discovery" {
+        :GCP: Cloud Run lookup across regions
+        AWS: Lambda GetFunction;
+      }
+      switch (outcome?)
+      case (found)
+        :registry.put(functionRef, metadata);
+      case (ambiguous)
+        :fail fast: function exists in
+        multiple regions - disambiguate;
+        end
+      case (not found)
+        if (deploymentDescriptorPath provided?) then (yes)
+          partition "Level 3 - QuickFaaS deployment" {
+            :InternalFunctionDeployer
+            .deployOrUpdate(name, descriptorPath);
+          }
+          :registry.put(functionRef, metadata);
+        else (no)
+          :fail fast: function absent from
+          registry and provider -
+          deploy it first or provide descriptor;
+          end
+        endif
+      endswitch
+    endswitch
+    :endpoint binding:
+    GCP -> host + path (splitUrl)
+    AWS -> lambda://<arn>;
+  endif
+endif
+:render provider-specific artifact
+and deploy workflow;
+stop
+@enduml

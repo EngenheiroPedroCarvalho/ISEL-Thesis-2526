@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -33,7 +32,7 @@ import java.util.concurrent.TimeUnit
  * Condition/target-name pairs, never nested CALL steps, so internal function resolution has
  * nothing to recurse into there - Choice stays a rendering-only axis for this contribution.
  * Parallel, however, DOES nest real Step lists per branch, and
- * [WorkflowInternalCallEndpointResolver]'s `resolveContext` recurses into ParallelBranchContext
+ * [OptimizedEndpointResolver]'s `resolveContext` recurses into ParallelBranchContext
  * explicitly - a path never exercised by P3/P6-P17's flat workflows. Mirrors
  * [WorkflowGenerator.withParallelBranchWidth] (a single Parallel block, [branchWidth] swept,
  * FIXED_LEAVES_PER_BRANCH leaves per branch), but the leaves are INTERNAL calls (round-robin over
@@ -55,7 +54,7 @@ open class BenchmarkInternalResolutionByBranchWidth {
     var branchWidth: Int = 0
 
     private lateinit var registryFile: Path
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
+    private lateinit var store: FunctionRegistryStore
     private lateinit var workflow: Workflow
 
     private val internalCallExtractor: (CallContext) -> String? =
@@ -64,7 +63,7 @@ open class BenchmarkInternalResolutionByBranchWidth {
     @Setup(Level.Trial)
     fun setupWorkflow() {
         registryFile = Files.createTempFile("omniflow-bench-p19-registry", ".json")
-        val store = FunctionRegistryStore(registryFile)
+        store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the FIXED_FUNCTIONS functions the internal calls reference (R=F).
         val functions = (0 until FIXED_FUNCTIONS).associate { idx ->
@@ -75,7 +74,6 @@ open class BenchmarkInternalResolutionByBranchWidth {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         workflow = WorkflowGenerator.withParallelBranchWidthInternalCalls(
             branchWidth, FIXED_LEAVES_PER_BRANCH, FIXED_FUNCTIONS, BASE
@@ -90,7 +88,7 @@ open class BenchmarkInternalResolutionByBranchWidth {
     /** Optimized resolution (single registry read, then per-call lookups) of a wide-Parallel workflow. */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
-        blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
+        blackhole.consume(OptimizedEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
     companion object {
