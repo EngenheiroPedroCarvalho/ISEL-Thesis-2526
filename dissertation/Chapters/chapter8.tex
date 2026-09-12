@@ -49,10 +49,9 @@ The two research questions of Section~\ref{sec:int_objectives} are answered as f
   regions (Section~\ref{sec:eval-correctness}). The evidence comes from unit tests that simulate
   the provider, and on GCP bindings to first-generation Cloud Functions are not validated live.
   \item \textbf{RQ2 (overhead)} --- small. In the production resolvers, resolving a workflow of 200
-  internal calls takes about one millisecond locally, growing linearly with the number of internal
-  calls, while the registry is read once per deployment
-  (Section~\ref{sec:eval-discussion}); the reference resolver, which does not print a progress line
-  per call, does the same work in $55\,\mu$s. These figures exclude the provider calls that
+  internal calls against a registry of ten functions takes $29\,\mu$s on AWS and $81\,\mu$s on GCP,
+  growing linearly with the number of internal calls, while the registry is read once per
+  deployment (Section~\ref{sec:eval-discussion}). These figures exclude the provider calls that
   validation, discovery and deployment make, which are counted in
   Section~\ref{sec:eval-api-calls}.
 \end{itemize}

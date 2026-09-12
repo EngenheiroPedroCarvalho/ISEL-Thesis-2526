@@ -138,9 +138,10 @@ drift as text is edited, so search for the quoted phrases.
       3. **Never run it without that include list.** `BenchmarkAmazonDeployment` calls
          `createStateMachine` and `BenchmarkGoogleDeployment` calls `deploy` — they create real
          resources on AWS/GCP.
-      4. **Filter stdout**: `| grep --line-buffered -E '^#|^Iteration|^Result|^Benchmark'`. The
-         resolvers `println` on every resolved call, so an unfiltered log grows ~1 GB/min (it hit
-         2.1 GB in one minute before being killed).
+      4. **Filter stdout**: `| grep --line-buffered -E '^#|^Iteration|^Result|^Benchmark'`. Já não é
+         crítico desde 2026-09-12 (os resolvers deixaram de imprimir por chamada), mas antes disso um
+         log não filtrado crescia ~1 GB/min (chegou a 2,1 GB num minuto antes de ser morto), por isso
+         mantém o filtro.
       5. JMH writes the CSV only when the whole run ends, so an interrupted run leaves nothing.
          Write it to a scratch path and only copy into `benchmark/results/` once it is complete,
          so the current CSVs survive a failed attempt.
@@ -149,10 +150,19 @@ drift as text is edited, so search for the quoted phrases.
       providers — o resolver AWS imprime 2 linhas por chamada e o GCP 3, e a diferença medida
       (2,4 µs/chamada) é exatamente uma linha. Está dito no parágrafo P10/P11 e nos "Threats to
       Validity". Nota: P3 e P8–P19 usam o `OptimizedEndpointResolver` do módulo de benchmarks, que
-      **não** imprime, por isso só P10/P11 são afetados. **Por decidir (a pedir ao utilizador):**
-      silenciar os `println` dos resolvers de produção, ou passá-los para o `logger` que ambas as
-      classes já têm, aproximaria P10/P11 do caminho de referência do P8 — é alterar código de
-      produção.
+      **não** imprime, por isso só P10/P11 foram afetados.
+- [x] **Resolvido 2026-09-12:** as mensagens por chamada dos dois resolvers de produção passaram de
+      `println`/`logger.info` para `logger.debug` (que ao nível INFO por omissão nem avalia o
+      lambda); as mensagens raras — descoberta por regiões, deployment QuickFaaS, drift, erros —
+      continuam a ser impressas. P10/P11 foram re-medidos com `-f 3` (24 min) e caíram de 1006→29,1 µs
+      (AWS) e 1344→81,3 µs (GCP) em F=10/N=200. Os 45 testes dos resolvers continuam a passar.
+      **Consequência a lembrar:** P10/P11 passam a vir de uma segunda sessão de medição; está dito na
+      Metodologia e nos "Threats to Validity", com a prova de que as duas sessões são compatíveis (a
+      coluna N=1 do P10/P11 reproduz o custo de leitura do P6).
+- [x] **Diferença AWS/GCP explicada:** depois de calados os `println`, o GCP continua ~4× mais caro
+      por chamada (0,35 vs 0,07–0,14 µs) porque `splitUrl` faz `URI(url)` a cada chamada, onde o AWS
+      só concatena `lambda://` ao ARN. O resolver de referência (P3/P8), que também faz o parsing,
+      fica no meio, a 0,22 µs.
 - [x] P3: explained as the single-read resolver with R=1 (per-call cost = snapshot lookup + URL
       split + node rebuild), no longer as a re-read per call.
 - [x] P6: R≈320 is derived in the P6 paragraph (0.56·R = 180), and the Discussion only cites it.
