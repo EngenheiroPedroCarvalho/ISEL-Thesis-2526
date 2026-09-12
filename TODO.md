@@ -237,10 +237,13 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 6b. Benchmarks — o que ficou por fazer
 
-- [ ] `benchmark/results/RESULTS.md` (535 linhas, português) continua a mostrar os números de agosto.
-      Tem agora um aviso no topo a dizer que estão desatualizados e a listar as quatro conclusões que
-      mudaram, mas as tabelas e os comentários por experiência não foram reescritos. Ou se reescreve
-      a partir de `jmh-results-f3.csv`, ou se reduz a um ponteiro para o Cap. 7.
+- [x] `benchmark/results/RESULTS.md` reescrito (2026-09-12) a partir de `jmh-results-f3.csv` e dos
+      CSVs re-medidos do P10/P11: todas as tabelas geradas por script (sem transcrição manual), todos
+      os "Resumo" refeitos, e a Síntese final. As secções de notação e de caracterização de cada
+      teste mantiveram-se, por não dependerem dos números. Correções de fundo, além dos valores: o
+      P3 deixou de dizer que cada chamada relê o registo (usa o resolver de leitura única, e a
+      variante externa paga a mesma leitura); o P13 deixou de prever Θ(K²); o P6 passou a R≈60; e o
+      P10/P11 ganharam a nota sobre a consola e a explicação do `URI` por chamada no GCP.
 - [ ] `jmh-results.csv` (P1/P2/P4/P5 + P3 antigo) e `jmh-results-p12.csv` ficaram do run de agosto:
       são benchmarks de renderização, fora do âmbito da tese. As figuras P1/P2/P5 continuam com
       rótulos em português por não terem sido regeradas (não são incluídas na tese).

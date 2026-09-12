@@ -11,44 +11,34 @@ chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
 > (largura de Parallel), mas do lado da **resolução** de funções internas (contribuição da tese),
 > não da renderização.
 
-> **⚠ Números desatualizados (2026-09-12).** As tabelas e os comentários deste documento vêm das
-> execuções de agosto de 2026, feitas em várias sessões com `-f 1`. Foram substituídos por **uma
-> única execução de toda a suite com `-f 3`**, em `jmh-results-f3.csv` (e nos ficheiros
-> `jmh-results-p*.csv`, regerados a partir dela); os gráficos `P*.png` já são dessa execução. A
-> análise atualizada está no Capítulo 7 da dissertação (`dissertation/Chapters/chapter7.tex`).
-> Quatro conclusões deste documento mudaram e **não devem ser citadas daqui**:
->
-> 1. Os valores absolutos são uma a duas ordens de grandeza menores (ex.: P13 com K=1/R0=0 passou de
->    4682 µs para 45,5 µs) — as execuções antigas estavam contaminadas por carga da máquina.
-> 2. P6: o ponto de equilíbrio entre custo fixo e custo por entrada é R≈60, não R≈320
->    (10,3 µs fixos + 0,17 µs por entrada).
-> 3. P13: o custo por escrita **não** é aproximadamente fixo — cresce com o tamanho do registo
->    (45 µs a R0=0, 490 µs a R0=1000). O que é aproximadamente constante é o custo por escrita ao
->    longo de K. O agravamento de P17 sobre P13 é de 26–62%, a crescer com R0, não 22–27%.
-> 4. P10/P11: a maior parte do custo por chamada é o `println` de progresso dentro do método medido
->    (~2,3 µs por linha impressa, contra 0,22 µs de resolução). A diferença entre AWS e GCP é
->    exatamente uma linha impressa a mais no GCP, não uma diferença de cascata.
+> **Proveniência dos números (2026-09-12).** Todos os valores abaixo vêm da execução de
+> `jmh-results-f3.csv` — toda a suite numa só sessão, com `-f 3` — exceto P10 e P11, re-medidos na
+> mesma noite e na mesma máquina depois de os resolvers de produção deixarem de escrever na consola
+> por chamada (ver a secção do P10). Substituem as execuções de agosto de 2026, feitas em várias
+> sessões com `-f 1`, que estavam contaminadas por carga da máquina: davam valores uma a duas ordens
+> de grandeza maiores e chegavam a ser incoerentes entre si (o P17, que é o P13 mais uma pesquisa
+> falhada, saía mais barato que o P13). A mesma análise, em inglês, está no Capítulo 7 da
+> dissertação.
 
 ## Metodologia
 
 - **Ferramenta:** JMH 1.37, modo `AverageTime`, unidade µs/op, com `Blackhole` a consumir cada
   resultado para impedir *dead-code elimination*.
-- **Execução (números abaixo, obsoletos):** `-f 1 -wi 3 -i 5 -w 1 -r 1` — uma *fork* da JVM, 3
-  iterações de aquecimento e 5 de medição (1 s cada), para medir o código já compilado pelo JIT.
-  A execução canónica atual é `-f 3 -wi 3 -i 5 -w 1 -r 1`, toda a suite numa só sessão.
-- **Dados brutos:** `jmh-results.csv` (P3, um só `@Param`), `jmh-results-p6.csv` (P6,
-  com a dimensão `Param: r`), `jmh-results-p7.csv` (P7 antes/depois), `jmh-results-p8.csv`/
-  `jmh-results-p9.csv` (P8–P9, resolução do workflow real), `jmh-results-p10.csv`/`jmh-results-p11.csv`
-  (P10–P11, resolvers reais AWS/GCP), `jmh-results-p13.csv` (P13, escrita no registo),
-  `jmh-results-p14.csv` (P14, exact vs. suffix match), `jmh-results-p15.csv` (P15, mistura I/E),
-  `jmh-results-p16.csv` (P16, R com workflow misto), `jmh-results-p17.csv` (P17, miss+deploy no
-  registo), `jmh-results-p18.csv` (P18, resolução vs profundidade de aninhamento) e
-  `jmh-results-p19.csv` (P19, resolução vs largura de Parallel). Gráficos: `P3_*.png`,
-  `P6_*.png … P19_*.png` (P7 e P8 em duas figuras cada, `P7a`/`P7b` e `P8a`/`P8b`), regeneráveis com
-  `python3 plot_benchmarks.py`.
-- **Ressalva:** ambiente partilhado e configuração reduzida; os valores absolutos servem para
-  comparar tendências e relações, não como números definitivos de hardware. Para a versão final,
-  repetir com `-f 3` e máquina dedicada.
+- **Execução:** `-f 3 -wi 3 -i 5 -w 1 -r 1` — 3 *forks* da JVM, 3 iterações de aquecimento e 5 de
+  medição (1 s cada), para medir o código já compilado pelo JIT. Cada valor é a média de 15
+  iterações em 3 JVMs.
+- **Margens de erro:** o intervalo de confiança a 99,9% fica abaixo de 1% do valor em metade das
+  medições e abaixo de 6% em nove em cada dez. Os poucos pontos ruidosos estão assinalados na
+  secção respetiva; não sustentam nenhuma conclusão.
+- **Dados brutos:** `jmh-results-f3.csv` (a execução completa; o P3 lê-se daqui) e os ficheiros
+  `jmh-results-p*.csv`, derivados dela por experiência. Gráficos: `P3_*.png`, `P6_*.png … P19_*.png`
+  (P7 e P8 em duas figuras cada, `P7a`/`P7b` e `P8a`/`P8b`), regeneráveis com
+  `python3 plot_benchmarks.py jmh-results-f3.csv .`.
+- **Máquina:** portátil Apple Silicon com macOS, ocioso mas não dedicado a benchmarking. Várias
+  destas experiências são dominadas por I/O de ficheiro, por isso o fator de hardware a que os
+  valores são mais sensíveis é a velocidade do disco, não a do processador.
+- **Reprodução:** nunca correr a suite sem a lista de inclusão das 14 classes (ver `../../../TODO.md`):
+  `BenchmarkAmazonDeployment` e `BenchmarkGoogleDeployment` criam recursos reais na AWS/GCP.
 
 ## Notação — o que N, R, F, I e E representam
 
@@ -110,18 +100,25 @@ num relance, o *formato* do teste — para não confundir testes parecidos:
 
 | Nº de chamadas | Internas — resolução (µs) | Externas — sem resolução (µs) |
 |---:|---:|---:|
-| 1 | 7,5 | 0,02 |
-| 10 | 74,6 | 0,14 |
-| 50 | 368,0 | 0,65 |
-| 100 | 747,2 | 1,10 |
-| 200 | 1511,4 | 2,34 |
+| 1 | 10,1 | 9,8 |
+| 2 | 10,4 | 9,8 |
+| 5 | 11,1 | 9,8 |
+| 10 | 16,9 | 9,8 |
+| 20 | 14,5 | 9,8 |
+| 50 | 21,3 | 10,0 |
+| 100 | 32,2 | 10,3 |
+| 200 | 54,9 | 10,9 |
 
 ![P3 — Custo da unificação: resolução de funções internas](P3_resolution_overhead.png)
 
 **Resumo.** Mede o custo de resolver endpoints de funções internas (a unificação
-OmniFlow+QuickFaaS) vs uma chamada externa. Custa ~7,5 µs/função e escala linearmente, porque cada
-chamada relê e reparsa o registo inteiro do disco sem cache; externas custam ~0,01 µs. No caso
-geral é Θ(N·R), R = tamanho do registo.
+OmniFlow+QuickFaaS) contra o de uma chamada que não precisa de resolução. As duas variantes pagam
+**uma** leitura do registo — o resolver de referência lê o ficheiro antes de percorrer a árvore,
+haja ou não o que resolver — e é isso que a linha N=1 mede: ~9,8 µs. O que separa as duas colunas é
+o trabalho por chamada: ~0,22 µs para uma chamada interna (*lookup* no snapshot, divisão do URL em
+host/path, reconstrução do nó) contra ~0,006 µs para uma externa, que é copiada tal como está.
+Resolver um workflow de 200 chamadas custa 54,9 µs, dos quais a leitura é cerca de um quinto. O ponto
+N=10 é ruído: o seu intervalo de confiança (±16,8 µs) é maior que o próprio valor.
 
 ---
 
@@ -133,15 +130,14 @@ geral é Θ(N·R), R = tamanho do registo.
 
 | R \ N | 1 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|
-| 1 | 178,8 | 1799,8 | 9252,9 | 36046,3 |
-| 10 | 185,5 | 1838,8 | 9367,7 | 36729,9 |
-| 50 | 204,3 | 2029,3 | 10803,9 | 40897,3 |
-| 200 | 278,9 | 2775,3 | 14117,2 | 55567,4 |
-| 1000 | 742,5 | 7474,7 | 36701,6 | 148576,7 |
+| 1 | 11,5 | 101 | 509 | 2 018 |
+| 10 | 12,8 | 116 | 579 | 2 322 |
+| 50 | 18,2 | 184 | 917 | 3 668 |
+| 200 | 44,3 | 446 | 2 227 | 8 886 |
+| 1000 | 183 | 1 838 | 9 172 | 36 552 |
 
-**Controlo `resolveAllExternal`** (nunca toca o registo, independente de R): 0,016 µs (N=1) →
-0,090 µs (N=10) → 0,320 µs (N=50) → 1,140 µs (N=200) — iguais em toda a linha de R, confirmando que o
-efeito de R acima é específico do acesso ao registo.
+**Controlo `resolveAllExternal`** (nunca toca o registo, independente de R): 0,01 µs (N=1) → 0,06 µs (N=10) → 0,14 µs (N=50) → 0,82 µs (N=200) — igual
+em toda a linha de R, confirmando que o efeito de R acima é específico do acesso ao registo.
 
 ![P6 — Custo por chamada de resolveUrl() vs tamanho do registo](P6_registry_scaling.png)
 
@@ -152,15 +148,18 @@ não de N — enquanto o controlo externo se mantém plano próximo de zero.
 
 | R | Custo por chamada (µs) |
 |---:|---:|
-| 1 | 181,0 |
-| 10 | 185,1 |
-| 50 | 207,0 |
-| 200 | 279,2 |
-| 1000 | 741,7 |
+| 1 | 10,5 |
+| 10 | 11,9 |
+| 50 | 18,3 |
+| 200 | 44,5 |
+| 1000 | 183 |
 
 **Resumo.** Mede como o tamanho do registo (R) afeta a resolução sem cache, isolado do número de
-chamadas (N). O custo por chamada cresce com R (~180 µs fixo + ~0,56 µs/entrada), independente de
-N: Θ(N·R). Para registos realistas, o custo fixo de reabrir o ficheiro domina, não o tamanho.
+chamadas (N). O custo por chamada cresce com R (~10,5 µs fixos de I/O e parsing + ~0,17 µs por
+entrada registada), independente de N: Θ(N·R). Os dois termos igualam-se em R ≈ 60; abaixo disso
+domina o custo fixo de abrir e parsear o ficheiro. Um registo com as poucas dezenas de funções de um
+sistema real fica em torno ou abaixo desse ponto, que é o que torna vantajoso ler o registo uma vez
+por workflow em vez de uma vez por chamada.
 
 ---
 
@@ -172,18 +171,22 @@ N: Θ(N·R). Para registos realistas, o custo fixo de reabrir o ficheiro domina,
 
 | | N=1 | N=10 | N=50 | N=200 |
 |---|---:|---:|---:|---:|
-| **sem cache** R=1 | 4,6 | 47,0 | 233,6 | 920,2 |
-| **com cache** R=1 | 4,7 | 5,0 | 5,0 | 5,7 |
-| **sem cache** R=1000 | 543,7 | 5480,8 | 26698,5 | 104889,0 |
-| **com cache** R=1000 | 557,4 | 535,7 | 551,8 | 536,6 |
+| **sem cache** R=1 | 9,8 | 98,0 | 492 | 1 999 |
+| **com cache** R=1 | 10,0 | 10,0 | 10,1 | 10,3 |
+| **sem cache** R=50 | 17,9 | 180 | 901 | 3 630 |
+| **com cache** R=50 | 18,4 | 18,3 | 18,5 | 18,5 |
+| **sem cache** R=1000 | 183 | 1 839 | 9 239 | 36 670 |
+| **com cache** R=1000 | 182 | 183 | 182 | 184 |
 
 ![P7a — Resolução sem cache (leitura por chamada)](P7a_resolution_sem_cache.png)
 
 ![P7b — Resolução com cache (leitura única)](P7b_resolution_com_cache.png)
 
-**Resumo.** Compara, na mesma execução, resolver o registo por chamada (naive) vs uma só vez por
-resolve() (otimizado). Com cache o custo é quase independente de N — Θ(N+R) em vez de Θ(N·R) —
-speedup até ~200× no pior caso (N=200,R=1000: ~105 ms → ~0,54 ms). Confirma otimização de P3/P6.
+**Resumo.** Compara resolver o registo por chamada (naive) com uma só leitura por `resolve()`
+(otimizado). Com cache o custo é quase independente de N — cada linha fica plana ao longo de um
+aumento de 200× no número de chamadas — e reduz-se ao custo de uma leitura de um ficheiro de R
+entradas: Θ(N+R) em vez de Θ(N·R). O *speedup* cresce com o produto N·R e chega a 200× no pior
+canto (N=200, R=1000: 36,7 ms → 0,18 ms).
 
 ---
 
@@ -195,31 +198,34 @@ speedup até ~200× no pior caso (N=200,R=1000: ~105 ms → ~0,54 ms). Confirma 
 
 | F \ N | 1 | 5 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 216 | 1 118 | 2 103 | 9 544 | 38 394 |
-| 2 | 192 | 956 | 1 902 | 9 555 | 37 950 |
-| 5 | 189 | 995 | 1 911 | 9 663 | 38 468 |
-| 10 | 195 | 1 132 | 2 390 | 10 544 | 39 340 |
-| 20 | 199 | 997 | 2 096 | 10 017 | 41 205 |
-| 50 | 219 | 1 133 | 2 194 | 10 857 | 43 360 |
+| 1 | 10,4 | 52,3 | 105 | 525 | 2 069 |
+| 2 | 10,8 | 53,0 | 106 | 534 | 2 142 |
+| 5 | 11,1 | 53,9 | 108 | 543 | 2 150 |
+| 10 | 11,6 | 58,5 | 116 | 582 | 2 333 |
+| 20 | 13,3 | 66,6 | 133 | 665 | 2 650 |
+| 50 | 18,7 | 92,5 | 185 | 929 | 3 694 |
 
 **Tempo de resolução (µs) — `resolveOptimized` (leitura única):**
 
 | F \ N | 1 | 5 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 191 | 195 | 197 | 228 | 337 |
-| 2 | 191 | 193 | 200 | 230 | 341 |
-| 5 | 191 | 194 | 209 | 228 | 349 |
-| 10 | 228 | 197 | 202 | 241 | 362 |
-| 20 | 199 | 202 | 215 | 237 | 349 |
-| 50 | 224 | 221 | 223 | 251 | 367 |
+| 1 | 10,2 | 11,1 | 12,2 | 20,7 | 54,7 |
+| 2 | 10,4 | 11,2 | 12,2 | 21,1 | 54,1 |
+| 5 | 10,7 | 11,6 | 12,7 | 21,5 | 54,1 |
+| 10 | 11,5 | 12,7 | 13,8 | 22,5 | 55,8 |
+| 20 | 13,4 | 14,2 | 15,2 | 24,0 | 57,9 |
+| 50 | 18,5 | 19,4 | 20,8 | 29,4 | 63,3 |
 
 ![P8a — Resolução sem cache (leitura por chamada)](P8a_resolution_sem_cache.png)
 
 ![P8b — Resolução com cache (leitura única)](P8b_resolution_com_cache.png)
 
 **Resumo.** Caracteriza a resolução real de um workflow ao longo de F (funções distintas) e N
-(chamadas), com R=F. Sem cache o custo é dominado por N e quase indiferente a F (~200 µs/chamada);
-com cache fica quase plano. Speedup cresce com N: ~1× a N=1, até ~110× a N=200.
+(chamadas), com R=F. O caminho naive é dominado por N, a ~10 µs por chamada — uma leitura inteira
+do registo cada — e cresce suavemente com F, porque um F maior é um ficheiro maior para reler. O
+caminho otimizado paga essa leitura uma vez e depois ~0,22 µs por chamada, pelo que cresce mais com F
+(o tamanho da leitura única) do que com N. O *speedup* é ~1× em N=1, onde ambos leem o ficheiro
+exatamente uma vez, e chega a ~38× (F=1) e ~58× (F=50) em N=200.
 
 ---
 
@@ -231,18 +237,20 @@ com cache fica quase plano. Speedup cresce com N: ~1× a N=1, até ~110× a N=20
 
 | R (registo) | sem cache (µs) | com cache (µs) | speedup |
 |---:|---:|---:|---:|
-| 10 | 9 829 | 237 | ~41,4× |
-| 20 | 11 952 | 308 | ~38,8× |
-| 50 | 10 899 | 268 | ~40,7× |
-| 100 | 12 118 | 275 | ~44,1× |
-| 200 | 14 964 | 324 | ~46,2× |
-| 1000 | 43 245 | 749 | ~57,8× |
+| 10 | 589 | 22,6 | ~26,1× |
+| 20 | 666 | 23,9 | ~27,9× |
+| 50 | 930 | 29,3 | ~31,8× |
+| 100 | 1 378 | 37,8 | ~36,5× |
+| 200 | 2 246 | 54,9 | ~40,9× |
+| 1000 | 9 487 | 205 | ~46,3× |
 
 ![P9 — Resolução vs tamanho do registo](P9_resolution_by_registry.png)
 
-**Resumo.** Isola o efeito do tamanho do registo (R≥F) com F=10/N=50 fixos. Sem cache o custo sobe
-com R (relê e reparsa R entradas N vezes, Θ(N·R)); com cache fica quase plano (uma só leitura O(R)).
-Speedup sobe de ~41× (R=10) a ~58× (R=1000), confirmando Θ(N+R).
+**Resumo.** Isola o efeito do tamanho do registo (R≥F) com F=10/N=50 fixos. Os dois caminhos
+crescem com R, mas por razões diferentes: o naive relê o ficheiro em cada uma das 50 chamadas, o
+otimizado lê-o uma vez. A distância entre eles alarga de ~26,1× (R=10) a ~46,3× (R=1000). A coluna
+"com cache" é o custo de uma leitura mais 50 *lookups* (22,6 µs a R=10, 205 µs a R=1000) e acompanha
+o custo por leitura medido no P6.
 
 ---
 
@@ -254,27 +262,31 @@ Speedup sobe de ~41× (R=10) a ~58× (R=1000), confirmando Θ(N+R).
 
 | F \ N | 1 | 5 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 17 | 44 | 124 | 1 240 | 3 486 |
-| 2 | 37 | 92 | 184 | 889 | 3 507 |
-| 5 | 32 | 40 | 85 | 427 | 1 752 |
-| 10 | 19 | 171 | 85 | 424 | 1 702 |
-| 20 | 23 | 135 | 89 | 434 | 1 800 |
-| 50 | 52 | 48 | 98 | 1 669 | 1 889 |
+| 1 | 9,9 | 10,3 | 10,9 | 13,8 | 24,6 |
+| 2 | 10,2 | 11,0 | 11,4 | 14,7 | 26,3 |
+| 5 | 11,0 | 11,2 | 11,7 | 15,3 | 27,6 |
+| 10 | 11,7 | 12,2 | 12,7 | 16,3 | 29,1 |
+| 20 | 14,4 | 14,8 | 14,4 | 19,7 | 34,5 |
+| 50 | 20,0 | 20,3 | 20,3 | 26,6 | 47,5 |
 
 ![P10 — Resolução real AWS](P10_aws_internal_resolution.png)
 
-*(máquina partilhada, não dedicada — margens de erro largas nesta configuração rápida; ver nota
-sobre `-f 3` no `TESTING.md`. Os pontos F=10,N=5 e F=50,N=50 fogem à monotonia esperada, sinalizados
-pelas suas próprias margens de erro invulgarmente largas — ruído da máquina partilhada, não um
-efeito de código; os restantes são consistentes entre si e com a forma Θ(N+R) esperada após a
-otimização.)*
+> **Nota de medição (2026-09-12).** Até esta data os dois resolvers de produção escreviam duas ou
+> três linhas de progresso na consola por cada chamada resolvida, dentro do método medido — dois
+> `println` mais um `logger.info`, que a configuração logback por omissão também imprime. Essa
+> escrita era ~95% do tempo reportado: os mesmos pontos custavam 1 006 µs (AWS) e 1 344 µs (GCP) em
+> F=10/N=200. As mensagens por chamada passaram para `logger.debug`, que ao nível por omissão não é
+> impresso (e cujo lambda nem chega a ser avaliado), e P10/P11 foram re-medidos. As mensagens raras
+> — varrimento de regiões, deployment QuickFaaS, *drift*, erros — continuam a ser impressas. Fica o
+> aviso: um método instrumentado mede a sua instrumentação.
 
-**Resumo.** Mede o custo real do glue de auto-deploy AWS (AwsInternalFunctionResolver), que agora
-lê o registo uma só vez por `resolve()` e resolve cada chamada contra esse snapshot
-(`tryResolveEntryIn`) em vez de reler o ficheiro por chamada — a mesma otimização do P7,
-entretanto propagada para este resolver de produção. Continua dominado por N e aproximadamente
-plano em F, em magnitudes comparáveis ao caminho já otimizado do P8, em vez do custo integral
-N·R que pagava antes.
+**Resumo.** Mede o custo real do glue de auto-deploy AWS, que lê o registo uma só vez por
+`resolve()` e resolve cada chamada contra esse snapshot (`tryResolveEntryIn`). A forma é a mesma do
+caminho de referência já otimizado: uma leitura mais uma constante por chamada. A coluna N=1 dá a
+leitura (cresce com F porque R=F, de 9,9 µs em F=1 a 20,0 µs em F=50); a linha dá o trabalho por
+chamada, ~0,09 µs. Resolver 200 chamadas contra um registo de 10 funções custa 29,1 µs.
+
+---
 
 ## P11 — Custo real do resolver de auto-deploy GCP (`WorkflowInternalFunctionResolver`)
 
@@ -284,22 +296,22 @@ N·R que pagava antes.
 
 | F \ N | 1 | 5 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 20 | 47 | 83 | 353 | 1 417 |
-| 2 | 22 | 50 | 107 | 587 | 2 757 |
-| 5 | 42 | 105 | 77 | 338 | 1 331 |
-| 10 | 47 | 105 | 213 | 963 | 2 966 |
-| 20 | 38 | 51 | 84 | 352 | 1 401 |
-| 50 | 31 | 61 | 99 | 402 | 1 573 |
+| 1 | 10,4 | 12,1 | 13,9 | 27,9 | 83,3 |
+| 2 | 10,6 | 11,9 | 13,8 | 27,5 | 78,8 |
+| 5 | 11,3 | 12,7 | 14,1 | 28,4 | 79,8 |
+| 10 | 12,1 | 13,4 | 15,1 | 28,8 | 81,3 |
+| 20 | 14,4 | 15,5 | 16,8 | 31,6 | 84,4 |
+| 50 | 19,9 | 20,9 | 22,8 | 36,8 | 91,3 |
 
 ![P11 — Resolução real GCP](P11_google_internal_resolution.png)
 
-*(mesma máquina/ressalva de margens de erro do P10; forma Θ(N+R) após a otimização.)*
-
-**Resumo.** Gémeo GCP do P10: mede WorkflowInternalFunctionResolver.resolve, com URLs de 1ª geração
-para evitar chamadas reais à API, agora também com leitura única do registo por `resolve()`. Mesmo
-padrão dominado por N e plano em F que o P10; os dois fornecedores ficam na mesma ordem de
-grandeza, sem uma diferença direcional consistente entre eles uma vez amortizado o custo de
-leitura — a assimetria residual está dentro do ruído desta máquina partilhada.
+**Resumo.** Gémeo GCP do P10, com URLs de 1ª geração no registo para nunca tocar na API do Cloud
+Run. Mesma forma (uma leitura — 10,4 µs em F=1, 19,9 µs em F=50 — mais uma constante por chamada),
+mas ~4× mais caro por chamada que o AWS: ~0,35 µs contra ~0,09 µs, ou 81,3 µs contra 29,1 µs em
+F=10/N=200. **A diferença é real e não é logging** (ver a nota do P10): o resolver AWS liga uma
+chamada concatenando um prefixo ao ARN que já tem, enquanto o GCP faz `URI(url)` e reconstrói
+host/path a cada chamada. O resolver de referência do P3/P8 faz esse mesmo parsing e fica entre os
+dois, a ~0,22 µs por chamada — o que fecha a explicação.
 
 ---
 
@@ -311,21 +323,22 @@ leitura — a assimetria residual está dentro do ruído desta máquina partilha
 
 | K \ R0 | 0 | 10 | 50 | 200 | 1000 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 2 673 | 2 860 | 3 235 | 4 139 | 2 761 |
-| 5 | 12 887 | 13 149 | 14 955 | 19 710 | 13 874 |
-| 10 | 27 691 | 26 986 | 29 912 | 39 164 | 24 029 |
-| 50 | 154 601 | 144 606 | 161 098 | 206 385 | 123 322 |
-| 100 | 329 757 | 304 187 | 330 100 | 419 531 | 237 910 |
+| 1 | 45,5 | 48,2 | 63,8 | 114 | 490 |
+| 5 | 224 | 242 | 329 | 529 | 1 945 |
+| 10 | 463 | 496 | 640 | 1 041 | 3 751 |
+| 50 | 2 517 | 2 706 | 3 650 | 5 363 | 17 942 |
+| 100 | 5 914 | 6 693 | 7 594 | 11 515 | 36 195 |
 
 ![P13 — Custo de escrita incremental no registo](P13_registry_write_scaling.png)
 
-*(3 forks (`-f 3`) precisamente para reduzir ruído — erros já pequenos e consistentes na maioria
-dos pontos; ver nota na Justificação sobre a coluna R0=1000.)*
-
-**Resumo.** Mede o custo de escrever K funções sucessivas num registo com R0 entradas iniciais
-(FunctionRegistryStore.put, nunca antes medido). Cresce mais que linear em K — Θ(K·R0+K²), pois
-cada put() relê e reescreve o ficheiro inteiro. A coluna R0=1000 foge ao padrão, por ruído da
-máquina partilhada, não do código.
+**Resumo.** Cada `put()` relê e reescreve o ficheiro inteiro, por isso registar K funções custa
+perto de K vezes uma escrita, e uma escrita custa o que custa reescrever um ficheiro do tamanho
+atual. Ambos os fatores se veem. Ao longo de K o custo **por escrita** é quase constante — com
+R0=0 vai de 45,5 µs (K=1) a 59,1 µs (K=100), o aumento suave esperado de um ficheiro que ganhou K
+entradas durante a execução — logo o total é linear em K, não Θ(K²) como se supunha. Ao longo de R0
+o custo por escrita cresce aproximadamente na proporção do ficheiro: 45,5 µs com o registo vazio,
+490 µs com R0=1000. Para a escrita, o tamanho do registo não é um termo de segunda ordem como é
+para a leitura: multiplica o custo de cada escrita.
 
 ---
 
@@ -337,18 +350,19 @@ máquina partilhada, não do código.
 
 | R (registo) | exact match (µs) | suffix match (µs) | razão |
 |---:|---:|---:|---:|
-| 10 | 219 | 228 | ~1,04× |
-| 20 | 224 | 241 | ~1,07× |
-| 50 | 250 | 278 | ~1,11× |
-| 100 | 259 | 333 | ~1,29× |
-| 200 | 309 | 442 | ~1,43× |
-| 1000 | 768 | 1 456 | ~1,90× |
+| 10 | 22,5 | 28,8 | ~1,28× |
+| 20 | 24,2 | 32,6 | ~1,35× |
+| 50 | 29,2 | 40,2 | ~1,38× |
+| 100 | 38,2 | 58,9 | ~1,54× |
+| 200 | 55,0 | 92,6 | ~1,68× |
+| 1000 | 201 | 391 | ~1,95× |
 
 ![P14 — Exact vs. suffix match](P14_resolution_key_match_strategy.png)
 
 **Resumo.** Testa o caminho por sufixo do resolver "com cache" (desambiguação regional), que falha
-o match exato e faz scan O(R) por chamada em memória. Fica mais caro, com razão a crescer até
-~1,90× em R=1000 — reintroduz Θ(N·R), mas sobre mapa já carregado, bem mais barato em absoluto.
+o match exato e faz scan O(R) por chamada em memória. A razão cresce de forma regular com R, e
+mantém-se barato em absoluto — 391 µs para 50 *lookups* por sufixo sobre um registo de mil entradas.
+Reintroduz Θ(N·R), mas sobre um mapa já carregado.
 
 ---
 
@@ -360,18 +374,19 @@ o match exato e faz scan O(R) por chamada em memória. Fica mais caro, com razã
 
 | I \ E | 0 | 1 | 5 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|---:|---:|
-| 0 | 181 | 190 | 182 | 187 | 183 | 183 |
-| 1 | 193 | 184 | 183 | 187 | 183 | 186 |
-| 5 | 186 | 186 | 211 | 188 | 187 | 187 |
-| 10 | 189 | 205 | 195 | 203 | 189 | 255 |
-| 50 | 217 | 217 | 217 | 230 | 219 | 322 |
-| 200 | 326 | 321 | 333 | 323 | 315 | 393 |
+| 0 | 11,3 | 11,3 | 11,5 | 11,5 | 13,9 | 12,7 |
+| 1 | 11,5 | 11,7 | 11,8 | 11,8 | 14,4 | 12,7 |
+| 5 | 12,8 | 12,6 | 12,6 | 12,7 | 12,9 | 13,7 |
+| 10 | 13,7 | 13,8 | 13,8 | 13,8 | 14,0 | 14,7 |
+| 50 | 22,4 | 22,4 | 22,7 | 26,3 | 22,8 | 23,2 |
+| 200 | 55,8 | 55,9 | 56,2 | 67,1 | 57,4 | 56,8 |
 
 ![P15 — Resolução vs mistura interno/externo (I × E)](P15_resolution_internal_external_mix.png)
 
-**Resumo.** Isola se o custo de resolução depende de chamadas internas (I) ou do total N=I+E, com
-F=R=10 fixo. A linha I=0 fica plana até E=200: externas não custam lookup no registo. O custo sobe
-com I: confirma Θ(I+R), com E só a pesar na reconstrução O(N) da árvore.
+**Resumo.** Isola se o custo depende das chamadas internas (I) ou do total N=I+E. A linha I=0 fica
+entre 11 e 14 µs mesmo com E=200: as externas não custam *lookup* no registo. Descer uma coluna de
+I=0 a I=200 multiplica o custo por cinco, a ~0,22 µs por chamada interna — o mesmo valor por chamada
+do P3. Confirma Θ(I+R), com E a pesar apenas na reconstrução O(N) da árvore.
 
 ---
 
@@ -383,18 +398,18 @@ com I: confirma Θ(I+R), com E só a pesar na reconstrução O(N) da árvore.
 
 | R (registo) | com cache (µs) |
 |---:|---:|
-| 10 | 346 |
-| 20 | 221 |
-| 50 | 247 |
-| 100 | 309 |
-| 200 | 306 |
-| 1000 | 776 |
+| 10 | 20,4 |
+| 20 | 22,2 |
+| 50 | 27,3 |
+| 100 | 36,2 |
+| 200 | 53,7 |
+| 1000 | 199 |
 
 ![P16 — Resolução vs tamanho do registo, workflow misto](P16_resolution_by_registry_mixed.png)
 
-**Resumo.** Gémeo do P9 com workflow misto (I=40/E=10 fixos), variando R. Confirma o mesmo padrão
-Θ(R) do P9 (346→776 µs de R=10 a 1000, mesma ordem de grandeza), mostrando que R continua
-independente de quantas chamadas são internas vs externas — só mais ruidoso por ser fork único.
+**Resumo.** Gémeo do P9 com workflow misto, variando R. O custo continua a seguir a leitura única,
+de forma monótona e sem ruído, mostrando que o efeito de R não depende de quantas chamadas são
+internas ou externas.
 
 ---
 
@@ -406,20 +421,20 @@ independente de quantas chamadas são internas vs externas — só mais ruidoso 
 
 | K \ R0 | 0 | 10 | 50 | 200 | 1000 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 3 309 | 3 545 | 3 959 | 5 122 | 4 243 |
-| 5 | 16 699 | 18 053 | 18 795 | 23 928 | 17 403 |
-| 10 | 35 107 | 34 358 | 37 190 | 47 631 | 47 817 |
-| 50 | 214 238 | 185 078 | 196 112 | 250 589 | 176 340 |
-| 100 | 410 389 | 382 140 | 403 488 | 511 878 | 346 068 |
+| 1 | 57,2 | 62,7 | 90,2 | 164 | 686 |
+| 5 | 298 | 323 | 427 | 769 | 2 901 |
+| 10 | 597 | 874 | 973 | 1 557 | 5 751 |
+| 50 | 3 265 | 3 510 | 5 051 | 8 144 | 28 694 |
+| 100 | 8 369 | 8 307 | 10 516 | 17 689 | 58 572 |
 
 ![P17 — Custo de miss+deploy no registo](P17_registry_miss_and_deploy.png)
 
-*(mesma grelha (R0, K) do P13, para comparação direta; ver a mesma ressalva de máquina
-partilhada/coluna R0=1000 nesse teste.)*
-
 **Resumo.** Mede o custo de resolver (miss) + registar (put) K funções novas, o que os resolvers
-reais fazem antes de qualquer chamada à cloud. Face ao P13 (só put), o miss acrescenta cerca de 24
-a 54% de custo, crescendo com R0, pois tryResolveEntry também é O(R).
+reais fazem antes de qualquer chamada à cloud. Face ao P13 (só `put`), o miss acrescenta entre 26% e
+62%, porque `tryResolveEntry` lê o ficheiro inteiro mais uma vez antes de a escrita o reescrever. O
+agravamento cresce com R0 — ~30% com o registo vazio, ~60% com R0=1000 — que é o que uma leitura
+extra de um ficheiro cada vez maior prevê. Um ponto discorda, K=10 com R0=10, e o seu intervalo de
+confiança (±732 µs sobre uma média de 874 µs) diz que é ruído.
 
 ---
 
@@ -428,31 +443,30 @@ a 54% de custo, crescendo com R0, pois tryResolveEntry também é O(R).
 > **Objeto:** resolução de um *workflow real* **aninhado** (Iteration/Parallel) · **Funções distintas:** F=10 distintas (fixo), *round-robin* pelas 20 chamadas · **Chamadas (N):** N=20 internas (fixo); varia a **profundidade** (0–5) · **Registo (R):** R=F=10 (fixo).
 
 P5 mediu este eixo (profundidade de aninhamento, alternando *iteration*/*parallel*) só para a
-**renderização**, com workflows 100% externos — nunca tocava o registo. `resolveContext` no
-`WorkflowInternalCallEndpointResolver` recursa explicitamente em `IterationRangeContext`/
-`ParallelBranchContext`, mas nenhum benchmark de resolução (P3, P6-P17) alguma vez construiu uma
-árvore aninhada — todos usam sequências planas de chamadas. O P18 fecha essa lacuna: mesma
-estrutura do P5 (20 chamadas-folha fixas, profundidade `depth` a variar), mas as folhas são
-chamadas **internas** (10 funções distintas, round-robin, R=F=10) em vez de chamadas externas
-independentes.
+**renderização**, com workflows 100% externos — nunca tocava o registo. `resolveContext` recursa
+explicitamente em `IterationRangeContext`/`ParallelBranchContext`, mas nenhum benchmark de resolução
+(P3, P6-P17) alguma vez construiu uma árvore aninhada — todos usam sequências planas de chamadas. O
+P18 fecha essa lacuna: mesma estrutura do P5 (20 chamadas-folha fixas, profundidade `depth` a
+variar), mas as folhas são chamadas **internas** (10 funções distintas, round-robin, R=F=10).
 
 **Tempo total (µs) — 20 chamadas internas, R=F=10 fixos, profundidade a variar:**
 
 | Profundidade | Tempo (µs) |
 |---:|---:|
-| 0 (plano) | 207,3 |
-| 1 | 203,2 |
-| 2 | 200,7 |
-| 3 | 200,4 |
-| 4 | 204,1 |
-| 5 | 199,6 |
+| 0 (plano) | 15,9 |
+| 1 | 15,8 |
+| 2 | 69,0 |
+| 3 | 19,2 |
+| 4 | 17,1 |
+| 5 | 15,9 |
 
 ![P18 — Resolução interna vs profundidade de aninhamento](P18_internal_resolution_by_nesting.png)
 
-**Resumo.** O tempo fica praticamente constante (~200-207 µs) em todas as profundidades, dentro da
-margem de erro — a recursão do resolver sobre `Iteration`/`Parallel` não acrescenta custo
-mensurável além do que as 20 folhas já custariam numa lista plana. Confirma que a resolução escala
-com o **número total de chamadas internas**, não com a forma/profundidade da árvore.
+**Resumo.** O tempo fica praticamente constante (15,8–19,2 µs) em todas as profundidades — a
+recursão do resolver sobre `Iteration`/`Parallel` não acrescenta custo mensurável além do que as 20
+folhas já custariam numa lista plana. O ponto em profundidade 2 (69,0 µs) é ruído, como o seu
+próprio intervalo de confiança (±40,8 µs) indica. Confirma que a resolução escala com o **número
+total de chamadas internas**, não com a forma da árvore.
 
 ---
 
@@ -464,31 +478,28 @@ Gémeo do P12 (que mediu largura de `Choice`/`Parallel` só para renderização)
 resolução. Não há equivalente de largura de `Choice` aqui: um `ConditionalContext` só tem pares
 condição/nome-de-destino, nunca `Step`s aninhados — não há nada para o resolver percorrer. Já o
 `Parallel` aninha listas reais de `Step`s por *branch*, e `resolveContext` recursa explicitamente
-em `ParallelBranchContext` — caminho nunca exercitado pelos workflows planos de P3/P6-P17. Mesma
-estrutura do P12 (um único bloco `Parallel`, 5 chamadas-folha fixas por *branch*, largura a
-variar), mas as folhas são chamadas internas (10 funções distintas, round-robin, R=F=10). O nº
+em `ParallelBranchContext` — caminho nunca exercitado pelos workflows planos de P3/P6-P17. O nº
 total de chamadas resolvidas é N = 5 × largura.
 
 **Tempo total (µs) — 5 chamadas internas/branch, R=F=10 fixos, largura do Parallel a variar:**
 
 | Nº de branches | N (=5×largura) | Tempo (µs) |
 |---:|---:|---:|
-| 1 | 5 | 188,3 |
-| 2 | 10 | 195,0 |
-| 5 | 25 | 204,5 |
-| 10 | 50 | 220,8 |
-| 20 | 100 | 276,2 |
-| 50 | 250 | 404,9 |
-| 100 | 500 | 583,7 |
+| 1 | 5 | 12,5 |
+| 2 | 10 | 13,7 |
+| 5 | 25 | 17,0 |
+| 10 | 50 | 22,4 |
+| 20 | 100 | 33,2 |
+| 50 | 250 | 65,2 |
+| 100 | 500 | 119 |
 
 ![P19 — Resolução interna vs largura de Parallel](P19_internal_resolution_by_branch_width.png)
 
-**Resumo.** O tempo cresce de forma aproximadamente linear com o número total de chamadas internas
-N=5×largura (188 µs em N=5 → 584 µs em N=500), na mesma ordem de grandeza e com a mesma tendência
-já vista nos workflows planos do P8/P15 — estar dentro de um `Parallel` largo não introduz nenhum
-custo extra por *branch* além das chamadas que ele de facto contém. Confirma, junto com o P18, que
-o custo de resolução depende só do nº total de chamadas internas (N), independentemente de estarem
-organizadas numa lista plana, aninhadas em profundidade ou espalhadas por muitos *branches*.
+**Resumo.** O tempo cresce linearmente com o número total de chamadas internas N=5×largura
+(12,5 µs em N=5 → 119 µs em N=500), a ~0,22 µs por chamada — o mesmo declive dos workflows planos
+do P3 e do P15. Estar dentro de um `Parallel` largo não introduz custo extra por *branch*. Confirma,
+com o P18, que o custo depende só do nº total de chamadas internas, estejam elas numa lista plana,
+aninhadas em profundidade ou espalhadas por muitos *branches*.
 
 ---
 
@@ -512,43 +523,38 @@ A mesma função (`hello-lambda-fn`) empacotada de duas formas (fat-jar via mave
 **Resumo.** Mede o overhead de tamanho do bundle Lambda que a camada agnóstica do QuickFaaS
 acrescenta face a uma implementação nativa. ~0,88 KB (6,6% de um bundle trivial; <0,1% numa função
 real) — negligenciável, como já visto para GCP/Azure. Corrigido um bug de seleção
-não-determinística de jar, validado por teste.
+não-determinística de jar, validado por teste. (Esta medição não é JMH e não foi afetada pela
+re-execução.)
 
 ---
 
 ## Síntese e discussão
 
-1. O custo da unificação (resolução das funções internas) é linear e pequeno por chamada (P3); o P6
-   quantifica a degradação **Θ(N·R)**: ≈ 180 µs (fixo, I/O + parsing) + 0,56 µs por função
-   registada — dominado pelo termo fixo até R ≈ 320 e mitigável lendo o registo uma só vez.
-2. O tamanho do registo (P6) é uma dimensão de custo independente de N; para projetos reais o fator
-   dominante é o número de releituras do ficheiro, não a sua dimensão.
+1. O custo da unificação é pequeno por chamada e linear (P3): uma leitura do registo (~9,8 µs com
+   R=1) mais ~0,22 µs por chamada interna, contra ~0,006 µs por chamada externa.
+2. O tamanho do registo (P6) é uma dimensão de custo independente de N: ~10,5 µs fixos de I/O e
+   parsing + ~0,17 µs por entrada. Os dois termos igualam-se em R ≈ 60, pelo que num registo
+   realista domina o custo fixo — o que se ganha é lendo menos vezes, não tendo um registo menor.
 3. A otimização de leitura única (P7) elimina o produto N·R: a resolução passa de **Θ(N·R)** para
-   **Θ(N+R)**, com *speedup* de ~200× no pior canto (de ~150 ms para ~0,75 ms) — identificar
+   **Θ(N+R)**, com *speedup* de 200× no pior canto medido (36,7 ms → 0,18 ms) — identificar
    (P3/P6) → corrigir → quantificar (P7).
-4. Os resolvers reais de auto-deploy (P10 AWS, P11 GCP) já receberam essa otimização: leem o
-   registo uma só vez por `resolve()` e resolvem cada chamada contra esse snapshot, mostrando a
-   mesma forma **Θ(N+R)** do caminho já otimizado em vez do custo Θ(N·R) integral que pagavam
-   antes.
-5. Tamanho (S1): a camada AWS agnóstica acrescenta ao *bundle* apenas ~0,9 KB — overhead
-   negligenciável em funções reais, em linha com a avaliação original do QuickFaaS para GCP/Azure.
-6. O eixo I/E (P15/P16), o primeiro workflow realmente misto (chamadas internas e externas no mesmo
-   workflow) medido neste conjunto, confirma que o custo de resolução escala com **I** (chamadas
-   internas) e não com N=I+E — as chamadas externas custam apenas o termo O(N) partilhado de
-   reconstrução da árvore, não o *lookup* no registo (P15); e que o **Θ(R)** já provado no P9 se
-   mantém inalterado, na mesma ordem de grandeza, quando o workflow tem uma fração de chamadas
-   externas (P16).
-7. O custo real de "primeiro deploy" de uma função nova (P17) é maior do que só o `put()` do P13:
-   o *miss lookup* (`tryResolveEntry`) que os resolvers reais fazem antes de escrever acrescenta
-   ~24-54% de custo, crescendo com R0 — outro termo Θ(R) que se soma ao já identificado.
-8. Os eixos estruturais que P5/P12 só tinham medido para renderização (profundidade de aninhamento,
-   largura de Parallel) foram fechados do lado da resolução por P18/P19: apesar de o resolver
-   recursar explicitamente em `Iteration`/`Parallel`, nem a profundidade (P18, plano em ~200 µs)
-   nem a largura de Parallel (P19, cresce com N=5×largura na mesma ordem do P8/P15) introduzem
-   custo além do que o nº total de chamadas internas já explica — a forma da árvore é irrelevante,
-   só a contagem de chamadas importa.
+4. Os resolvers reais de auto-deploy (P10 AWS, P11 GCP) têm essa otimização e mostram a mesma forma:
+   29,1 µs e 81,3 µs para 200 chamadas com um registo de 10 funções. A diferença entre os dois
+   fornecedores é o parsing de `URI` que o resolver GCP faz por chamada e o AWS não.
+5. Escrita (P13/P17): o custo por escrita é quase constante em K, logo o total é linear em K, mas
+   cresce com o tamanho do registo, porque cada `put` reescreve o ficheiro inteiro. O par
+   miss+escrita que precede qualquer deployment acrescenta 26–62%, a crescer com R0.
+6. O eixo I/E (P15/P16) confirma que o custo escala com **I** e não com N=I+E, e que o efeito de R
+   se mantém quando parte das chamadas é externa.
+7. Os eixos estruturais que P5/P12 só tinham medido para renderização foram fechados do lado da
+   resolução por P18/P19: nem a profundidade nem a largura de Parallel introduzem custo além do que
+   o nº total de chamadas internas já explica.
+8. Tamanho (S1): a camada AWS agnóstica acrescenta ao *bundle* apenas ~0,9 KB, em linha com a
+   avaliação original do QuickFaaS para GCP/Azure.
 
-**Enquadramento global.** Todos os valores estão na ordem dos microssegundos a poucas centenas de
-milissegundos no pior caso não otimizado (K=100 escritas sucessivas): a resolução de endpoints não
-é o gargalo — o custo dominante é o *deployment* na nuvem (segundos). O sobrecusto da unificação,
-uma vez otimizado, é assintoticamente linear e praticamente irrelevante na operação real.
+**Enquadramento global.** Todos os valores estão entre microssegundos e, no pior caso de escrita,
+dezenas de milissegundos (K=100 escritas sucessivas num registo de mil entradas: 36 ms). A resolução
+de endpoints não é o gargalo — o custo dominante é o *deployment* na nuvem (segundos). Fica dito o
+que estas medições **não** cobrem: são todas locais, com o provider substituído por um duplo, por
+isso não incluem a validação ao vivo de cada *hit* nem o varrimento de regiões de um *miss*, que são
+idas à rede. O Capítulo 7 da dissertação conta quantas.
