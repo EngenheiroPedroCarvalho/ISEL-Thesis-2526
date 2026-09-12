@@ -102,7 +102,31 @@ drift as text is edited, so search for the quoted phrases.
       in the P6/P8/P9 runs. So: re-run the WHOLE suite in ONE session with `-f 3`, regenerate every
       table from it, then delete the provenance paragraph now in "Threats to Validity".
 - [ ] Re-run JMH with `-f 3`, report error margins, and remove the "not thesis-grade" caveat.
-      (Same run as the item above.)
+      (Same run as the item above.) Recipe, worked out and started on 2026-09-12, then stopped
+      because the machine was needed — **the run takes ~2h11m, so start it when the machine can be
+      left alone**:
+
+      1. Build: `JAVA_HOME=/opt/homebrew/opt/openjdk@26/libexec/openjdk.jdk/Contents/Home \
+         ./mvnw -o -q -pl benchmark -am clean package -DskipTests`
+      2. Run from a scratch directory with `-f 3 -wi 3 -i 5 -w 1 -r 1 -rf csv -rff <out>.csv`,
+         passing an **include** regex that names exactly the 14 classes behind P3 and P6–P19:
+         InternalCallResolution, RegistryScaling, ResolutionOptimization,
+         ResolveWorkflowByFunctionsAndCalls, ResolveWorkflowByRegistrySize(Mixed),
+         AwsInternalFunctionResolution, GoogleInternalFunctionResolution, RegistryWriteScaling,
+         ResolutionKeyMatchStrategy, ResolveWorkflowByInternalExternalMix, RegistryMissAndDeploy,
+         InternalResolutionByNesting, InternalResolutionByBranchWidth.
+      3. **Never run it without that include list.** `BenchmarkAmazonDeployment` calls
+         `createStateMachine` and `BenchmarkGoogleDeployment` calls `deploy` — they create real
+         resources on AWS/GCP.
+      4. **Filter stdout**: `| grep --line-buffered -E '^#|^Iteration|^Result|^Benchmark'`. The
+         resolvers `println` on every resolved call, so an unfiltered log grows ~1 GB/min (it hit
+         2.1 GB in one minute before being killed).
+      5. JMH writes the CSV only when the whole run ends, so an interrupted run leaves nothing.
+         Write it to a scratch path and only copy into `benchmark/results/` once it is complete,
+         so the current CSVs survive a failed attempt.
+- [ ] Those `println` calls sit **inside the measured method**, so P3 and P8–P19 measure resolution
+      plus console I/O. Check whether it is material once the `-f 3` numbers exist; if it is, say so
+      in "Threats to Validity". Silencing them would mean changing production code — ask first.
 - [x] P3: explained as the single-read resolver with R=1 (per-call cost = snapshot lookup + URL
       split + node rebuild), no longer as a re-read per call.
 - [x] P6: R≈320 is derived in the P6 paragraph (0.56·R = 180), and the Discussion only cites it.
