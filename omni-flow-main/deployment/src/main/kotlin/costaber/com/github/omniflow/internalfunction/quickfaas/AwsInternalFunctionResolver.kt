@@ -38,7 +38,6 @@ class AwsInternalFunctionResolver(
         private const val BOLD    = "[1m"
         private const val GREEN   = "[32m"
         private const val YELLOW  = "[33m"
-        private const val BLUE    = "[34m"
         private const val CYAN    = "[36m"
     }
 
@@ -101,7 +100,9 @@ class AwsInternalFunctionResolver(
         internal: InternalFunction,
         snapshot: MutableMap<String, FunctionInvocationMetadata>
     ): String {
-        println("$BLUE  →$RESET Resolving Lambda '$BOLD$functionRef$RESET'...")
+        // Per-call progress is logged at DEBUG, not printed: on a workflow with many internal
+        // calls the console write costs an order of magnitude more than the resolution itself.
+        logger.debug { "Resolving Lambda '$functionRef'..." }
 
         // 1. Check registry first, then validate the binding against the live Lambda
         val existing = registry.tryResolveEntryIn(functionRef, snapshot)
@@ -119,8 +120,7 @@ class AwsInternalFunctionResolver(
                         registry.put(key, updated)
                         snapshot[key] = updated
                     } else {
-                        println("$GREEN  ✓$RESET Lambda '$functionRef' found in registry → ${liveResult.arn}")
-                        logger.info { "Registry hit for Lambda '$functionRef' → ${liveResult.arn}" }
+                        logger.debug { "Registry hit for Lambda '$functionRef' → ${liveResult.arn}" }
                     }
                     return liveResult.arn
                 }

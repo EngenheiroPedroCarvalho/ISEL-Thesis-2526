@@ -30,7 +30,6 @@ class WorkflowInternalFunctionResolver(
         private const val BOLD    = "[1m"
         private const val GREEN   = "[32m"
         private const val YELLOW  = "[33m"
-        private const val BLUE    = "[34m"
         private const val CYAN    = "[36m"
     }
 
@@ -115,16 +114,16 @@ class WorkflowInternalFunctionResolver(
         snapshot: MutableMap<String, FunctionInvocationMetadata>
     ): String{
         //1) If registry has entry -> validate against Cloud Run get(serviceName)
-        println("$BLUE  →$RESET Resolving internal function '$BOLD$functionRef$RESET'...")
-        println("$BLUE  →$RESET Checking function-registry for '$functionRef'...")
+        // Per-call progress is logged at DEBUG, not printed: on a workflow with many internal
+        // calls the console write costs an order of magnitude more than the resolution itself.
+        logger.debug { "Resolving internal function '$functionRef'; checking function-registry" }
         val existing = registry.tryResolveEntryIn(functionRef, snapshot)
 
         if (existing != null) {
             val (key, meta) = existing
 
             if (isFirstGenCloudFunction(meta.url)) {
-                println("$GREEN  ✓$RESET Function '$BOLD$key$RESET' found in registry (1st gen Cloud Function) → ${meta.url}")
-                logger.info { "Registry hit for '$key' (1st gen Cloud Function) — skipping Cloud Run validation" }
+                logger.debug { "Registry hit for '$key' (1st gen Cloud Function) — skipping Cloud Run validation" }
                 return meta.url
             }
 
