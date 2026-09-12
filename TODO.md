@@ -91,9 +91,17 @@ drift as text is edited, so search for the quoted phrases.
       host/path set" are now covered on both providers (45 resolver tests, 22 AWS + 23 GCP). Still
       open: evidence against the real providers (the two `@Ignore`d full-deployment tests in
       `WorkflowTest`).
-- [ ] Count the provider API calls per cascade level (worked out from the code).
+- [x] Count the provider API calls per cascade level: Ch7 §"Provider API Calls per Resolution"
+      (`sec:eval-api-calls`, `tab:eval-api-calls`) counts them from the code. Key point: Level 1
+      validates **per call**, not per distinct function, so a deployment of I internal calls costs
+      I requests when the registry is warm and up to 1 + I·G (G = candidate regions) when it is
+      cold with bare references.
 - [ ] Time a few end-to-end deployments (L1/L2/L3 × AWS/GCP; report median and range).
-- [ ] Compare manual effort before and after (manual actions and hand-copied values).
+- [x] Compare manual effort before and after: Ch7 §"Manual Effort Before and After"
+      (`sec:eval-manual-effort`, `tab:eval-manual-effort`) — 9 steps / 4 hand-carried values
+      (separate tools, GCP) vs 4 steps / 0, derived from Ch2's `subsec:quickfaas-example` and Ch4's
+      `sec:developer-workflow`. Two qualifications stated: configuration is relocated, not removed,
+      and the saving is per function and per endpoint change.
 - [ ] **The P-tables mix several measurement runs** (found 2026-09-12 by diffing each table
       against its CSV). `tab:eval-p7`, `tab:eval-p9` and `tab:eval-p13` do NOT match
       `jmh-results-p7/p9/p13.csv`; P3, P6, P8, P10, P11 and P17 do. The proof it matters: P17 =
@@ -135,15 +143,20 @@ drift as text is edited, so search for the quoted phrases.
 - [x] P13/P17: cost per write is roughly fixed (~2.7→3.3 ms from K=1 to K=100), so the total is
       near-linear in K, not compounding; the miss adds 22–27% (46–99% in the noisy R0=1000
       column); "monotonic" is gone.
-- [ ] P6 figure: `fig:eval-p6`'s axis labels are in Portuguese; regenerate in English with
-      `plot_benchmarks.py` (the whole script's titles/labels are Portuguese).
-- [ ] Explain the missing P1/P2/P4/P5/P12 (rendering benchmarks, see the code's `TESTING.md`), or
-      renumber the experiments.
-- [ ] Label experiments consistently. `ISEL-Thesis-2526/thesis/` had IDs in the P3 and P6 headings
-      and captions (and "P13, P17" in the Methodology); the workspace dropped those but still uses
-      P7–P19 elsewhere. Use IDs everywhere or nowhere.
-- [ ] Soften "overhead practically irrelevant": the local benchmarks exclude live validation and
-      region scans.
+- [ ] P6 figure: `plot_benchmarks.py` now has **all** its titles, axis labels and legends in
+      English (2026-09-12). Still to do: re-run the script once the `-f 3` CSVs land, and copy the
+      regenerated PNGs over the Portuguese ones the thesis includes. PNG *file names* were left
+      alone (`P7a_resolution_sem_cache.png`, `P8a_...`), since the thesis includes them by name.
+- [x] Explain the missing P1/P2/P4/P5/P12: Ch7's new "Experiment identifiers" paragraph in the
+      Methodology says they measure OmniFlow's renderers alone (code this work did not change) and
+      that identifiers are kept, not renumbered, so they match the benchmark suite.
+- [x] Label experiments consistently: the two headings that lacked IDs now carry them ("Cost of
+      the unification (P3)", "Effect of registry size (P6)"), so every measured paragraph in Ch7 is
+      identified.
+- [x] Soften "overhead practically irrelevant": Ch7's Global framing now says the local overhead is
+      "small beside the deployment it precedes" and that the figures are a **lower bound**, because
+      per-hit live validation and the region scan are network round-trips replaced by local doubles;
+      it points at `sec:eval-api-calls` for how many, and at the threats section for how long.
 
 ## 5. Structure and style
 
@@ -163,9 +176,10 @@ drift as text is edited, so search for the quoted phrases.
       Five changelog phrases removed. Deliberately kept: three "no longer exists" (they describe
       state, not history), one "used to validate" (it means "employed to"), and the "now" inside
       "Evolution of the Registry Design", the one subsection where history belongs.
-- [ ] Ch5: `subsec:validation-error-semantics` still restates Ch4's Level 3 in its first two
-      paragraphs ("Unresolvable function", "Ambiguous references"); trim those to references. The
-      rest of the subsection is genuinely implementation-level and should stay.
+- [x] Ch5: `subsec:validation-error-semantics` no longer restates Ch4. The "Unresolvable function"
+      and "Ambiguous references" paragraphs are replaced by a reference to `sec:walkthrough`,
+      keeping only the one consequence that belongs to the implementation (ambiguity is never
+      rescued by a descriptor). "Stale registry entries" and "Insufficient permissions" stay.
 - [x] Split `chapter4.tex` into `chapter5.tex` (Implementation), `chapter6.tex` (Case Study),
       `chapter7.tex` (Evaluation) and `chapter8.tex` (Conclusions); `Config/_files.tex` lists them
       in that order, so file numbers now match chapter numbers from 5 on. Watch out: the original

@@ -29,7 +29,11 @@ correctness checks replace them with test doubles. For RQ2, the evaluation there
 focused question: \emph{how much does the unification layer add to a deployment, and how does that
 overhead scale with the number of calls and the size of the registry?}
 
-The evaluation has four parts:
+The one exception is analytical rather than measured: \S\ref{sec:eval-api-calls} counts, from the
+code, how many provider requests each path through the cascade issues, which is the part of the
+cost the local measurements cannot see.
+
+The evaluation has six parts:
 \begin{itemize}
   \item \textbf{Correctness of the resolution cascade} (RQ1) --- the decision each production
   resolver takes in every situation the cascade can meet, checked by unit tests on both providers.
@@ -39,6 +43,10 @@ The evaluation has four parts:
   \item \textbf{Real auto-deploy resolvers} (RQ2) --- the cost of the production resolvers
   (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}, \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) and of the
   registry write path.
+  \item \textbf{Provider API calls} (RQ2) --- how many requests each cascade path sends to the
+  provider, counted from the implementation rather than measured.
+  \item \textbf{Manual effort} (RQ1) --- the developer actions the integration removes, counted
+  against the procedure the two tools required separately.
   \item \textbf{Packaging overhead} --- the size the AWS provider-agnostic layer adds to a Lambda
   deployment bundle.
 \end{itemize}
@@ -121,6 +129,15 @@ relationships} (linear vs.\ quadratic growth, before vs.\ after an optimization)
 hardware-definitive figures. Thesis-grade absolute numbers would require repeating the suite with
 \texttt{-f 3} on a dedicated machine.
 
+\paragraph{Experiment identifiers.}
+Experiments keep the identifiers they carry in the benchmark suite, so the sequence used in this
+chapter has gaps. P1, P2, P4, P5 and P12 measure OmniFlow's renderers alone --- rendering time
+against the number of functions, the number of call arguments, the AWS and GCP renderers compared,
+nesting depth, and the width of a \texttt{Choice} or \texttt{Parallel} --- and therefore exercise
+code this work did not change; they are omitted rather than renumbered, so that an identifier here
+names the same experiment as in the suite. The chapter reports P3 and P6--P19, which measure
+resolution and the registry, plus S1, which measures packaging size.
+
 \paragraph{Notation.}
 The experiments share five symbols; what changes between them is the \emph{relationship} among
 these quantities, summarised in Table~\ref{tab:eval-notation}.
@@ -149,7 +166,7 @@ distributed round-robin over the $F$ distinct functions.
 \section{Resolution Overhead and Scalability}
 \label{sec:eval-resolution}
 
-\paragraph{Cost of the unification.}
+\paragraph{Cost of the unification (P3).}
 The first experiment isolates the cost of resolving an internal call against the cost of an
 external call (which bypasses the registry). It runs the single-read reference resolver against a
 one-entry registry ($R{=}1$): the registry is read once per workflow, and each call then pays a
@@ -177,7 +194,7 @@ next experiment isolates.
   \end{tabular}
 \end{table}
 
-\paragraph{Effect of registry size.}
+\paragraph{Effect of registry size (P6).}
 Fixing the workflow and varying the registry size, with the registry re-read on every call, shows
 that the per-call cost grows with $R$ and is essentially independent of $N$: about $180\,\mu$s of
 fixed I/O and parsing per read plus about $0.56\,\mu$s per registered entry
@@ -529,6 +546,140 @@ count of internal calls matters.
   \end{tabular}
 \end{table}
 
+\section{Provider API Calls per Resolution}
+\label{sec:eval-api-calls}
+
+The experiments above replace the provider with a local double, so they measure none of the network
+traffic the cascade generates. This section counts that traffic rather than measuring it: the
+figures are read from the code of the two resolvers and of the clients they use, and they are
+numbers of provider API requests, not latencies. Let $G$ be the number of candidate regions --- the
+regions enabled for the AWS account, or the Cloud Run locations visible to the GCP project.
+
+\paragraph{What the count grows with.}
+Both resolvers validate a registry hit on every internal \texttt{call} step, not once per distinct
+function. The snapshot introduced in \S\ref{sec:eval-real-resolvers} removes the repeated
+\emph{file} reads, but it does not memoise the live lookup that follows them, so a workflow with
+$I$ internal calls that all hit the registry issues $I$ validation requests even when every call
+names the same function ($F{=}1$). This is the mechanism behind the growth in $N$, flat in $F$,
+that P10 and P11 show for the production resolvers. The list of candidate regions, by contrast, is
+fetched at most once per deployment and cached in the resolver, and a region scan is paid only by
+the calls that miss.
+
+Table~\ref{tab:eval-api-calls} gives the count for each path through the cascade.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Provider API requests issued per internal call, by cascade path, counted from the
+  implementation. $G$ is the number of candidate regions.}
+  \label{tab:eval-api-calls}
+  \begin{tabular}{p{0.30\textwidth}p{0.30\textwidth}p{0.30\textwidth}}
+    \hline
+    \textbf{Path} & \textbf{AWS} & \textbf{GCP} \\
+    \hline
+    Level~1, registry hit validated & 1 (\texttt{GetFunction} in the region taken from the stored
+    ARN) & 1 (Cloud Run \texttt{services.get}) \\
+    Level~1, first-generation Cloud Function in the registry & --- & 0 (validation skipped,
+    \S\ref{subsec:store-internals}) \\
+    Level~1, entry stale & 1 validation $+$ up to $G$ lookups (rediscovery) & 1 validation $+$ up
+    to $G$ lookups \\
+    Level~2, bare \texttt{functionRef} & up to $G$ \texttt{GetFunction} (the scan stops at the
+    second match) & up to $G$ \texttt{services.get} \\
+    Level~2, \texttt{"region/name"} reference & 1 & 1 \\
+    Level~3, deployment & $G$ lookups (absence is confirmed in every region) $+$ the deployment
+    below & $G$ lookups $+$ the deployment below \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Two requests fall outside the per-call count. The candidate-region list costs one EC2
+\texttt{DescribeRegions} on AWS, and one Cloud Run \texttt{locations.list} request per response
+page on GCP; it is fetched lazily, so a deployment whose calls all resolve at Level~1 never pays
+it. The registry bootstrap, which runs only when the registry file is absent, costs that same
+region list plus one catalog request per region and per response page --- \texttt{ListFunctions} on
+AWS, \texttt{services.list} on GCP.
+
+\paragraph{The deployment itself (Level~3).}
+A Level~3 deployment is the only path that writes to the provider, and it is dominated not by the
+lookups above but by the deployment sequence. On AWS the resolver resolves the execution role
+(\texttt{GetRole}, plus \texttt{CreateRole} and \texttt{AttachRolePolicy} the first time, plus
+\texttt{UpdateAssumeRolePolicy} when the trust policy has to be repaired), reads the bucket's
+region (\texttt{GetBucketLocation}), runs the QuickFaaS subprocess (which uploads the artifact to
+S3 and calls \texttt{CreateFunction}), then polls \texttt{GetFunction} until the function reports
+\texttt{Active}, reads the ARN with one further \texttt{GetFunction}, and grants Step Functions
+permission to invoke it (\texttt{AddPermission}). On GCP it runs the QuickFaaS subprocess, polls
+the Cloud Functions v1 \texttt{get} endpoint until the function is ready, and then calls
+\texttt{getIamPolicy} and \texttt{setIamPolicy} to make it invocable. The polls make the total
+depend on how long the provider takes to make the function active, which is why this path is
+reported as a sequence rather than as a fixed count.
+
+\paragraph{Consequence.}
+For a deployment of $I$ internal calls, the traffic ranges from $I$ requests, when every call hits
+a valid registry entry, to $1 + I \cdot G$ when the registry is cold and the references are bare
+names. The registry is therefore not only a latency optimization but the mechanism that keeps the
+request count linear in $I$ instead of proportional to $I \cdot G$; a region-qualified reference
+buys the same bound for a call that has to miss.
+
+\section{Manual Effort Before and After}
+\label{sec:eval-manual-effort}
+
+The unification is meant to remove manual steps, so it is worth stating which ones, and counting
+them. The comparison below is procedural, not a user study: it follows the QuickFaaS procedure
+documented in \S\ref{subsec:quickfaas-example} and the integrated procedure of
+\S\ref{sec:developer-workflow} for the same task --- making one internal function available to one
+workflow on GCP --- and counts the developer actions each requires, and the values the developer
+has to carry by hand from one step to the next.
+
+Table~\ref{tab:eval-manual-effort} lists the two sequences. What distinguishes them is not the
+total amount of configuration --- the deployment descriptor is written either way --- but the
+hand-carried values: in the separate procedure three values produced by one step are read by a
+human and typed into the next (the OAuth client ID and secret into the authentication module, the
+resulting \texttt{access\_token} into the descriptor, and the generated trigger URL into the
+workflow definition), and each is a point where a typo produces a workflow that deploys
+successfully and fails at run time. In the integrated procedure that number is zero: the access
+token is taken from Application Default Credentials by the deployer, the invoker permission is
+granted by the deployer, and the endpoint never leaves the tool --- it goes from the provider into
+the registry and from the registry into the rendered workflow.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Developer actions required to make one function available to one workflow on GCP.
+  ``Carried by hand'' counts values produced by one step that the developer must read and re-enter
+  in another.}
+  \label{tab:eval-manual-effort}
+  \begin{tabular}{p{0.45\textwidth}p{0.45\textwidth}}
+    \hline
+    \textbf{QuickFaaS and OmniFlow used separately} & \textbf{Integrated (this work)} \\
+    \hline
+    Create an OAuth 2.0 client in the console; copy the client ID and secret \emph{(2 carried by
+    hand)} & --- (the deployer uses Application Default Credentials, configured once per machine)
+    \\
+    Run the auxiliary server, complete the OAuth flow, copy the \texttt{access\_token} into the
+    descriptor \emph{(1 carried by hand)} & --- \\
+    Write \texttt{func-deployment.json} & Write \texttt{func-deployment.json} (same fields, without
+    \texttt{accessToken}) \\
+    Write the cloud-agnostic function class & Write the cloud-agnostic function class \\
+    Run QuickFaaS to deploy the function & --- (the deployment is triggered by the workflow
+    deployment, and only if the function is absent) \\
+    Grant the function public or invoker access in the console & --- (granted by the deployer) \\
+    Read the generated trigger URL from the console or terminal & --- \\
+    Write the workflow, pasting that URL as \texttt{host}/\texttt{path} \emph{(1 carried by hand)} &
+    Write the workflow, naming the function:
+    \texttt{internalFunction("name", "func-deployment.json")} \\
+    Run OmniFlow to deploy the workflow & Run OmniFlow to deploy the workflow \\
+    \hline
+    \textbf{9 steps, 4 values carried by hand} & \textbf{4 steps, 0 values carried by hand} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Two qualifications keep the comparison honest. First, the integrated procedure does not remove
+configuration, it relocates it: the descriptor is still written by hand, and the credentials still
+have to exist --- Application Default Credentials on GCP, environment credentials on AWS --- so
+what is saved is the copying, not the setup. Second, the saving is per function and per endpoint
+change, so it grows with the number of internal functions a workflow calls and with how often they
+are redeployed, and it is largest exactly where the manual procedure is most error-prone: a
+workflow that calls several internal functions in several accounts (\S\ref{cha:case-study}).
+
 \section{Packaging Overhead (S1)}
 \label{sec:eval-bundle}
 
@@ -592,8 +743,14 @@ is free in practice (P18, P19).
 All measured values lie between microseconds and, in the worst non-optimized write case,
 a few hundred milliseconds. Endpoint resolution is therefore not the bottleneck of an integrated
 deployment: the dominant cost is the actual cloud deployment (seconds). With the single-read
-optimization now applied uniformly across both production resolvers, the overhead of the
-unification is asymptotically linear and practically irrelevant in real operation.
+optimization now applied uniformly across both production resolvers, the local overhead of the
+unification is asymptotically linear and small beside the deployment it precedes. That conclusion
+covers the local work only. The production cascade also validates every registry hit against the
+live function and, when a call misses, scans the provider's regions; each of those is a network
+round-trip that these benchmarks replace with a local double, so the figures reported here are a
+lower bound on what an integrated deployment actually pays for resolution. How many such
+round-trips each path costs is counted in \S\ref{sec:eval-api-calls}; how long they take is outside
+the scope of this evaluation (\S\ref{sec:eval-threats}).
 
 \section{Threats to Validity}
 \label{sec:eval-threats}

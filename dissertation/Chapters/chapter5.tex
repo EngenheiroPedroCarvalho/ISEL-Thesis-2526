@@ -206,20 +206,13 @@ section that follows.
 
 \subsection{Validation and Error Semantics}
 \label{subsec:validation-error-semantics}
-Several correctness constraints are enforced to avoid silent misconfiguration:
-
-\paragraph{Unresolvable function.}
-If a function is absent from the registry and from the target provider, and no deployment
-descriptor was provided, deployment fails fast with a message identifying the function and
-the corrective actions (deploy it first, or provide \texttt{deploymentDescriptorPath}).
-
-\paragraph{Ambiguous references.}
-If a suffix match yields multiple regional entries in the registry, or a function name
-exists in multiple regions on the provider, deployment fails with a message instructing the
-developer to disambiguate using the fully-qualified form
-\texttt{internalFunction("<region>/<functionRef>")}. Unlike an unresolvable function, this
-failure is not rescued by supplying a \texttt{deploymentDescriptorPath}: ambiguity is a
-data-consistency problem, not an absence one, so QuickFaaS is never invoked to paper over it.
+Several correctness constraints are enforced to avoid silent misconfiguration. Two of them, an
+unresolvable function and an ambiguous reference, are stated with the rest of the cascade's failure
+modes in \S\ref{sec:walkthrough}, and both abort the deployment before any provider artifact is
+rendered. One consequence of the second belongs here: an ambiguous reference is not rescued by
+supplying a \texttt{deploymentDescriptorPath}, because ambiguity is a data-consistency problem
+rather than an absence one, so QuickFaaS is never invoked to paper over it. The remaining two
+constraints are implementation-level.
 
 \paragraph{Stale registry entries.}
 If a registry entry points to a resource that no longer exists --- a Cloud Run service on GCP, or
