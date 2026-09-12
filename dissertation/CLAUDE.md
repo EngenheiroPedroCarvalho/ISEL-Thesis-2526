@@ -30,11 +30,17 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 | `Chapters/chapter1.tex` | 1 Introduction | `cha:introduction` |
 | `Chapters/chapter2.tex` | 2 Background, 3 Related Works | `cha:background`, `ch:related-works` |
 | `Chapters/chapter3.tex` | 4 Proposed Solution | `ch:proposed_solution` |
-| `Chapters/chapter4.tex` | 5 Implementation, 6 Evaluation, 7 Case Study, 8 Conclusions | `cha:impl`, `cha:evaluation`, `cha:case-study`, `cha:conclusions` |
+| `Chapters/chapter5.tex` | 5 Implementation | `cha:impl` |
+| `Chapters/chapter6.tex` | 6 Case Study | `cha:case-study` |
+| `Chapters/chapter7.tex` | 7 Evaluation | `cha:evaluation` |
+| `Chapters/chapter8.tex` | 8 Conclusions | `cha:conclusions` |
 | `Chapters/appendix-cascade.tex` | Appendix A: Resolution Cascade Sequence Diagrams | `app:cascade-sequences` |
 
-- File numbers don't match chapter numbers. `chapter4.tex` is about 1,600 lines, with long runs of
-  blank lines between chapters, so `grep -n '\\chapter{'` first and read with `offset`/`limit`.
+- File numbers match chapter numbers from `chapter5.tex` on, but not before: `chapter2.tex` holds
+  chapters 2 and 3, and `chapter3.tex` holds chapter 4. There is no `chapter4.tex` in the build —
+  it was split into `chapter5`–`chapter8` on 2026-09-12, and the Case Study (`chapter6.tex`) now
+  comes before the Evaluation (`chapter7.tex`). The chapter order is set by `\addfile` in
+  `Config/_files.tex`, not by the file names.
 - `Config/_files.tex` decides which files are included (`\addfile`, `\appendixfile`, `\annexfile`,
   …). Files with a trailing underscore (`annex1_.tex`, `ganttdiagram_.tex`) don't
   match the names there and are silently skipped. `appendix1.tex` (the template's R example) stays
@@ -57,7 +63,10 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
   (about 80 pages). The tools are in `/Library/TeX/texbin`.
 - After adding or renaming an included file, force a rebuild with `make pdf FLAGS=-g`: latexmk
   only tracks files it has already read, so a plain `make pdf` reports success without picking up
-  the new file.
+  the new file. That forced run often **exits 2 with every citation undefined and an empty-looking
+  `.toc`** — it reset the `.aux` and needs another pass, it is not a real failure. Check the log's
+  tail for `Output written on template.pdf`, then run a plain `make pdf`, which completes cleanly.
+  Don't start deleting `.aux`/`.bbl` over it.
 - Avoid `make clean`: it deletes every `template.*` file except the `.tex` and `.pdf`, including
   the tracked, hand-filled PDF/A metadata `template.xmpdata`. If it runs, restore that file with
   `git checkout -- template.xmpdata`.

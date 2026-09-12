@@ -1,18 +1,9 @@
 \chapter{Background}
 \label{cha:background}
 
-This chapter establishes the theoretical and technical foundation for the proposed integration. It begins by defining the core paradigms of Serverless Computing and Function-as-a-Service (FaaS), highlighting the specific challenges of vendor lock-in that motivate this work.
+This chapter establishes the technical foundation for the proposed integration. It begins with the two layers the work builds on --- Serverless Computing and Function-as-a-Service (FaaS), and then the workflow layer that orchestrates the resulting functions --- highlighting in each the form of vendor lock-in that motivates this work.
 
-The core of this chapter provides a deep technical analysis of the two base technologies utilized in this dissertation: \textbf{QuickFaaS}, which handles the portable deployment of compute units and \textbf{OmniFlow}, which manages the portable definition of orchestration logic. Finally, the chapter reviews related research and existing industry tools, identifying the critical gap in unified multi-cloud workflow orchestration that this thesis aims to close.
-
-\section{Cloud Workflows and Orchestration}
-\label{sec:cloud_workflows}
-
-While Serverless Computing and FaaS provide the execution environment for individual, fine-grained tasks, complex applications require a mechanism to coordinate these distributed components into coherent business processes. As applications grow beyond simple event triggers, the need to manage state, data flow and error handling across stateless functions becomes critical.
-
-Cloud Workflows fulfill this role by defining the orchestration logic—such as sequential execution, branching, parallelism and retries, that binds independent functions together~\cite{aws_stepfunctions_concepts,gcp_workflows_overview}. In this model, the orchestration service assumes responsibility for the control flow, allowing the functions themselves to remain stateless and focused solely on computation.
-
-Major cloud providers offer managed solutions to address this, such as AWS Step Functions and Google Cloud Workflows. These services provide production-grade reliability and seamless integration with their respective FaaS platforms. However, a significant limitation persists: the logic defining how tasks interact is typically bound to provider-specific orchestration languages and schemas. This creates a distinct layer of vendor lock-in, because workflow definitions must often be rewritten when moving to a different workflow engine or provider.
+It then analyses the two base technologies this dissertation extends: \textbf{QuickFaaS}, which handles the portable deployment of compute units, and \textbf{OmniFlow}, which manages the portable definition of orchestration logic. Chapter~\ref{ch:related-works} reviews related research and existing industry tools, identifying the gap in unified workflow orchestration that this work aims to close.
 
 \section{Serverless Computing and FaaS}
 \label{sec:serverless_computing_faas}
@@ -32,6 +23,20 @@ event-driven nature of FaaS also shape how functions are \emph{composed}: becaus
 no state between invocations and cannot directly call another, non-trivial applications must lift
 control-flow and data-flow into an external orchestrator --- the workflow layer discussed next ---
 rather than encoding them inside the functions themselves~\cite{serverlessComputing}.
+
+\section{Workflows and Orchestration}
+\label{sec:workflows}
+
+A \textit{workflow} describes how a process is executed as a sequence of steps, typically representing a business or operational procedure. In cloud environments, workflows are commonly modeled as \textit{state machines}, where each state performs a unit of work, makes a decision or controls execution flow, while passing data between states~\cite{aws_stepfunctions_concepts}. This is the layer the previous section pointed to: because functions are small and stateless, non-trivial applications are built by orchestrating several of them, so that control flow, data flow and error handling live in the orchestrator rather than inside the functions themselves~\cite{sebsflow_arxiv}.
+
+Workflow systems typically provide support for:
+\begin{itemize}
+	\item \textbf{Control-flow}, such as sequential execution, conditional branching, parallelism, retries and waiting states;
+	\item \textbf{Data-flow}, allowing structured data to be passed and transformed between steps;
+	\item \textbf{Observability}, such as execution tracking and inspection of intermediate results.
+\end{itemize}
+
+Major cloud providers offer managed services for this role, notably AWS Step Functions and Google Cloud Workflows~\cite{aws_stepfunctions_concepts,gcp_workflows_overview}. They provide production-grade reliability and close integration with their respective FaaS platforms, but the logic defining how tasks interact is bound to provider-specific orchestration languages and schemas. This creates a second layer of vendor lock-in, distinct from the code-level one described above: workflow definitions must often be rewritten when moving to a different workflow engine or provider. That limitation has motivated portable, vendor-neutral workflow specifications, which decouple workflow definitions from a specific execution backend and improve interoperability across platforms~\cite{serverlessWorkflowSpec}.
 
 \section{QuickFaaS: Portable Function Deployment}
 \label{sec:background_quickfaas}
@@ -119,23 +124,6 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 	To finalize the process, the developer grants public access permissions, retrieves the generated HTTP Trigger URL and verifies the execution.
 
 \end{enumerate}
-\section{Workflows}
-\label{sec:workflows}
-
-A \textit{workflow} describes how a process is executed as a sequence of steps, typically representing a business or operational procedure. In cloud environments, workflows are commonly modeled as \textit{state machines}, where each state performs a unit of work, makes a decision or controls execution flow, while passing data between states~\cite{aws_stepfunctions_concepts}.
-
-In serverless computing, individual functions are intentionally small and stateless. As a result, non-trivial applications are built by orchestrating multiple functions into a workflow, which coordinates control-flow and data-flow across function invocations. This orchestration layer enables the construction of long-running processes, integration workflows, data pipelines and business processes on top of ephemeral functions~\cite{sebsflow_arxiv}.
-
-Typically workflow systems provide support for:
-\begin{itemize}
-	\item \textbf{Control-flow}, such as sequential execution, conditional branching, parallelism and waiting states;
-	\item \textbf{Data-flow}, allowing structured data to be passed and transformed between steps;
-	\item \textbf{Observability}, such as execution tracking and inspection of intermediate results 
-\end{itemize}
-
-Although  major cloud providers offer managed workflow services, each provider exposes its own workflow model and definition language, which can lead to workflow-level vendor lock-in.
-To address this limitation, there has been growing interest in portable and vendor-neutral workflow specifications, which aim to decouple workflow definitions from specific execution backend and improve interoperability across platforms~\cite{serverlessWorkflowSpec}
-
 \section{OmniFlow: Portable Workflow Orchestration}
 \label{sec:background_omniflow}
 

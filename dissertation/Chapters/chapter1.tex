@@ -7,28 +7,7 @@ Cloud computing has fundamentally reshaped the landscape of modern information t
 
 IBM defines cloud computing as a model for delivering computing services over the internet with flexible consumption, rapid elasticity and centralized management~\cite{ibmCloudComputing}. This shift has accelerated digital transformation across industries, enabling new business models, automated workflows and data-driven operations.
 
-\section{Historical Context and Evolution}
-\label{sec:int_his_con_evo}
-Long before the term ``cloud computing'' became common, Parkhill framed the idea of a \emph{computer utility}, computing delivered as a shared service, accessed remotely and operated in a way comparable to other public utilities, while also discussing the technical, economic and organizational challenges of making such a model dependable in practice~\cite{parkhill1966challenge}. 
-
-Attempts to formalize the term ``cloud computing'' emerged much later, in the late 2000s. Vaquero et al.\ contributed an early synthesis of the concept by surveying definitions and highlighting recurring characteristics such as elasticity, abstraction and resource sharing~\cite{vaquero2008breaks}. Armbrust et al.\ further popularized the view of cloud computing as a practical realization of utility-style computing and discussed obstacles including security, performance and availability~\cite{armbrust2010view}. In parallel, Buyya et al.\ promoted the notion of computing as a ``fifth utility'', describing cloud infrastructures as a path toward delivering essential computing capabilities at global scale~\cite{buyya2009cloud}.
-
-The rise of virtualization, large-scale data centers and automated orchestration made cloud computing feasible at unprecedented scale. With the introduction of Amazon EC2 in 2006, followed by similar offerings from Google and Microsoft, cloud computing evolved from a research vision into a dominant commercial model. Organizations embraced the cloud for its ability to reduce capital expenditures, shorten deployment cycles and improve global reach.
-
-\section{Modern Cloud Architectures and Service Models}
-\label{sec:int_mod_clo_arc_ser}
-
-Today, cloud platforms are commonly categorized into three main service models:
-
-\begin{itemize}
-	\item \textbf{Infrastructure as a Service (IaaS)} - virtualized computing resources such as virtual machines, storage and networks.
-	\item \textbf{Platform as a Service (PaaS)} - managed platforms that support application development and deployment without hardware management.
-	\item \textbf{Software as a Service (SaaS)} - complete software solutions delivered over the internet.
-\end{itemize}
-
-Cloud providers operate globally distributed data centers interconnected with high-speed networks. Services are exposed through programmable APIs and managed using orchestration platforms that automate provisioning, monitoring and scaling. Documentation such as AWS whitepapers~\cite{awsWhitepaper2024} describes practices including multi-region replication, auto-scaling, resource isolation and configurable security policies.
-
-Cloud-native paradigms further extend these models. Container orchestration frameworks like Kubernetes, originally developed at Google, support microservices architectures by enabling applications to scale horizontally while maintaining isolation and resilience~\cite{kubernetesDesign}. These approaches emphasize immutability, stateless execution and declarative configuration.
+Long before the term became common, Parkhill framed the idea of a \emph{computer utility} --- computing delivered as a shared service, accessed remotely and operated in a way comparable to other public utilities~\cite{parkhill1966challenge}. The term itself was only formalized in the late 2000s, when Vaquero et al.\ surveyed the recurring characteristics of elasticity, abstraction and resource sharing~\cite{vaquero2008breaks}, Armbrust et al.\ popularized the view of the cloud as a practical realization of utility-style computing~\cite{armbrust2010view} and Buyya et al.\ cast it as a ``fifth utility''~\cite{buyya2009cloud}. Virtualization, large-scale data centers and automated orchestration made that vision feasible, and with the introduction of Amazon EC2 in 2006, followed by Google and Microsoft, it became the dominant commercial model. Cloud platforms are consumed today through service models of decreasing operational responsibility --- infrastructure, platform and software as a service --- of which the paradigm this dissertation addresses, serverless computing, is the furthest step.
 
 \section{The Emergence of Serverless and Event-Driven Architectures}
 \label{sec:int_eme_ser_eve_dri_arc}
@@ -185,7 +164,7 @@ The remainder of this dissertation is organized as follows:
   \item \textbf{Chapter 3} surveys related work on function deployment automation and workflow composition/orchestration.
   \item \textbf{Chapter 4} presents the proposed solution: a workflow-first deployment procedure on a single cloud provider, based on logical function references (\texttt{functionRef}), a function registry for endpoint resolution, and the \texttt{internalFunction} construct on the call step, which delegates on-demand function deployment to QuickFaaS.
   \item \textbf{Chapter 5} describes the implementation of the integration: the function registry and its deployment-time resolution cascade, the AWS Lambda support added to QuickFaaS, and the runtime invocation of registry-resolved functions.
-  \item \textbf{Chapter 6} evaluates the prototype and answers the research questions: it checks the decisions of the resolution cascade on both providers, and measures the resolution overhead and its scalability, the registry write path, and the packaging overhead of the AWS agnostic layer.
-  \item \textbf{Chapter 7} presents an illustrative case study --- real-time fraud detection for card payments --- that grounds the registry and resolution cascade in a concrete banking scenario, deployed to both AWS and GCP.
+  \item \textbf{Chapter 6} presents an illustrative case study --- real-time fraud detection for card payments --- that grounds the registry and resolution cascade in a concrete banking scenario, deployed to both AWS and GCP.
+  \item \textbf{Chapter 7} evaluates the prototype and answers the research questions: it checks the decisions of the resolution cascade on both providers, and measures the resolution overhead and its scalability, the registry write path, and the packaging overhead of the AWS agnostic layer.
   \item \textbf{Chapter 8} concludes the dissertation, revisits the objectives, assesses the work critically, and outlines future work.
 \end{itemize}

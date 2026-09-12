@@ -87,21 +87,32 @@ drift as text is edited, so search for the quoted phrases.
 ## 4. Evaluation (Ch6)
 
 - [ ] Correctness (RQ1): Ch6 "Correctness of the Resolution Cascade" (`tab:eval-correctness`)
-      reports the resolver unit tests. Still open: tests for "absent, no descriptor" and "both
-      `internalFunction` and host/path set" (both resolvers throw, untested), and evidence
-      against the real providers (the two `@Ignore`d full-deployment tests in `WorkflowTest`).
+      reports the resolver unit tests; "absent, no descriptor" and "both `internalFunction` and
+      host/path set" are now covered on both providers (45 resolver tests, 22 AWS + 23 GCP). Still
+      open: evidence against the real providers (the two `@Ignore`d full-deployment tests in
+      `WorkflowTest`).
 - [ ] Count the provider API calls per cascade level (worked out from the code).
 - [ ] Time a few end-to-end deployments (L1/L2/L3 × AWS/GCP; report median and range).
 - [ ] Compare manual effort before and after (manual actions and hand-copied values).
+- [ ] **The P-tables mix several measurement runs** (found 2026-09-12 by diffing each table
+      against its CSV). `tab:eval-p7`, `tab:eval-p9` and `tab:eval-p13` do NOT match
+      `jmh-results-p7/p9/p13.csv`; P3, P6, P8, P10, P11 and P17 do. The proof it matters: P17 =
+      P13 + a failed lookup, so P17 must cost more, yet the current CSVs give P17 < P13 (3309 vs
+      4682 µs at K=1/R0=0). Likewise a registry read costs ~5–7 µs in the P3/P7 tables and ~180 µs
+      in the P6/P8/P9 runs. So: re-run the WHOLE suite in ONE session with `-f 3`, regenerate every
+      table from it, then delete the provenance paragraph now in "Threats to Validity".
 - [ ] Re-run JMH with `-f 3`, report error margins, and remove the "not thesis-grade" caveat.
-- [ ] P3: it runs the single-read resolver (`BenchmarkInternalCallResolution.kt:89`), not a
-      re-read on every call. Fix the explanation.
-- [ ] P6: derive R≈320 here, not in the Discussion. (The per-N figure is `fig:eval-p6`; its axis
-      labels are in Portuguese, so regenerate it in English with `plot_benchmarks.py`.)
-- [ ] P10/P11: say they use a fake inspector. Explain the growth in N as per-call validation, and
-      drop "comparable to P8".
-- [ ] P13/P17: recompute the percentages (the tables give 22–99%), drop "monotonic", and explain
-      the roughly fixed cost per write.
+      (Same run as the item above.)
+- [x] P3: explained as the single-read resolver with R=1 (per-call cost = snapshot lookup + URL
+      split + node rebuild), no longer as a re-read per call.
+- [x] P6: R≈320 is derived in the P6 paragraph (0.56·R = 180), and the Discussion only cites it.
+- [x] P10/P11: local fake inspector (AWS) / 1st-gen short-circuit (GCP) stated; growth in N
+      explained as per-call validation; "comparable to P8" dropped.
+- [x] P13/P17: cost per write is roughly fixed (~2.7→3.3 ms from K=1 to K=100), so the total is
+      near-linear in K, not compounding; the miss adds 22–27% (46–99% in the noisy R0=1000
+      column); "monotonic" is gone.
+- [ ] P6 figure: `fig:eval-p6`'s axis labels are in Portuguese; regenerate in English with
+      `plot_benchmarks.py` (the whole script's titles/labels are Portuguese).
 - [ ] Explain the missing P1/P2/P4/P5/P12 (rendering benchmarks, see the code's `TESTING.md`), or
       renumber the experiments.
 - [ ] Label experiments consistently. `ISEL-Thesis-2526/thesis/` had IDs in the P3 and P6 headings
@@ -112,15 +123,35 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 5. Structure and style
 
-- [ ] Ch1 order: context → tools → manual process → consequences → research questions and
-      objectives → contributions → structure. Trim §1.1–1.2, or connect them to the problem.
-- [ ] Ch2: fix the intro; order the sections FaaS → workflows (merge the two workflow sections) →
-      QuickFaaS → OmniFlow.
-- [ ] Ch5: replace its restatements of Ch4 (conventions, cascade, error semantics) with references,
-      and remove changelog phrasing ("now", "used to", "has since been").
-- [ ] Move the Case Study before the Evaluation, and turn its "already identified" references into
-      forward references.
-- [ ] Split `chapter4.tex` into `chapter5.tex`–`chapter8.tex` and update `Config/_files.tex`.
+- [x] Ch1: §1.1 (Historical Context) and §1.2 (Modern Cloud Architectures) condensed into a single
+      opening paragraph, keeping Parkhill/Vaquero/Armbrust/Buyya and dropping the IaaS/PaaS/SaaS
+      bullets and Kubernetes. The chapter now reaches the problem in §1.2 instead of §1.4.
+      `awsWhitepaper2024` and `kubernetesDesign` are no longer cited by Ch1.
+- [x] Ch2: intro rewritten (it claimed this chapter reviews related work, which is Ch3); sections
+      reordered to FaaS → Workflows and Orchestration → QuickFaaS → OmniFlow, with the two
+      overlapping workflow sections merged into one under `sec:workflows`.
+- [x] Ch1 "Structure of the Work" updated for the new chapter order (6 Case Study, 7 Evaluation).
+      Worth remembering: the build cannot catch this kind of drift, since it is prose, not
+      `\ref`s — any further chapter reordering has to be checked there by hand.
+- [x] Ch5 (`chapter5.tex`): "Concept and Conventions" and "Deployment-Time Endpoint Resolution"
+      point at `sec:dsl-extensions` and `sec:resolution-cascade` instead of restating them, and the
+      two duplicated listings are gone (the registry example is Ch4's `lst:registry-structure`).
+      Five changelog phrases removed. Deliberately kept: three "no longer exists" (they describe
+      state, not history), one "used to validate" (it means "employed to"), and the "now" inside
+      "Evolution of the Registry Design", the one subsection where history belongs.
+- [ ] Ch5: `subsec:validation-error-semantics` still restates Ch4's Level 3 in its first two
+      paragraphs ("Unresolvable function", "Ambiguous references"); trim those to references. The
+      rest of the subsection is genuinely implementation-level and should stay.
+- [x] Split `chapter4.tex` into `chapter5.tex` (Implementation), `chapter6.tex` (Case Study),
+      `chapter7.tex` (Evaluation) and `chapter8.tex` (Conclusions); `Config/_files.tex` lists them
+      in that order, so file numbers now match chapter numbers from 5 on. Watch out: the original
+      `chapter4.tex` had **no trailing newline**, so its last line ("take the prototype to
+      production.") was line 1814 and had to be restored by hand after the `sed` split.
+- [x] Case Study moved before the Evaluation; its intro now points forward to
+      `cha:evaluation`, and the two "gaps already identified" phrases (pointing at the
+      Conclusions, which come later) are forward references.
+- [x] `Chapters/chapter4.tex` deleted, after confirming content parity with the four new files
+      (1332 non-blank lines on each side) and that the Ch7 evaluation edits survived the split.
 
 ## 6. Code ideas (ISEL-Thesis-2526)
 
