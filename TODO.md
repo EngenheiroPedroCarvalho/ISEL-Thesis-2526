@@ -105,17 +105,26 @@ drift as text is edited, so search for the quoted phrases.
       (separate tools, GCP) vs 4 steps / 0, derived from Ch2's `subsec:quickfaas-example` and Ch4's
       `sec:developer-workflow`. Two qualifications stated: configuration is relocated, not removed,
       and the saving is per function and per endpoint change.
-- [ ] **The P-tables mix several measurement runs** (found 2026-09-12 by diffing each table
+- [x] **The P-tables mix several measurement runs** — resolvido 2026-09-12: toda a suite correu numa
+      só sessão com `-f 3` (3h10, 21:26), o CSV está em `benchmark/results/jmh-results-f3.csv`, os
+      `jmh-results-p*.csv` foram regerados a partir dele e as 15 tabelas do Cap. 7 vieram desse
+      único run. O parágrafo de proveniência saiu dos "Threats to Validity".
+      Contexto original:
+- [x] **(original) The P-tables mixed several measurement runs** (found 2026-09-12 by diffing each table
       against its CSV). `tab:eval-p7`, `tab:eval-p9` and `tab:eval-p13` do NOT match
       `jmh-results-p7/p9/p13.csv`; P3, P6, P8, P10, P11 and P17 do. The proof it matters: P17 =
       P13 + a failed lookup, so P17 must cost more, yet the current CSVs give P17 < P13 (3309 vs
       4682 µs at K=1/R0=0). Likewise a registry read costs ~5–7 µs in the P3/P7 tables and ~180 µs
       in the P6/P8/P9 runs. So: re-run the WHOLE suite in ONE session with `-f 3`, regenerate every
       table from it, then delete the provenance paragraph now in "Threats to Validity".
-- [ ] Re-run JMH with `-f 3`, report error margins, and remove the "not thesis-grade" caveat.
-      (Same run as the item above.) Recipe, worked out and started on 2026-09-12, then stopped
-      because the machine was needed — **the run takes ~2h11m, so start it when the machine can be
-      left alone**:
+- [x] Re-run JMH with `-f 3` — feito 2026-09-12. Margens de erro: intervalo de confiança a 99,9%
+      abaixo de 1% do valor em metade das medições e abaixo de 6% em nove em cada dez; os poucos
+      pontos ruidosos (P3 N=10, P17 K=10/R0=10, P18 depth=2) estão identificados no texto. O caveat
+      "not thesis-grade" saiu; a Metodologia agora descreve a máquina (portátil Apple Silicon, ocioso
+      mas não dedicado) e diz que o fator de hardware dominante é a velocidade do disco.
+      Receita usada, confirmada na prática (manter para futuras repetições). **A corrida demorou
+      3h10m** (18:16→21:26), não as ~2h11m que o JMH estimou no início, por isso conta com mais de
+      três horas de máquina ocupada:
 
       1. Build: `JAVA_HOME=/opt/homebrew/opt/openjdk@26/libexec/openjdk.jdk/Contents/Home \
          ./mvnw -o -q -pl benchmark -am clean package -DskipTests`
@@ -135,9 +144,15 @@ drift as text is edited, so search for the quoted phrases.
       5. JMH writes the CSV only when the whole run ends, so an interrupted run leaves nothing.
          Write it to a scratch path and only copy into `benchmark/results/` once it is complete,
          so the current CSVs survive a failed attempt.
-- [ ] Those `println` calls sit **inside the measured method**, so P3 and P8–P19 measure resolution
-      plus console I/O. Check whether it is material once the `-f 3` numbers exist; if it is, say so
-      in "Threats to Validity". Silencing them would mean changing production code — ask first.
+- [x] Os `println` **são** materiais, e agora está medido: em P10/P11 dominam o custo por chamada
+      (~2,3 µs por linha impressa contra 0,22 µs de resolução). A prova está na diferença entre
+      providers — o resolver AWS imprime 2 linhas por chamada e o GCP 3, e a diferença medida
+      (2,4 µs/chamada) é exatamente uma linha. Está dito no parágrafo P10/P11 e nos "Threats to
+      Validity". Nota: P3 e P8–P19 usam o `OptimizedEndpointResolver` do módulo de benchmarks, que
+      **não** imprime, por isso só P10/P11 são afetados. **Por decidir (a pedir ao utilizador):**
+      silenciar os `println` dos resolvers de produção, ou passá-los para o `logger` que ambas as
+      classes já têm, aproximaria P10/P11 do caminho de referência do P8 — é alterar código de
+      produção.
 - [x] P3: explained as the single-read resolver with R=1 (per-call cost = snapshot lookup + URL
       split + node rebuild), no longer as a re-read per call.
 - [x] P6: R≈320 is derived in the P6 paragraph (0.56·R = 180), and the Discussion only cites it.
@@ -146,10 +161,10 @@ drift as text is edited, so search for the quoted phrases.
 - [x] P13/P17: cost per write is roughly fixed (~2.7→3.3 ms from K=1 to K=100), so the total is
       near-linear in K, not compounding; the miss adds 22–27% (46–99% in the noisy R0=1000
       column); "monotonic" is gone.
-- [ ] P6 figure: `plot_benchmarks.py` now has **all** its titles, axis labels and legends in
-      English (2026-09-12). Still to do: re-run the script once the `-f 3` CSVs land, and copy the
-      regenerated PNGs over the Portuguese ones the thesis includes. PNG *file names* were left
-      alone (`P7a_resolution_sem_cache.png`, `P8a_...`), since the thesis includes them by name.
+- [x] P6 figure: `plot_benchmarks.py` está todo em inglês, as 18 figuras foram regeradas a partir
+      do run `-f 3` e `P6_registry_scaling.png` foi copiada para `dissertation/images/` (a única
+      figura de benchmark que a tese inclui). PNG *file names* ficaram como estavam
+      (`P7a_resolution_sem_cache.png`, …), porque a tese os inclui por nome.
 - [x] Explain the missing P1/P2/P4/P5/P12: Ch7's new "Experiment identifiers" paragraph in the
       Methodology says they measure OmniFlow's renderers alone (code this work did not change) and
       that identifiers are kept, not renumbered, so they match the benchmark suite.
@@ -209,6 +224,16 @@ drift as text is edited, so search for the quoted phrases.
 - [ ] Least-privilege IAM: pre-provisioned roles and a dry-run mode.
 - [ ] Test seams for the classes that call cloud APIs.
 - [ ] Add a migration note: an old `function-registry.json` is no longer read.
+
+## 6b. Benchmarks — o que ficou por fazer
+
+- [ ] `benchmark/results/RESULTS.md` (535 linhas, português) continua a mostrar os números de agosto.
+      Tem agora um aviso no topo a dizer que estão desatualizados e a listar as quatro conclusões que
+      mudaram, mas as tabelas e os comentários por experiência não foram reescritos. Ou se reescreve
+      a partir de `jmh-results-f3.csv`, ou se reduz a um ponteiro para o Cap. 7.
+- [ ] `jmh-results.csv` (P1/P2/P4/P5 + P3 antigo) e `jmh-results-p12.csv` ficaram do run de agosto:
+      são benchmarks de renderização, fora do âmbito da tese. As figuras P1/P2/P5 continuam com
+      rótulos em português por não terem sido regeradas (não são incluídas na tese).
 
 ## 7. Housekeeping
 

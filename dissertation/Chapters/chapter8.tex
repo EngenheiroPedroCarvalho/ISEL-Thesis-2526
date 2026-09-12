@@ -48,11 +48,13 @@ The two research questions of Section~\ref{sec:int_objectives} are answered as f
   when its absence is confirmed, and it aborts on stale entries, ambiguous names and inaccessible
   regions (Section~\ref{sec:eval-correctness}). The evidence comes from unit tests that simulate
   the provider, and on GCP bindings to first-generation Cloud Functions are not validated live.
-  \item \textbf{RQ2 (overhead)} --- small. In the production resolvers, resolving a workflow with
-  up to 200 internal calls takes at most a few milliseconds locally, growing linearly with the
-  number of internal calls, while the registry is read once per deployment
-  (Section~\ref{sec:eval-discussion}). These figures exclude the provider calls that validation,
-  discovery and deployment make.
+  \item \textbf{RQ2 (overhead)} --- small. In the production resolvers, resolving a workflow of 200
+  internal calls takes about one millisecond locally, growing linearly with the number of internal
+  calls, while the registry is read once per deployment
+  (Section~\ref{sec:eval-discussion}); the reference resolver, which does not print a progress line
+  per call, does the same work in $55\,\mu$s. These figures exclude the provider calls that
+  validation, discovery and deployment make, which are counted in
+  Section~\ref{sec:eval-api-calls}.
 \end{itemize}
 
 Against the four objectives stated in Section~\ref{sec:int_objectives}, the work stands as
@@ -77,9 +79,10 @@ follows:
   \item \textbf{Evaluate feasibility and overhead} --- \emph{partially met.}
   Chapter~\ref{cha:evaluation} checks the decisions of the resolution cascade on both providers
   and measures the resolution overhead, the registry write path and the packaging size. The
-  evidence is local only: the correctness checks simulate the provider, the benchmarks ran with a
-  short configuration on a shared machine, and neither end-to-end deployment times nor the
-  provider calls that validation and discovery make were measured.
+  evidence is local only: the correctness checks simulate the provider, the benchmarks ran on a
+  laptop rather than dedicated hardware, and end-to-end deployment times were not measured. The
+  provider calls that validation and discovery make are counted from the code
+  (Section~\ref{sec:eval-api-calls}) rather than timed.
 \end{enumerate}
 
 \section{Critical Assessment}
