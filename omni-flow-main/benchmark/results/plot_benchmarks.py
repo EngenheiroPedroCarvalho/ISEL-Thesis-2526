@@ -24,31 +24,31 @@ OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.dirname(os.path.abspath(CSV)
 PLOTS = {
     "BenchmarkRenderingScalability": (
         "P1_rendering_scalability.png",
-        "P1 — Tempo de renderização vs número de funções",
-        "Número de funções (passos do workflow)",
+        "P1 — Rendering time vs number of functions",
+        "Number of functions (workflow steps)",
         {"renderToAmazon": "AWS (ASL JSON)", "renderToGoogle": "GCP (YAML)"},
     ),
     "BenchmarkRenderingByParameterCount": (
         "P2_rendering_by_parameters.png",
-        "P2 — Tempo de renderização vs número de inputs da função",
-        "Número de inputs da função (argumentos passados na chamada)",
+        "P2 — Rendering time vs number of function inputs",
+        "Number of function inputs (arguments passed in the call)",
         {"renderToAmazon": "AWS (ASL JSON)", "renderToGoogle": "GCP (YAML)"},
     ),
     "BenchmarkInternalCallResolution": (
         "P3_resolution_overhead.png",
-        "P3 — Custo da unificação: resolução de funções internas",
-        "Número de chamadas no workflow",
-        {"resolveAllInternal": "Internas (dispara resolução)",
-         "resolveAllExternal": "Externas (sem resolução)"},
+        "P3 — Cost of unification: resolving internal functions",
+        "Number of calls in the workflow",
+        {"resolveAllInternal": "Internal (triggers resolution)",
+         "resolveAllExternal": "External (no resolution)"},
     ),
     "BenchmarkRenderingByNesting": (
         "P5_rendering_by_nesting.png",
-        "P5 — Tempo de renderização vs profundidade de aninhamento",
-        "Profundidade de aninhamento (parallel/iteration encadeados)",
+        "P5 — Rendering time vs nesting depth",
+        "Nesting depth (chained parallel/iteration)",
         {"renderToAmazon": "AWS (ASL JSON)", "renderToGoogle": "GCP (YAML)"},
     ),
 }
-YLABEL = "Tempo médio (µs/op)"
+YLABEL = "Mean time (µs/op)"
 
 
 def load(path):
@@ -118,9 +118,9 @@ def plot_p6(csv_path, out_dir):
         ys = [p[1] for p in pts]
         plt.plot(xs, ys, marker="s", linestyle="--", color="gray", label=f"external, n={max_n} (control)")
     plt.xscale("log")
-    plt.title("P6 — Custo por chamada de resolveUrl() vs tamanho do registo (r)")
-    plt.xlabel("Funções no registo (r, escala log)")
-    plt.ylabel("Tempo por chamada (µs/op ÷ n)")
+    plt.title("P6 — Per-call cost of resolveUrl() vs registry size (r)")
+    plt.xlabel("Functions in the registry (r, log scale)")
+    plt.ylabel("Time per call (µs/op ÷ n)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend()
     plt.tight_layout()
@@ -162,8 +162,8 @@ def _plot_p7_one(data, method, rs, ns, style, title, fname, out_dir, ylim):
     plt.yscale("log")
     plt.ylim(*ylim)
     plt.title(title)
-    plt.xlabel("Número de chamadas internas (N)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.xlabel("Number of internal calls (N)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -193,19 +193,19 @@ def plot_p7(csv_path, out_dir):
     uncached = _plot_p7_one(
         data, "resolveNaive", rs, ns,
         {"marker": "o", "linestyle": "--"},
-        "P7a — Resolução sem cache (leitura por chamada, Θ(N·R))",
+        "P7a — Resolution without cache (one read per call, Θ(N·R))",
         "P7a_resolution_sem_cache.png", out_dir, ylim)
     cached = _plot_p7_one(
         data, "resolveOptimized", rs, ns,
         {"marker": "s", "linestyle": "-"},
-        "P7b — Resolução com cache (leitura única, Θ(N+R))",
+        "P7b — Resolution with cache (single read, Θ(N+R))",
         "P7b_resolution_com_cache.png", out_dir, ylim)
     return [uncached, cached]
 
 
 _PIPELINE_SERIES = {
-    "resolveNaive": "Sem cache (leitura por chamada, Θ(N·R))",
-    "resolveOptimized": "Com cache (leitura única, Θ(N+R))",
+    "resolveNaive": "Without cache (one read per call, Θ(N·R))",
+    "resolveOptimized": "With cache (single read, Θ(N+R))",
 }
 
 
@@ -233,7 +233,7 @@ def _plot_pipeline(csv_path, out_dir, cls, title, xlabel, fname, series=None):
     plt.yscale("log")
     plt.title(title)
     plt.xlabel(xlabel)
-    plt.ylabel("Tempo médio (µs/op, escala log)")
+    plt.ylabel("Mean time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend()
     plt.tight_layout()
@@ -275,8 +275,8 @@ def _plot_p8_one(data, method, fs, ns, style, title, fname, out_dir, ylim):
     plt.yscale("log")
     plt.ylim(*ylim)
     plt.title(title)
-    plt.xlabel("Número de chamadas no workflow (N)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.xlabel("Number of calls in the workflow (N)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -305,12 +305,12 @@ def plot_p8(csv_path, out_dir):
     uncached = _plot_p8_one(
         data, "resolveNaive", fs, ns,
         {"marker": "o", "linestyle": "--"},
-        "P8a — Resolução sem cache (leitura por chamada, Θ(N·R)) — R=F",
+        "P8a — Resolution without cache (one read per call, Θ(N·R)) — R=F",
         "P8a_resolution_sem_cache.png", out_dir, ylim)
     cached = _plot_p8_one(
         data, "resolveOptimized", fs, ns,
         {"marker": "s", "linestyle": "-"},
-        "P8b — Resolução com cache (leitura única, Θ(N+R)) — R=F",
+        "P8b — Resolution with cache (single read, Θ(N+R)) — R=F",
         "P8b_resolution_com_cache.png", out_dir, ylim)
     return [uncached, cached]
 
@@ -318,8 +318,8 @@ def plot_p8(csv_path, out_dir):
 def plot_p9(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkResolveWorkflowByRegistrySize",
-        "P9 — Resolução vs tamanho do registo (R) — F=10/N=50 fixos",
-        "Nº de funções no registo (R)",
+        "P9 — Resolution vs registry size (R) — F=10/N=50 fixed",
+        "Functions in the registry (R)",
         "P9_resolution_by_registry.png")
 
 
@@ -362,8 +362,8 @@ def _plot_internal_resolution(csv_path, out_dir, cls, title, fname):
                  marker="o", linestyle="--", color=colours[i], label=f"F={f}")
     plt.yscale("log")
     plt.title(title)
-    plt.xlabel("Número de chamadas internas (N)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.xlabel("Number of internal calls (N)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -377,14 +377,14 @@ def _plot_internal_resolution(csv_path, out_dir, cls, title, fname):
 def plot_p10(csv_path, out_dir):
     return _plot_internal_resolution(
         csv_path, out_dir, "BenchmarkAwsInternalFunctionResolution",
-        "P10 — Resolução real AWS (AwsInternalFunctionResolver) — R=F",
+        "P10 — Real AWS resolution (AwsInternalFunctionResolver) — R=F",
         "P10_aws_internal_resolution.png")
 
 
 def plot_p11(csv_path, out_dir):
     return _plot_internal_resolution(
         csv_path, out_dir, "BenchmarkGoogleInternalFunctionResolution",
-        "P11 — Resolução real GCP (WorkflowInternalFunctionResolver) — R=F",
+        "P11 — Real GCP resolution (WorkflowInternalFunctionResolver) — R=F",
         "P11_google_internal_resolution.png")
 
 
@@ -399,8 +399,8 @@ _BRANCH_WIDTH_SERIES = {
 def plot_p12(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkRenderingByBranchWidth",
-        "P12 — Tempo de renderização vs largura de Choice/Parallel",
-        "Nº de condições (Choice) / branches (Parallel)",
+        "P12 — Rendering time vs Choice/Parallel width",
+        "Number of conditions (Choice) / branches (Parallel)",
         "P12_rendering_by_branch_width.png",
         series=_BRANCH_WIDTH_SERIES)
 
@@ -430,8 +430,8 @@ _KEY_MATCH_SERIES = {
 def plot_p14(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkResolutionKeyMatchStrategy",
-        "P14 — Exact vs. suffix match no resolver \"com cache\" — F=10/N=50 fixos",
-        "Nº de funções no registo (R)",
+        "P14 — Exact vs. suffix match in the cached resolver — F=10/N=50 fixed",
+        "Functions in the registry (R)",
         "P14_resolution_key_match_strategy.png",
         series=_KEY_MATCH_SERIES)
 
@@ -457,9 +457,9 @@ def plot_p13(csv_path, out_dir):
                  marker="o", linestyle="--", color=colours[i], label=f"R0={r0}")
     plt.yscale("log")
     plt.xscale("log")
-    plt.title("P13 — Custo de escrita incremental no registo (put) — R0 × K")
-    plt.xlabel("Nº de escritas sucessivas (K, escala log)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.title("P13 — Incremental registry write cost (put) — R0 × K")
+    plt.xlabel("Number of successive writes (K, log scale)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -508,9 +508,9 @@ def plot_p17(csv_path, out_dir):
                  marker="o", linestyle="--", color=colours[i], label=f"R0={r0}")
     plt.yscale("log")
     plt.xscale("log")
-    plt.title("P17 — Custo de miss+deploy (tryResolveEntry + put) — R0 × K")
-    plt.xlabel("Nº de funções novas resolvidas+registadas (K, escala log)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.title("P17 — Cost of miss+deploy (tryResolveEntry + put) — R0 × K")
+    plt.xlabel("Number of new functions resolved+registered (K, log scale)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -557,9 +557,9 @@ def plot_p15(csv_path, out_dir):
         pts = [(e_val, data[(i_val, e_val)][0]) for e_val in e_values if (i_val, e_val) in data]
         plt.plot([x for x, _ in pts], [y for _, y in pts],
                  marker="o", linestyle="-", color=colours[k], label=f"I={i_val}")
-    plt.title("P15 — Resolução vs mistura interno/externo (I × E) — R=F=10 fixos")
-    plt.xlabel("Nº de chamadas externas (E)")
-    plt.ylabel("Tempo total (µs/op)")
+    plt.title("P15 — Resolution vs internal/external mix (I × E) — R=F=10 fixed")
+    plt.xlabel("Number of external calls (E)")
+    plt.ylabel("Total time (µs/op)")
     plt.grid(True, alpha=0.3)
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -573,28 +573,28 @@ def plot_p15(csv_path, out_dir):
 def plot_p16(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkResolveWorkflowByRegistrySizeMixed",
-        "P16 — Resolução vs tamanho do registo (R), workflow misto — I=40/E=10/F=10 fixos",
-        "Nº de funções no registo (R)",
+        "P16 — Resolution vs registry size (R), mixed workflow — I=40/E=10/F=10 fixed",
+        "Functions in the registry (R)",
         "P16_resolution_by_registry_mixed.png",
-        series={"resolveOptimized": "Com cache (workflow misto)"})
+        series={"resolveOptimized": "With cache (mixed workflow)"})
 
 
 def plot_p18(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkInternalResolutionByNesting",
-        "P18 — Resolução interna vs profundidade de aninhamento — 20 chamadas/F=10 fixos",
-        "Profundidade de aninhamento (parallel/iteration encadeados)",
+        "P18 — Internal resolution vs nesting depth — 20 calls/F=10 fixed",
+        "Nesting depth (chained parallel/iteration)",
         "P18_internal_resolution_by_nesting.png",
-        series={"resolveOptimized": "Com cache (workflow aninhado)"})
+        series={"resolveOptimized": "With cache (nested workflow)"})
 
 
 def plot_p19(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkInternalResolutionByBranchWidth",
-        "P19 — Resolução interna vs largura de Parallel — 5 chamadas/branch, F=10 fixos",
-        "Nº de branches do Parallel",
+        "P19 — Internal resolution vs Parallel width — 5 calls/branch, F=10 fixed",
+        "Number of Parallel branches",
         "P19_internal_resolution_by_branch_width.png",
-        series={"resolveOptimized": "Com cache (workflow com Parallel largo)"})
+        series={"resolveOptimized": "With cache (wide-Parallel workflow)"})
 
 
 def plot_artifact_size(csv_path, out_dir):
@@ -609,9 +609,9 @@ def plot_artifact_size(csv_path, out_dir):
     plt.figure(figsize=(8, 5))
     plt.plot(ns, aws, marker="o", label="AWS (ASL JSON)")
     plt.plot(ns, gcp, marker="s", label="GCP (YAML)")
-    plt.title("S2 — Tamanho do artefacto renderizado vs número de funções")
-    plt.xlabel("Número de funções (passos do workflow)")
-    plt.ylabel("Tamanho do artefacto (KB)")
+    plt.title("S2 — Size of the rendered artifact vs number of functions")
+    plt.xlabel("Number of functions (workflow steps)")
+    plt.ylabel("Artifact size (KB)")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
