@@ -249,13 +249,16 @@ interval, $\pm16.8\,\mu$s, is wider than the value itself.
 \end{figure}
 
 \paragraph{Effect of registry size (T2).}
-Fixing the workflow and varying the registry size, with the registry re-read on every call, shows
-that the per-call cost grows with $R$ and is essentially independent of $N$: about $10.3\,\mu$s of
-fixed I/O and parsing per read plus about $0.17\,\mu$s per registered entry
-(Table~\ref{tab:eval-t2}). The four $N$ curves in Figure~\ref{fig:eval-t2} collapse onto a
-single line, confirming that the cost grows in direct proportion to both the number of calls and
-the registry size. The two terms of that per-call cost are equal when $0.17\,R = 10.3$, that is at
-$R \approx 60$: below that size the fixed cost of opening and parsing the file dominates, and only
+The second experiment varies the registry size. Unlike T1, it runs the naive reference resolver,
+which re-reads and re-parses the whole registry file once for every internal call, so a workflow of
+$N$ internal calls pays $N$ reads of an $R$-entry file. Table~\ref{tab:eval-t2} and
+Figure~\ref{fig:eval-t2} divide each total by $N$, which gives the cost of one call and therefore of
+one read. That cost grows with $R$ and is essentially independent of $N$: about $10.3\,\mu$s of
+fixed I/O and parsing per read plus about $0.17\,\mu$s per registered entry. The four $N$ curves in
+Figure~\ref{fig:eval-t2} collapse onto a single line, confirming that the total cost grows in direct
+proportion to both the number of calls and the registry size. The two terms of that per-call cost
+are equal when $0.17\,R = 10.3$, that is at $R \approx 60$: below that size the fixed cost of
+opening and parsing the file dominates, and only
 above it does the number of entries become the larger term. A registry holding the few dozen
 functions of a realistic system therefore sits around or below that crossover, where the fixed cost
 rules, which is what makes reading it once per workflow --- rather than once per call --- the
@@ -263,7 +266,9 @@ change worth making.
 
 \begin{table}[htbp]
   \centering
-  \caption{Per-call resolution cost as a function of registry size $R$ (independent of $N$).}
+  \caption{T2 --- per-call resolution cost as a function of registry size $R$, with the registry
+  re-read on every internal call: total time divided by $N$, averaged over $N \in \{1, 10, 50,
+  200\}$.}
   \label{tab:eval-t2}
   \begin{tabular}{|r|r|}
     \hline
@@ -1035,7 +1040,7 @@ registry file up to $R \approx 60$ (\S\ref{sec:eval-resolution}). Second, the si
 optimization eliminates that
 call-times-registry-size product, reducing resolution to one read of the registry plus about
 $0.22\,\mu$s per internal call, a speedup of $200\times$ in the worst corner measured
-(T3, T4, T5) --- a full \emph{identify (T1/T2) $\rightarrow$ fix $\rightarrow$ quantify (T3)} loop.
+(T3, T4, T5) --- a full \emph{identify (T2) $\rightarrow$ fix $\rightarrow$ quantify (T3)} loop.
 Third, this optimization has since been propagated to the production resolvers (T6, T7), which
 now show the same one-read-plus-a-constant shape as the optimized reference path rather than the
 call-times-registry-size cost they used to pay: $29\,\mu$s (AWS) and $81\,\mu$s (GCP) for a
