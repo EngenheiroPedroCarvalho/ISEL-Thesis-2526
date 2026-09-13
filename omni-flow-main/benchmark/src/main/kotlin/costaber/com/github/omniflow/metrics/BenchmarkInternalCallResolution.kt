@@ -33,9 +33,10 @@ import java.util.concurrent.TimeUnit
  * would hit the Lambda API; the registry-based resolver is pure local logic.
  *
  * The function registry is pre-loaded once in @Setup into a tiny temp file
- * (local file I/O only). It is never written in the hot path. The all-internal
- * case resolves every call against this in-memory-backed registry; the
- * all-external case touches the registry zero times (baseline).
+ * (local file I/O only). It is never written in the hot path. Both cases read
+ * the registry once, because the resolver reads it before walking the tree:
+ * the all-internal case then resolves every call against that snapshot; the
+ * all-external case never looks it up (baseline).
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
