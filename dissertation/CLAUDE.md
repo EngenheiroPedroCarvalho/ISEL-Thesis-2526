@@ -46,10 +46,10 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
   match the names there and are silently skipped. `appendix1.tex` (the template's R example) stays
   on disk but is no longer built.
 - Several files still contain **template placeholder text**, not thesis content: `abstract-en.tex`,
-  `abstract-pt.tex`, `acknowledgments.tex` and `glossary.tex` (no longer printed: its list is
-  commented out in `Config/_files.tex`, since the text never uses `\gls`). `acronyms.tex` holds
-  the real acronyms and prints them all with `\glsaddall`; add an entry there when the text
-  introduces a new acronym. `appendix2.tex`, `annex1_.tex` and `annex2.tex`
+  `abstract-pt.tex` and `acknowledgments.tex`. `acronyms.tex` and `glossary.tex` hold the real
+  acronyms and glossary terms; the text never uses `\gls`, so each file prints all its entries
+  with `\glsaddall`. Add an entry there when the text introduces a new acronym or key term, and
+  keep glossary definitions consistent with the chapters. `appendix2.tex`, `annex1_.tex` and `annex2.tex`
   are lorem ipsum and are commented out in `Config/_files.tex`. Check a file's content before
   relying on it.
 - Figures: `images/<topic>/*.png`. Their PlantUML sources are in `../diagrams/`.
