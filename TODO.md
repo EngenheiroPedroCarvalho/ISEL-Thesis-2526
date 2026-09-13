@@ -23,7 +23,7 @@ drift as text is edited, so search for the quoted phrases.
 - [x] `TESTING.md`'s T6/T7 rows describe the single-read resolvers; the `GoogleCloudDeployer`
       bootstrap log prints the path and says "Bootstrapping … Cloud Run APIs".
 - [x] `acronyms.tex` defines the thesis's acronyms, and all of them are printed (`\glsaddall`),
-      because the text writes them as plain text. `glossary.tex` defines 33 of the thesis's terms
+      because the text writes them as plain text. `glossary.tex` defines 34 of the thesis's terms
       (Function Registry, resolution cascade, internal/external call, …), printed the same way.
 - [x] The dedicatory is built (`dedicatory_.tex` renamed to `dedicatory.tex`). Its text is still
       the template's "To my family and friends ⋯"; personalise it if you like.

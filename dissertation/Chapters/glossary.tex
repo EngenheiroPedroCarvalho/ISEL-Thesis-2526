@@ -129,6 +129,13 @@
 	level.}
 }
 
+\newglossaryentry{warmup}{
+	name={Warm-up},
+	description={Benchmark iterations that run before the measured ones and whose results are
+	discarded, so that the JIT compiler has already compiled the code when measurement starts. The
+	evaluation uses three warm-up iterations of one second each.}
+}
+
 \newglossaryentry{orchestration}{
 	name={Orchestration},
 	description={Coordination of several functions by an external service that holds the control
