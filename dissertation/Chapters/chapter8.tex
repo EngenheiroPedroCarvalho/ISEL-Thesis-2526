@@ -153,6 +153,10 @@ structural ones.
   dry-run mode that reports the IAM changes it would make instead of applying them silently.
   \item \textbf{Introduce test seams} for the cloud-calling code, extracting the SDK interactions
   behind narrow interfaces so the deploy/IAM/readiness logic can be unit-tested against fakes.
+  \item \textbf{Validate the cascade against live providers,} deploying workflows that contain
+  internal calls to real AWS and GCP accounts at each level of the cascade, so that the correctness
+  evidence of Section~\ref{sec:eval-correctness} rests on the providers' own responses rather than
+  on test doubles.
   \item \textbf{Extend the provider set,} adding Azure Functions (already a QuickFaaS target)
   through the existing extension point to further substantiate the portability claim.
 \end{enumerate}

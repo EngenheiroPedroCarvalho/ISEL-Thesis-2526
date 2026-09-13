@@ -850,9 +850,13 @@ outside the scope of this work.
 
 The correctness evidence for RQ1 has a similar limit. The resolver tests replace the provider with
 test doubles, so they establish that each resolver takes the right decision given what the provider
-reports, not that the real AWS and GCP APIs report what the doubles assume. The two full-deployment
-tests that exercise the real providers need cloud credentials and are excluded from the automated
-test suite.
+reports, not that the real AWS and GCP APIs report what the doubles assume. Evidence against the
+live providers therefore remains to be produced, and the two full-deployment tests the code base
+carries would not supply it: besides needing cloud credentials, which is why they are excluded from
+the automated suite, the workflow they deploy gives every call a literal host, so they exercise
+workflow deployment and never enter the resolution cascade. Obtaining that evidence means deploying
+workflows that contain internal calls against real accounts on both providers, at each level of the
+cascade; this is listed as future work (Section~\ref{sec:concl-future}).
 
 
 

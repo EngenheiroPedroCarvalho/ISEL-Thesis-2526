@@ -79,7 +79,10 @@ drift as text is edited, so search for the quoted phrases.
       each with keywords. They deliberately cite no absolute benchmark figure — only the shape
       ("milliseconds", "linear in the number of internal calls, not in the registry size") — so the
       `-f 3` re-run cannot invalidate them. Re-read them once the final numbers are in.
-- [ ] Write the acknowledgments (`acknowledgments.tex` is still template text).
+- [x] Acknowledgments written (2026-09-13) in `Chapters/acknowledgments.tex`, in English to
+      match the body: supervisors by name (from `Config/_cover.tex`), Santander Portugal and
+      its Enterprise Architecture team, parents and family, and Mariana. Institutional first,
+      then personal, as the template suggests.
 
 ## 2. Argument (highest impact)
 
@@ -89,17 +92,32 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 4. Evaluation (Ch6)
 
-- [ ] Correctness (RQ1): Ch6 "Correctness of the Resolution Cascade" (`tab:eval-correctness`)
+- [x] Correctness (RQ1): Ch6 "Correctness of the Resolution Cascade" (`tab:eval-correctness`)
       reports the resolver unit tests; "absent, no descriptor" and "both `internalFunction` and
-      host/path set" are now covered on both providers (45 resolver tests, 22 AWS + 23 GCP). Still
-      open: evidence against the real providers (the two `@Ignore`d full-deployment tests in
-      `WorkflowTest`).
+      host/path set" are covered on both providers (45 resolver tests, 22 AWS + 23 GCP).
+      Evidence against the real providers: **decided not to do (2026-09-13)** — it needs AWS and
+      GCP accounts, and this machine has neither (`aws` and `gcloud` are not installed, there is
+      no `~/.aws` and no application-default credentials). Two things to know before reopening
+      this: the two `@Ignore`d tests in `WorkflowTest` would **not** close the gap as written —
+      they are hardcoded to the original author's GCP project (`workflow-test-380423`) and AWS
+      account (`610299836666`), and their workflow has no internal function at all (both `call`s
+      set a literal API Gateway `host`), so they never enter the cascade. Closing the gap means
+      new tests using `internalFunction` against an account of your own. Ch7 states the limit in
+      `sec:eval-threats` ("the resolver tests replace the provider with test doubles ... not that
+      the real AWS and GCP APIs report what the doubles assume").
 - [x] Count the provider API calls per cascade level: Ch7 §"Provider API Calls per Resolution"
       (`sec:eval-api-calls`, `tab:eval-api-calls`) counts them from the code. Key point: Level 1
       validates **per call**, not per distinct function, so a deployment of I internal calls costs
       I requests when the registry is warm and up to 1 + I·G (G = candidate regions) when it is
       cold with bare references.
-- [ ] Time a few end-to-end deployments (L1/L2/L3 × AWS/GCP; report median and range).
+- [x] Time a few end-to-end deployments (L1/L2/L3 × AWS/GCP; report median and range):
+      **decided not to do (2026-09-13)**, same reason — no cloud credentials here, and measuring
+      it would create billable Lambdas, Step Functions, Cloud Functions and Cloud Workflows.
+      `BenchmarkAmazonDeployment`/`BenchmarkGoogleDeployment` do not help: they time
+      `createStateMachine`/`deploy` for a workflow with no internal calls, so they never touch the
+      cascade. Ch7 already scopes the evaluation as local-only in `sec:eval-threats` ("it
+      quantifies the resolution and packaging overhead, not the end-to-end cloud deployment
+      latency").
 - [x] Compare manual effort before and after: Ch7 §"Manual Effort Before and After"
       (`sec:eval-manual-effort`, `tab:eval-manual-effort`) — 9 steps / 4 hand-carried values
       (separate tools, GCP) vs 4 steps / 0, derived from Ch2's `subsec:quickfaas-example` and Ch4's
