@@ -75,33 +75,49 @@ two tests of the registry bootstrap.
   \caption{Situations covered by the resolver unit tests, with the expected behaviour. Each row is
   tested on both AWS and GCP unless marked otherwise; every test passes.}
   \label{tab:eval-correctness}
-  \begin{tabular}{p{0.42\textwidth}p{0.48\textwidth}}
+  \begin{tabular}{|p{0.42\textwidth}|p{0.48\textwidth}|}
     \hline
     \textbf{Situation} & \textbf{Expected and observed behaviour} \\
     \hline
     Registry entry valid (Level~1) & call bound to the registered endpoint \\
+    \hline
     Registry entry whose endpoint changed (drift) & registry updated; call bound to the current
     endpoint \\
+    \hline
     Registry entry for a function no longer in its region (stale) & function searched in all
     regions; if found, the entry is replaced; otherwise the entry is removed and the resolution
     aborts \\
+    \hline
     Validation of a registry entry denied by the provider & resolution aborts; entry kept \\
+    \hline
     Not in the registry, found in one region (Level~2) & call bound; function registered \\
+    \hline
     Found in several regions & resolution aborts (ambiguous name) \\
+    \hline
     Explicit \texttt{region/name} reference & only that region is queried \\
+    \hline
     Every candidate region inaccessible, function not found & resolution aborts with a distinct
     error \\
+    \hline
     Not found anywhere, descriptor given (Level~3) & function deployed once from the descriptor;
     registered; call bound \\
+    \hline
     Not found, some regions inaccessible, descriptor given & resolution aborts; nothing deployed \\
+    \hline
     Not found anywhere, no descriptor given & resolution aborts; nothing deployed \\
+    \hline
     Internal calls inside branches, iterations and parallel steps & all resolved (five tests) \\
+    \hline
     External calls & host and path unchanged \\
+    \hline
     Call setting both \texttt{internalFunction} and a literal \texttt{host}/\texttt{path} & rejected
     before the cascade starts \\
+    \hline
     Several internal calls in one workflow & registry read once \\
+    \hline
     First-generation Cloud Function in the registry (GCP only) & call bound without live
     validation (the limitation of \S\ref{subsec:store-internals}) \\
+    \hline
     Registry file missing (provider-independent) & registry rebuilt from the provider's catalog \\
     \hline
   \end{tabular}
@@ -156,14 +172,18 @@ these quantities, summarised in Table~\ref{tab:eval-notation}.
   \centering
   \caption{Notation used throughout the evaluation.}
   \label{tab:eval-notation}
-  \begin{tabular}{cl}
+  \begin{tabular}{|c|l|}
     \hline
     \textbf{Symbol} & \textbf{Meaning} \\
     \hline
     $N$ & total number of \texttt{call} steps in the workflow (internal or external), $N = I + E$ \\
+    \hline
     $R$ & number of entries in the registry file when it is read/written \\
+    \hline
     $F$ & number of \emph{distinct} internal functions the workflow references \\
+    \hline
     $I$ & number of internal calls (repetitions counted) \\
+    \hline
     $E$ & number of external calls (repetitions counted) \\
     \hline
   \end{tabular}
@@ -196,17 +216,24 @@ interval, $\pm16.8\,\mu$s, is wider than the value itself.
   \caption{Resolution cost of a workflow of $N$ calls, all internal vs.\ all external, with
   $R{=}1$. Both columns include the one registry read the resolver always performs.}
   \label{tab:eval-p3}
-  \begin{tabular}{rrr}
+  \begin{tabular}{|r|r|r|}
     \hline
     \textbf{Calls ($N$)} & \textbf{Internal --- resolved ($\mu$s)} & \textbf{External --- not resolved ($\mu$s)} \\
     \hline
     1   & 10.1 & 9.8  \\
+    \hline
     2   & 10.4 & 9.8  \\
+    \hline
     5   & 11.1 & 9.8  \\
+    \hline
     10  & 16.9 & 9.8  \\
+    \hline
     20  & 14.5 & 9.8  \\
+    \hline
     50  & 21.3 & 10.0 \\
+    \hline
     100 & 32.2 & 10.3 \\
+    \hline
     200 & 54.9 & 10.9 \\
     \hline
   \end{tabular}
@@ -229,14 +256,18 @@ change worth making.
   \centering
   \caption{Per-call resolution cost as a function of registry size $R$ (independent of $N$).}
   \label{tab:eval-p6}
-  \begin{tabular}{rr}
+  \begin{tabular}{|r|r|}
     \hline
     \textbf{Registry size ($R$)} & \textbf{Cost per call ($\mu$s)} \\
     \hline
     1    & 10.5  \\
+    \hline
     10   & 11.9  \\
+    \hline
     50   & 18.3  \\
+    \hline
     200  & 44.5  \\
+    \hline
     1000 & 183.4 \\
     \hline
   \end{tabular}
@@ -269,15 +300,20 @@ trend on real \texttt{Workflow} objects rather than the isolated store primitive
   \centering
   \caption{P7 --- total resolution time, naive (per-call read) vs.\ optimized (single read).}
   \label{tab:eval-p7}
-  \begin{tabular}{lrrrr}
+  \begin{tabular}{|l|r|r|r|r|}
     \hline
      & $N{=}1$ & $N{=}10$ & $N{=}50$ & $N{=}200$ \\
-    \hline
+     \hline
     naive, $R{=}1$        & 9.8  & 98.0     & 492      & 1\,999    \\
+    \hline
     optimized, $R{=}1$    & 10.0 & 10.0     & 10.1     & 10.3      \\
+    \hline
     naive, $R{=}50$       & 17.9 & 180      & 901      & 3\,630    \\
+    \hline
     optimized, $R{=}50$   & 18.4 & 18.3     & 18.5     & 18.5      \\
+    \hline
     naive, $R{=}1000$     & 183  & 1\,839   & 9\,239   & 36\,670   \\
+    \hline
     optimized, $R{=}1000$ & 182  & 183      & 182      & 184       \\
     \hline
   \end{tabular}
@@ -300,15 +336,20 @@ climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
   \caption{P8 --- naive resolution time ($\mu$s) of a real workflow, $F$ distinct functions vs.\
   $N$ calls, $R{=}F$.}
   \label{tab:eval-p8-naive}
-  \begin{tabular}{rrrrrr}
+  \begin{tabular}{|r|r|r|r|r|r|}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
     \hline
     1  & 10.4 & 52.3 & 105 & 525 & 2\,069 \\
+    \hline
     2  & 10.8 & 53.0 & 106 & 534 & 2\,142 \\
+    \hline
     5  & 11.1 & 53.9 & 108 & 543 & 2\,150 \\
+    \hline
     10 & 11.6 & 58.5 & 116 & 582 & 2\,333 \\
+    \hline
     20 & 13.3 & 66.6 & 133 & 665 & 2\,650 \\
+    \hline
     50 & 18.7 & 92.5 & 185 & 929 & 3\,694 \\
     \hline
   \end{tabular}
@@ -319,15 +360,20 @@ climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
   \caption{P8 --- optimized (single-read) resolution time ($\mu$s) of a real workflow, same grid
   as Table~\ref{tab:eval-p8-naive}.}
   \label{tab:eval-p8-optimized}
-  \begin{tabular}{rrrrrr}
+  \begin{tabular}{|r|r|r|r|r|r|}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
     \hline
     1  & 10.2 & 11.1 & 12.2 & 20.7 & 54.7 \\
+    \hline
     2  & 10.4 & 11.2 & 12.2 & 21.1 & 54.1 \\
+    \hline
     5  & 10.7 & 11.6 & 12.7 & 21.5 & 54.1 \\
+    \hline
     10 & 11.5 & 12.7 & 13.8 & 22.5 & 55.8 \\
+    \hline
     20 & 13.4 & 14.2 & 15.2 & 24.0 & 57.9 \\
+    \hline
     50 & 18.5 & 19.4 & 20.8 & 29.4 & 63.3 \\
     \hline
   \end{tabular}
@@ -343,15 +389,20 @@ plus 50 lookups, and tracks the per-read cost measured in P6.
   \centering
   \caption{P9 --- resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
   \label{tab:eval-p9}
-  \begin{tabular}{rrrr}
+  \begin{tabular}{|r|r|r|r|}
     \hline
     \textbf{$R$} & \textbf{naive} & \textbf{optimized} & \textbf{speedup} \\
     \hline
     10   & 589     & 22.6 & 26.1 \\
+    \hline
     20   & 666     & 23.9 & 27.9 \\
+    \hline
     50   & 930     & 29.3 & 31.8 \\
+    \hline
     100  & 1\,378  & 37.8 & 36.5 \\
+    \hline
     200  & 2\,246  & 54.9 & 40.9 \\
+    \hline
     1000 & 9\,487  & 205  & 46.3 \\
     \hline
   \end{tabular}
@@ -399,15 +450,20 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
   (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with the
   single-read optimization and without per-call console output.}
   \label{tab:eval-p10}
-  \begin{tabular}{lrrrrr}
+  \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
     \hline
     1  & 9.9  & 10.3 & 10.9 & 13.8 & 24.6 \\
+    \hline
     2  & 10.2 & 11.0 & 11.4 & 14.7 & 26.3 \\
+    \hline
     5  & 11.0 & 11.2 & 11.7 & 15.3 & 27.6 \\
+    \hline
     10 & 11.7 & 12.2 & 12.7 & 16.3 & 29.1 \\
+    \hline
     20 & 14.4 & 14.8 & 14.4 & 19.7 & 34.5 \\
+    \hline
     50 & 20.0 & 20.3 & 20.3 & 26.6 & 47.5 \\
     \hline
   \end{tabular}
@@ -419,15 +475,20 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
   (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with
   the single-read optimization and without per-call console output.}
   \label{tab:eval-p11}
-  \begin{tabular}{lrrrrr}
+  \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
     \hline
     1  & 10.4 & 12.1 & 13.9 & 27.9 & 83.3 \\
+    \hline
     2  & 10.6 & 11.9 & 13.8 & 27.5 & 78.8 \\
+    \hline
     5  & 11.3 & 12.7 & 14.1 & 28.4 & 79.8 \\
+    \hline
     10 & 12.1 & 13.4 & 15.1 & 28.8 & 81.3 \\
+    \hline
     20 & 14.4 & 15.5 & 16.8 & 31.6 & 84.4 \\
+    \hline
     50 & 19.9 & 20.9 & 22.8 & 36.8 & 91.3 \\
     \hline
   \end{tabular}
@@ -460,14 +521,18 @@ thousand-entry registry.
   \caption{P13 --- total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
   size $R_0$.}
   \label{tab:eval-p13}
-  \begin{tabular}{lrrrrr}
+  \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
     \hline
     1   & 45.5     & 48.2     & 63.8     & 114       & 490       \\
+    \hline
     5   & 224      & 242      & 329      & 529       & 1\,945    \\
+    \hline
     10  & 463      & 496      & 640      & 1\,041    & 3\,751    \\
+    \hline
     50  & 2\,517   & 2\,706   & 3\,650   & 5\,363    & 17\,942   \\
+    \hline
     100 & 5\,914   & 6\,693   & 7\,594   & 11\,515   & 36\,195   \\
     \hline
   \end{tabular}
@@ -478,14 +543,18 @@ thousand-entry registry.
   \caption{P17 --- total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
   registry size $R_0$.}
   \label{tab:eval-p17}
-  \begin{tabular}{lrrrrr}
+  \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
     \hline
     1   & 57.2     & 62.7     & 90.2     & 164       & 686       \\
+    \hline
     5   & 298      & 323      & 427      & 769       & 2\,901    \\
+    \hline
     10  & 597      & 874      & 973      & 1\,557    & 5\,751    \\
+    \hline
     50  & 3\,265   & 3\,510   & 5\,051   & 8\,144    & 28\,694   \\
+    \hline
     100 & 8\,369   & 8\,307   & 10\,516  & 17\,689   & 58\,572   \\
     \hline
   \end{tabular}
@@ -505,15 +574,20 @@ registry (Table~\ref{tab:eval-p14}).
   \centering
   \caption{P14 --- exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
   \label{tab:eval-p14}
-  \begin{tabular}{rrrr}
+  \begin{tabular}{|r|r|r|r|}
     \hline
     \textbf{$R$} & \textbf{exact} & \textbf{suffix} & \textbf{ratio} \\
     \hline
     10   & 22.5 & 28.8 & 1.28 \\
+    \hline
     20   & 24.2 & 32.6 & 1.35 \\
+    \hline
     50   & 29.2 & 40.2 & 1.38 \\
+    \hline
     100  & 38.2 & 58.9 & 1.54 \\
+    \hline
     200  & 55.0 & 92.6 & 1.68 \\
+    \hline
     1000 & 201  & 391  & 1.95 \\
     \hline
   \end{tabular}
@@ -534,15 +608,20 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-p16}).
   \caption{P15 --- resolution time ($\mu$s) of a mixed workflow, $R{=}F{=}10$ fixed;
   $I$ internal vs.\ $E$ external calls.}
   \label{tab:eval-p15}
-  \begin{tabular}{rrrrrrr}
+  \begin{tabular}{|r|r|r|r|r|r|r|}
     \hline
     $I\backslash E$ & 0 & 1 & 5 & 10 & 50 & 200 \\
     \hline
     0   & 11.3 & 11.3 & 11.5 & 11.5 & 13.9 & 12.7 \\
+    \hline
     1   & 11.5 & 11.7 & 11.8 & 11.8 & 14.4 & 12.7 \\
+    \hline
     5   & 12.8 & 12.6 & 12.6 & 12.7 & 12.9 & 13.7 \\
+    \hline
     10  & 13.7 & 13.8 & 13.8 & 13.8 & 14.0 & 14.7 \\
+    \hline
     50  & 22.4 & 22.4 & 22.7 & 26.3 & 22.8 & 23.2 \\
+    \hline
     200 & 55.8 & 55.9 & 56.2 & 67.1 & 57.4 & 56.8 \\
     \hline
   \end{tabular}
@@ -553,15 +632,20 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-p16}).
   \caption{P16 --- resolution time ($\mu$s) vs.\ registry size $R$, mixed workflow with
   $I{=}40$/$E{=}10$/$F{=}10$ fixed.}
   \label{tab:eval-p16}
-  \begin{tabular}{rr}
+  \begin{tabular}{|r|r|}
     \hline
     \textbf{$R$} & \textbf{Time ($\mu$s)} \\
     \hline
     10   & 20.4 \\
+    \hline
     20   & 22.2 \\
+    \hline
     50   & 27.3 \\
+    \hline
     100  & 36.2 \\
+    \hline
     200  & 53.7 \\
+    \hline
     1000 & 199  \\
     \hline
   \end{tabular}
@@ -582,15 +666,20 @@ count of internal calls matters.
   \caption{P18 --- resolution time ($\mu$s) vs.\ nesting depth, 20 internal calls fixed,
   $R{=}F{=}10$.}
   \label{tab:eval-p18}
-  \begin{tabular}{rr}
+  \begin{tabular}{|r|r|}
     \hline
     \textbf{Depth} & \textbf{Time ($\mu$s)} \\
     \hline
     0 & 15.9 \\
+    \hline
     1 & 15.8 \\
+    \hline
     2 & 69.0 \\
+    \hline
     3 & 19.2 \\
+    \hline
     4 & 17.1 \\
+    \hline
     5 & 15.9 \\
     \hline
   \end{tabular}
@@ -601,16 +690,22 @@ count of internal calls matters.
   \caption{P19 --- resolution time ($\mu$s) vs.\ \texttt{Parallel} branch width,
   $N = 5\times$ width, $R{=}F{=}10$.}
   \label{tab:eval-p19}
-  \begin{tabular}{rrr}
+  \begin{tabular}{|r|r|r|}
     \hline
     \textbf{Branches} & \textbf{$N$} & \textbf{Time ($\mu$s)} \\
     \hline
     1   & 5   & 12.5 \\
+    \hline
     2   & 10  & 13.7 \\
+    \hline
     5   & 25  & 17.0 \\
+    \hline
     10  & 50  & 22.4 \\
+    \hline
     20  & 100 & 33.2 \\
+    \hline
     50  & 250 & 65.2 \\
+    \hline
     100 & 500 & 119  \\
     \hline
   \end{tabular}
@@ -642,19 +737,24 @@ Table~\ref{tab:eval-api-calls} gives the count for each path through the cascade
   \caption{Provider API requests issued per internal call, by cascade path, counted from the
   implementation. $G$ is the number of candidate regions.}
   \label{tab:eval-api-calls}
-  \begin{tabular}{p{0.30\textwidth}p{0.30\textwidth}p{0.30\textwidth}}
+  \begin{tabular}{|p{0.30\textwidth}|p{0.30\textwidth}|p{0.30\textwidth}|}
     \hline
     \textbf{Path} & \textbf{AWS} & \textbf{GCP} \\
     \hline
     Level~1, registry hit validated & 1 (\texttt{GetFunction} in the region taken from the stored
     ARN) & 1 (Cloud Run \texttt{services.get}) \\
+    \hline
     Level~1, first-generation Cloud Function in the registry & --- & 0 (validation skipped,
     \S\ref{subsec:store-internals}) \\
+    \hline
     Level~1, entry stale & 1 validation $+$ up to $G$ lookups (rediscovery) & 1 validation $+$ up
     to $G$ lookups \\
+    \hline
     Level~2, bare \texttt{functionRef} & up to $G$ \texttt{GetFunction} (the scan stops at the
     second match) & up to $G$ \texttt{services.get} \\
+    \hline
     Level~2, \texttt{"region/name"} reference & 1 & 1 \\
+    \hline
     Level~3, deployment & $G$ lookups (absence is confirmed in every region) $+$ the deployment
     below & $G$ lookups $+$ the deployment below \\
     \hline
@@ -716,25 +816,33 @@ the registry and from the registry into the rendered workflow.
   ``Carried by hand'' counts values produced by one step that the developer must read and re-enter
   in another.}
   \label{tab:eval-manual-effort}
-  \begin{tabular}{p{0.45\textwidth}p{0.45\textwidth}}
+  \begin{tabular}{|p{0.45\textwidth}|p{0.45\textwidth}|}
     \hline
     \textbf{QuickFaaS and OmniFlow used separately} & \textbf{Integrated (this work)} \\
     \hline
     Create an OAuth 2.0 client in the console; copy the client ID and secret \emph{(2 carried by
     hand)} & --- (the deployer uses Application Default Credentials, configured once per machine)
     \\
+    \hline
     Run the auxiliary server, complete the OAuth flow, copy the \texttt{access\_token} into the
     descriptor \emph{(1 carried by hand)} & --- \\
+    \hline
     Write \texttt{func-deployment.json} & Write \texttt{func-deployment.json} (same fields, without
     \texttt{accessToken}) \\
+    \hline
     Write the cloud-agnostic function class & Write the cloud-agnostic function class \\
+    \hline
     Run QuickFaaS to deploy the function & --- (the deployment is triggered by the workflow
     deployment, and only if the function is absent) \\
+    \hline
     Grant the function public or invoker access in the console & --- (granted by the deployer) \\
+    \hline
     Read the generated trigger URL from the console or terminal & --- \\
+    \hline
     Write the workflow, pasting that URL as \texttt{host}/\texttt{path} \emph{(1 carried by hand)} &
     Write the workflow, naming the function:
     \texttt{internalFunction("name", "func-deployment.json")} \\
+    \hline
     Run OmniFlow to deploy the workflow & Run OmniFlow to deploy the workflow \\
     \hline
     \textbf{9 steps, 4 values carried by hand} & \textbf{4 steps, 0 values carried by hand} \\
@@ -762,14 +870,17 @@ evaluation for GCP and Azure.
 
 \begin{table}[htbp]
   \centering
+  \small
   \caption{S1 --- Lambda bundle size, AWS agnostic layer vs.\ native implementation.}
   \label{tab:eval-s1}
-  \begin{tabular}{lr}
+  \begin{tabular}{|l|r|}
     \hline
     \textbf{Bundle} & \textbf{Size} \\
     \hline
     AWS agnostic (QuickFaaS hook + \texttt{AwsHttpTemplate} + \texttt{aws-lambda-java-core}) & 14\,552 bytes \\
+    \hline
     AWS native (single \texttt{RequestHandler}, same logic) & 13\,647 bytes \\
+    \hline
     \textbf{Delta (agnostic-layer overhead)} & \textbf{905 bytes} \\
     \hline
   \end{tabular}

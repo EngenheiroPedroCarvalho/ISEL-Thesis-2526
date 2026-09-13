@@ -314,25 +314,39 @@ AWS path that makes it available on AWS.
   \caption{Positioning of the surveyed families against this thesis's dimensions
   (Y = yes, P = partial, -- = no).}
   \label{tab:related-comparison}
-  \begin{tabular}{p{0.36\textwidth}ccccc}
+  \begin{tabular}{|p{0.36\textwidth}|c|c|c|c|c|}
     \hline
     \textbf{Approach} & \textbf{Deploy.} & \textbf{Func.} & \textbf{Workflow} & \textbf{Deploy-time} & \textbf{Provider-} \\
      & \textbf{autom.} & \textbf{portab.} & \textbf{portab.} & \textbf{binding} & \textbf{native} \\
-    \hline
+     \hline
     CloudFormation / AWS SAM~\cite{awsCloudFormation,awsSamStateMachine} & Y & -- & -- & Y & Y \\
+    \hline
     Terraform~\cite{terraform,terraformSfnStateMachine}  & Y & P & -- & Y & Y \\
+    \hline
     Serverless Framework + Step Functions plugin~\cite{serverlessFramework,serverlessStepFunctionsPlugin} & Y & P & -- & Y & Y \\
+    \hline
     Pulumi~\cite{pulumi,pulumiInputsOutputs}             & Y & P & -- & Y & Y \\
+    \hline
     CODE~\cite{ristov2024code}                          & Y & Y & -- & -- & Y \\
+    \hline
     OpenFaaS~\cite{openFaaS}                            & Y & Y & -- & -- & -- \\
+    \hline
     Code transformation~\cite{spillner2017pythonfaas,spillnerDorodko2017javaLambda} & P & P & -- & -- & Y \\
+    \hline
     SEAPORT~\cite{yussupov2020seaport}                  & -- & -- & -- & -- & -- \\
+    \hline
     FaaSFlow~\cite{li2022faasflow}                      & -- & -- & P & -- & -- \\
+    \hline
     Triggerflow~\cite{garciaLopez2020triggerflow}       & -- & -- & Y & -- & -- \\
+    \hline
     Serverless Workflow / Synapse~\cite{serverlessWorkflowSpec,serverlessworkflowSynapse} & -- & -- & Y & -- & -- \\
+    \hline
     Temporal~\cite{temporalPlatform}                    & -- & -- & Y & -- & -- \\
+    \hline
     FaaSr~\cite{park2024faasr}                          & P & P & Y & -- & -- \\
+    \hline
     Serverless Multicloud~\cite{zhao2022supporting}     & -- & Y & P & -- & -- \\
+    \hline
     \textbf{OmniFlow + QuickFaaS (this work)}           & Y & Y\textsuperscript{a} & Y\textsuperscript{a} & Y & Y \\
     \hline
   \end{tabular}
