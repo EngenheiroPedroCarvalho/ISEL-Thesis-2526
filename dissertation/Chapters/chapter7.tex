@@ -214,41 +214,44 @@ registry holds one entry, this experiment says nothing about the cost of reading
 that is the variable the next experiment isolates. The $N{=}10$ point is noise --- its value,
 $16.9 \pm 16.8\,\mu$s, has a confidence interval that reaches almost down to zero.
 
-\begin{table}[htbp]
-  \centering
-  \caption{Resolution cost of a workflow of $N$ calls, all internal vs.\ all external, with
-  $R{=}1$. Both columns include the one registry read the resolver always performs.}
-  \label{tab:eval-t1}
-  \begin{tabular}{|r|r|r|}
-    \hline
-    \textbf{Calls ($N$)} & \textbf{Internal --- resolved ($\mu$s)} & \textbf{External --- not resolved ($\mu$s)} \\
-    \hline
-    1   & 10.1 & 9.8  \\
-    \hline
-    2   & 10.4 & 9.8  \\
-    \hline
-    5   & 11.1 & 9.8  \\
-    \hline
-    10  & 16.9 & 9.8  \\
-    \hline
-    20  & 14.5 & 9.8  \\
-    \hline
-    50  & 21.3 & 10.0 \\
-    \hline
-    100 & 32.2 & 10.3 \\
-    \hline
-    200 & 54.9 & 10.9 \\
-    \hline
-  \end{tabular}
-\end{table}
-
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T1_resolution_overhead.png}
-  \caption{T1 --- resolution time of a workflow of $N$ calls, all internal against all external,
+  {\captionsetup{textfont=sf}\captionof{table}{T1 --- resolution time ($\mu$s) of a workflow of $N$ calls, all internal vs.\ all
+  external, with $R{=}1$. Both columns include the one registry read the resolver always performs.}
+  \label{tab:eval-t1}}
+  \begin{minipage}[c]{0.31\textwidth}
+    \centering
+    \small
+    \begin{tabular}{|r|r|r|}
+      \hline
+      \textbf{$N$} & \textbf{Internal} & \textbf{External} \\
+      \hline
+      1   & 10.1 & 9.8  \\
+      \hline
+      2   & 10.4 & 9.8  \\
+      \hline
+      5   & 11.1 & 9.8  \\
+      \hline
+      10  & 16.9 & 9.8  \\
+      \hline
+      20  & 14.5 & 9.8  \\
+      \hline
+      50  & 21.3 & 10.0 \\
+      \hline
+      100 & 32.2 & 10.3 \\
+      \hline
+      200 & 54.9 & 10.9 \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.66\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/benchmarks/T1_resolution_overhead.png}
+  \end{minipage}
+  {\captionof{figure}{T1 --- resolution time of a workflow of $N$ calls, all internal against all external,
   with $R{=}1$. Both lines start from the one registry read the resolver always performs; only the
   internal line then grows with $N$. The error bar at $N{=}10$ reaches almost down to zero.}
-  \label{fig:eval-t1}
+  \label{fig:eval-t1}}
 \end{figure}
 
 \paragraph{Effect of registry size (T2).}
@@ -267,41 +270,41 @@ functions of a realistic system therefore sits around or below that crossover, w
 rules, which is what makes reading it once per workflow --- rather than once per call --- the
 change worth making.
 
-\begin{table}[htbp]
-  \centering
-  \caption{T2 --- per-call resolution cost as a function of registry size $R$, with the registry
-  re-read on every internal call: total time divided by $N$, averaged over $N \in \{1, 10, 50,
-  200\}$.}
-  \label{tab:eval-t2}
-  \begin{tabular}{|r|r|}
-    \hline
-    \textbf{Registry size ($R$)} & \textbf{Cost per call ($\mu$s)} \\
-    \hline
-    1    & 10.5  \\
-    \hline
-    10   & 11.9  \\
-    \hline
-    50   & 18.3  \\
-    \hline
-    200  & 44.5  \\
-    \hline
-    1000 & 183.4 \\
-    \hline
-  \end{tabular}
-\end{table}
-
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T2_registry_scaling.png}
-  \caption{Per-call resolution cost as a function of registry size $R$, for $N \in \{1, 10, 50,
-  200\}$ internal calls; the external-call control does not read the registry.}
-  \label{fig:eval-t2}
+  {\captionsetup{textfont=sf}\captionof{table}{T2 --- per-call resolution cost as a function of registry size $R$, with the registry
+  re-read on every internal call: total time divided by $N$, averaged over $N \in \{1, 10, 50,
+  200\}$.}
+  \label{tab:eval-t2}}
+  \begin{minipage}[c]{0.31\textwidth}
+    \centering
+    \small
+    \begin{tabular}{|r|r|}
+      \hline
+      \textbf{$R$} & \textbf{Per call ($\mu$s)} \\
+      \hline
+      1    & 10.5  \\
+      \hline
+      10   & 11.9  \\
+      \hline
+      50   & 18.3  \\
+      \hline
+      200  & 44.5  \\
+      \hline
+      1000 & 183.4 \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.66\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/benchmarks/T2_registry_scaling.png}
+  \end{minipage}
+  {\captionof{figure}{T2 --- per-call resolution cost as a function of registry size $R$, for $N \in \{1, 10,
+  50, 200\}$ internal calls; the external-call control does not read the registry.}
+  \label{fig:eval-t2}}
 \end{figure}
 
-
-
-
-\paragraph{The single-read optimization (T3--T5).}
+\paragraph{The single-read optimization (T3).}
 Reading the registry once per workflow into an in-memory snapshot and resolving against it
 eliminates that call-times-registry-size product: the cost no longer multiplies the two factors
 together, becoming instead one read proportional to the registry size plus a cheap constant-time
@@ -314,10 +317,12 @@ therefore grows with the product $N \cdot R$, reaching $200\times$ in the worst 
 ($N{=}200$, $R{=}1000$: $36.7$\,ms down to $0.18$\,ms). Experiments T4 and T5 confirm the same
 trend on real \texttt{Workflow} objects rather than the isolated store primitive.
 
-\begin{table}[htbp]
+\begin{figure}[htbp]
   \centering
-  \caption{T3 --- total resolution time, naive (per-call read) vs.\ optimized (single read).}
-  \label{tab:eval-t3}
+  {\captionsetup{textfont=sf}\captionof{table}{T3 --- total resolution time ($\mu$s), naive (per-call read) vs.\ optimized (single
+  read).}
+  \label{tab:eval-t3}}
+  \small
   \begin{tabular}{|l|r|r|r|r|}
     \hline
      & $N{=}1$ & $N{=}10$ & $N{=}50$ & $N{=}200$ \\
@@ -335,16 +340,14 @@ trend on real \texttt{Workflow} objects rather than the isolated store primitive
     optimized, $R{=}1000$ & 182  & 183      & 182      & 184       \\
     \hline
   \end{tabular}
-\end{table}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.75\textwidth]{images/benchmarks/T3a_resolution_sem_cache.png}\\[2mm]
-  \includegraphics[width=0.75\textwidth]{images/benchmarks/T3b_resolution_com_cache.png}
-  \caption{T3 --- reading the registry once per call (top) against reading it once per resolution
+  \vspace{4mm}
+  \includegraphics[width=0.62\textwidth]{images/benchmarks/T3a_resolution_sem_cache.png}\\[2mm]
+  \includegraphics[width=0.62\textwidth]{images/benchmarks/T3b_resolution_com_cache.png}
+  {\captionof{figure}{T3 --- reading the registry once per call (top) against reading it once per resolution
   (bottom), on a shared logarithmic axis. Per call, the cost grows with both $N$ and $R$; with the
   single read, every curve is flat in $N$ and set only by $R$.}
-  \label{fig:eval-t3}
+  \label{fig:eval-t3}}
 \end{figure}
 
 \paragraph{Confirming the optimization on real workflows (T4).}
@@ -360,100 +363,106 @@ $54.7\,\mu$s as $N$ goes from 1 to 200, where the naive path goes from $10.4$ to
 The speedup is therefore $1\times$ at $N{=}1$, where both paths read the file exactly once, and
 climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
 
-\begin{table}[htbp]
-  \centering
-  \caption{T4 --- naive resolution time ($\mu$s) of a real workflow, $F$ distinct functions vs.\
-  $N$ calls, $R{=}F$.}
-  \label{tab:eval-t4-naive}
-  \begin{tabular}{|r|r|r|r|r|r|}
-    \hline
-    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
-    \hline
-    1  & 10.4 & 52.3 & 105 & 525 & 2\,069 \\
-    \hline
-    2  & 10.8 & 53.0 & 106 & 534 & 2\,142 \\
-    \hline
-    5  & 11.1 & 53.9 & 108 & 543 & 2\,150 \\
-    \hline
-    10 & 11.6 & 58.5 & 116 & 582 & 2\,333 \\
-    \hline
-    20 & 13.3 & 66.6 & 133 & 665 & 2\,650 \\
-    \hline
-    50 & 18.7 & 92.5 & 185 & 929 & 3\,694 \\
-    \hline
-  \end{tabular}
-\end{table}
-
-\begin{table}[htbp]
-  \centering
-  \caption{T4 --- optimized (single-read) resolution time ($\mu$s) of a real workflow, same grid
-  as Table~\ref{tab:eval-t4-naive}.}
-  \label{tab:eval-t4-optimized}
-  \begin{tabular}{|r|r|r|r|r|r|}
-    \hline
-    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
-    \hline
-    1  & 10.2 & 11.1 & 12.2 & 20.7 & 54.7 \\
-    \hline
-    2  & 10.4 & 11.2 & 12.2 & 21.1 & 54.1 \\
-    \hline
-    5  & 10.7 & 11.6 & 12.7 & 21.5 & 54.1 \\
-    \hline
-    10 & 11.5 & 12.7 & 13.8 & 22.5 & 55.8 \\
-    \hline
-    20 & 13.4 & 14.2 & 15.2 & 24.0 & 57.9 \\
-    \hline
-    50 & 18.5 & 19.4 & 20.8 & 29.4 & 63.3 \\
-    \hline
-  \end{tabular}
-\end{table}
-
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.75\textwidth]{images/benchmarks/T4a_resolution_sem_cache.png}\\[2mm]
-  \includegraphics[width=0.75\textwidth]{images/benchmarks/T4b_resolution_com_cache.png}
-  \caption{T4 --- resolution of a real \texttt{Workflow} object, naive (top) against optimized
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    {\captionsetup{textfont=sf}\captionof{table}{T4 --- naive resolution time ($\mu$s) of a real workflow, $F$ distinct functions vs.\
+    $N$ calls, $R{=}F$.}
+    \label{tab:eval-t4-naive}}
+    \small
+    \begin{tabular}{|r|r|r|r|r|r|}
+      \hline
+      $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+      \hline
+      1  & 10.4 & 52.3 & 105 & 525 & 2\,069 \\
+      \hline
+      2  & 10.8 & 53.0 & 106 & 534 & 2\,142 \\
+      \hline
+      5  & 11.1 & 53.9 & 108 & 543 & 2\,150 \\
+      \hline
+      10 & 11.6 & 58.5 & 116 & 582 & 2\,333 \\
+      \hline
+      20 & 13.3 & 66.6 & 133 & 665 & 2\,650 \\
+      \hline
+      50 & 18.7 & 92.5 & 185 & 929 & 3\,694 \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.48\textwidth}
+    \centering
+    {\captionsetup{textfont=sf}\captionof{table}{T4 --- optimized (single-read) resolution time ($\mu$s) of a real workflow, same grid
+    as Table~\ref{tab:eval-t4-naive}.}
+    \label{tab:eval-t4-optimized}}
+    \small
+    \begin{tabular}{|r|r|r|r|r|r|}
+      \hline
+      $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+      \hline
+      1  & 10.2 & 11.1 & 12.2 & 20.7 & 54.7 \\
+      \hline
+      2  & 10.4 & 11.2 & 12.2 & 21.1 & 54.1 \\
+      \hline
+      5  & 10.7 & 11.6 & 12.7 & 21.5 & 54.1 \\
+      \hline
+      10 & 11.5 & 12.7 & 13.8 & 22.5 & 55.8 \\
+      \hline
+      20 & 13.4 & 14.2 & 15.2 & 24.0 & 57.9 \\
+      \hline
+      50 & 18.5 & 19.4 & 20.8 & 29.4 & 63.3 \\
+      \hline
+    \end{tabular}
+  \end{minipage}
+
+  \vspace{4mm}
+  \includegraphics[width=0.62\textwidth]{images/benchmarks/T4a_resolution_sem_cache.png}\\[2mm]
+  \includegraphics[width=0.62\textwidth]{images/benchmarks/T4b_resolution_com_cache.png}
+  {\captionof{figure}{T4 --- resolution of a real \texttt{Workflow} object, naive (top) against optimized
   (bottom), on a shared logarithmic axis, one curve per number of distinct functions $F$ and
   $R{=}F$. The naive path is ordered by $N$, the optimized path by $F$.}
-  \label{fig:eval-t4}
+  \label{fig:eval-t4}}
 \end{figure}
 
+\paragraph{Registry size on a realistic workflow (T5).}
 On a realistic workflow ($F{=}10$, $N{=}50$ fixed), T5 isolates the effect of the registry size.
 Both paths grow with $R$, but for different reasons: the naive path re-reads the file on each of
 the 50 calls, the optimized path reads it once, so the gap widens from $26\times$ at $R{=}10$ to
-$46\times$ at $R{=}1000$ (Table~\ref{tab:eval-t5} and Figure~\ref{fig:eval-t5}). The optimized column is the cost of one read
-plus 50 lookups, and tracks the per-read cost measured in T2.
-
-\begin{table}[htbp]
-  \centering
-  \caption{T5 --- resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
-  \label{tab:eval-t5}
-  \begin{tabular}{|r|r|r|r|}
-    \hline
-    \textbf{$R$} & \textbf{naive} & \textbf{optimized} & \textbf{speedup} \\
-    \hline
-    10   & 589     & 22.6 & 26.1 \\
-    \hline
-    20   & 666     & 23.9 & 27.9 \\
-    \hline
-    50   & 930     & 29.3 & 31.8 \\
-    \hline
-    100  & 1\,378  & 37.8 & 36.5 \\
-    \hline
-    200  & 2\,246  & 54.9 & 40.9 \\
-    \hline
-    1000 & 9\,487  & 205  & 46.3 \\
-    \hline
-  \end{tabular}
-\end{table}
+$46\times$ at $R{=}1000$ (Table~\ref{tab:eval-t5} and Figure~\ref{fig:eval-t5}). The optimized
+column is the cost of one read plus 50 lookups, and tracks the per-read cost measured in T2.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T5_resolution_by_registry.png}
-  \caption{T5 --- resolution time against registry size $R$ with $F{=}10$/$N{=}50$ fixed,
+  {\captionsetup{textfont=sf}\captionof{table}{T5 --- resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
+  \label{tab:eval-t5}}
+  \begin{minipage}[c]{0.31\textwidth}
+    \centering
+    \small
+    \begin{tabular}{|r|r|r|r|}
+      \hline
+      \textbf{$R$} & \textbf{naive} & \textbf{opt.} & \textbf{speedup} \\
+      \hline
+      10   & 589     & 22.6 & 26.1 \\
+      \hline
+      20   & 666     & 23.9 & 27.9 \\
+      \hline
+      50   & 930     & 29.3 & 31.8 \\
+      \hline
+      100  & 1\,378  & 37.8 & 36.5 \\
+      \hline
+      200  & 2\,246  & 54.9 & 40.9 \\
+      \hline
+      1000 & 9\,487  & 205  & 46.3 \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.66\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/benchmarks/T5_resolution_by_registry.png}
+  \end{minipage}
+  {\captionof{figure}{T5 --- resolution time against registry size $R$ with $F{=}10$/$N{=}50$ fixed,
   per-call read against single read (logarithmic vertical axis). Both paths grow with $R$, and the
   gap between them widens with it.}
-  \label{fig:eval-t5}
+  \label{fig:eval-t5}}
 \end{figure}
 
 \section{Real Auto-Deploy Resolvers and Write Path}
@@ -492,12 +501,13 @@ resolved URL with \texttt{java.net.URI} and rebuilds host and path from it, once
 reference resolver of T1 and T4 does that same parsing and sits between the two, at
 $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
 
-\begin{table}[htbp]
+\begin{figure}[htbp]
   \centering
-  \caption{T6 --- AWS provider: resolution time ($\mu$s) of the real resolver
+  {\captionsetup{textfont=sf}\captionof{table}{T6 --- AWS provider: resolution time ($\mu$s) of the real resolver
   (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with the
   single-read optimization and without per-call console output.}
-  \label{tab:eval-t6}
+  \label{tab:eval-t6}}
+  \small
   \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
@@ -515,24 +525,23 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
     50 & 20.0 & 20.3 & 20.3 & 26.6 & 47.5 \\
     \hline
   \end{tabular}
-\end{table}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T6_aws_internal_resolution.png}
-  \caption{T6 --- AWS provider: resolution time of
+  \vspace{4mm}
+  \includegraphics[width=0.7\textwidth]{images/benchmarks/T6_aws_internal_resolution.png}
+  {\captionof{figure}{T6 --- AWS provider: resolution time of
   \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} against the number of
   internal calls $N$, one curve per number of distinct functions $F$, with $R{=}F$ (logarithmic
   vertical axis).}
-  \label{fig:eval-t6}
+  \label{fig:eval-t6}}
 \end{figure}
 
-\begin{table}[htbp]
+\begin{figure}[htbp]
   \centering
-  \caption{T7 --- GCP provider: resolution time ($\mu$s) of the real resolver
+  {\captionsetup{textfont=sf}\captionof{table}{T7 --- GCP provider: resolution time ($\mu$s) of the real resolver
   (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with
   the single-read optimization and without per-call console output.}
-  \label{tab:eval-t7}
+  \label{tab:eval-t7}}
+  \small
   \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
@@ -550,17 +559,15 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
     50 & 19.9 & 20.9 & 22.8 & 36.8 & 91.3 \\
     \hline
   \end{tabular}
-\end{table}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T7_google_internal_resolution.png}
-  \caption{T7 --- GCP provider: resolution time of
+  \vspace{4mm}
+  \includegraphics[width=0.7\textwidth]{images/benchmarks/T7_google_internal_resolution.png}
+  {\captionof{figure}{T7 --- GCP provider: resolution time of
   \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} against the number
   of internal calls $N$, one curve per number of distinct functions $F$, with $R{=}F$ (logarithmic
   vertical axis). The curves rise more steeply in $N$ than T6's because this resolver parses the
   resolved URL once per call.}
-  \label{fig:eval-t7}
+  \label{fig:eval-t7}}
 \end{figure}
 
 \paragraph{Registry write path (T8, T9).}
@@ -586,11 +593,12 @@ $874\,\mu$s) says it is noise rather than an effect. In absolute terms both tabl
 microseconds per write and reach tens of milliseconds only for $K{=}100$ successive writes into a
 thousand-entry registry.
 
-\begin{table}[htbp]
+\begin{figure}[htbp]
   \centering
-  \caption{T8 --- total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
+  {\captionsetup{textfont=sf}\captionof{table}{T8 --- total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
   size $R_0$.}
-  \label{tab:eval-t8}
+  \label{tab:eval-t8}}
+  \small
   \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
@@ -606,22 +614,21 @@ thousand-entry registry.
     100 & 5\,914   & 6\,693   & 7\,594   & 11\,515   & 36\,195   \\
     \hline
   \end{tabular}
-\end{table}
+
+  \vspace{4mm}
+  \includegraphics[width=0.7\textwidth]{images/benchmarks/T8_registry_write_scaling.png}
+  {\captionof{figure}{T8 --- total time of $K$ successive \texttt{put} calls, one curve per initial registry
+  size $R_0$ (both axes logarithmic). The curves are parallel straight lines of slope one: the
+  total is linear in $K$, and $R_0$ only shifts it.}
+  \label{fig:eval-t8}}
+\end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T8_registry_write_scaling.png}
-  \caption{T8 --- total time of $K$ successive \texttt{put} calls, one curve per initial registry
-  size $R_0$ (both axes logarithmic). The curves are parallel straight lines of slope one: the
-  total is linear in $K$, and $R_0$ only shifts it.}
-  \label{fig:eval-t8}
-\end{figure}
-
-\begin{table}[htbp]
-  \centering
-  \caption{T9 --- total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
+  {\captionsetup{textfont=sf}\captionof{table}{T9 --- total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
   registry size $R_0$.}
-  \label{tab:eval-t9}
+  \label{tab:eval-t9}}
+  \small
   \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
@@ -637,15 +644,13 @@ thousand-entry registry.
     100 & 8\,369   & 8\,307   & 10\,516  & 17\,689   & 58\,572   \\
     \hline
   \end{tabular}
-\end{table}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T9_registry_miss_and_deploy.png}
-  \caption{T9 --- total time of $K$ successive miss+\texttt{put} pairs, one curve per initial
+  \vspace{4mm}
+  \includegraphics[width=0.7\textwidth]{images/benchmarks/T9_registry_miss_and_deploy.png}
+  {\captionof{figure}{T9 --- total time of $K$ successive miss+\texttt{put} pairs, one curve per initial
   registry size $R_0$ (both axes logarithmic). The shape matches T8, raised by the extra full read
   that \texttt{tryResolveEntry} performs before each write.}
-  \label{fig:eval-t9}
+  \label{fig:eval-t9}}
 \end{figure}
 
 \section{Match Strategy, Mixed Workflows, and Structure}
@@ -658,36 +663,39 @@ to exact match grows steadily from $1.28\times$ at $R{=}10$ to $1.95\times$ at $
 stays cheap in absolute terms --- $391\,\mu$s for fifty suffix lookups over a thousand-entry
 registry (Table~\ref{tab:eval-t10} and Figure~\ref{fig:eval-t10}).
 
-\begin{table}[htbp]
-  \centering
-  \caption{T10 --- exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
-  \label{tab:eval-t10}
-  \begin{tabular}{|r|r|r|r|}
-    \hline
-    \textbf{$R$} & \textbf{exact} & \textbf{suffix} & \textbf{ratio} \\
-    \hline
-    10   & 22.5 & 28.8 & 1.28 \\
-    \hline
-    20   & 24.2 & 32.6 & 1.35 \\
-    \hline
-    50   & 29.2 & 40.2 & 1.38 \\
-    \hline
-    100  & 38.2 & 58.9 & 1.54 \\
-    \hline
-    200  & 55.0 & 92.6 & 1.68 \\
-    \hline
-    1000 & 201  & 391  & 1.95 \\
-    \hline
-  \end{tabular}
-\end{table}
-
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T10_resolution_key_match_strategy.png}
-  \caption{T10 --- exact against suffix match in the single-read resolver, $F{=}10$/$N{=}50$
+  {\captionsetup{textfont=sf}\captionof{table}{T10 --- exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
+  \label{tab:eval-t10}}
+  \begin{minipage}[c]{0.31\textwidth}
+    \centering
+    \small
+    \begin{tabular}{|r|r|r|r|}
+      \hline
+      \textbf{$R$} & \textbf{exact} & \textbf{suffix} & \textbf{ratio} \\
+      \hline
+      10   & 22.5 & 28.8 & 1.28 \\
+      \hline
+      20   & 24.2 & 32.6 & 1.35 \\
+      \hline
+      50   & 29.2 & 40.2 & 1.38 \\
+      \hline
+      100  & 38.2 & 58.9 & 1.54 \\
+      \hline
+      200  & 55.0 & 92.6 & 1.68 \\
+      \hline
+      1000 & 201  & 391  & 1.95 \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.66\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/benchmarks/T10_resolution_key_match_strategy.png}
+  \end{minipage}
+  {\captionof{figure}{T10 --- exact against suffix match in the single-read resolver, $F{=}10$/$N{=}50$
   fixed (logarithmic vertical axis). Both grow with $R$ because of the read; the suffix path adds
   a scan of the loaded map on top of it.}
-  \label{fig:eval-t10}
+  \label{fig:eval-t10}}
 \end{figure}
 
 \paragraph{Mixed internal/external workflows (T11, T12).}
@@ -700,11 +708,12 @@ registry-size effect proved in T5 is unchanged when a fraction of the calls are 
 $I{=}40$ internal calls the cost still tracks the one read, from $20\,\mu$s at $R{=}10$ to
 $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12}).
 
-\begin{table}[htbp]
+\begin{figure}[htbp]
   \centering
-  \caption{T11 --- resolution time ($\mu$s) of a mixed workflow, $R{=}F{=}10$ fixed;
+  {\captionsetup{textfont=sf}\captionof{table}{T11 --- resolution time ($\mu$s) of a mixed workflow, $R{=}F{=}10$ fixed;
   $I$ internal vs.\ $E$ external calls.}
-  \label{tab:eval-t11}
+  \label{tab:eval-t11}}
+  \small
   \begin{tabular}{|r|r|r|r|r|r|r|}
     \hline
     $I\backslash E$ & 0 & 1 & 5 & 10 & 50 & 200 \\
@@ -722,48 +731,49 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12
     200 & 55.8 & 55.9 & 56.2 & 67.1 & 57.4 & 56.8 \\
     \hline
   \end{tabular}
-\end{table}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T11_resolution_internal_external_mix.png}
-  \caption{T11 --- resolution time of a mixed workflow with $R{=}F{=}10$ fixed, one curve per
+  \vspace{4mm}
+  \includegraphics[width=0.7\textwidth]{images/benchmarks/T11_resolution_internal_external_mix.png}
+  {\captionof{figure}{T11 --- resolution time of a mixed workflow with $R{=}F{=}10$ fixed, one curve per
   number of internal calls $I$. Each curve is flat in the number of external calls $E$, and the
   curves separate by $I$ alone.}
-  \label{fig:eval-t11}
+  \label{fig:eval-t11}}
 \end{figure}
-
-\begin{table}[htbp]
-  \centering
-  \caption{T12 --- resolution time ($\mu$s) vs.\ registry size $R$, mixed workflow with
-  $I{=}40$/$E{=}10$/$F{=}10$ fixed.}
-  \label{tab:eval-t12}
-  \begin{tabular}{|r|r|}
-    \hline
-    \textbf{$R$} & \textbf{Time ($\mu$s)} \\
-    \hline
-    10   & 20.4 \\
-    \hline
-    20   & 22.2 \\
-    \hline
-    50   & 27.3 \\
-    \hline
-    100  & 36.2 \\
-    \hline
-    200  & 53.7 \\
-    \hline
-    1000 & 199  \\
-    \hline
-  \end{tabular}
-\end{table}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T12_resolution_by_registry_mixed.png}
-  \caption{T12 --- resolution time against registry size $R$ for a mixed workflow with
+  {\captionsetup{textfont=sf}\captionof{table}{T12 --- resolution time ($\mu$s) vs.\ registry size $R$, mixed workflow with
+  $I{=}40$/$E{=}10$/$F{=}10$ fixed.}
+  \label{tab:eval-t12}}
+  \begin{minipage}[c]{0.31\textwidth}
+    \centering
+    \small
+    \begin{tabular}{|r|r|}
+      \hline
+      \textbf{$R$} & \textbf{Time ($\mu$s)} \\
+      \hline
+      10   & 20.4 \\
+      \hline
+      20   & 22.2 \\
+      \hline
+      50   & 27.3 \\
+      \hline
+      100  & 36.2 \\
+      \hline
+      200  & 53.7 \\
+      \hline
+      1000 & 199  \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.66\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/benchmarks/T12_resolution_by_registry_mixed.png}
+  \end{minipage}
+  {\captionof{figure}{T12 --- resolution time against registry size $R$ for a mixed workflow with
   $I{=}40$/$E{=}10$/$F{=}10$ fixed. The curve is the cost of the one read, unaffected by the
   external calls.}
-  \label{fig:eval-t12}
+  \label{fig:eval-t12}}
 \end{figure}
 
 \paragraph{Workflow shape (T13, T14).}
@@ -777,73 +787,81 @@ and~\ref{fig:eval-t14}). Although the resolver recurses explicitly into
 \texttt{Iteration} and \texttt{Parallel} contexts, the shape of the tree is irrelevant: only the
 count of internal calls matters.
 
-\begin{table}[htbp]
-  \centering
-  \caption{T13 --- resolution time ($\mu$s) vs.\ nesting depth, 20 internal calls fixed,
-  $R{=}F{=}10$.}
-  \label{tab:eval-t13}
-  \begin{tabular}{|r|r|}
-    \hline
-    \textbf{Depth} & \textbf{Time ($\mu$s)} \\
-    \hline
-    0 & 15.9 \\
-    \hline
-    1 & 15.8 \\
-    \hline
-    2 & 69.0 \\
-    \hline
-    3 & 19.2 \\
-    \hline
-    4 & 17.1 \\
-    \hline
-    5 & 15.9 \\
-    \hline
-  \end{tabular}
-\end{table}
-
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T13_internal_resolution_by_nesting.png}
-  \caption{T13 --- resolution time against nesting depth with 20 internal calls and $R{=}F{=}10$
+  {\captionsetup{textfont=sf}\captionof{table}{T13 --- resolution time ($\mu$s) vs.\ nesting depth, 20 internal calls fixed,
+  $R{=}F{=}10$.}
+  \label{tab:eval-t13}}
+  \begin{minipage}[c]{0.31\textwidth}
+    \centering
+    \small
+    \begin{tabular}{|r|r|}
+      \hline
+      \textbf{Depth} & \textbf{Time ($\mu$s)} \\
+      \hline
+      0 & 15.9 \\
+      \hline
+      1 & 15.8 \\
+      \hline
+      2 & 69.0 \\
+      \hline
+      3 & 19.2 \\
+      \hline
+      4 & 17.1 \\
+      \hline
+      5 & 15.9 \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.66\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/benchmarks/T13_internal_resolution_by_nesting.png}
+  \end{minipage}
+  {\captionof{figure}{T13 --- resolution time against nesting depth with 20 internal calls and $R{=}F{=}10$
   fixed (logarithmic vertical axis). The depth-2 spike carries a confidence interval that covers
   the rest of the curve.}
-  \label{fig:eval-t13}
+  \label{fig:eval-t13}}
 \end{figure}
-
-\begin{table}[htbp]
-  \centering
-  \caption{T14 --- resolution time ($\mu$s) vs.\ \texttt{Parallel} branch width,
-  $N = 5\times$ width, $R{=}F{=}10$.}
-  \label{tab:eval-t14}
-  \begin{tabular}{|r|r|r|}
-    \hline
-    \textbf{Branches} & \textbf{$N$} & \textbf{Time ($\mu$s)} \\
-    \hline
-    1   & 5   & 12.5 \\
-    \hline
-    2   & 10  & 13.7 \\
-    \hline
-    5   & 25  & 17.0 \\
-    \hline
-    10  & 50  & 22.4 \\
-    \hline
-    20  & 100 & 33.2 \\
-    \hline
-    50  & 250 & 65.2 \\
-    \hline
-    100 & 500 & 119  \\
-    \hline
-  \end{tabular}
-\end{table}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\textwidth]{images/benchmarks/T14_internal_resolution_by_branch_width.png}
-  \caption{T14 --- resolution time against \texttt{Parallel} branch width, five internal calls per
+  {\captionsetup{textfont=sf}\captionof{table}{T14 --- resolution time ($\mu$s) vs.\ \texttt{Parallel} branch width,
+  $N = 5\times$ width, $R{=}F{=}10$.}
+  \label{tab:eval-t14}}
+  \begin{minipage}[c]{0.31\textwidth}
+    \centering
+    \small
+    \begin{tabular}{|r|r|r|}
+      \hline
+      \textbf{Branches} & \textbf{$N$} & \textbf{Time ($\mu$s)} \\
+      \hline
+      1   & 5   & 12.5 \\
+      \hline
+      2   & 10  & 13.7 \\
+      \hline
+      5   & 25  & 17.0 \\
+      \hline
+      10  & 50  & 22.4 \\
+      \hline
+      20  & 100 & 33.2 \\
+      \hline
+      50  & 250 & 65.2 \\
+      \hline
+      100 & 500 & 119  \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.66\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/benchmarks/T14_internal_resolution_by_branch_width.png}
+  \end{minipage}
+  {\captionof{figure}{T14 --- resolution time against \texttt{Parallel} branch width, five internal calls per
   branch and $R{=}F{=}10$ fixed (logarithmic vertical axis). The time follows the total number of
   leaf calls $N = 5\times\text{width}$, not the shape of the tree.}
-  \label{fig:eval-t14}
+  \label{fig:eval-t14}}
 \end{figure}
+
+\FloatBlock
 
 \section{Provider API Calls per Resolution}
 \label{sec:eval-api-calls}
