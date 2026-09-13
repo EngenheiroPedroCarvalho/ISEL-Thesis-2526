@@ -202,14 +202,17 @@ that needs no resolution. It runs the single-read reference resolver over a work
 against a one-entry registry ($R{=}1$), once with every call internal and once with every call
 external. Both variants pay one registry read, because the resolver reads the file before walking
 the tree whether or not anything needs resolving; that read is what the $N{=}1$ figures measure,
-about $9.8\,\mu$s (Table~\ref{tab:eval-t1} and Figure~\ref{fig:eval-t1}). What separates the two columns is the per-call work.
+about $9.8\,\mu$s (Table~\ref{tab:eval-t1} and Figure~\ref{fig:eval-t1}). The production deployers
+do not pay it for a workflow without internal calls, because they skip resolution altogether; the
+external column is therefore the baseline of the resolver, not the cost of deploying such a
+workflow. What separates the two columns is the per-call work.
 The internal path adds a lookup in the in-memory snapshot, the split of the resolved URL into host
 and path, and the rebuilding of the call node, which together cost about $0.22\,\mu$s per call,
-against about $0.006\,\mu$s for an external call, which is copied unchanged. Resolving a 200-call
+against about $0.006\,\mu$s for an external call, whose node is left unchanged. Resolving a 200-call
 workflow therefore costs $54.9\,\mu$s, of which the single read is roughly a fifth. Because the
 registry holds one entry, this experiment says nothing about the cost of reading a larger file;
-that is the variable the next experiment isolates. The $N{=}10$ point is noise --- its confidence
-interval, $\pm16.8\,\mu$s, is wider than the value itself.
+that is the variable the next experiment isolates. The $N{=}10$ point is noise --- its value,
+$16.9 \pm 16.8\,\mu$s, has a confidence interval that reaches almost down to zero.
 
 \begin{table}[htbp]
   \centering
@@ -244,7 +247,7 @@ interval, $\pm16.8\,\mu$s, is wider than the value itself.
   \includegraphics[width=0.8\textwidth]{images/benchmarks/T1_resolution_overhead.png}
   \caption{T1 --- resolution time of a workflow of $N$ calls, all internal against all external,
   with $R{=}1$. Both lines start from the one registry read the resolver always performs; only the
-  internal line then grows with $N$. The error bar at $N{=}10$ is wider than the value itself.}
+  internal line then grows with $N$. The error bar at $N{=}10$ reaches almost down to zero.}
   \label{fig:eval-t1}
 \end{figure}
 

@@ -352,7 +352,8 @@ object WorkflowGenerator {
     /**
      * T1 helper. Builds a workflow whose calls are ALL external (literal
      * host/path, no internalFunction()). The endpoint resolver leaves these
-     * untouched, so this is the baseline (no registry access at all).
+     * untouched, so this is the baseline (the resolver still reads the
+     * registry once, but never looks a call up in it).
      */
     @JvmStatic
     fun withExternalCalls(stepsNumber: Int): Workflow {
