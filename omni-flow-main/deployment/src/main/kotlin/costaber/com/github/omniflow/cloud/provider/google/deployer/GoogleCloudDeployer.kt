@@ -40,22 +40,28 @@ class GoogleCloudDeployer internal constructor(
     override fun deploy(workflow: Workflow, deployContext: GoogleDeployContext) {
         logger.info {"Starting to convert Workflow into a Workflow" }
 
-        println("$CYAN$BOLD[DEPLOY]$RESET Checking if function-registry exists at '$registryPath'...")
-        bootstrapFunctionRegisterIfMissing(deployContext.projectId)
-
         val internalCount = countInternalFunctions(workflow)
-        println("$CYAN$BOLD[DEPLOY]$RESET Detected $BOLD$internalCount$RESET internal function(s) in workflow definition")
-        println("$CYAN$BOLD[DEPLOY]$RESET Resolving internal functions (registry lookup → Cloud Run discovery → QuickFaaS deploy)...")
 
-        val resolvedWorkflow = WorkflowInternalFunctionResolver(
-            projectId = deployContext.projectId,
-            preferredRegion = deployContext.zone,
-            registry = FunctionRegistryStore(registryPath),
-            inspector = CloudRunV2ServiceInspector(),
-            internalFunctionDeployer = internalFunctionDeployer
-        ).resolve(workflow)
+        val resolvedWorkflow = if (internalCount > 0) {
+            println("$CYAN$BOLD[DEPLOY]$RESET Checking if function-registry exists at '$registryPath'...")
+            bootstrapFunctionRegisterIfMissing(deployContext.projectId)
 
-        println("$GREEN  ✓$RESET All internal functions resolved to live URLs")
+            println("$CYAN$BOLD[DEPLOY]$RESET Detected $BOLD$internalCount$RESET internal function(s) in workflow definition")
+            println("$CYAN$BOLD[DEPLOY]$RESET Resolving internal functions (registry lookup → Cloud Run discovery → QuickFaaS deploy)...")
+
+            WorkflowInternalFunctionResolver(
+                projectId = deployContext.projectId,
+                preferredRegion = deployContext.zone,
+                registry = FunctionRegistryStore(registryPath),
+                inspector = CloudRunV2ServiceInspector(),
+                internalFunctionDeployer = internalFunctionDeployer
+            ).resolve(workflow).also {
+                println("$GREEN  ✓$RESET All internal functions resolved to live URLs")
+            }
+        } else {
+            workflow
+        }
+
         println("$CYAN$BOLD[DEPLOY]$RESET Rendering workflow DSL to Google Workflows YAML...")
 
         val renderingContext = GoogleRenderingContext(termContext = GoogleTermContext())

@@ -59,9 +59,10 @@ Each provider has its own registry, stored as a JSON file (\texttt{function-regi
 The registry management layer provides the following behavior:
 
 \begin{itemize}
-    \item \textbf{Bootstrap by discovery:} if the registry file does not exist, it is created
-    automatically by listing the functions already deployed on the target provider --- Cloud Run
-    services on GCP, Lambda functions on AWS --- and writing one entry per discovered function; on
+    \item \textbf{Bootstrap by discovery:} if the registry file does not exist when a workflow with
+    internal calls is deployed, it is created automatically by listing the functions already
+    deployed on the target provider --- Cloud Run services on GCP, Lambda functions on AWS --- and
+    writing one entry per discovered function; on
     AWS this scans every region enabled for the account and, mirroring the GCP catalog, promotes a
     function name seen in more than one region from a bare key to a \texttt{"region/name"} key for
     each occurrence.

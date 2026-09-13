@@ -890,9 +890,9 @@ Table~\ref{tab:eval-api-calls} gives the count for each path through the cascade
 Two requests fall outside the per-call count. The candidate-region list costs one EC2
 \texttt{DescribeRegions} on AWS, and one Cloud Run \texttt{locations.list} request per response
 page on GCP; it is fetched lazily, so a deployment whose calls all resolve at Level~1 never pays
-it. The registry bootstrap, which runs only when the registry file is absent, costs that same
-region list plus one catalog request per region and per response page --- \texttt{ListFunctions} on
-AWS, \texttt{services.list} on GCP.
+it. The registry bootstrap, which runs only when the registry file is absent and the workflow has
+internal calls, costs that same region list plus one catalog request per region and per response
+page --- \texttt{ListFunctions} on AWS, \texttt{services.list} on GCP.
 
 \paragraph{The deployment itself (Level~3).}
 A Level~3 deployment is the only path that writes to the provider, and it is dominated not by the

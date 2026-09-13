@@ -37,12 +37,12 @@ class AmazonCloudDeployer internal constructor(
     }
 
     override fun deploy(workflow: Workflow, deployContext: AmazonDeployContext) {
-        println("$CYAN$BOLD[DEPLOY]$RESET Checking if function-registry exists at '$registryPath'...")
-        bootstrapFunctionRegisterIfMissing(deployContext.region)
-
         val internalCount = countInternalFunctions(workflow)
 
         val resolvedWorkflow = if (internalCount > 0) {
+            println("$CYAN$BOLD[DEPLOY]$RESET Checking if function-registry exists at '$registryPath'...")
+            bootstrapFunctionRegisterIfMissing(deployContext.region)
+
             println("$CYAN$BOLD[DEPLOY]$RESET Detected $BOLD$internalCount$RESET internal Lambda function(s) — resolving...")
             AwsInternalFunctionResolver(
                 preferredRegion = deployContext.region,

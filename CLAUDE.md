@@ -76,7 +76,8 @@ Under `omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
   `QuickFaasDescriptorLoader`, and `QuickFaasProcessInvoker` (runs the QuickFaaS jar as a
   subprocess).
 - `cloud/provider/{amazon,google}/` — renderers; the entry-point deployers `AmazonCloudDeployer`
-  and `GoogleCloudDeployer` (bootstrap the registry, run the resolver, deploy the workflow); and
+  and `GoogleCloudDeployer` (only when the workflow has internal calls: bootstrap the registry and
+  run the resolver; then deploy the workflow); and
   provider lookups (`LambdaFunctionInspector`, `LambdaFunctionsCatalog`, `AwsRegionsLister`;
   `CloudRunV2ServiceInspector`, `CloudRunV2RestCatalog`, `CloudRunLocationsV1RestClient`).
 
