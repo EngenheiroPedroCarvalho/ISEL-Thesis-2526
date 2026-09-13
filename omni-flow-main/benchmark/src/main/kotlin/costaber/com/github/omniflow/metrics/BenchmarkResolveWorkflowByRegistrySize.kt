@@ -24,14 +24,14 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P9 - The complementary axis of P8 ([BenchmarkResolveWorkflowByFunctionsAndCalls]):
+ * T5 - The complementary axis of T4 ([BenchmarkResolveWorkflowByFunctionsAndCalls]):
  * isolate the effect of the REGISTRY SIZE (R) on resolution, holding the workflow
  * fixed. The workflow always makes [FIXED_CALLS] calls over [FIXED_FUNCTIONS]
  * distinct functions (N and F fixed); only the registry is padded to R entries
  * (R >= [FIXED_FUNCTIONS]), so the workflow references just the first F of them
  * while R-F extra entries inflate every registry read.
  *
- * Same two strategies as P8, resolution only (no render, which the read
+ * Same two strategies as T4, resolution only (no render, which the read
  * optimization does not affect):
  *  - [resolveNaive]     re-reads the whole R-entry registry file per call -> O(N*R)
  *  - [resolveOptimized] reads the R-entry registry once, then N lookups    -> O(N+R)
@@ -60,7 +60,7 @@ open class BenchmarkResolveWorkflowByRegistrySize {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p9-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t5-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
         // Registry padded to R entries; the workflow references only the first F.

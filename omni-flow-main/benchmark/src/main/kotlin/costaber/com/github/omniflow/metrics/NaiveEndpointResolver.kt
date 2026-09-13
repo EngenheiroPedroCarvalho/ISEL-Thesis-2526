@@ -12,10 +12,10 @@ import java.net.URI
  * `resolveUrlIn` per call, Θ(N+R)). This one instead calls
  * [FunctionRegistryStore.resolveUrl] on EVERY internal call, so it re-reads and
  * re-parses the whole registry file per call (Θ(N·R)) - the legacy pre-optimization
- * path. Used by P8/P9 to measure workflow resolution with and without the
+ * path. Used by T4/T5 to measure workflow resolution with and without the
  * registry-read optimization.
  *
- * It only walks a FLAT list of CALL steps (which the P8/P9 generators produce) and
+ * It only walks a FLAT list of CALL steps (which the T4/T5 generators produce) and
  * fills host/path exactly like the production resolver (same [URI]-based split, keeping
  * `internalFunction`), so the resolved workflow is identical to the optimized path.
  * Only the read strategy differs.

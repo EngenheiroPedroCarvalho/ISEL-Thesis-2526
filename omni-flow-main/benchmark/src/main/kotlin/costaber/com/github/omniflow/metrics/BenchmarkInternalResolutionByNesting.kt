@@ -24,19 +24,19 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P18 - Internal function resolution cost vs. NESTING DEPTH, the structural axis P5 measured only
+ * T13 - Internal function resolution cost vs. NESTING DEPTH, the structural axis T17 measured only
  * for rendering (external-only workflows, never touching the registry).
  *
  * [OptimizedEndpointResolver]'s `resolveContext` recurses explicitly into
- * IterationRangeContext/ParallelBranchContext/etc., but every prior resolution benchmark (P3,
- * P6-P17) only ever built FLAT call sequences - that recursive path was never exercised. Mirrors
+ * IterationRangeContext/ParallelBranchContext/etc., but every prior resolution benchmark (T1-T12)
+ * only ever built FLAT call sequences - that recursive path was never exercised. Mirrors
  * [WorkflowGenerator.withNestedSteps]'s structure exactly (FIXED_LEAF_STEPS leaves, [depth]
  * levels alternating iteration/parallel wrappers), but the leaves are INTERNAL calls (round-robin
- * over FIXED_FUNCTIONS distinct functions, R=F, as in P8/P15) instead of independent external
+ * over FIXED_FUNCTIONS distinct functions, R=F, as in T4/T11) instead of independent external
  * calls. If resolution cost tracks total call count regardless of tree shape, all depths should
  * measure the same - confirming the recursive traversal adds no cost beyond the leaves it visits.
  * Only the ALREADY-OPTIMIZED resolver is measured (single registry read) - the naive-vs-optimized
- * comparison is already exhaustively established in P6/P7/P8/P9. Pure local file I/O - no AWS/GCP
+ * comparison is already exhaustively established in T2/T3/T4/T5. Pure local file I/O - no AWS/GCP
  * SDK, no network.
  */
 @BenchmarkMode(Mode.AverageTime)
@@ -60,7 +60,7 @@ open class BenchmarkInternalResolutionByNesting {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p18-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t13-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the FIXED_FUNCTIONS functions the internal calls reference (R=F).

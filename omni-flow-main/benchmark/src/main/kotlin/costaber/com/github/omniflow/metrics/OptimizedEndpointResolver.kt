@@ -22,7 +22,7 @@ import java.net.URI
  * `WorkflowInternalCallEndpointResolver` before that class was removed as superseded once the
  * single-read optimization was propagated into the real production resolvers
  * (`AwsInternalFunctionResolver`/`WorkflowInternalFunctionResolver`). It is kept here, relocated
- * rather than deleted, because P3/P8/P9/P14/P15/P16/P18/P19 rely on it as a pure-local-logic
+ * rather than deleted, because T1/T4/T5/T10/T11/T12/T13/T14 rely on it as a pure-local-logic
  * reference implementation, deliberately decoupled from any provider-specific live-validation
  * step (unlike the production resolvers, which always validate a registry hit against a live
  * inspector) - see each benchmark's own doc comment for why that isolation matters.

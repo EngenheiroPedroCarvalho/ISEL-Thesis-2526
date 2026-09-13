@@ -26,7 +26,7 @@ import org.openjdk.jmh.infra.Blackhole
 import java.util.concurrent.TimeUnit
 
 /**
- * P2 - Local rendering cost by per-call parameter count.
+ * T16 - Local rendering cost by per-call parameter count.
  *
  * Keeps the number of steps FIXED and varies the number of query+header+body
  * parameters carried by every call. Renders LOCALLY to both Amazon and Google

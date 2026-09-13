@@ -17,10 +17,10 @@ drift as text is edited, so search for the quoted phrases.
 - [x] Edits that existed only in `ISEL-Thesis-2526/thesis/` are merged: Ch1's 8-chapter structure
       list, Ch5's corrected "propagation" sentence, Ch7's punctuation and listing fixes, and Ch8's
       closing sentence.
-- [x] The P6 figure in Ch6 has its own caption and label (`fig:eval-p6`), and the text references it.
+- [x] The T2 figure in Ch6 has its own caption and label (`fig:eval-t2`), and the text references it.
 - [x] The lorem-ipsum Appendix B and Annex I are no longer built (commented out in
       `Config/_files.tex`; the files stay on disk).
-- [x] `TESTING.md`'s P10/P11 rows describe the single-read resolvers; the `GoogleCloudDeployer`
+- [x] `TESTING.md`'s T6/T7 rows describe the single-read resolvers; the `GoogleCloudDeployer`
       bootstrap log prints the path and says "Bootstrapping … Cloud Run APIs".
 - [x] `acronyms.tex` defines the thesis's acronyms, and all of them are printed (`\glsaddall`),
       because the text writes them as plain text. `glossary.tex` keeps its template entries,
@@ -129,15 +129,15 @@ drift as text is edited, so search for the quoted phrases.
       único run. O parágrafo de proveniência saiu dos "Threats to Validity".
       Contexto original:
 - [x] **(original) The P-tables mixed several measurement runs** (found 2026-09-12 by diffing each table
-      against its CSV). `tab:eval-p7`, `tab:eval-p9` and `tab:eval-p13` do NOT match
-      `jmh-results-p7/p9/p13.csv`; P3, P6, P8, P10, P11 and P17 do. The proof it matters: P17 =
-      P13 + a failed lookup, so P17 must cost more, yet the current CSVs give P17 < P13 (3309 vs
-      4682 µs at K=1/R0=0). Likewise a registry read costs ~5–7 µs in the P3/P7 tables and ~180 µs
-      in the P6/P8/P9 runs. So: re-run the WHOLE suite in ONE session with `-f 3`, regenerate every
+      against its CSV). `tab:eval-t3`, `tab:eval-t5` and `tab:eval-t8` do NOT match
+      `jmh-results-t3/t5/t8.csv`; T1, T2, T4, T6, T7 and T9 do. The proof it matters: T9 =
+      T8 + a failed lookup, so T9 must cost more, yet the current CSVs give T9 < T8 (3309 vs
+      4682 µs at K=1/R0=0). Likewise a registry read costs ~5–7 µs in the T1/T3 tables and ~180 µs
+      in the T2/T4/T5 runs. So: re-run the WHOLE suite in ONE session with `-f 3`, regenerate every
       table from it, then delete the provenance paragraph now in "Threats to Validity".
 - [x] Re-run JMH with `-f 3` — feito 2026-09-12. Margens de erro: intervalo de confiança a 99,9%
       abaixo de 1% do valor em metade das medições e abaixo de 6% em nove em cada dez; os poucos
-      pontos ruidosos (P3 N=10, P17 K=10/R0=10, P18 depth=2) estão identificados no texto. O caveat
+      pontos ruidosos (T1 N=10, T9 K=10/R0=10, T13 depth=2) estão identificados no texto. O caveat
       "not thesis-grade" saiu; a Metodologia agora descreve a máquina (portátil Apple Silicon, ocioso
       mas não dedicado) e diz que o fator de hardware dominante é a velocidade do disco.
       Receita usada, confirmada na prática (manter para futuras repetições). **A corrida demorou
@@ -147,7 +147,7 @@ drift as text is edited, so search for the quoted phrases.
       1. Build: `JAVA_HOME=/opt/homebrew/opt/openjdk@26/libexec/openjdk.jdk/Contents/Home \
          ./mvnw -o -q -pl benchmark -am clean package -DskipTests`
       2. Run from a scratch directory with `-f 3 -wi 3 -i 5 -w 1 -r 1 -rf csv -rff <out>.csv`,
-         passing an **include** regex that names exactly the 14 classes behind P3 and P6–P19:
+         passing an **include** regex that names exactly the 14 classes behind T1–T14:
          InternalCallResolution, RegistryScaling, ResolutionOptimization,
          ResolveWorkflowByFunctionsAndCalls, ResolveWorkflowByRegistrySize(Mixed),
          AwsInternalFunctionResolution, GoogleInternalFunctionResolution, RegistryWriteScaling,
@@ -163,41 +163,41 @@ drift as text is edited, so search for the quoted phrases.
       5. JMH writes the CSV only when the whole run ends, so an interrupted run leaves nothing.
          Write it to a scratch path and only copy into `benchmark/results/` once it is complete,
          so the current CSVs survive a failed attempt.
-- [x] Os `println` **são** materiais, e agora está medido: em P10/P11 dominam o custo por chamada
+- [x] Os `println` **são** materiais, e agora está medido: em T6/T7 dominam o custo por chamada
       (~2,3 µs por linha impressa contra 0,22 µs de resolução). A prova está na diferença entre
       providers — o resolver AWS imprime 2 linhas por chamada e o GCP 3, e a diferença medida
-      (2,4 µs/chamada) é exatamente uma linha. Está dito no parágrafo P10/P11 e nos "Threats to
-      Validity". Nota: P3 e P8–P19 usam o `OptimizedEndpointResolver` do módulo de benchmarks, que
-      **não** imprime, por isso só P10/P11 foram afetados.
+      (2,4 µs/chamada) é exatamente uma linha. Está dito no parágrafo T6/T7 e nos "Threats to
+      Validity". Nota: T1 e T4–T14 usam o `OptimizedEndpointResolver` do módulo de benchmarks, que
+      **não** imprime, por isso só T6/T7 foram afetados.
 - [x] **Resolvido 2026-09-12:** as mensagens por chamada dos dois resolvers de produção passaram de
       `println`/`logger.info` para `logger.debug` (que ao nível INFO por omissão nem avalia o
       lambda); as mensagens raras — descoberta por regiões, deployment QuickFaaS, drift, erros —
-      continuam a ser impressas. P10/P11 foram re-medidos com `-f 3` (24 min) e caíram de 1006→29,1 µs
+      continuam a ser impressas. T6/T7 foram re-medidos com `-f 3` (24 min) e caíram de 1006→29,1 µs
       (AWS) e 1344→81,3 µs (GCP) em F=10/N=200. Os 45 testes dos resolvers continuam a passar.
-      **Consequência a lembrar:** P10/P11 passam a vir de uma segunda sessão de medição; está dito na
+      **Consequência a lembrar:** T6/T7 passam a vir de uma segunda sessão de medição; está dito na
       Metodologia e nos "Threats to Validity", com a prova de que as duas sessões são compatíveis (a
-      coluna N=1 do P10/P11 reproduz o custo de leitura do P6).
+      coluna N=1 do T6/T7 reproduz o custo de leitura do T2).
 - [x] **Diferença AWS/GCP explicada:** depois de calados os `println`, o GCP continua ~4× mais caro
       por chamada (0,35 vs 0,07–0,14 µs) porque `splitUrl` faz `URI(url)` a cada chamada, onde o AWS
-      só concatena `lambda://` ao ARN. O resolver de referência (P3/P8), que também faz o parsing,
+      só concatena `lambda://` ao ARN. O resolver de referência (T1/T4), que também faz o parsing,
       fica no meio, a 0,22 µs.
-- [x] P3: explained as the single-read resolver with R=1 (per-call cost = snapshot lookup + URL
+- [x] T1: explained as the single-read resolver with R=1 (per-call cost = snapshot lookup + URL
       split + node rebuild), no longer as a re-read per call.
-- [x] P6: R≈320 is derived in the P6 paragraph (0.56·R = 180), and the Discussion only cites it.
-- [x] P10/P11: local fake inspector (AWS) / 1st-gen short-circuit (GCP) stated; growth in N
-      explained as per-call validation; "comparable to P8" dropped.
-- [x] P13/P17: cost per write is roughly fixed (~2.7→3.3 ms from K=1 to K=100), so the total is
+- [x] T2: R≈320 is derived in the T2 paragraph (0.56·R = 180), and the Discussion only cites it.
+- [x] T6/T7: local fake inspector (AWS) / 1st-gen short-circuit (GCP) stated; growth in N
+      explained as per-call validation; "comparable to T4" dropped.
+- [x] T8/T9: cost per write is roughly fixed (~2.7→3.3 ms from K=1 to K=100), so the total is
       near-linear in K, not compounding; the miss adds 22–27% (46–99% in the noisy R0=1000
       column); "monotonic" is gone.
-- [x] P6 figure: `plot_benchmarks.py` está todo em inglês, as 18 figuras foram regeradas a partir
-      do run `-f 3` e `P6_registry_scaling.png` foi copiada para `dissertation/images/` (a única
+- [x] T2 figure: `plot_benchmarks.py` está todo em inglês, as 18 figuras foram regeradas a partir
+      do run `-f 3` e `T2_registry_scaling.png` foi copiada para `dissertation/images/` (a única
       figura de benchmark que a tese inclui). PNG *file names* ficaram como estavam
-      (`P7a_resolution_sem_cache.png`, …), porque a tese os inclui por nome.
-- [x] Explain the missing P1/P2/P4/P5/P12: Ch7's new "Experiment identifiers" paragraph in the
+      (`T3a_resolution_sem_cache.png`, …), porque a tese os inclui por nome.
+- [x] Explain the missing T15/T16/T17/T18: Ch7's new "Experiment identifiers" paragraph in the
       Methodology says they measure OmniFlow's renderers alone (code this work did not change) and
       that identifiers are kept, not renumbered, so they match the benchmark suite.
 - [x] Label experiments consistently: the two headings that lacked IDs now carry them ("Cost of
-      the unification (P3)", "Effect of registry size (P6)"), so every measured paragraph in Ch7 is
+      the unification (T1)", "Effect of registry size (T2)"), so every measured paragraph in Ch7 is
       identified.
 - [x] Soften "overhead practically irrelevant": Ch7's Global framing now says the local overhead is
       "small beside the deployment it precedes" and that the figures are a **lower bound**, because
@@ -256,14 +256,14 @@ drift as text is edited, so search for the quoted phrases.
 ## 6b. Benchmarks — o que ficou por fazer
 
 - [x] `benchmark/results/RESULTS.md` reescrito (2026-09-12) a partir de `jmh-results-f3.csv` e dos
-      CSVs re-medidos do P10/P11: todas as tabelas geradas por script (sem transcrição manual), todos
+      CSVs re-medidos do T6/T7: todas as tabelas geradas por script (sem transcrição manual), todos
       os "Resumo" refeitos, e a Síntese final. As secções de notação e de caracterização de cada
       teste mantiveram-se, por não dependerem dos números. Correções de fundo, além dos valores: o
-      P3 deixou de dizer que cada chamada relê o registo (usa o resolver de leitura única, e a
-      variante externa paga a mesma leitura); o P13 deixou de prever Θ(K²); o P6 passou a R≈60; e o
-      P10/P11 ganharam a nota sobre a consola e a explicação do `URI` por chamada no GCP.
-- [ ] `jmh-results.csv` (P1/P2/P4/P5 + P3 antigo) e `jmh-results-p12.csv` ficaram do run de agosto:
-      são benchmarks de renderização, fora do âmbito da tese. As figuras P1/P2/P5 continuam com
+      T1 deixou de dizer que cada chamada relê o registo (usa o resolver de leitura única, e a
+      variante externa paga a mesma leitura); o T8 deixou de prever Θ(K²); o T2 passou a R≈60; e o
+      T6/T7 ganharam a nota sobre a consola e a explicação do `URI` por chamada no GCP.
+- [ ] `jmh-results.csv` (T15/T16/T17 + T1 antigo) e `jmh-results-t18.csv` ficaram do run de agosto:
+      são benchmarks de renderização, fora do âmbito da tese. As figuras T15/T16/T17 continuam com
       rótulos em português por não terem sido regeradas (não são incluídas na tese).
 
 ## 7. Housekeeping

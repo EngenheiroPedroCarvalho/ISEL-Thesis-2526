@@ -24,7 +24,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P3 - Local internal-call endpoint resolution.
+ * T1 - Local internal-call endpoint resolution.
  *
  * Measures ONLY the cost of [OptimizedEndpointResolver.resolve]
  * (registry lookup + URL splitting + tree rebuild) - NO rendering, NO

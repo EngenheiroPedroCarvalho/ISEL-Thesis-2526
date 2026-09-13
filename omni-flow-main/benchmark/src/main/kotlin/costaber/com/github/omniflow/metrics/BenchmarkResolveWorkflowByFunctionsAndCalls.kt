@@ -24,13 +24,13 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P8 - Resolution cost of a real workflow along its two intrinsic axes:
+ * T4 - Resolution cost of a real workflow along its two intrinsic axes:
  * the number of DISTINCT internal functions the workflow calls ([f], F) and the
  * number of CALLS ([n], N). The N calls are distributed round-robin over the F
  * distinct functions, so F=4/N=6 gives F0,F1,F2,F3,F0,F1 (F0 2x, F1 2x, F2 1x,
  * F3 1x). The registry holds exactly those F functions (R = F): the realistic
  * case where the registry contains precisely the functions the workflow uses.
- * (The effect of an oversized registry, R independent of F, is P9's axis.)
+ * (The effect of an oversized registry, R independent of F, is T5's axis.)
  *
  * Each benchmark resolves every internal call's endpoint against the F-entry
  * registry, WITHOUT rendering - the read optimization only affects resolution,
@@ -68,7 +68,7 @@ open class BenchmarkResolveWorkflowByFunctionsAndCalls {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p8-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t4-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the F functions the workflow references (R = F).

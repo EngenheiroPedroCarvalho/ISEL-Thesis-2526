@@ -25,19 +25,19 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P10 - Cost of the REAL AWS auto-deploy resolver, [AwsInternalFunctionResolver.resolve], vs the
- * number of internal calls (N) and registry size (R=F), same grid as P8.
+ * T6 - Cost of the REAL AWS auto-deploy resolver, [AwsInternalFunctionResolver.resolve], vs the
+ * number of internal calls (N) and registry size (R=F), same grid as T4.
  *
  * This exercises the actual "unification" glue that decides whether an internal function should
  * be reused or deployed. It now carries the single-read optimization from
- * [OptimizedEndpointResolver] (the former P7-P9 reference implementation): `resolve()` reads the
+ * [OptimizedEndpointResolver] (the former T3-T5 reference implementation): `resolve()` reads the
  * registry once into an in-memory snapshot and every call's `resolveOrDeploy` looks up against
  * that snapshot (`registry.tryResolveEntryIn`) instead of re-reading the file, so per-call cost is
- * Θ(1) against the snapshot rather than Θ(R) - the same fix as P7-P9, now applied on the real
+ * Θ(1) against the snapshot rather than Θ(R) - the same fix as T3-T5, now applied on the real
  * production path.
  *
  * The registry is pre-populated with exactly the F functions the workflow references (R=F, as in
- * P8), each with an ARN-shaped URL so `regionFromArn` resolves a region and the registry-hit path
+ * T4), each with an ARN-shaped URL so `regionFromArn` resolves a region and the registry-hit path
  * validates against [FakeInspector] instead of the real [costaber.com.github.omniflow.cloud.provider.amazon.service.AwsLambdaFunctionInspector]/EC2
  * region listing default - pure local file I/O, no AWS SDK calls, no network.
  */
@@ -63,7 +63,7 @@ open class BenchmarkAwsInternalFunctionResolution {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p10-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t6-registry", ".json")
         val store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the F functions the workflow references (R = F) -> always a

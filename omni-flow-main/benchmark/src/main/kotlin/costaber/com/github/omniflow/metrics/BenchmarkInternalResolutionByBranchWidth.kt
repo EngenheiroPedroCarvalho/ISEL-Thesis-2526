@@ -24,7 +24,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P19 - Internal function resolution cost vs. PARALLEL BRANCH WIDTH, the structural axis P12
+ * T14 - Internal function resolution cost vs. PARALLEL BRANCH WIDTH, the structural axis T18
  * measured only for rendering (and only for the Parallel/Choice renderers, external-only
  * workflows).
  *
@@ -33,12 +33,12 @@ import java.util.concurrent.TimeUnit
  * nothing to recurse into there - Choice stays a rendering-only axis for this contribution.
  * Parallel, however, DOES nest real Step lists per branch, and
  * [OptimizedEndpointResolver]'s `resolveContext` recurses into ParallelBranchContext
- * explicitly - a path never exercised by P3/P6-P17's flat workflows. Mirrors
+ * explicitly - a path never exercised by T1-T12's flat workflows. Mirrors
  * [WorkflowGenerator.withParallelBranchWidth] (a single Parallel block, [branchWidth] swept,
  * FIXED_LEAVES_PER_BRANCH leaves per branch), but the leaves are INTERNAL calls (round-robin over
- * FIXED_FUNCTIONS distinct functions, R=F, as in P8/P15) instead of independent external calls.
+ * FIXED_FUNCTIONS distinct functions, R=F, as in T4/T11) instead of independent external calls.
  * Only the ALREADY-OPTIMIZED resolver is measured (single registry read) - the naive-vs-optimized
- * comparison is already exhaustively established in P6/P7/P8/P9. Pure local file I/O - no AWS/GCP
+ * comparison is already exhaustively established in T2/T3/T4/T5. Pure local file I/O - no AWS/GCP
  * SDK, no network.
  */
 @BenchmarkMode(Mode.AverageTime)
@@ -62,7 +62,7 @@ open class BenchmarkInternalResolutionByBranchWidth {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p19-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t14-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the FIXED_FUNCTIONS functions the internal calls reference (R=F).

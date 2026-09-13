@@ -139,10 +139,10 @@ cd omni-flow-main
 java -cp benchmark/target/benchmarks.jar org.openjdk.jmh.Main \
   "costaber\.com\.github\.omniflow\.metrics\.Benchmark(Rendering|InternalCall).*" \
   -f 1 -wi 3 -i 5 -w 1 -r 1 -rf csv -rff benchmark/results/jmh-results.csv
-python3 benchmark/results/plot_benchmarks.py           # regenerate the P1-P5 graphs
+python3 benchmark/results/plot_benchmarks.py           # regenerate the T1-T18 graphs
 ```
 
-Results and graphs live in `benchmark/results/` (`RESULTS.md`, `P1_*.png … P5_*.png`).
+Results and graphs live in `benchmark/results/` (`RESULTS.md`, `T1_*.png … T18_*.png`).
 For thesis-grade numbers use `-f 3` on a dedicated machine.
 
 ## Testing conventions
@@ -166,14 +166,14 @@ For thesis-grade numbers use `-f 3` on a dedicated machine.
 - **`FunctionRegistryStore` has no cache.** `readAll`, `tryResolveEntry`, `resolveEntry` and
   `resolveUrl` re-read and re-parse the whole file on every call, and every `put`/`remove` rewrites
   it. The production resolvers avoid the read cost by reading once per `resolve()` and using the
-  pure `tryResolveEntryIn`/`resolveUrlIn`. Benchmarks P6/P7 measure the per-call read path, P10/P11
-  the resolvers, and P13/P17 the write path.
+  pure `tryResolveEntryIn`/`resolveUrlIn`. Benchmarks T2/T3 measure the per-call read path, T6/T7
+  the resolvers, and T8/T9 the write path.
 - **`GoogleAccessTokenProvider`'s default constructor arg calls `GoogleCredentials.getApplicationDefault()`
   eagerly** — and so do `CloudRunV2ServiceInspector()`/`CloudRunLocationsV1RestClient()`, which
   default-construct a `GoogleAccessTokenProvider` themselves. Just *instantiating* either class
   with no-arg defaults tries to resolve real Application Default Credentials and fails/hangs
   without `gcloud auth application-default login` configured — even if no method that actually
-  needs a token is ever called. Local-only tests/benchmarks that construct these classes (e.g. P11)
+  needs a token is ever called. Local-only tests/benchmarks that construct these classes (e.g. T7)
   must pass an explicit `GoogleAccessTokenProvider(credentials = GoogleCredentials.create(AccessToken(...)))`
   to avoid touching ADC.
 - `.gradle/` is (unfortunately) tracked in the repo; avoid committing its churn — `git checkout --`
