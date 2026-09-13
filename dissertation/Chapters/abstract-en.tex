@@ -5,28 +5,31 @@
 %%
 %% Abstract in English
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-A serverless workflow is written before the functions it calls exist. Its endpoint --- a Cloud Run URL, a Lambda
-ARN --- is produced by its deployment and depends on the account, project, region and provider it
-was deployed to. The developer therefore deploys the functions with one tool, reads the endpoints
-it produced, and copies them by hand into the workflow definition consumed by another. The copying is repeated whenever a function moves between regions, accounts or
-providers, and a mistyped endpoint yields a workflow that deploys successfully and only fails when
-it runs.
+Deploying a serverless application means deploying two things: the functions that do the work and
+the workflow that orchestrates them. A different tool handles each, and the two are not
+independent. A workflow invokes a function through the endpoint the provider assigns when that
+function is deployed --- a Cloud Run URL, a Lambda ARN --- and that endpoint depends on the
+account, project and region it was deployed to. The developer therefore deploys the functions with
+one tool, reads the endpoints it produced and copies them by hand into the workflow definition
+consumed by another. The copying is repeated for every deployment target, and a wrong endpoint goes
+undetected: the workflow definition stays valid, deploys successfully and fails only when it runs.
 
-This dissertation removes that step by unifying the two tools: QuickFaaS, which deploys portable
-serverless functions, and OmniFlow, a Kotlin DSL that renders and deploys workflows to AWS Step
-Functions and Google Cloud Workflows. A workflow call names a function by a stable logical
-identifier rather than by an endpoint, and a three-level resolution cascade binds that identifier
-when the workflow is deployed: it reads a per-provider function registry and validates the entry
-against the live function; failing that, it searches the provider's regions; and only when absence
-is confirmed does it deploy the function through QuickFaaS from a deployment descriptor. QuickFaaS,
-previously limited to Google Cloud and Azure, was also extended with an AWS Lambda provider,
-covering the same two clouds as OmniFlow.
+This dissertation removes that manual step by unifying the two tools: QuickFaaS, which deploys
+portable serverless functions, and OmniFlow, a Kotlin DSL that renders and deploys workflows to AWS
+Step Functions and Google Cloud Workflows. A workflow call names the function it invokes by a
+stable logical identifier instead of an endpoint, and OmniFlow binds that identifier when the
+workflow is deployed. The binding is a cascade of three levels, each one tried only when the level
+before it fails: a function registry, whose entry is validated against the live function; a search
+of the provider's regions for a function of that name; and, only once absence is confirmed, a
+deployment through QuickFaaS from a deployment descriptor. QuickFaaS, previously limited to Google
+Cloud and Azure, was also extended with an AWS Lambda provider, so that the unification covers both
+clouds OmniFlow targets.
 
-The prototype is evaluated for correctness and for overhead. Forty-five resolver unit tests cover
-every path of the cascade on both providers, and benchmarks show that local resolution costs
-milliseconds for workflows of up to two hundred internal calls, growing linearly with the number of
-internal calls and not with the size of the registry. Deploying a serverless application from a
-single definition is therefore feasible, and the resolution it adds is small beside the cloud
+The prototype was evaluated for correctness and for cost. Forty-five unit tests cover every path
+the cascade can take on both providers, and benchmarks show that resolving a workflow of two
+hundred internal calls costs tens of microseconds, growing linearly with the number of internal
+calls and not with the size of the registry. Deploying a serverless application from a single
+definition is therefore feasible, and the resolution it adds is negligible beside the cloud
 deployment it precedes.
 % Palavras-chave do resumo em Inglês
 \begin{keywords}

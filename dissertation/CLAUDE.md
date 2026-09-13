@@ -28,7 +28,7 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 | File | PDF chapter(s) | Label(s) |
 |---|---|---|
 | `Chapters/chapter1.tex` | 1 Introduction | `cha:introduction` |
-| `Chapters/chapter2.tex` | 2 Background, 3 Related Works | `cha:background`, `ch:related-works` |
+| `Chapters/chapter2.tex` | 2 Background, 3 Related Work | `cha:background`, `ch:related-works` |
 | `Chapters/chapter3.tex` | 4 Proposed Solution | `ch:proposed_solution` |
 | `Chapters/chapter5.tex` | 5 Implementation | `cha:impl` |
 | `Chapters/chapter6.tex` | 6 Case Study | `cha:case-study` |
@@ -46,10 +46,10 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
   match the names there and are silently skipped. `appendix1.tex` (the template's R example) stays
   on disk but is no longer built.
 - Several files still contain **template placeholder text**, not thesis content: `abstract-en.tex`,
-  `abstract-pt.tex`, `acknowledgments.tex` and `glossary.tex` (which prints nothing, because the
-  text never uses `\gls`). `acronyms.tex` holds the real acronyms and prints them all with
-  `\glsaddall`; add an entry there when the text introduces a new acronym. `appendix2.tex`,
-  `annex1_.tex` and `annex2.tex`
+  `abstract-pt.tex`, `acknowledgments.tex` and `glossary.tex` (no longer printed: its list is
+  commented out in `Config/_files.tex`, since the text never uses `\gls`). `acronyms.tex` holds
+  the real acronyms and prints them all with `\glsaddall`; add an entry there when the text
+  introduces a new acronym. `appendix2.tex`, `annex1_.tex` and `annex2.tex`
   are lorem ipsum and are commented out in `Config/_files.tex`. Check a file's content before
   relying on it.
 - Figures: `images/<topic>/*.png`. Their PlantUML sources are in `../diagrams/`.

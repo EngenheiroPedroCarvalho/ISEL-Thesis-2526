@@ -813,8 +813,9 @@ is free in practice (P18, P19).
 
 \paragraph{Global framing.}
 All measured values lie between microseconds and, in the worst write case, tens of milliseconds:
-resolving a 200-call workflow costs $55\,\mu$s, and registering a hundred functions in a
-thousand-entry registry --- the most expensive operation measured --- costs $36$\,ms. Endpoint
+resolving a 200-call workflow costs $29\,\mu$s on AWS and $81\,\mu$s on GCP (P10, P11), and a
+hundred successive miss-and-register pairs against a thousand-entry registry --- the most
+expensive operation measured --- cost $59$\,ms (P17). Endpoint
 resolution is therefore not the bottleneck of an integrated deployment: the dominant cost is the
 actual cloud deployment (seconds). With the single-read
 optimization now applied uniformly across both production resolvers, the local overhead of the

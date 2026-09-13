@@ -19,10 +19,17 @@ Shafiei et al.\ present an extensive survey that highlights key challenges in se
 \section{Challenges in Unified Serverless Workflow Orchestration}
 \label{sec:int_cha_int_uni_multi}
 
-In this dissertation we focus on a single cloud target, if a workflow is deployed on a provider (e.g., GCP), it should invoke only functions deployed on that same provider.
-Within this scope, QuickFaaS can be viewed as the component that automates the deployment of serverless functions, while OmniFlow is responsible for defining the orchestration logic and deploying the workflow to the provider's workflow service.
-The central goal is to unify these two lifecycle concerns, function deployment and workflow deployment, so that developers can deploy a workflow without manually coordinating all function endpoints.
-However, integrating two independently developed systems that operate at different stages of the lifecycle still introduces technical and conceptual challenges.
+This dissertation builds on two tools developed for that ecosystem, and takes a single cloud
+target as its scope: a workflow deployed on a provider invokes only functions deployed on that
+same provider. \textbf{QuickFaaS} automates the packaging and deployment of serverless functions,
+reducing the manual effort required to create and update them on a chosen
+provider~\cite{rodrigues2022quickfaas}. \textbf{OmniFlow} defines workflows in a higher-level DSL
+that is compiled into a provider-specific workflow definition and deployed to the provider's
+workflow engine~\cite{costa2023omniflow}. Each automates one half of a serverless application's
+deployment, and the goal of this work is to unify the two halves, so that a developer can deploy a
+workflow without coordinating function endpoints by hand. The two tools were developed
+independently, however, and act at different stages of the lifecycle; putting them together raises
+the challenges described below.
 
 \subsection{Disjointed Function Deployment Lifecycle}
 Currently, the function deployment lifecycle managed by QuickFaaS is disconnected from the workflow definition lifecycle managed by OmniFlow.
@@ -65,20 +72,28 @@ the provider assigns and whose form it defines.
 	elsewhere means finding and replacing every endpoint by hand.
 
 	\item \textbf{Need for logical references:} the integration therefore requires a mapping
-	mechanism where the workflow references a stable logical identifier and OmniFlow resolves it
-	into a concrete endpoint during deployment. This is the motivation for introducing a registry
-	(as the source of truth for bindings) and for extending the call step with a dedicated
-	\texttt{internalFunction} construct, used when the developer wants OmniFlow to resolve the
-	function at deployment time and, if the function does not exist yet, to deploy it and record
-	its binding in the registry.
+	mechanism: the workflow should name a function by a stable logical identifier, and the concrete
+	endpoint should be resolved when the workflow is deployed, against the account, project and
+	region it is being deployed to. The workflow definition then carries no endpoint of its own,
+	and the binding becomes something the tooling produces rather than something the developer
+	transcribes.
 \end{itemize}
 
 \subsection{Automated Artifact and Metadata Generation}
-A smooth unified deployment flow requires consistent data exchange between the workflow tooling and the function deployment tooling.
+Resolving a reference presumes that the function exists. When it does not, the workflow tooling
+must be able to have it deployed on its behalf, which requires a consistent data exchange in both
+directions.
 \begin{itemize}
-	\item \textbf{Artifact standardization:} OmniFlow must be able to trigger function deployment when the developer requests it (e.g., by declaring a call through \texttt{internalFunction} together with a deployment descriptor), which implies that OmniFlow must provide QuickFaaS with a deployable function artifact (source path or package reference) and minimal configuration. A consistent packaging/descriptor format is required so that the deployment action can be invoked automatically and repeatably.
+	\item \textbf{Artifact standardization:} to request a deployment, the workflow tooling must
+	hand the function deployment tooling a deployable artifact (a source path or a package
+	reference) together with the minimal configuration that goes with it. A consistent packaging
+	and descriptor format is required so that the request can be issued automatically and
+	repeatably.
 
-	\item \textbf{Metadata synchronization:} after deployment, QuickFaaS returns invocation metadata (e.g., endpoint URL and lightweight provider details). OmniFlow must store this metadata in the registry so that subsequent workflow deployments can resolve \texttt{Call(functionRef)} steps without requiring the developer to manually copy endpoints. The registry holds only non-secret metadata: each entry records a function's name and endpoint.
+	\item \textbf{Metadata synchronization:} a deployment returns invocation metadata --- an
+	endpoint and lightweight provider details --- which must be recorded where the next workflow
+	deployment will look for it, so that the endpoint is never carried across by hand. Only
+	non-secret metadata is involved: a function's name and its endpoint.
 \end{itemize}
 
 
@@ -86,41 +101,35 @@ A smooth unified deployment flow requires consistent data exchange between the w
 \section{Motivation: Unifying Function Deployment and Workflow Orchestration}
 \label{sec:int_motivation}
 
-Despite the operational benefits of serverless computing, the ecosystem remains fragmented by
-provider-specific implementations. A workflow invokes each function through an identifier that the
-provider assigns when the function is deployed, so the workflow definition depends on the outcome
-of a separate deployment step. Even when targeting a single provider, this dependency creates
-friction during development and maintenance.
+Each of the challenges above can be worked around by hand, and for a single deployment the cost of
+doing so is small. What makes them worth addressing is that the work is repeated. Every function
+added to a workflow, every move between regions, accounts or providers and every additional
+deployment target sends the developer back through the same sequence: deploy the function, read the
+endpoint it was given, write that endpoint into the workflow definition and check by hand that the
+two agree. The effort therefore grows with the number of functions a workflow calls and with the
+number of targets it is deployed to, and it grows in the one part of the process --- copying a
+value from one tool into another --- that contributes nothing to the application being built.
 
-This leads to two practical challenges:
-\begin{enumerate}
-	\item \textbf{Function lifecycle friction:} deploying functions is a separate process from
-	defining the workflow logic. Developers must ensure that functions exist and are reachable
-	before deploying a workflow that depends on them.
-	\item \textbf{Workflow binding friction:} workflow definitions embed concrete endpoints, which
-	are known only after the functions are deployed and which differ for each account, project and
-	provider. The developer must complete the workflow definition by hand after deploying its
-	functions, and repeat that work for every deployment target.
-\end{enumerate}
-
-To address these limitations, this dissertation builds on two complementary tools. \textbf{QuickFaaS} focuses on automating the packaging and deployment of functions, reducing the manual effort required to create and update serverless functions on a chosen provider \cite{rodrigues2022quickfaas}. \textbf{OmniFlow} focuses on defining workflows using a higher-level DSL that can be compiled into a provider-specific workflow definition and deployed to the provider's workflow engine~\cite{costa2023omniflow}.
-
-However, a gap remains: while QuickFaaS handles the \textit{deployment of functions} and OmniFlow manages the \textit{deployment of workflows}, they currently operate in isolation. Consequently, developers typically follow a disjointed manual process: deploy functions with one tool, retrieve the resulting invocation endpoint and manually inject that endpoint into the workflow definition or configuration used by the other tool. This manual coordination increases development time and creates opportunities for inconsistency between what is deployed and what the workflow references.
-
-This dissertation is motivated by the opportunity to bridge this gap by integrating QuickFaaS and OmniFlow into a more unified workflow-first development experience. Such an integration is intended to:
+This dissertation is motivated by the opportunity to close that gap by integrating QuickFaaS and
+OmniFlow into a workflow-first development experience. Such an integration is intended to:
 \begin{itemize}
-	\item \textbf{Establish a unified deployment lifecycle:} enable OmniFlow to deploy workflows while also coordinating function availability through QuickFaaS when the developer explicitly requests it (e.g., by declaring a call via the \texttt{internalFunction} construct).
-	\item \textbf{Reduce manual endpoint management:} avoid copying and hardcoding endpoints in workflow definitions by using logical identifiers (\texttt{functionRef}) resolved through a registry.
-	\item \textbf{Improve repeatability and maintainability:} keep the workflow definition free of
-	target-specific endpoints, so that the same definition can be deployed to another account,
-	project or provider by changing only the function deployment descriptors, with missing functions
-	deployed and their invocation metadata recorded in the registry.
+	\item \textbf{Drive both deployments from one definition:} deploying a workflow should also
+	make the functions it calls available, so that the developer no longer has to order the two
+	steps or check that the first finished before starting the second.
+
+	\item \textbf{Take endpoints out of the developer's hands:} the values the provider assigns
+	should be read and recorded by the tooling, which removes the copying step and the run-time
+	failures it produces.
+
+	\item \textbf{Keep a definition independent of its target:} with no concrete endpoint in the
+	workflow definition, the same definition should deploy to another account, project or provider
+	without being edited.
 \end{itemize}
 
 \section{Research Questions and Objectives}
 \label{sec:int_objectives}
 
-The primary goal of this dissertation is to achieve a more unified development and deployment experience for serverless workflows on a single cloud provider by integrating two complementary tools: QuickFaaS and OmniFlow. Two research questions guide the work:
+Two research questions guide the work:
 
 \begin{description}
 	\item[RQ1 (feasibility and correctness):] can OmniFlow, from a single workflow definition, bind
@@ -130,7 +139,7 @@ The primary goal of this dissertation is to achieve a more unified development a
 	its cost grow with the number of calls and the size of the registry?
 \end{description}
 
-To answer them, and to bridge the gap between these systems and reduce manual coordination, this work aims to:
+To answer them, this work aims to:
 
 \begin{enumerate}
 	\item \textbf{Design a unified integration architecture:} define the components and interfaces required for OmniFlow to coordinate workflow deployment with function availability. This includes the introduction of logical function identifiers (\texttt{functionRef}), a registry to store non-secret invocation metadata and an explicit mechanism (the \texttt{internalFunction} construct on the call step) that allows the developer to have QuickFaaS deploy a function that does not exist yet.

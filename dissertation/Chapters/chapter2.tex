@@ -214,7 +214,7 @@ OmniFlow's call step is itself agnostic to what kind of compute resource answers
 
 A practical limitation follows from this design: OmniFlow call steps require concrete invocation targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment time~\cite{silva2025advanced}. If the workflow references an endpoint that does not exist (for example, because the target function has not yet been deployed), workflow deployment may fail or the workflow may fail at runtime. In current usage, developers typically mitigate this by deploying functions first (to obtain their final invocation URLs) and only then completing the workflow definition. This manual synchronization is one of the main motivations for integrating OmniFlow with a function deployment mechanism in the proposed solution chapter.
 
-\chapter{Related Works}
+\chapter{Related Work}
 \label{ch:related-works}
 
 The proposed integration between \textit{OmniFlow} (workflow definition/deployment) and \textit{QuickFaaS} (function definition/deployment)
