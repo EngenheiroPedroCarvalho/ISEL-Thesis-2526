@@ -209,7 +209,7 @@ object StepContextGenerator {
     }
 
     // ---------------------------------------------------------------------
-    // Additions for parameter-count (P2) and internal-call (P3) benchmarks.
+    // Additions for parameter-count (T16) and internal-call (T1) benchmarks.
     // All helpers below build plain in-memory model objects only (no I/O,
     // no network, no cloud SDK).
     // ---------------------------------------------------------------------
@@ -217,7 +217,7 @@ object StepContextGenerator {
     /**
      * Builds an external [CallContext] carrying exactly [parameterCount]
      * query parameters, [parameterCount] header parameters and
-     * [parameterCount] body parameters. Used by the P2 parameter-count
+     * [parameterCount] body parameters. Used by the T16 parameter-count
      * scalability benchmark to vary the per-call payload size while keeping
      * the number of steps fixed.
      *
@@ -286,7 +286,7 @@ object StepContextGenerator {
     }
 
     /**
-     * P12 helper. Parametrized version of [ifElseSwitch]/[multipleSwitch] (fixed at 1 and 3
+     * T18 helper. Parametrized version of [ifElseSwitch]/[multipleSwitch] (fixed at 1 and 3
      * conditions respectively): builds a [ConditionalContext] with exactly [conditionCount]
      * conditions, isolating the "Choice width" render-cost axis. Target/default step names are
      * arbitrary - renderers only serialize them as strings, they don't need to resolve to real

@@ -1,0 +1,39 @@
+@startuml call-step-model
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+left to right direction
+title Extended model of the call execution step
+
+interface StepContext
+
+class CallContext {
+  +method : HttpMethod
+  +host : String
+  +path : String
+  +header : Map<String, Term>
+  +query : Map<String, Term>
+  +body : Map<String, Any>
+  +authentication : Authentication[0..1]
+  +timeoutInSeconds : Long[0..1]
+  +result : String
+  +resultType : ResultType
+}
+
+class InternalFunction <<new in this work>> {
+  +name : String
+  +deploymentDescriptorPath : String[0..1]
+}
+
+StepContext <|.. CallContext
+CallContext "0..1" --> InternalFunction : internalFunction
+
+note bottom of CallContext
+  XOR invariant (enforced at DSL build time,
+  re-checked by the resolvers):
+  - external call: host != e AND internalFunction = null
+  - internal call: internalFunction != null AND host = path = e
+    (host/path injected by the resolver before rendering)
+end note
+@enduml

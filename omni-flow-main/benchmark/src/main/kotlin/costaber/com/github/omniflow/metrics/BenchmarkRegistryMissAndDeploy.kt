@@ -21,18 +21,18 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P17 - Cost of resolving K brand-new internal functions end-to-end at the registry level: a miss
+ * T9 - Cost of resolving K brand-new internal functions end-to-end at the registry level: a miss
  * lookup (`tryResolveEntry`, always a miss since each function name is unique) followed by a
  * `put` to register it, vs registry size before the K functions start (R0).
  *
- * P10/P11 measure the real auto-deploy resolvers
+ * T6/T7 measure the real auto-deploy resolvers
  * ([costaber.com.github.omniflow.internalfunction.quickfaas.AwsInternalFunctionResolver],
  * [costaber.com.github.omniflow.internalfunction.WorkflowInternalFunctionResolver]) but only on
  * the registry-HIT path (functions already registered) - step 2 on a miss is a real cloud SDK
- * call, out of unit-test scope. P13 measures the write side alone ([FunctionRegistryStore.put]).
+ * call, out of unit-test scope. T8 measures the write side alone ([FunctionRegistryStore.put]).
  * Neither measures the sequence both resolvers actually run locally on a miss before any cloud
  * call would happen: `tryResolveEntry` (miss, Θ(R)) then `put` (Θ(R)). This benchmarks that
- * combined local I/O cost for K never-before-seen functions, same (R0, K) grid as P13 so the two
+ * combined local I/O cost for K never-before-seen functions, same (R0, K) grid as T8 so the two
  * are directly comparable. Pure local file I/O - no AWS/GCP SDK, no network.
  */
 @BenchmarkMode(Mode.AverageTime)
@@ -56,10 +56,10 @@ open class BenchmarkRegistryMissAndDeploy {
 
     // Level.Invocation (not Trial): each measured invocation must start from the same R0-sized
     // registry, otherwise the K miss+put pairs of one invocation would grow the registry for the
-    // next, contaminating the measurement (same reasoning as P13).
+    // next, contaminating the measurement (same reasoning as T8).
     @Setup(Level.Invocation)
     fun setupRegistry() {
-        registryFile = Files.createTempFile("omniflow-bench-p17-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t9-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
         val baseline = (0 until r0).associate { idx ->

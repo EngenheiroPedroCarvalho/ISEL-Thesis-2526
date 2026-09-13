@@ -1,20 +1,18 @@
 package costaber.com.github.omniflow.registry
 
-import costaber.com.github.omniflow.cloud.provider.google.service.CloudRunV2RestCatalog
-
 class FunctionRegistryBootstrapper(
     private val store: FunctionRegistryStore,
-    private val catalog: CloudRunV2RestCatalog
+    private val catalog: CloudFunctionsCatalog
 ) {
     /**
      * If registry file is missing:
-     * - call Google Cloud APIs to list functions in projectId
+     * - call the target provider's API to list already-deployed functions
      * - create the local file registry and populate it
      */
-    fun bootstrapIfMissing(projectId: String) {
+    fun bootstrapIfMissing(scope: String) {
         if(store.exists()) return
 
-        val functions = catalog.listHttpServices(projectId)
+        val functions = catalog.listHttpFunctions(scope)
         store.writeNew(functions)
     }
 }

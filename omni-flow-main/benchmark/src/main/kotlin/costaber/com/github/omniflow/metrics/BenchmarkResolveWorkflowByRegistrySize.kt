@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -25,14 +24,14 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P9 - The complementary axis of P8 ([BenchmarkResolveWorkflowByFunctionsAndCalls]):
+ * T5 - The complementary axis of T4 ([BenchmarkResolveWorkflowByFunctionsAndCalls]):
  * isolate the effect of the REGISTRY SIZE (R) on resolution, holding the workflow
  * fixed. The workflow always makes [FIXED_CALLS] calls over [FIXED_FUNCTIONS]
  * distinct functions (N and F fixed); only the registry is padded to R entries
  * (R >= [FIXED_FUNCTIONS]), so the workflow references just the first F of them
  * while R-F extra entries inflate every registry read.
  *
- * Same two strategies as P8, resolution only (no render, which the read
+ * Same two strategies as T4, resolution only (no render, which the read
  * optimization does not affect):
  *  - [resolveNaive]     re-reads the whole R-entry registry file per call -> O(N*R)
  *  - [resolveOptimized] reads the R-entry registry once, then N lookups    -> O(N+R)
@@ -54,7 +53,6 @@ open class BenchmarkResolveWorkflowByRegistrySize {
 
     private lateinit var registryFile: Path
     private lateinit var store: FunctionRegistryStore
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
     private lateinit var workflow: Workflow
 
     private val internalCallExtractor: (CallContext) -> String? =
@@ -62,7 +60,7 @@ open class BenchmarkResolveWorkflowByRegistrySize {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p9-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t5-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
         // Registry padded to R entries; the workflow references only the first F.
@@ -74,7 +72,6 @@ open class BenchmarkResolveWorkflowByRegistrySize {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         // FIXED_CALLS calls distributed round-robin over the first FIXED_FUNCTIONS functions.
         workflow = WorkflowGenerator.withDistinctInternalCalls(FIXED_CALLS, FIXED_FUNCTIONS, BASE)
@@ -94,7 +91,7 @@ open class BenchmarkResolveWorkflowByRegistrySize {
     /** Optimized resolution: one registry read, then N pure lookups -> O(N+R). */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
-        blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
+        blackhole.consume(OptimizedEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
     companion object {

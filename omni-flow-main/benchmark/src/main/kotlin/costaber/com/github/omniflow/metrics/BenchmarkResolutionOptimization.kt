@@ -21,9 +21,9 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P7 - Before/after of the registry-read optimization, measured in the SAME run
+ * T3 - Before/after of the registry-read optimization, measured in the SAME run
  * on the SAME machine (so the two strategies are directly comparable, unlike
- * comparing P3 and P6 across machines).
+ * comparing T1 and T2 across machines).
  *
  * Resolving N internal calls against an R-entry registry:
  *  - [resolveNaive]     re-reads + re-parses the whole registry file on EVERY call
@@ -54,7 +54,7 @@ open class BenchmarkResolutionOptimization {
 
     @Setup(Level.Trial)
     fun setup() {
-        registryFile = Files.createTempFile("omniflow-bench-p7-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t3-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
         val functions = mutableMapOf(

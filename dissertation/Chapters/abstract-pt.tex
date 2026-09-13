@@ -1,0 +1,43 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% abstrac-pt.tex
+%% ISEL thesis document file
+%%
+%% Abstract in Portuguese
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Implantar uma aplicação \emph{serverless} significa implantar duas coisas: as funções que fazem o
+trabalho e o \emph{workflow} que as orquestra. Cada uma destas partes é tratada por uma ferramenta diferente, e
+as duas não são independentes. Um \emph{workflow} invoca uma função através do \emph{endpoint} que
+o fornecedor lhe atribui quando a implanta --- um URL do Cloud Run, um ARN do Lambda --- e esse
+\emph{endpoint} depende da conta, do projeto e da região onde foi implantada. O programador
+implanta as funções com uma ferramenta, lê os \emph{endpoints} produzidos e copia-os à mão para a
+definição do \emph{workflow}, consumida por outra. A cópia repete-se para cada destino de
+implantação, e um \emph{endpoint} errado não é detetado: a definição do \emph{workflow} continua
+válida, é implantada com sucesso e só falha em execução.
+
+Esta dissertação elimina esse passo manual unificando as duas ferramentas: o QuickFaaS, que
+implanta funções \emph{serverless} portáveis, e o OmniFlow, uma DSL em Kotlin que gera e implanta
+\emph{workflows} no AWS Step Functions e no Google Cloud Workflows. Uma chamada identifica a função
+que invoca por um identificador lógico estável, em vez de um \emph{endpoint}, e o OmniFlow liga
+esse identificador no momento em que implanta o \emph{workflow}. A ligação é uma cascata de três
+níveis, cada um usado apenas quando o anterior falha: um registo de funções, cuja entrada é
+validada contra a função existente; uma procura nas regiões do fornecedor por uma função com esse
+nome; e, só com a ausência confirmada, uma implantação através do QuickFaaS a partir de um
+descritor. O QuickFaaS, até aqui limitado ao Google Cloud e ao Azure, foi também estendido com um
+fornecedor para o AWS Lambda, para que a unificação cubra as duas \emph{clouds} que o OmniFlow
+suporta.
+
+O protótipo foi avaliado quanto à correção e ao custo. Quarenta e cinco testes unitários cobrem
+todos os caminhos que a cascata pode seguir nos dois fornecedores, e os testes de desempenho
+mostram que resolver um \emph{workflow} com duzentas chamadas internas custa dezenas de
+microssegundos, crescendo linearmente com o número de chamadas internas e não com a dimensão do
+registo. Implantar uma aplicação \emph{serverless} a partir de uma única definição é, assim,
+exequível, e a resolução acrescentada é desprezável face à implantação na \emph{cloud} que se
+lhe segue.
+
+% Palavras-chave do resumo em Português
+\begin{keywords}
+Computação \emph{serverless}, \emph{Function-as-a-Service}, Orquestração de \emph{workflows},
+Portabilidade \emph{multi-cloud}, Ligação de \emph{endpoints} em tempo de implantação, AWS Lambda,
+Google Cloud
+\end{keywords}

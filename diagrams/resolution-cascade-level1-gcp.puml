@@ -1,0 +1,44 @@
+@startuml resolution-cascade-level1-gcp
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution cascade -- Level 1: Registry lookup and live validation (GCP)
+
+participant "Resolver\n(WorkflowInternalFunctionResolver)" as R
+participant "FunctionRegistryStore" as REG
+participant "CloudRunV2ServiceInspector" as GI
+
+R -> REG : tryResolveEntry(functionRef)\n[exact match, then "<region>/<functionRef>" suffix]
+alt registry miss
+  REG --> R : null
+  note over R
+    continues at Level 2 - Provider discovery
+    (see resolution-cascade-level2-gcp.puml)
+  end note
+else registry hit
+  REG --> R : (key, metadata)
+
+  R -> GI : lookupByServiceName(metadata.serviceName)
+  alt Found - same URL
+    GI --> R : Found(serviceName, url == metadata.url)
+    R --> R : return metadata.url
+  else Found - drifted URL
+    GI --> R : Found(serviceName, url != metadata.url)
+    R -> REG : put(key, metadata.copy(url = newUrl))
+    R --> R : return newUrl
+  else NotFound
+    GI --> R : NotFound
+    R -> R : discoverServiceForRef(functionRef)\n[one more attempt across regions]
+    alt rediscovered elsewhere
+      R -> REG : put(key, newMetadata)
+      R --> R : return newUrl
+    else still not found
+      R -> REG : remove(key)
+      R --> R : throw IllegalStateException\n(stale entry removed - deleted service)
+    end
+  else Forbidden
+    GI --> R : Forbidden(message)
+    R --> R : throw IllegalStateException\n(cannot validate via Cloud Run APIs)
+  end
+end
+@enduml

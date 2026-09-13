@@ -1,0 +1,8 @@
+Benchmark,Mode,Threads,Samples,Score,Score Error (99.9%),Unit,Param: branchWidth
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized,avgt,1,15,12.549792,0.035853,us/op,1
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized,avgt,1,15,13.654829,0.054093,us/op,2
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized,avgt,1,15,17.029573,0.123906,us/op,5
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized,avgt,1,15,22.377252,0.292491,us/op,10
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized,avgt,1,15,33.176201,0.119531,us/op,20
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized,avgt,1,15,65.204417,0.185964,us/op,50
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByBranchWidth.resolveOptimized,avgt,1,15,119.182756,1.126018,us/op,100

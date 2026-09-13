@@ -1,0 +1,119 @@
+@startuml architecture-after
+skinparam monochrome false
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam titleFontSize 16
+skinparam titleFontStyle bold
+skinparam padding 3
+skinparam nodesep 20
+skinparam ranksep 40
+
+skinparam ArrowColor #4D4D4D
+skinparam ArrowFontSize 11
+skinparam ArrowFontColor #333333
+
+skinparam actor {
+  BackgroundColor #F2F2F2
+  BorderColor #595959
+}
+
+skinparam component {
+  BackgroundColor #F7F7F7
+  BorderColor #595959
+  FontColor #1A1A1A
+}
+skinparam component<<new>> {
+  BackgroundColor #E7EFFB
+  BorderColor #3B6FA0
+  FontColor #1A1A1A
+}
+skinparam component<<extended>> {
+  BackgroundColor #FBEEE0
+  BorderColor #B4622A
+  FontColor #1A1A1A
+}
+
+skinparam database {
+  BackgroundColor #ECECEC
+  BorderColor #595959
+}
+
+skinparam cloud {
+  BackgroundColor #FCFCFC
+  BorderColor #8C8C8C
+  FontColor #333333
+}
+
+skinparam rectangle {
+  BackgroundColor transparent
+  BorderColor #999999
+  FontColor #4D4D4D
+  FontStyle bold
+  FontSize 12
+}
+
+skinparam legend {
+  BackgroundColor #FDFDFD
+  BorderColor #999999
+  FontSize 11
+}
+
+title Unified Deployment from a Single Workflow Definition
+
+actor "Developer" as D2
+component "OmniFlow DSL\n(+ ""internalFunction"" construct)" as DSL2
+
+rectangle "GCP Deployment Path" {
+  component "GoogleCloudDeployer" as GCD2
+  component "WorkflowInternalFunctionResolver" as WIFR
+  component "QuickFaasDeployer" as QFD
+  cloud "Google Cloud\nWorkflows" as GCW2
+  cloud "GCP Cloud\nFunctions" as GFN
+  database "function-registry.gcp.json" as REGG
+}
+
+rectangle "AWS Deployment Path" {
+  component "AmazonCloudDeployer" as ACD2
+  component "AwsInternalFunctionResolver" as AIFR <<new>>
+  component "AwsLambdaDeployer" as ALD <<new>>
+  cloud "AWS Step\nFunctions" as SF2
+  cloud "AWS Lambda" as LAM
+  database "function-registry.aws.json" as REGA
+}
+
+component "QuickFaaS JAR\n(+ AwsProvider)" as JAR <<extended>>
+
+D2 --> DSL2
+DSL2 --> GCD2
+DSL2 --> ACD2
+
+GCD2 --> WIFR
+ACD2 --> AIFR
+WIFR <--> REGG : read / write
+AIFR <--> REGA : read / write
+
+WIFR --> QFD
+AIFR --> ALD
+QFD ..> JAR : subprocess
+ALD ..> JAR : subprocess
+
+JAR --> GFN
+JAR --> LAM
+
+GCD2 --> GCW2 : YAML
+ACD2 --> SF2 : ASL JSON
+SF2 --> LAM : lambda:invoke (ARN)
+
+legend right
+  |= Marker |= Meaning |
+  |<back:#E7EFFB>    </back>| new component (Part A/B) |
+  |<back:#FBEEE0>    </back>| extended component (Part A) |
+  |  --> | direct call / render target |
+  |  ..> | subprocess invocation |
+  | <--> | registry read / write |
+  Components without a marker are unmodified, pre-existing OmniFlow/QuickFaaS classes.
+endlegend
+
+@enduml

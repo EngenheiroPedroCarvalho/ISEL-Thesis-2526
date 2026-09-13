@@ -259,13 +259,13 @@ object WorkflowGenerator {
     )
 
     // ---------------------------------------------------------------------
-    // Additions for the parameter-count (P2), internal-call resolution (P3)
-    // and nesting-depth (P5) benchmarks. Pure in-memory model construction;
+    // Additions for the parameter-count (T16), internal-call resolution (T1)
+    // and nesting-depth (T17) benchmarks. Pure in-memory model construction;
     // no I/O, no network, no cloud SDK.
     // ---------------------------------------------------------------------
 
     /**
-     * P2 helper. Builds a workflow with a FIXED [stepsNumber] of CALL steps,
+     * T16 helper. Builds a workflow with a FIXED [stepsNumber] of CALL steps,
      * where every call carries exactly [parameterCount] query, header and
      * body parameters. This isolates the cost of rendering call payloads
      * from the cost of rendering more steps.
@@ -293,7 +293,7 @@ object WorkflowGenerator {
     }
 
     /**
-     * P3 helper. Builds a workflow whose calls are ALL internal (each call
+     * T1 helper. Builds a workflow whose calls are ALL internal (each call
      * references the same registry [functionName] via internalFunction()).
      * Resolution of these calls reads from the in-memory registry only.
      */
@@ -317,7 +317,7 @@ object WorkflowGenerator {
     }
 
     /**
-     * P8/P9 helper. Builds a workflow with [callCount] internal CALL steps whose
+     * T4/T5 helper. Builds a workflow with [callCount] internal CALL steps whose
      * references are distributed round-robin over [distinctFunctionCount] distinct
      * functions: step idx -> "[baseName]${idx % distinctFunctionCount}". The registry
      * must contain exactly those functions ([baseName]0 .. [baseName]{distinctFunctionCount-1}).
@@ -350,9 +350,10 @@ object WorkflowGenerator {
     }
 
     /**
-     * P3 helper. Builds a workflow whose calls are ALL external (literal
+     * T1 helper. Builds a workflow whose calls are ALL external (literal
      * host/path, no internalFunction()). The endpoint resolver leaves these
-     * untouched, so this is the baseline (no registry access at all).
+     * untouched, so this is the baseline (the resolver still reads the
+     * registry once, but never looks a call up in it).
      */
     @JvmStatic
     fun withExternalCalls(stepsNumber: Int): Workflow {
@@ -374,7 +375,7 @@ object WorkflowGenerator {
     }
 
     /**
-     * P15/P16 helper. Builds a workflow with [internalCalls] internal CALL steps
+     * T11/T12 helper. Builds a workflow with [internalCalls] internal CALL steps
      * (round-robin over [distinctFunctionCount] distinct functions, same scheme as
      * [withDistinctInternalCalls]) INTERLEAVED with [externalCalls] external CALL
      * steps, evenly spread across the [internalCalls] + [externalCalls] steps
@@ -415,7 +416,7 @@ object WorkflowGenerator {
     }
 
     /**
-     * P5 helper. Builds a workflow with a FIXED [totalSteps] count of leaf
+     * T17 helper. Builds a workflow with a FIXED [totalSteps] count of leaf
      * CALL steps, wrapped in [depth] levels of nesting. Nesting alternates
      * between an iteration (range) wrapper and a parallel (single-branch)
      * wrapper, reusing the existing iteration/parallel step generators.
@@ -449,7 +450,7 @@ object WorkflowGenerator {
     }
 
     /**
-     * P12 helper. Builds a workflow with a SINGLE Choice step carrying exactly [branchCount]
+     * T18 helper. Builds a workflow with a SINGLE Choice step carrying exactly [branchCount]
      * conditions, isolating the render cost of a Choice's branch width from step count/nesting.
      */
     @JvmStatic
@@ -470,7 +471,7 @@ object WorkflowGenerator {
     }
 
     /**
-     * P12 helper. Builds a workflow with a SINGLE Parallel step carrying exactly [branchCount]
+     * T18 helper. Builds a workflow with a SINGLE Parallel step carrying exactly [branchCount]
      * branches (each holding [leafStepsPerBranch] leaf calls), isolating the render cost of a
      * Parallel's branch width. Unlike [withParallelMultipleBranches] (which chunks a flat step
      * total into several separate Parallel blocks of fixed bucket size), this keeps a single
@@ -490,7 +491,7 @@ object WorkflowGenerator {
     }
 
     /**
-     * P18 helper. Same nesting scheme as [withNestedSteps] (FIXED leaf count, [depth] levels
+     * T13 helper. Same nesting scheme as [withNestedSteps] (FIXED leaf count, [depth] levels
      * alternating iteration/parallel wrappers), but the innermost leaves are INTERNAL CALL steps -
      * round-robin over [distinctFunctionCount] distinct functions, same scheme as
      * [withDistinctInternalCalls] - instead of independent external calls. Lets a resolution
@@ -531,7 +532,7 @@ object WorkflowGenerator {
     }
 
     /**
-     * P19 helper. Same structure as [withParallelBranchWidth] (a SINGLE Parallel step with
+     * T14 helper. Same structure as [withParallelBranchWidth] (a SINGLE Parallel step with
      * [branchCount] branches, each holding [leafStepsPerBranch] leaves), but the leaves are
      * INTERNAL CALL steps - round-robin over [distinctFunctionCount] distinct functions - instead
      * of independent external calls. Lets a resolution benchmark measure internal-function

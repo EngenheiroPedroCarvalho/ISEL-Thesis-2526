@@ -1,0 +1,7 @@
+Benchmark,Mode,Threads,Samples,Score,Score Error (99.9%),Unit,Param: depth
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized,avgt,1,15,15.930363,0.058852,us/op,0
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized,avgt,1,15,15.764546,0.104291,us/op,1
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized,avgt,1,15,68.976247,40.803697,us/op,2
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized,avgt,1,15,19.210250,0.957803,us/op,3
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized,avgt,1,15,17.136489,4.131703,us/op,4
+costaber.com.github.omniflow.metrics.BenchmarkInternalResolutionByNesting.resolveOptimized,avgt,1,15,15.854281,0.071029,us/op,5

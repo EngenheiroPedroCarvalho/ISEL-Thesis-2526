@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# IntelliJ
+.idea/
+
+# Claude Code scratch space
+.claude-scratch/
+
+# Supervisor's annotated review copies of the dissertation PDF
+template_ff_v1.pdf
