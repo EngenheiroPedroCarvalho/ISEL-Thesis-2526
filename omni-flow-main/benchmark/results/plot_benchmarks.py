@@ -3,10 +3,14 @@
 Generate the T1-T18 performance graphs from the JMH CSV results.
 
 Usage:
-    python3 plot_benchmarks.py [jmh-results.csv] [output-dir]
+    python3 plot_benchmarks.py [jmh-results-f3.csv] [output-dir]
 
 Reads the JMH CSV (AverageTime mode, microseconds/op) and produces one PNG per
 experiment. All measurements are LOCAL rendering/resolution (no cloud).
+
+The default CSV is jmh-results-f3.csv, the three-fork run the dissertation
+reports. It does not cover the rendering experiments (T15-T17), which are only
+in the older single-fork jmh-results.csv; those classes fall back to that file.
 """
 import csv
 import os
@@ -17,7 +21,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-CSV = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "jmh-results.csv")
+CSV = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "jmh-results-f3.csv")
+FALLBACK_CSV = "jmh-results.csv"   # holds T15-T17, which the three-fork run does not
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.dirname(os.path.abspath(CSV))
 
 # class short name -> (file, title, x-label, {method: series-label})
@@ -193,12 +198,12 @@ def plot_t3(csv_path, out_dir):
     uncached = _plot_t3_one(
         data, "resolveNaive", rs, ns,
         {"marker": "o", "linestyle": "--"},
-        "P7a — Resolution without cache (one read per call, Θ(N·R))",
+        "T3a — Resolution without cache (one read per call, Θ(N·R))",
         "T3a_resolution_sem_cache.png", out_dir, ylim)
     cached = _plot_t3_one(
         data, "resolveOptimized", rs, ns,
         {"marker": "s", "linestyle": "-"},
-        "P7b — Resolution with cache (single read, Θ(N+R))",
+        "T3b — Resolution with cache (single read, Θ(N+R))",
         "T3b_resolution_com_cache.png", out_dir, ylim)
     return [uncached, cached]
 
@@ -305,12 +310,12 @@ def plot_t4(csv_path, out_dir):
     uncached = _plot_t4_one(
         data, "resolveNaive", fs, ns,
         {"marker": "o", "linestyle": "--"},
-        "P8a — Resolution without cache (one read per call, Θ(N·R)) — R=F",
+        "T4a — Resolution without cache (one read per call, Θ(N·R)) — R=F",
         "T4a_resolution_sem_cache.png", out_dir, ylim)
     cached = _plot_t4_one(
         data, "resolveOptimized", fs, ns,
         {"marker": "s", "linestyle": "-"},
-        "P8b — Resolution with cache (single read, Θ(N+R)) — R=F",
+        "T4b — Resolution with cache (single read, Θ(N+R)) — R=F",
         "T4b_resolution_com_cache.png", out_dir, ylim)
     return [uncached, cached]
 
@@ -624,6 +629,15 @@ def plot_artifact_size(csv_path, out_dir):
 
 def main():
     data = load(CSV)
+    missing = [cls for cls in PLOTS if cls not in data]
+    if missing:
+        fallback = os.path.join(os.path.dirname(os.path.abspath(CSV)), FALLBACK_CSV)
+        if os.path.abspath(fallback) != os.path.abspath(CSV) and os.path.exists(fallback):
+            extra = load(fallback)
+            for cls in missing:
+                if cls in extra:
+                    data[cls] = extra[cls]
+                    print(f"  [note] {cls} taken from {FALLBACK_CSV}")
     made = []
     for cls, (fname, title, xlabel, series) in PLOTS.items():
         if cls not in data:
