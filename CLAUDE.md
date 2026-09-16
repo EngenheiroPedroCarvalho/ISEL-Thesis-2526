@@ -186,6 +186,8 @@ For thesis-grade numbers use `-f 3` on a dedicated machine.
   (current: `claude/progress-report-compliance-e4damf`).
 - Commit only when the user asks, and treat a commit as published: commits on this branch have been
   pushed to GitHub automatically (probably by IntelliJ).
+- Record every change to the dissertation chapters in `dissertation/CHANGELOG.md` (unpushed
+  changes only; the procedure is in `dissertation/CLAUDE.md`).
 - Don't edit `quickfaas-essentials/` at the repo root — it's a read-only reference clone; the
   active QuickFaaS code is under `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/`.
 - Prefer minimal production changes; confirm before altering behaviour of colleagues' code.

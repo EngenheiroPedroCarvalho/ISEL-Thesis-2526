@@ -1,9 +1,9 @@
-\chapter{Background}
+\chapter{Serverless Portability: Background and State of the Art}
 \label{cha:background}
 
 This chapter establishes the technical foundation for the proposed integration. It begins with the two layers the work builds on --- Serverless Computing and Function-as-a-Service (FaaS), and then the workflow layer that orchestrates the resulting functions --- highlighting in each the form of vendor lock-in that motivates this work.
 
-It then analyses the two base technologies this dissertation extends: \textbf{QuickFaaS}, which handles the portable deployment of compute units, and \textbf{OmniFlow}, which manages the portable definition of orchestration logic. Chapter~\ref{ch:related-works} reviews related research and existing industry tools, identifying the gap in unified workflow orchestration that this work aims to close.
+It then analyses the two base technologies this dissertation extends: \textbf{QuickFaaS}, which handles the portable deployment of compute units, and \textbf{OmniFlow}, which manages the portable definition of orchestration logic. Finally, Section~\ref{ch:related-works} reviews related research and existing industry tools, identifying the gap in unified workflow orchestration that this work aims to close.
 
 \section{Serverless Computing and FaaS}
 \label{sec:serverless_computing_faas}
@@ -214,17 +214,17 @@ OmniFlow's call step is itself agnostic to what kind of compute resource answers
 
 A practical limitation follows from this design: OmniFlow call steps require concrete invocation targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment time~\cite{silva2025advanced}. If the workflow references an endpoint that does not exist (for example, because the target function has not yet been deployed), workflow deployment may fail or the workflow may fail at runtime. In current usage, developers typically mitigate this by deploying functions first (to obtain their final invocation URLs) and only then completing the workflow definition. This manual synchronization is one of the main motivations for integrating OmniFlow with a function deployment mechanism in the proposed solution chapter.
 
-\chapter{Related Work}
+\section{Related Work}
 \label{ch:related-works}
 
 The proposed integration between \textit{OmniFlow} (workflow definition/deployment) and \textit{QuickFaaS} (function definition/deployment)
 sits at the intersection of two problem areas: (i) composing and deploying workflows without being forced to embed provider-specific workflow specifications and (ii) deploying cloud functions with reduced provider coupling.
 Although each deployment target in this dissertation is a \emph{single provider at a time} (e.g., a workflow deployed on GCP should invoke only functions deployed on GCP), portability concerns remain relevant because developers still want to avoid hard-coding endpoints and to preserve the ability to migrate or re-deploy the same application in another provider with minimal changes.
 
-This chapter reviews the tools, frameworks and methods surveyed in the QuickFaaS publication~\cite{rodrigues2022quickfaas} and in the OmniFlow reports~\cite{costa2023omniflow,silva2025advanced} and positions them relative to the objectives of this thesis.
-The remainder of this chapter discusses each group and highlights why none of them, in isolation, provides the combined behaviour targeted by the OmniFlow-QuickFaaS integration.
+This section reviews the tools, frameworks and methods surveyed in the QuickFaaS publication~\cite{rodrigues2022quickfaas} and in the OmniFlow reports~\cite{costa2023omniflow,silva2025advanced} and positions them relative to the objectives of this thesis.
+The remainder of this section discusses each group and highlights why none of them, in isolation, provides the combined behaviour targeted by the OmniFlow-QuickFaaS integration.
 
-\section{Infrastructure-as-Code and Deployment-Oriented Tooling}
+\subsection{Infrastructure-as-Code and Deployment-Oriented Tooling}
 
 A first family of approaches focuses on automating resource deployment and configuration through templates or IaC specifications.
 
@@ -264,7 +264,7 @@ combination targeted by this thesis: a single workflow definition that can be de
 one provider, calling functions written against a provider-agnostic model, with their endpoints
 bound at deployment time on each provider.
 
-\section{Portable Execution Layers and Code Transformation to FaaS}
+\subsection{Portable Execution Layers and Code Transformation to FaaS}
 
 A second family either introduces a portable runtime layer or attempts to automatically transform existing code into a FaaS-compatible format.
 
@@ -274,13 +274,13 @@ Regarding automated conversion, Spillner presents work on transforming Python ap
 
 In summary, these approaches either (i) replace the provider runtime with a portable runtime layer or (ii) generate provider-specific function artifacts. Neither directly matches the intended goal of this thesis, where provider-native FaaS services remain the target deployment surface but development and orchestration artifacts should remain as provider-agnostic as possible.
 
-\section{Assessing Portability Instead of Enabling It}
+\subsection{Assessing Portability Instead of Enabling It}
 
 The \textbf{SEAPORT} method~\cite{yussupov2020seaport} targets a different but complementary objective: \textit{measuring} portability.
 SEAPORT proposes an automated way to assess the portability of serverless applications (or orchestration tools) against a target provider by transforming deployment models into a canonical representation (CASE).
 This is valuable for decision support and for identifying portability blockers but it does not directly provide a deployment mechanism that \textit{produces} portable artifacts. In other words, it helps explain \textit{how portable} something is, not necessarily \textit{how to make it portable}.
 
-\section{Workflow Composition and Orchestration Frameworks}
+\subsection{Workflow Composition and Orchestration Frameworks}
 
 A final family focuses on function composition, workflow execution efficiency and workflow management models.
 

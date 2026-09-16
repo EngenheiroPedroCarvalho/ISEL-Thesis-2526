@@ -28,19 +28,20 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 | File | PDF chapter(s) | Label(s) |
 |---|---|---|
 | `Chapters/chapter1.tex` | 1 Introduction | `cha:introduction` |
-| `Chapters/chapter2.tex` | 2 Background, 3 Related Work | `cha:background`, `ch:related-works` |
-| `Chapters/chapter3.tex` | 4 Proposed Solution | `ch:proposed_solution` |
-| `Chapters/chapter5.tex` | 5 Implementation | `cha:impl` |
-| `Chapters/chapter6.tex` | 6 Case Study | `cha:case-study` |
-| `Chapters/chapter7.tex` | 7 Evaluation | `cha:evaluation` |
-| `Chapters/chapter8.tex` | 8 Conclusions | `cha:conclusions` |
+| `Chapters/chapter2.tex` | 2 Serverless Portability: Background and State of the Art | `cha:background`; `ch:related-works` is on Section 2.5 |
+| `Chapters/chapter3.tex` | 3 Proposed Solution | `ch:proposed_solution` |
+| `Chapters/chapter5.tex` | 4 Implementation | `cha:impl` |
+| `Chapters/chapter6.tex` | 5 Case Study | `cha:case-study` |
+| `Chapters/chapter7.tex` | 6 Evaluation | `cha:evaluation` |
+| `Chapters/chapter8.tex` | 7 Conclusions | `cha:conclusions` |
 | `Chapters/appendix-cascade.tex` | Appendix A: Resolution Cascade Sequence Diagrams | `app:cascade-sequences` |
 
-- File numbers match chapter numbers from `chapter5.tex` on, but not before: `chapter2.tex` holds
-  chapters 2 and 3, and `chapter3.tex` holds chapter 4. There is no `chapter4.tex` in the build —
-  it was split into `chapter5`–`chapter8` on 2026-09-12, and the Case Study (`chapter6.tex`) now
-  comes before the Evaluation (`chapter7.tex`). The chapter order is set by `\addfile` in
-  `Config/_files.tex`, not by the file names.
+- File numbers match chapter numbers only up to `chapter3.tex`: from `chapter5.tex` on, each file
+  holds the chapter one number lower. Background and Related Work were merged into one chapter
+  (`chapter2.tex`) on 2026-09-15, so `ch:related-works` labels a section despite its prefix. There
+  is no `chapter4.tex` in the build — it was split into `chapter5`–`chapter8` on 2026-09-12, and
+  the Case Study (`chapter6.tex`) now comes before the Evaluation (`chapter7.tex`). The chapter
+  order is set by `\addfile` in `Config/_files.tex`, not by the file names.
 - `Config/_files.tex` decides which files are included (`\addfile`, `\appendixfile`, `\annexfile`,
   …). Files with a trailing underscore (`annex1_.tex`, `ganttdiagram_.tex`) don't
   match the names there and are silently skipped. `appendix1.tex` (the template's R example) stays
@@ -56,6 +57,18 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 - Bibliography: `Bibliography/bibliography.bib` (biblatex with the BibTeX backend).
 - Template internals (`iselthesis.cls`, `ISELthesis-files/`, `Logo/`, `Config/_*.tex` apart from
   `_files.tex`): don't edit.
+
+## Changelog
+
+`CHANGELOG.md` (in Portuguese) lists the changes made to the chapters that have not been pushed
+yet; `changelog.txt` is the template's own history and is unrelated. Whenever you change a chapter
+(or the files that shape them: `Config/_files.tex`, appendix, bibliography entries they cite):
+
+1. Compare the `Base:` commit in its header with `git rev-parse --short
+   origin/claude/progress-report-compliance-e4damf`. If they differ, the entries were pushed:
+   delete them and set `Base:` to the current value.
+2. Add an entry under today's date: the chapter and file, and what changed (sections moved,
+   renamed or added, rewritten claims, updated numbers). Group related edits under one heading.
 
 ## Build and check
 
