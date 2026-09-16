@@ -162,6 +162,52 @@ To answer them, this work aims to:
 \end{enumerate}
 
 
+\section{Contributions}
+\label{sec:int_contributions}
+
+The contributions of this dissertation are the following:
+
+\begin{enumerate}
+	\item \textbf{A call model that separates internal from external functions.} The OmniFlow
+	\texttt{call} step is extended with the \texttt{internalFunction} construct, which names a
+	function the workflow developer owns and may optionally point to the QuickFaaS deployment
+	descriptor that builds it. A call is either internal (a logical name, resolved at deployment
+	time) or external (an explicit \texttt{host} and \texttt{path}, left to the developer), and the
+	two forms are mutually exclusive, so the origin of every invoked function is unambiguous.
+
+	\item \textbf{A function registry and a deployment-time resolution cascade.} A per-provider
+	registry stores the non-secret invocation metadata of each internal function, and a three-level
+	cascade binds each logical name to a concrete endpoint before the workflow is rendered: a
+	registry entry validated against the live function, provider discovery across regions, and, only
+	when the function is confirmed to be absent and a descriptor was supplied, deployment through
+	QuickFaaS. The cascade fails fast: an inconclusive lookup aborts the deployment instead of
+	deploying a function that may already exist.
+
+	\item \textbf{AWS Lambda support in QuickFaaS.} QuickFaaS, which deployed to GCP and Azure,
+	gains an AWS provider, and OmniFlow gains the matching function deployer. The unification is
+	therefore available on both providers OmniFlow renders for, instead of on GCP alone.
+
+	\item \textbf{A prototype and a case study.} The two tools are integrated into a working
+	prototype in which a single workflow definition deploys, with its internal functions, to AWS or
+	to GCP; a real-time fraud detection scenario for card payments exercises the registry and the
+	cascade end to end on both providers.
+
+	\item \textbf{An evaluation of the cascade's decisions and of its cost.} The behaviour of the
+	resolution is checked in each situation it can meet on both providers, and its overhead, its
+	scalability with the number of calls and the size of the registry, the registry write path and
+	the packaging overhead of the AWS agnostic layer are measured.
+\end{enumerate}
+
+Part of this work was published, with the supervisors of this dissertation, at the Iberian
+Conference on Information Systems and Technologies (CISTI), as ``Towards Cloud-Agnostic Serverless
+Applications: Unifying Function Deployment and Workflow
+Orchestration''~\cite{carvalho2026towards}. That paper reports the work in progress: the
+motivation, the layered architecture of the unified framework, the distinction between internal and
+external calls, and the Function Registry that maps logical function names to deployed endpoints.
+The dissertation carries that design to completion and adds what the paper left open --- the
+resolution cascade with its validation and discovery levels, the AWS Lambda support, the case study,
+and the quantitative evaluation.
+
 \section{Structure of the Work}
 \label{sec:int_structure}
 

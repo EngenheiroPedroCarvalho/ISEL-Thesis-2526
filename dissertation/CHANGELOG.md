@@ -6,6 +6,23 @@ Só alterações ainda não enviadas (push). Base: `83beba1` (último commit em
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
 este ficheiro.)
 
+## 2026-09-16
+
+### Nova secção 1.5 "Contributions" no capítulo 1
+
+- **Cap. 1 (`chapter1.tex`):** nova secção **1.5 "Contributions"** (`sec:int_contributions`),
+  entre "Research Questions and Objectives" e "Structure of the Work". Enumera as cinco
+  contribuições (modelo de chamada interna/externa; registo de funções e cascata de resolução;
+  suporte AWS Lambda no QuickFaaS; protótipo e caso de estudo; avaliação) e termina com um
+  parágrafo sobre o artigo publicado com os orientadores, "Towards Cloud-Agnostic Serverless
+  Applications: Unifying Function Deployment and Workflow Orchestration"
+  (`\cite{carvalho2026towards}`), distinguindo o que o artigo cobre do que a dissertação
+  acrescenta.
+  O parágrafo nomeia a conferência: Iberian Conference on Information Systems and Technologies
+  (CISTI).
+- **`Bibliography/bibliography.bib`:** nova entrada `carvalho2026towards` (@inproceedings), CISTI
+  2026, IEEE. Falta preencher o `note` (local, páginas e DOI), marcado com `TODO`.
+
 ## 2026-09-15
 
 ### Capítulos 2 e 3 juntos num só capítulo
