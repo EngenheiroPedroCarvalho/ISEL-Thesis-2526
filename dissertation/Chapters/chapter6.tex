@@ -182,7 +182,7 @@ Listing~\ref{lst:case-payment-workflow} --- only different QuickFaaS descriptors
 Functions instead of Lambda) and the GCP deployer. On this first GCP deployment, the GCP registry is
 bootstrapped separately from the AWS one, both scoring functions miss at Level~1 and Level~2, and
 Level~3 deploys them as first-generation Cloud Functions instead, following the ZIP-based
-deployment path described in Section~\ref{sec:background_quickfaas}. The two registries stay
+deployment path described in \S\ref{sec:background_quickfaas}. The two registries stay
 independent, one per provider (\texttt{function-registry.aws.json} and
 \texttt{function-registry.gcp.json} by default), so the same \texttt{functionRef} resolves to a
 Lambda ARN under one deployment and to a Cloud Functions URL under the other. On GCP, however, those

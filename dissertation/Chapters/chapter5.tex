@@ -159,7 +159,7 @@ so that two calls to the same function within one workflow still observe each ot
 rather than re-reading the file per call.
 
 \paragraph{Limitation: first-generation Cloud Functions on GCP.}
-On GCP, QuickFaaS deploys first-generation Cloud Functions (Section~\ref{sec:background_quickfaas}),
+On GCP, QuickFaaS deploys first-generation Cloud Functions (\S\ref{sec:background_quickfaas}),
 but the GCP resolver's live validation, its provider discovery and the registry bootstrap all query
 the Cloud Run API. The functions that the integration itself deploys on GCP are therefore only
 partly covered by the cascade. First, a registry hit on a \texttt{cloudfunctions.net} URL is

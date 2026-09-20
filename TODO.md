@@ -241,6 +241,13 @@ drift as text is edited, so search for the quoted phrases.
 
 - [ ] A Cloud Functions v1 client on GCP for validation, discovery and bootstrap (closes the
       documented limitation).
+- [ ] Identify first-generation Cloud Functions by something stronger than the URL domain.
+      `WorkflowInternalFunctionResolver.isFirstGenCloudFunction` (line 272) tests
+      `url.contains(".cloudfunctions.net")`, but a function created through the Cloud Functions v2
+      API is served on `run.app` and *also* keeps a `cloudfunctions.net` endpoint, so a registry
+      entry holding that endpoint would silently skip live validation. Not reachable today, since
+      QuickFaaS only creates v1 functions, and it goes away if the v1 client above is implemented.
+      The caveat is documented in the thesis (Ch. 2, "FaaS Deployment Model: The ZIP Strategy").
 - [ ] Fail fast when a descriptor's `function.name` differs from the `functionRef` (for example in
       `QuickFaasDescriptorLoader.validate`); today the deployment runs and then times out waiting
       for a function that was deployed under another name.
