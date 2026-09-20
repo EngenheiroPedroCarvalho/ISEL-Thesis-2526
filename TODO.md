@@ -276,7 +276,21 @@ drift as text is edited, so search for the quoted phrases.
       still name `java11` and fail at Google instead of locally. Making `setRuntimeVersion` check
       the provider's own `runtimes` array would close that, but it changes the behaviour of shared
       code on all three providers.
-      Note: java17's own deprecation at Google is set for October 2027.
+      **Dates confirmed at the source on 2026-09-20** (Google's *Runtime support* page for Cloud
+      Run functions): java11 deprecated 2024-10-31 and decommissioned 2025-10-31; nodejs14
+      deprecated 2024-01-30 and decommissioned 2025-01-30; java17 deprecated October 2027, with no
+      decommission date set. Worth knowing before reopening this: Google itself still supports
+      java21 and nodejs20/22 — those are rejected because *QuickFaaS* cannot build them
+      (`RuntimeVersion` defines only JAVA11/JAVA17/NODEJS14, and `GcpBuildScripts.nodeJsBuildScript`
+      is `TODO("Not yet implemented")`, so no Node runtime was ever buildable). java17 was already
+      the only runtime QuickFaaS could deploy to GCP before the decommissioning; Google merely
+      removed the last alternative.
+      How they used to fail, for the record: an undefined runtime reached
+      `CloudFunction.setRuntimeVersion`, which calls `logPropertyMissing` → `logMessage(msg, 1)` →
+      prints the message in red and `exitProcess(1)` (`General.kt:31`); OmniFlow surfaced it as
+      `IllegalStateException("QuickFaaS deployment failed (exit code 1). Output: ...")`
+      (`QuickFaasProcessInvoker.kt:92`). So the diagnostic existed — the gain from validating at
+      load time is failing earlier and more cleanly, not failing at all where it previously passed.
 - [ ] Fail fast when a descriptor's `function.name` differs from the `functionRef` (for example in
       `QuickFaasDescriptorLoader.validate`); today the deployment runs and then times out waiting
       for a function that was deployed under another name.
