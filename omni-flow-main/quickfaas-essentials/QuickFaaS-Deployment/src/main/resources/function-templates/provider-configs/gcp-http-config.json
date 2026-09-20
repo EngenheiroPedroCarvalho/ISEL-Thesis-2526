@@ -1,16 +1,20 @@
 {
-  "name": "projects/<project_id>/locations/<location>/functions/<name>",
   "description": "QuickFaaS cloud-agnostic function",
-  "status": "ACTIVE",
-  "entryPoint": "<entry_point>",
-  "runtime": "<runtime>",
-  "timeout": "60s",
-  "availableMemoryMb": 256,
-  "maxInstances": 3000,
-  "minInstances": 0,
-  "sourceArchiveUrl": "gs://<bucket>/quickfaas/<name>/<zip_file>",
-  "httpsTrigger": {
-    "url": "",
-    "securityLevel": "SECURE_OPTIONAL"
+  "buildConfig": {
+    "runtime": "<runtime>",
+    "entryPoint": "<entry_point>",
+    "source": {
+      "storageSource": {
+        "bucket": "<bucket>",
+        "object": "quickfaas/<name>/<zip_file>"
+      }
+    }
+  },
+  "serviceConfig": {
+    "availableMemory": "256Mi",
+    "timeoutSeconds": 60,
+    "maxInstanceCount": 100,
+    "minInstanceCount": 0,
+    "ingressSettings": "ALLOW_ALL"
   }
 }

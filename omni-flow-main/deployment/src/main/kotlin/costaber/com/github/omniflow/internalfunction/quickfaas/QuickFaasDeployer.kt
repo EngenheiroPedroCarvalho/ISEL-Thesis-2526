@@ -23,7 +23,11 @@ class QuickFaasDeployer(
 
     private companion object {
         private val logger = KotlinLogging.logger {}
-        private const val INVOKER_ROLE = "roles/cloudfunctions.invoker"
+
+        // 2nd gen functions run on Cloud Run, which is where invocation is enforced.
+        private const val INVOKER_ROLE = "roles/run.invoker"
+        private const val FUNCTIONS_API = "https://cloudfunctions.googleapis.com/v2"
+        private const val CLOUD_RUN_API = "https://run.googleapis.com/v2"
         private const val RESET   = "[0m"
         private const val BOLD    = "[1m"
         private const val GREEN   = "[32m"
@@ -65,23 +69,30 @@ class QuickFaasDeployer(
 
         val resolvedProject = descriptor.project ?: projectId
         val resolvedRegion = descriptor.function?.location ?: region
-        val url = buildFirstGenFunctionUrl(resolvedRegion, resolvedProject, functionName)
 
         println("$BLUE  →$RESET Polling Cloud Functions API — waiting for '$functionName' to become ACTIVE...")
-        waitForFunctionReady(resolvedProject, resolvedRegion, functionName)
+        val deployed = waitForFunctionReady(resolvedProject, resolvedRegion, functionName)
         println("$GREEN  ✓$RESET Function '$functionName' is ACTIVE")
 
         if (invokerServiceAccount != null) {
             println("$BLUE  →$RESET Granting $INVOKER_ROLE to service account on '$functionName'...")
-            grantInvokerPermission(resolvedProject, resolvedRegion, functionName, invokerServiceAccount)
+            grantInvokerPermission(deployed.service, functionName, resolvedRegion, invokerServiceAccount)
         }
 
-        logger.info { "QuickFaaS deployment completed for '$functionName'. Registered URL: $url" }
+        logger.info { "QuickFaaS deployment completed for '$functionName'. Registered URL: ${deployed.uri}" }
 
-        return FunctionInvocationMetadata(serviceName = functionName, url = url)
+        return FunctionInvocationMetadata(serviceName = deployed.serviceName, url = deployed.uri)
     }
 
-    private fun waitForFunctionReady(projectId: String, region: String, functionName: String) {
+    /**
+     * A deployed 2nd gen function: its generated 'run.app' [uri] and the resource name of the
+     * Cloud Run [service] backing it, both output-only fields of the Cloud Functions v2 API.
+     */
+    private data class DeployedFunction(val uri: String, val service: String) {
+        val serviceName: String get() = service.substringAfterLast('/')
+    }
+
+    private fun waitForFunctionReady(projectId: String, region: String, functionName: String): DeployedFunction {
         val apiUrl = cloudFunctionsApiUrl(projectId, region, functionName)
         val deadline = System.currentTimeMillis() + readinessTimeoutSeconds * 1000
 
@@ -94,19 +105,30 @@ class QuickFaasDeployer(
                 when (response.statusCode()) {
                     200 -> {
                         val json = mapper.readTree(response.body())
-                        val status = json.path("status").asText("")
-                        when (status) {
+                        val state = json.path("state").asText("")
+                        when (state) {
                             "ACTIVE" -> {
                                 logger.info { "Function '$functionName' is ACTIVE and ready." }
-                                return
+                                val serviceConfig = json.path("serviceConfig")
+                                val uri = serviceConfig.path("uri").asText("")
+                                if (uri.isBlank()) {
+                                    throw IllegalStateException(
+                                        "Function '$functionName' is ACTIVE but the Cloud Functions v2 API " +
+                                                "reported no 'serviceConfig.uri' to bind the workflow to."
+                                    )
+                                }
+                                return DeployedFunction(
+                                    uri = uri,
+                                    service = serviceConfig.path("service").asText("")
+                                )
                             }
-                            "DEPLOY_FAILURE", "DELETE_FAILURE" -> {
+                            "FAILED" -> {
                                 throw IllegalStateException(
-                                    "Function '$functionName' reached terminal status: $status"
+                                    "Function '$functionName' reached terminal state: $state"
                                 )
                             }
                             else -> {
-                                logger.info { "Function '$functionName' status: $status — waiting..." }
+                                logger.info { "Function '$functionName' state: $state — waiting..." }
                             }
                         }
                     }
@@ -129,18 +151,25 @@ class QuickFaasDeployer(
     }
 
     private fun grantInvokerPermission(
-        projectId: String,
-        region: String,
+        service: String,
         functionName: String,
+        region: String,
         serviceAccountEmail: String
     ) {
-        val resource = "projects/$projectId/locations/$region/functions/$functionName"
         val member = "serviceAccount:$serviceAccountEmail"
+
+        if (service.isBlank()) {
+            logManualIamCommand(
+                functionName, region, serviceAccountEmail,
+                IllegalStateException("the API reported no Cloud Run service backing '$functionName'")
+            )
+            return
+        }
 
         logger.info { "Granting $INVOKER_ROLE to '$serviceAccountEmail' on '$functionName'..." }
 
         val currentPolicy = try {
-            getIamPolicy(resource)
+            getIamPolicy(service)
         } catch (e: Exception) {
             logManualIamCommand(functionName, region, serviceAccountEmail, e)
             return
@@ -179,7 +208,7 @@ class QuickFaasDeployer(
         val policyBody = mapOf("policy" to mapOf("bindings" to updatedBindings))
 
         try {
-            setIamPolicy(resource, policyBody)
+            setIamPolicy(service, policyBody)
         } catch (e: Exception) {
             logManualIamCommand(functionName, region, serviceAccountEmail, e)
             return
@@ -201,20 +230,22 @@ class QuickFaasDeployer(
     ) {
         println("$YELLOW  !$RESET Could not auto-grant invoker permission: ${cause.message}")
         println("$YELLOW  !$RESET Run this command manually before executing the workflow:")
-        println("    gcloud functions add-invoker-policy-binding $functionName \\")
+        println("    gcloud run services add-iam-policy-binding $functionName \\")
         println("      --region=$region \\")
-        println("      --member=\"serviceAccount:$serviceAccountEmail\"")
+        println("      --member=\"serviceAccount:$serviceAccountEmail\" \\")
+        println("      --role=\"$INVOKER_ROLE\"")
         logger.warn {
             "Could not auto-grant invoker permission: ${cause.message}\n" +
                     "  Run this command manually before executing the workflow:\n" +
-                    "  gcloud functions add-invoker-policy-binding $functionName \\\n" +
+                    "  gcloud run services add-iam-policy-binding $functionName \\\n" +
                     "    --region=$region \\\n" +
-                    "    --member=\"serviceAccount:$serviceAccountEmail\""
+                    "    --member=\"serviceAccount:$serviceAccountEmail\" \\\n" +
+                    "    --role=\"$INVOKER_ROLE\""
         }
     }
 
     private fun getIamPolicy(resource: String): com.fasterxml.jackson.databind.JsonNode {
-        val url = "https://cloudfunctions.googleapis.com/v1/$resource:getIamPolicy"
+        val url = "$CLOUD_RUN_API/$resource:getIamPolicy"
         val response = authenticatedGet(url)
         if (response.statusCode() !in 200..299) {
             throw IllegalStateException(
@@ -225,7 +256,7 @@ class QuickFaasDeployer(
     }
 
     private fun setIamPolicy(resource: String, policyBody: Map<String, Any>) {
-        val url = "https://cloudfunctions.googleapis.com/v1/$resource:setIamPolicy"
+        val url = "$CLOUD_RUN_API/$resource:setIamPolicy"
         val token = tokenProvider.getTokenValue()
         val body = mapper.writeValueAsString(policyBody)
         val request = HttpRequest.newBuilder()
@@ -255,8 +286,5 @@ class QuickFaasDeployer(
     }
 
     private fun cloudFunctionsApiUrl(projectId: String, region: String, functionName: String): String =
-        "https://cloudfunctions.googleapis.com/v1/projects/$projectId/locations/$region/functions/$functionName"
-
-    private fun buildFirstGenFunctionUrl(region: String, projectId: String, functionName: String): String =
-        "https://$region-$projectId.cloudfunctions.net/$functionName"
+        "$FUNCTIONS_API/projects/$projectId/locations/$region/functions/$functionName"
 }

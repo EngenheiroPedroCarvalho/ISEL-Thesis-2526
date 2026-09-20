@@ -40,8 +40,7 @@ import java.nio.file.Path
 /**
  * Unit tests for [WorkflowInternalFunctionResolver].
  *
- * A registry hit is validated against the live Cloud Run service (unless the stored URL is a
- * 1st-gen Cloud Function, which short-circuits before any Cloud Run call), and a registry miss is
+ * A registry hit is validated against the live Cloud Run service, and a registry miss is
  * searched for across every Cloud Run location, so the resolver reaches GCP through the
  * [CloudRunV2ServiceInspector] and [CloudRunLocationsV1RestClient] seams. Both are concrete
  * classes (not interfaces), so they are mocked with MockK here rather than hand-rolled fakes; every
@@ -173,30 +172,35 @@ internal class WorkflowInternalFunctionResolverTest {
     }
 
     @Test
-    fun `1st-gen Cloud Function registry hit skips Cloud Run validation`() {
+    fun `registry hit holding a cloudfunctions_net URL is still validated against Cloud Run`() {
+        // A 2nd gen function is served on run.app but also keeps a cloudfunctions.net endpoint,
+        // so the stored URL says nothing about which API backs the function. Every registry hit
+        // is validated, and the live Cloud Run URL wins.
         val inspector = mockk<CloudRunV2ServiceInspector>()
-        // No `every {}` stub registered for lookupByServiceName -> calling it would throw a
-        // MockKException; a passing test proves the short-circuit avoided calling it at all.
+        every { inspector.lookupByServiceName("greeting-fn") } returns
+            CloudRunV2ServiceInspector.LookupResult.Found(
+                "greeting-fn", "https://greeting-fn-abc123-ew.a.run.app"
+            )
         val resolver = WorkflowInternalFunctionResolver(
             projectId = "proj",
             preferredRegion = "eu-west-1",
             registry = storeWith(
-                "legacy-fn" to FunctionInvocationMetadata(
-                    "legacy-fn", "https://us-central1-proj.cloudfunctions.net/legacy-fn"
+                "greeting-fn" to FunctionInvocationMetadata(
+                    "greeting-fn", "https://us-central1-proj.cloudfunctions.net/greeting-fn"
                 )
             ),
             inspector = inspector,
             locationsClient = locationsClient("eu-west-1")
         )
-        val original = workflow(step("callStep", internalCall("legacy-fn")))
+        val original = workflow(step("callStep", internalCall("greeting-fn")))
 
         val resolved = resolver.resolve(original)
 
         expectThat(resolved.steps.first().context).isA<CallContext>().and {
-            get { host }.isEqualTo("https://us-central1-proj.cloudfunctions.net")
-            get { path }.isEqualTo("/legacy-fn")
+            get { host }.isEqualTo("https://greeting-fn-abc123-ew.a.run.app")
+            get { path }.isEqualTo("")
         }
-        verify(exactly = 0) { inspector.lookupByServiceName(any()) }
+        verify(exactly = 1) { inspector.lookupByServiceName("greeting-fn") }
     }
 
     @Test

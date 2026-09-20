@@ -122,11 +122,6 @@ class WorkflowInternalFunctionResolver(
         if (existing != null) {
             val (key, meta) = existing
 
-            if (isFirstGenCloudFunction(meta.url)) {
-                logger.debug { "Registry hit for '$key' (1st gen Cloud Function) — skipping Cloud Run validation" }
-                return meta.url
-            }
-
             return when (val r = inspector.lookupByServiceName(meta.serviceName)){
                 is CloudRunV2ServiceInspector.LookupResult.Found -> {
                     if(r.url != meta.url){
@@ -267,9 +262,6 @@ class WorkflowInternalFunctionResolver(
         }
 
 
-
-    private fun isFirstGenCloudFunction(url: String): Boolean =
-        url.contains(".cloudfunctions.net")
 
     private fun splitUrl(url: String): Pair<String, String> {
         val uri = try {
