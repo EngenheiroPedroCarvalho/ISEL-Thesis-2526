@@ -239,18 +239,48 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 6. Code ideas (ISEL-Thesis-2526)
 
-- [ ] A Cloud Functions v1 client on GCP for validation, discovery and bootstrap (closes the
-      documented limitation).
+- [ ] Move QuickFaaS's GCP provider to the Cloud Functions v2 API, so that the functions it
+      deploys are Cloud Run services and the existing `CloudRunV2ServiceInspector` /
+      `CloudRunV2RestCatalog` validate, discover and bootstrap them with no new client. Preferred
+      over the Cloud Functions v1 client this item used to propose: v1 closes the same gap without
+      touching QuickFaaS, but leaves the two generations to be told apart at resolution time — the
+      very thing the item below shows cannot be done from the URL. The cost is all inside
+      QuickFaaS: `buildConfig`/`serviceConfig` request body, `?functionId=` on create, the
+      `run.app` URL read from `serviceConfig.uri` instead of composed, `roles/run.invoker` on the
+      Cloud Run service, and the storage trigger's template moved to `CloudEventsFunction`
+      (`GcpStorageTemplate.java` still implements the 1st-gen `BackgroundFunction`).
+      **Already implemented on the `experiment/gcf-gen2` branch** (commit `16ac650`, worktree
+      `../ISEL-Thesis-gen2`): compiles and passes locally (19 + 177 tests), but never validated
+      against GCP, because the project's billing accounts are closed. That is why it stays future
+      work, as Ch. 7 "Future Work" and the Ch. 4 limitation paragraph now describe.
 - [ ] Identify first-generation Cloud Functions by something stronger than the URL domain.
       `WorkflowInternalFunctionResolver.isFirstGenCloudFunction` (line 272) tests
       `url.contains(".cloudfunctions.net")`, but a function created through the Cloud Functions v2
       API is served on `run.app` and *also* keeps a `cloudfunctions.net` endpoint, so a registry
       entry holding that endpoint would silently skip live validation. Not reachable today, since
-      QuickFaaS only creates v1 functions, and it goes away if the v1 client above is implemented.
+      QuickFaaS only creates v1 functions, and it goes away with the v2 move above, which deletes
+      the check rather than hardening it.
       The caveat is documented in the thesis (Ch. 2, "FaaS Deployment Model: The ZIP Strategy").
+- [ ] Drop the decommissioned GCP runtimes. `GcpFunction.runtimes` (line 36) still offers
+      `JAVA11` and `NODEJS14`, but Google decommissioned nodejs14 on 2025-01-30 and java11 on
+      2025-10-31: neither can deploy a new function or update an existing one, on either
+      generation. Only `java17` still works, and its own deprecation is set for October 2027.
+      `QuickFaasDescriptorLoader.GCP_VALID_RUNTIMES` accepts both as well, plus `java21`,
+      `nodejs20` and `nodejs22`, which the `RuntimeVersion` enum (line 8) does not define at all —
+      a descriptor naming one passes validation and then dies in `setRuntimeVersion`. Note that
+      the enum is shared: AWS and Azure still list `JAVA11`/`NODEJS14`, so only the GCP arrays and
+      the loader's set should change. This blocks any GCP demo and is independent of the v1/v2
+      question above.
 - [ ] Fail fast when a descriptor's `function.name` differs from the `functionRef` (for example in
       `QuickFaasDescriptorLoader.validate`); today the deployment runs and then times out waiting
       for a function that was deployed under another name.
+- [ ] Report the provider's error instead of throwing it away. `GcpRequests.getSessionUri`
+      (line 39) does `.headers["Location"]!!`, so any failed upload turns into a bare
+      `NullPointerException` with no message and a stack trace pointing at the `!!`. A closed
+      billing account, for instance, answers `403 accountDisabled` with a perfectly readable
+      explanation that never reaches the user; finding it took two manual `curl` calls. Check the
+      status and surface the response body. The same pattern is worth a look across
+      `GcpRequests`/`AwsRequests`, which mostly return the raw `HttpResponse` unchecked.
 - [ ] An update path: store a source hash in each registry entry, and redeploy when the
       descriptor's function file changes.
 - [ ] Registry hardening: cross-process locking, integrity checks, a pluggable backend, an
