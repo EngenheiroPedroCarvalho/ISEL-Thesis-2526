@@ -129,6 +129,19 @@ first, and add `-o` to run offline:
 JAVA_HOME=/opt/homebrew/opt/openjdk@26/libexec/openjdk.jdk/Contents/Home ./mvnw -o -pl deployment test
 ```
 
+**Gradle needs a different JDK from Maven.** QuickFaaS is on Kotlin 1.6.20, whose compiler cannot
+parse JDK 26's version string: `./gradlew test` fails at `:compileKotlin` with
+`exception: java.lang.IllegalArgumentException: 26.0.2.1`. Point it at the JDK 17 that is also
+installed — only `openjdk@17` and `openjdk@26` are on this Mac:
+
+```bash
+cd omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment
+JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew test
+```
+
+Gradle writes no test summary to stdout; the counts are in `build/test-results/test/*.xml`
+(`tests=` / `failures=` on each `<testsuite>`).
+
 ## Performance benchmarks (JMH)
 
 The benchmark jar's Main-Class is a custom launcher; to use JMH CLI flags, invoke the JMH runner
