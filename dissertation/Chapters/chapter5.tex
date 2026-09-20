@@ -170,8 +170,9 @@ first-generation functions, so a binding missing from the registry (for example,
 registry file was deleted or the deployment runs on another machine) cannot be rediscovered. With a
 descriptor, the cascade reaches Level~3 and invokes QuickFaaS again for a function that already
 exists; without one, deployment fails and reports the function as absent. The AWS path is not
-affected. Closing the gap requires a Cloud Functions~v1 client, used for validation, discovery and
-bootstrap alongside the Cloud Run one; this is listed as future work (Section~\ref{sec:concl-future}).
+affected. Closing the gap requires QuickFaaS to deploy through the Cloud Functions~v2 API, so that
+the functions it creates are Cloud Run services and fall under the validation, discovery and
+bootstrap already implemented; this is listed as future work (Section~\ref{sec:concl-future}).
 
 \subsection{Resolution Cascade Sequences}
 \label{subsec:cascade-sequences}

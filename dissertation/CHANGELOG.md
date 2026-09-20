@@ -50,6 +50,27 @@ este ficheiro.)
   *measuring* it") e fundida com a frase seguinte, que repetia o sujeito e a ideia de "measuring
   portability".
 
+### Via para fechar a limitação da 1.ª geração no GCP (trabalho futuro)
+
+- **Cap. 7 (`chapter8.tex`), secção 7.2 "Future Work", ponto 1:** o ponto propunha um *cliente
+  Cloud Functions v1* para validação, descoberta e bootstrap. Passa a propor o oposto: mover o
+  provider GCP do QuickFaaS para a **API Cloud Functions v2**. O argumento é estrutural — uma
+  função de 2.ª geração *é* um serviço Cloud Run, logo a validação, a descoberta e o bootstrap já
+  construídos sobre a API do Cloud Run passam a cobri-la sem código novo, e a heurística que
+  identifica a 1.ª geração pelo URL (que o endpoint `cloudfunctions.net` da 2.ª geração derrota,
+  `gcpFunctionsVersionComparison`) deixa de ser precisa. O ponto passa a nomear também o custo, que
+  recai todo no QuickFaaS: corpo do pedido reestruturado, URL `run.app` lido da função em vez de
+  composto a partir do projeto e da região, permissões de invocação na Cloud Run Admin API, e o
+  template do trigger de storage a adoptar a interface CloudEvents. A via do cliente v1 fica
+  referida como alternativa, com a sua desvantagem (obrigaria a distinguir as duas gerações em
+  tempo de resolução).
+- **Cap. 4 (`chapter5.tex`), parágrafo "Limitation: first-generation Cloud Functions on GCP":** a
+  frase final nomeava a mesma via v1; passa a nomear a via v2, para não contradizer o ponto de
+  trabalho futuro que referencia.
+- Sem alterações ao código: a limitação descrita continua a ser a do código actual. A via v2 chegou
+  a ser implementada e testada localmente num ramo à parte (`experiment/gcf-gen2`), mas não foi
+  possível validá-la contra o GCP (faturação encerrada), pelo que permanece trabalho futuro.
+
 ### Geração das Cloud Functions no GCP (nota 2 da revisão: "rever isto")
 
 - **Cap. 2 (`chapter2.tex`), secção 2.3.3 "FaaS Deployment Model: The ZIP Strategy":** revisto o

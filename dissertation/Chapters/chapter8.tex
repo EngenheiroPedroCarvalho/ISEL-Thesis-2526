@@ -138,9 +138,18 @@ The following directions are ordered from smallest change with the clearest payo
 structural ones.
 
 \begin{enumerate}
-  \item \textbf{Cover first-generation Cloud Functions on GCP} with a Cloud Functions~v1 client
-  used for validation, discovery and bootstrap, giving the GCP path the same drift detection and
-  rediscovery guarantees as the AWS path.
+  \item \textbf{Cover the functions QuickFaaS deploys on GCP} by moving its GCP provider to the
+  Cloud Functions~v2 API. A second-generation function \emph{is} a Cloud Run service, so the
+  validation, discovery and bootstrap already built on the Cloud Run API would cover it unchanged,
+  giving the GCP path the same drift detection and rediscovery guarantees as the AWS path. It would
+  also retire the heuristic that recognises first-generation functions by their URL, which the
+  second generation's own \texttt{cloudfunctions.net} endpoint
+  defeats~\cite{gcpFunctionsVersionComparison}. The cost falls on QuickFaaS: the request body is
+  restructured, the generated \texttt{run.app} URL has to be read from the deployed function
+  instead of composed from the project and region, invoker permissions move to the Cloud Run Admin
+  API, and the storage trigger's template has to adopt the CloudEvents interface. A Cloud
+  Functions~v1 client alongside the Cloud Run one would close the same gap without touching
+  QuickFaaS, but would leave the two generations to be told apart at resolution time.
   \item \textbf{Add an update path:} record a hash of each function's source in its registry entry
   and redeploy the function through QuickFaaS when the source its descriptor points to changes, so
   that a workflow deployment also brings its functions up to date.
