@@ -7,8 +7,8 @@
 # Claude Code scratch space
 .claude-scratch/
 
-# Supervisor's annotated review copies of the dissertation PDF
-template_ff_v1.pdf
-
 # The CISTI paper's PDF
 main.pdf
+
+# Reviewed PDFs dropped in by the supervisors (for corrections)
+revisoes-orientadores/
