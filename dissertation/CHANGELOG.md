@@ -8,6 +8,26 @@ este ficheiro.)
 
 ## 2026-09-20
 
+### Decomposição do ARN na nota `????` da pág. 37
+
+Seguimento da nota `????` sobre `!GetAtt MyFunction.Arn` (cap. 2, §2.5.1): a frase acrescentada na
+passagem anterior dizia *o que é* a expressão (uma intrínseca do CloudFormation que lê o atributo
+`Arn`) mas não dizia *que valor* produz. Acrescentadas duas frases a seguir a essa:
+
+- o valor é o ARN da função, com a forma
+  `arn:aws:lambda:<region>:<account-id>:function:<name>` e a leitura campo a campo (prefixo fixo,
+  serviço, região e conta onde a função foi criada, nome que lá recebeu);
+- a razão de ser uma expressão e não um literal: a conta e o nome atribuído não são conhecidos
+  quando o template é escrito, e `MyFunction` é o identificador lógico do recurso dentro do
+  template, não o nome que a função acaba por ter.
+
+A forma do ARN já estava no cap. 1 (§1.2, "Provider-Specific Function Identification and Invocation
+Binding"), pelo que a passagem do cap. 2 remete para lá (`\S\ref{sec:int_cha_int_uni_multi}`) em
+vez de reintroduzir o acrónimo. Mesma tipografia do cap. 1 (`\allowbreak` entre os campos).
+
+Compilado: 97 páginas, 0 avisos novos de *overfull hbox* (mantêm-se os 8 do template, todos de
+18,0 pt e já documentados abaixo) e nenhuma referência por resolver.
+
 ### Segunda ronda de revisão dos orientadores (`pedro-mst 1.pdf`, 7 notas novas)
 
 O PDF entregue à tarde é o mesmo da manhã com sete notas acrescentadas, todas nos capítulos

@@ -290,6 +290,14 @@ once it is known. In AWS SAM, the \texttt{DefinitionSubstitutions} property of a
 placeholders in its Amazon States Language definition to values such as
 \texttt{!GetAtt MyFunction.Arn}, a CloudFormation expression that reads the \texttt{Arn} attribute
 of the function resource \texttt{MyFunction} declared in the same template~\cite{awsSamStateMachine}.
+The value that expression yields is the function's Amazon Resource Name (ARN) introduced in
+\S\ref{sec:int_cha_int_uni_multi}, \texttt{arn:\allowbreak aws:\allowbreak lambda:\allowbreak%
+<region>:\allowbreak <account-id>:\allowbreak function:\allowbreak <name>}: a fixed prefix, the
+service, then the region and the account in which the function was created, and finally the name
+it was given there. Only the first fields are known when the template is written --- the account
+and the deployed name are not, and \texttt{MyFunction} is the resource's logical identifier inside
+the template rather than the name the function ends up carrying --- which is why the workflow names
+it through an expression instead of a literal string.
 The Step Functions plugin for the Serverless Framework accepts \texttt{Fn::GetAtt: [hello, Arn]} ---
 the same intrinsic in its long form --- as the \texttt{Resource} of a task, and resolves it to the
 ARN of the function \texttt{hello} declared in the same service~\cite{serverlessStepFunctionsPlugin}.
