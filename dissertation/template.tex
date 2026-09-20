@@ -95,6 +95,16 @@
 % \SetWatermarkText{DRAFT}
 % \SetWatermarkScale{1}
 
+% Let biblatex break long URLs inside letter and digit runs, not only at the
+% punctuation, so entries whose URL ends in a long word stay inside the margin.
+\setcounter{biburllcpenalty}{7000}
+\setcounter{biburlucpenalty}{8000}
+\setcounter{biburlnumpenalty}{7000}
+
+% Allow TeX a final, looser pass over paragraphs it cannot break otherwise,
+% instead of letting a long identifier run into the margin.
+\setlength{\emergencystretch}{1em}
+
 %%==== DANGER ==== DANGER ==== DANGER ==== DANGER ==== DANGER ====
 %%==== DANGER ==== DANGER ==== DANGER ==== DANGER ==== DANGER ====
 %%==== DANGER ==== DANGER ==== DANGER ==== DANGER ==== DANGER ====

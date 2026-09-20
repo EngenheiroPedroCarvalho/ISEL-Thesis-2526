@@ -8,6 +8,94 @@ este ficheiro.)
 
 ## 2026-09-20
 
+### Segunda ronda de revisão dos orientadores (`pedro-mst 1.pdf`, 7 notas novas)
+
+O PDF entregue à tarde é o mesmo da manhã com sete notas acrescentadas, todas nos capítulos
+Proposed Solution e Implementation (páginas 41, 42, 48, 49 e 52 do PDF; capítulos 4 e 5 na
+numeração desse PDF, hoje 3 e 4 depois da fusão Background/Related Work).
+
+- **Cap. 3 (`chapter3.tex`), introdução** — nota "dizer também como está organizado o capítulo":
+  acrescentado um parágrafo de roteiro no fim da introdução, no mesmo formato do que o cap. 4 já
+  tinha. Nomeia as quatro secções e o que cada uma faz, incluindo as duas subsecções (a cascata,
+  §3.1.1, e o walkthrough, §3.4.1).
+- **Cap. 3, §3.1.1 "The Resolution Cascade"** — nota "Step 3 in section xxx, em vez de above": a
+  frase de abertura dizia "Step~(3) above"; passa a "Step~(3) of the end-to-end flow listed in
+  Section~\ref{sec:components-architecture}", que nomeia a lista referida em vez de depender da
+  posição na página.
+- **Cap. 3, §3.3, Listing 3.1 (ficheiros de registry)** — nota "explica com algum detalhe": a
+  listagem era introduzida por uma só frase ("A minimal JSON-based structure … is illustrated
+  in…"). Passa a ter dois parágrafos que a leem: os dois campos de topo (`updatedAt`, `functions`
+  como mapa), a chave (a referência simples, promovida a `"region/functionRef"` quando o mesmo
+  nome existe em mais do que uma região) e os dois campos de cada valor (`serviceName`, `url`);
+  depois o contraste entre os dois exemplos — `url` é o endpoint HTTPS no GCP, dividido em
+  `host`/`path`, e o ARN na AWS, usado como recurso de uma invocação nativa, sendo a região
+  contida no ARN o que mantém a validação de Nível 1 numa única chamada. Fica também dito o que
+  *não* está no ficheiro (credenciais, parâmetros de deployment, chamadas com endpoint literal).
+- **Cap. 3, §3.3, Listing 3.2 (call step com `internalFunction`)** — nota geral sobre figuras e
+  código: a listagem só tinha a frase "Listing 4.2 shows a call step…". Acrescentado o parágrafo
+  que explica o código linha a linha (o vocabulário comum a qualquer step, `method` e `result`
+  mantidos, e sobretudo a ausência de `host`/`path`, substituídos pelo `functionRef` e pelo
+  caminho do descritor, lido só se a cascata chegar ao Nível 3).
+- **Cap. 3, §3.3, "QuickFaaS Deployment Descriptor and Code File"** — nota "tens de explicar o
+  código": o parágrafo remetia para a Listing 2.1 sem dizer o que lá está. Passa a descrever os
+  campos do descritor em três grupos (onde é feito o deployment: `cloudProvider`, `project`,
+  `accessToken`; o que é criado: `function.name`, `location`, `runtime`, `trigger`, `bucket`; e o
+  código: `functionFile`), seguidos dos dois campos que importam à integração — `function.name`
+  tem de ser igual ao `functionRef` (com a remissão para a consequência de divergirem, no fim de
+  §3.4.1) e `function.location` fixa a região que a entrada do registry vai apontar. Verificado
+  contra `QuickFaasDescriptor.kt` e contra os descritores de exemplo em
+  `omni-flow-main/functions/`; acrescentada a ressalva de que na AWS o `accessToken` fica vazio,
+  porque `AwsRequests.kt:33` usa `EnvironmentVariableCredentialsProvider`.
+- **Cap. 4 (`chapter5.tex`), §4.1** — as duas notas "rever" marcavam dois defeitos de composição
+  na mesma frase: `\texttt{Google-\linebreak[4]CloudDeployer}` imprimia o nome da classe partido
+  com hífen entre linhas (como se a classe se chamasse `Google-CloudDeployer`), e
+  `\texttt{FunctionInvocationMetadata}` transbordava para a margem (*overfull hbox*). Os dois
+  nomes passam a usar `\allowbreak`, como o resto do capítulo, e a frase — que acumulava dois
+  parêntesis encaixados — foi dividida em duas: a primeira nomeia os dois colaboradores, a segunda
+  descreve o que o store persiste. Sem alteração de conteúdo.
+
+Nota de âmbito: a nota sobre figuras e código está marcada sobre o título do capítulo Proposed
+Solution e foi aplicada aí (as três figuras do capítulo já tinham texto descritivo; faltava-o nas
+duas listagens). As figuras dos restantes capítulos não foram revistas nesta passagem.
+
+### Varredura de *overfull hbox* em todo o documento
+
+Na sequência das duas notas "rever" (que marcavam um nome de classe partido com hífen e um
+identificador a entrar pela margem), varri o log de compilação inteiro. Havia 23 avisos de
+*overfull hbox*; ficaram 8. Todos os casos de texto foram corrigidos; os 8 que restam são do
+template e não imprimem nada na margem (ver no fim).
+
+- **`template.tex` (zona "USER CUSTOMIZATION")** — duas definições novas, que são o remédio de
+  fundo:
+  - `\setlength{\emergencystretch}{1em}`: dá ao TeX uma passagem final mais folgada nos parágrafos
+    que não consegue quebrar de outra maneira, em vez de deixar a linha entrar pela margem.
+    Resolve sozinho quatro parágrafos. Testei 0/1/1,5/2/3~em: 1~em é o valor mais pequeno que
+    resolve estes casos sem aumentar o número de linhas *underfull* (mantém-se em 6, como antes;
+    com 3~em subia para 9).
+  - `biburllcpenalty`/`biburlucpenalty`/`biburlnumpenalty`: deixam o biblatex quebrar URLs longos
+    dentro das palavras e não só na pontuação. Corrige a entrada `openFaaSTriggers`, cujo URL
+    terminado em `#cloudevents` passava 1,9~pt da margem.
+- **Pontos de quebra em identificadores longos** (`\allowbreak`, como no resto do texto):
+  `https://<region>-<project-id>.cloudfunctions.net/<name>`, `body(variable("args.data"))` e
+  `result("firstResult")` no cap. 2; `InternalFunctionDeployer` e
+  `internalFunction("fraud-check", "./deploy/fraud-check.json")` no cap. 3;
+  `internalFunction(name, deploymentDescriptorPath)`, `"region/functionRef"` e `AwsLambdaDeployer`
+  no cap. 4; `AverageTime` e `DescribeRegions` no cap. 6; `internalFunction(name,
+  deploymentDescriptorPath)` no cap. 7. Onde o `\emergencystretch` já resolvia, não acrescentei
+  quebra, para não partir nomes ao meio sem necessidade.
+- **Cap. 6 (`chapter7.tex`), bloco do T5:** a tabela de quatro colunas era mais larga do que a
+  `minipage` de `0.31\textwidth` que a contém (7,9~pt a mais). Reduzido o `\tabcolsep` para 4~pt
+  dentro dessa `minipage`, mantendo a geometria igual à dos outros blocos T.
+- **Entradas da lista de figuras:** as legendas da figura do modelo do *call step* (cap. 3) e da
+  T12 (cap. 6) transbordavam na *List of Figures*, por causa de `internalFunction` e do grupo
+  matemático `$I{=}40$/$E{=}10$/$F{=}10$`. As duas passam a ter legenda curta
+  (`\caption[...]{...}`), o que encurta a entrada da lista e deixa a legenda da figura intacta.
+
+Os 8 avisos que ficam são todos do cabeçalho de capítulo do template (`chapstyle=isel`): a
+`tabular` do título em `ISELthesis-files/Chap-Styles/isel.ldf` arrasta 18~pt de `\tabcolsep` para
+além da caixa de texto. São espaço em branco — o título não chega a entrar na margem — e o ficheiro
+é do template, que não se edita.
+
 ### Correções da revisão dos orientadores (notas da pág. 37 do PDF revisto)
 
 - **Cap. 2 (`chapter2.tex`), secção 2.5.1 "Infrastructure-as-Code and Deployment-Oriented

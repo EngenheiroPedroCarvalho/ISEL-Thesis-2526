@@ -21,7 +21,7 @@ The work delivered two complementary halves.
 \paragraph{Unification (core).}
 OmniFlow was extended with a \emph{Function Registry} and a deployment-time \emph{resolution
 cascade}. Internal workflow calls declare a stable logical identifier through the
-\texttt{internalFunction(name, deploymentDescriptorPath)} construct added to the \texttt{call}
+\texttt{internalFunction(name, \allowbreak deployment\allowbreak Descriptor\allowbreak Path)} construct added to the \texttt{call}
 step, mutually exclusive with the literal \texttt{host}/\texttt{path} of external calls. At
 deployment time OmniFlow traverses the workflow tree, and for each internal call resolves the
 endpoint from the registry, discovers it directly on the provider, or --- as a last resort ---

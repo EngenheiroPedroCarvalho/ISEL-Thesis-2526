@@ -131,7 +131,7 @@ report what the test doubles assume (Section~\ref{sec:eval-threats}).
 \label{sec:eval-methodology}
 
 Benchmarks were implemented with the Java Microbenchmark Harness (JMH) 1.37, using
-\texttt{AverageTime} mode with results reported in microseconds per operation ($\mu$s/op). Each
+\texttt{Average\allowbreak Time} mode with results reported in microseconds per operation ($\mu$s/op). Each
 measured value is consumed through a \texttt{Blackhole} to prevent dead-code elimination by the
 JIT compiler. Every figure reported in this chapter was measured with three JVM forks, three
 warm-up iterations and five measurement iterations of one second each
@@ -437,6 +437,7 @@ column is the cost of one read plus 50 lookups, and tracks the per-read cost mea
   \begin{minipage}[c]{0.31\textwidth}
     \centering
     \small
+    \setlength{\tabcolsep}{4pt}
     \begin{tabular}{|r|r|r|r|}
       \hline
       \textbf{$R$} & \textbf{naive} & \textbf{opt.} & \textbf{speedup} \\
@@ -770,7 +771,8 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T12_resolution_by_registry_mixed.png}
   \end{minipage}
-  {\captionof{figure}{T12 --- resolution time against registry size $R$ for a mixed workflow with
+  {\captionof{figure}[T12 --- resolution time against registry size for a mixed workflow.]{T12 ---
+  resolution time against registry size $R$ for a mixed workflow with
   $I{=}40$/$E{=}10$/$F{=}10$ fixed. The curve is the cost of the one read, unaffected by the
   external calls.}
   \label{fig:eval-t12}}
@@ -914,7 +916,7 @@ Table~\ref{tab:eval-api-calls} gives the count for each path through the cascade
 \end{table}
 
 Two requests fall outside the per-call count. The candidate-region list costs one EC2
-\texttt{DescribeRegions} on AWS, and one Cloud Run \texttt{locations.list} request per response
+\texttt{Describe\allowbreak Regions} on AWS, and one Cloud Run \texttt{locations.list} request per response
 page on GCP; it is fetched lazily, so a deployment whose calls all resolve at Level~1 never pays
 it. The registry bootstrap, which runs only when the registry file is absent and the workflow has
 internal calls, costs that same region list plus one catalog request per region and per response

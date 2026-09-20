@@ -26,7 +26,7 @@ through to its actual invocation once the workflow has been deployed.
 
 This work introduces a \textit{Function Registry} to decouple workflow definitions from concrete function endpoints, reducing manual coordination between function deployments and workflow orchestration.
 
-Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS, added in this work). Each provider deployer (\texttt{Google-\linebreak[4]CloudDeployer}, \texttt{AmazonCloudDeployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{FunctionRegistryStore}, which persists bindings as \texttt{FunctionInvocationMetadata} (\texttt{serviceName} plus \texttt{url}, where \texttt{url} is an HTTPS endpoint on GCP and a Lambda ARN on AWS), and the deployer strategy. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer a clean extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
+Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS, added in this work). Each provider deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer}, \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{Function\allowbreak Registry\allowbreak Store} and the deployer strategy. The store persists each binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, a \texttt{serviceName} together with a \texttt{url} that is an HTTPS endpoint on GCP and a Lambda ARN on AWS. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer a clean extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
@@ -44,7 +44,7 @@ automatically as functions are discovered on the target provider or deployed thr
 
 \subsection{Concept and Conventions}
 The DSL-level contract --- the \texttt{functionRef} identifier, the
-\texttt{internalFunction(name, deploymentDescriptorPath)} construct and the XOR invariant that
+\texttt{internalFunction(name, \allowbreak deployment\allowbreak Descriptor\allowbreak Path)} construct and the XOR invariant that
 forbids combining it with a literal \texttt{host}/\texttt{path} --- is defined in
 \S\ref{sec:dsl-extensions}, with an example call step in Listing~\ref{lst:call-step-internal}.
 What matters for the implementation is where that invariant is enforced: the DSL builder rejects
@@ -103,7 +103,7 @@ The registry file is manipulated exclusively through \texttt{FunctionRegistrySto
 exposes a small, deliberately narrow interface: \texttt{readAll()} parses the whole file into an
 ordered map of \texttt{functionRef} to \texttt{FunctionInvocationMetadata}; \texttt{tryResolveEntry()}
 re-reads the file via \texttt{readAll()} and delegates the two-step lookup (exact match on
-\texttt{functionRef}, then suffix match on \texttt{"region/functionRef"}, raising if the suffix
+\texttt{functionRef}, then suffix match on \texttt{"region/\allowbreak functionRef"}, raising if the suffix
 match is ambiguous) entirely to its pure counterpart, \texttt{tryResolveEntryIn()}, which performs
 that lookup against an already-loaded map with no I/O of its own --- the same split
 \texttt{resolveUrl()}/\texttt{resolveUrlIn()} already had; \texttt{put()} inserts or refreshes one entry; and
@@ -320,7 +320,7 @@ Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment for the mo
 
 AWS support is realised in two layers that meet at the subprocess boundary: the AWS provider added
 \emph{inside} QuickFaaS, which performs the actual Lambda deployment, and the
-\texttt{AwsLambdaDeployer} added \emph{inside} OmniFlow, which prepares the environment,
+\texttt{Aws\allowbreak Lambda\allowbreak Deployer} added \emph{inside} OmniFlow, which prepares the environment,
 drives QuickFaaS, and produces the invocation metadata the registry stores.
 
 \subsection{The QuickFaaS AWS Provider}

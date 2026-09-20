@@ -84,7 +84,7 @@ as a \emph{Cloud Run function (1st gen)}, and what used to be called a ``second-
 Function is simply a \emph{Cloud Run function}, that is, a Cloud Run service deployed from source
 code~\cite{gcpFunctionsVersionComparison}. This dissertation keeps the generation names, because
 they are what distinguishes the two APIs the code calls. The resulting function is reachable at a
-URL of the form \texttt{https://<region>-<project-id>.cloudfunctions.net/<name>}, and its
+URL of the form \texttt{https://\allowbreak <region>-\allowbreak <project-id>.\allowbreak cloudfunctions.\allowbreak net/\allowbreak <name>}, and its
 invocation permissions and deployment status are managed through that same first-generation API.
 This distinction becomes relevant later, where the registry store and resolver internals are
 described (\S\ref{subsec:store-internals}): the
@@ -197,7 +197,7 @@ The typical OmniFlow lifecycle can be described as a synchronous three-phase pro
 
 Listing~\ref{lst:omniflow_chain} illustrates a simple function-chaining pattern expressed in the OmniFlow DSL, where the output of one step becomes the input to the next step through workflow variables. The workflow is named \texttt{FunctionChain}, declares \texttt{args} as its input and defines two sequential steps inside \texttt{steps(\ldots)}.
 
-The first step, \texttt{first-call}, uses the \texttt{call} context to perform an HTTP request. In this example, the request is a \texttt{POST} to the endpoint identified by \texttt{host("example-api.com")} and \texttt{path("/v1/process")}. The request body is constructed from the input data using \texttt{body(variable("args.data"))}, showing how OmniFlow allows payloads to be derived from previously defined variables. The response is stored in the workflow variable \texttt{firstResult} through \texttt{result("firstResult")}, which makes the response accessible to subsequent steps.
+The first step, \texttt{first-call}, uses the \texttt{call} context to perform an HTTP request. In this example, the request is a \texttt{POST} to the endpoint identified by \texttt{host("example-api.com")} and \texttt{path("/v1/process")}. The request body is constructed from the input data using \texttt{body(variable(\allowbreak "args.data"))}, showing how OmniFlow allows payloads to be derived from previously defined variables. The response is stored in the workflow variable \texttt{firstResult} through \texttt{result(\allowbreak "firstResult")}, which makes the response accessible to subsequent steps.
 
 The second step, \texttt{process-logic}, demonstrates local data manipulation using the \texttt{assign} context. It creates a new variable, \texttt{processedData} and assigns it to the value extracted from the previous call response (\texttt{firstResult.body}). Finally, the workflow declares \texttt{processedData} as the workflow output using \texttt{result("processedData")}. Overall, the listing shows how OmniFlow combines external invocations (\texttt{call}) and internal transformations (\texttt{assign}) using a consistent DSL, enabling the developer to express sequencing and data flow without writing provider-specific workflow definitions.
 
