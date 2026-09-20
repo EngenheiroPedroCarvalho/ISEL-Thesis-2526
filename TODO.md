@@ -261,16 +261,22 @@ drift as text is edited, so search for the quoted phrases.
       QuickFaaS only creates v1 functions, and it goes away with the v2 move above, which deletes
       the check rather than hardening it.
       The caveat is documented in the thesis (Ch. 2, "FaaS Deployment Model: The ZIP Strategy").
-- [ ] Drop the decommissioned GCP runtimes. `GcpFunction.runtimes` (line 36) still offers
-      `JAVA11` and `NODEJS14`, but Google decommissioned nodejs14 on 2025-01-30 and java11 on
-      2025-10-31: neither can deploy a new function or update an existing one, on either
-      generation. Only `java17` still works, and its own deprecation is set for October 2027.
-      `QuickFaasDescriptorLoader.GCP_VALID_RUNTIMES` accepts both as well, plus `java21`,
-      `nodejs20` and `nodejs22`, which the `RuntimeVersion` enum (line 8) does not define at all —
-      a descriptor naming one passes validation and then dies in `setRuntimeVersion`. Note that
-      the enum is shared: AWS and Azure still list `JAVA11`/`NODEJS14`, so only the GCP arrays and
-      the loader's set should change. This blocks any GCP demo and is independent of the v1/v2
-      question above.
+- [x] Drop the decommissioned GCP runtimes — feito 2026-09-20. `GcpFunction.runtimes` is now
+      `arrayOf(JAVA17)` and `QuickFaasDescriptorLoader.GCP_VALID_RUNTIMES` is `setOf("java17")`:
+      the only runtime Google still accepts (java11 was decommissioned on 2025-10-31, nodejs14 on
+      2025-01-30) that QuickFaaS can also build. The loader used to accept `java21`, `nodejs20` and
+      `nodejs22` as well, which the shared `RuntimeVersion` enum does not define, so a descriptor
+      naming one passed validation and then died in `setRuntimeVersion`; those are now rejected at
+      load time. The AWS and Azure arrays were left untouched, as the enum is shared. Tests: the
+      two "validate passes for java21/nodejs20" cases became rejection cases (177 tests in
+      `deployment`, 19 in QuickFaaS, all passing).
+      **What this does not cover:** `runtimes` is declarative — no production code reads it, and
+      `CloudFunction.setRuntimeVersion` still resolves against the whole `RuntimeVersion` enum. A
+      descriptor sent straight to the QuickFaaS jar (not through OmniFlow's loader) can therefore
+      still name `java11` and fail at Google instead of locally. Making `setRuntimeVersion` check
+      the provider's own `runtimes` array would close that, but it changes the behaviour of shared
+      code on all three providers.
+      Note: java17's own deprecation at Google is set for October 2027.
 - [ ] Fail fast when a descriptor's `function.name` differs from the `functionRef` (for example in
       `QuickFaasDescriptorLoader.validate`); today the deployment runs and then times out waiting
       for a function that was deployed under another name.

@@ -33,7 +33,8 @@ class GcpFunction : CloudFunction {
     override var location = ""
     override val triggers = listOf(HttpTrigger(), StorageTrigger())
     override var trigger = triggers[0]
-    override val runtimes = arrayOf(RuntimeVersion.JAVA11, RuntimeVersion.JAVA17, RuntimeVersion.NODEJS14)
+    // java11 and nodejs14 were decommissioned by Google (2025-10-31 and 2025-01-30)
+    override val runtimes = arrayOf(RuntimeVersion.JAVA17)
     override var runtimeVersion: RuntimeVersion? = null
 
     override suspend fun deployZip(zipFilePath: String, projData: ProjectData): DeploymentTimeData {
