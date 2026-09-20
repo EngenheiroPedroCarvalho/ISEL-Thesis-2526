@@ -71,6 +71,13 @@ este ficheiro.)
   como `[0]`; reconstruída a bibliografia de raiz (apagar `.aux`/`.bbl`/`.fdb_latexmk` + pdflatex,
   bibtex, pdflatex ×2). Ficam 47 entradas citadas, nenhuma a `[0]`.
 
+### Referência cruzada solta no cap. 2 (mesmo defeito da nota 6)
+
+- **Cap. 2 (`chapter2.tex`), §2.1.3.3:** "This distinction becomes relevant later in the
+  dissertation (§4.1.6)" passa a "…relevant later, where the registry store and resolver internals
+  are described (§4.1.6)". Era a última ocorrência no capítulo do padrão que o orientador marcou
+  com "Section 4.1.1??": um número de subsecção para a frente sem dizer o que lá está.
+
 ### Cap. 2 reestruturado em duas secções (nota 1b da revisão)
 
 - **Cap. 2 (`chapter2.tex`):** o capítulo passa a ter exactamente **duas secções**, como pedido:

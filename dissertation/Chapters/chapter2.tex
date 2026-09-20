@@ -86,7 +86,8 @@ code~\cite{gcpFunctionsVersionComparison}. This dissertation keeps the generatio
 they are what distinguishes the two APIs the code calls. The resulting function is reachable at a
 URL of the form \texttt{https://<region>-<project-id>.cloudfunctions.net/<name>}, and its
 invocation permissions and deployment status are managed through that same first-generation API.
-This distinction becomes relevant later in the dissertation (\S\ref{subsec:store-internals}): the
+This distinction becomes relevant later, where the registry store and resolver internals are
+described (\S\ref{subsec:store-internals}): the
 proposed Function Registry validates and discovers GCP endpoints through the Cloud Run API, so
 first-generation functions are recognised separately, by their \texttt{cloudfunctions.net} URL, and
 are not yet covered by that validation and discovery. That domain is a heuristic rather than a
