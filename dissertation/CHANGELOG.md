@@ -8,6 +8,27 @@ este ficheiro.)
 
 ## 2026-09-20
 
+### Sintaxe de interpolação do Terraform explicada (`chapter2.tex`)
+
+No parágrafo do *deployment-time binding* da secção 2.4, a referência
+`${aws_lambda_function.lambda.arn}` aparecia só glosada como "o atributo `arn` do recurso Lambda
+chamado `lambda`", ao contrário do `!GetAtt` do CloudFormation, que tem decomposição completa
+(atributo, anatomia do ARN, porquê uma expressão e não um literal). Corrigida a assimetria:
+
+- Dito que a definição da state machine é uma string onde o Terraform interpola expressões da forma
+  `${...}`, avaliadas no momento do *apply*.
+- A expressão passa a ser lida pelas três partes, por ordem: tipo de recurso
+  `aws_lambda_function`, etiqueta `lambda` dada a um recurso desse tipo na mesma configuração, e
+  atributo `arn` que esse recurso exporta.
+- Acrescentado o paralelo com o `MyFunction` do parágrafo anterior --- `lambda` é a etiqueta interna
+  da configuração, não o nome que a função tem na AWS --- e que o atributo só tem valor depois de a
+  função ser criada.
+- A dependência implícita (a função criada antes do workflow) mantém-se, agora em frase própria.
+
+Sem entradas novas na bibliografia (`terraformSfnStateMachine` e `terraformReferences` já
+estavam citadas). Compilado: 98 páginas, sem referências por resolver e com os mesmos 8 avisos
+de *overfull hbox* do template.
+
 ### Nota "explica as figuras e o código" alargada aos restantes capítulos
 
 A nota dos orientadores tinha sido aplicada só ao cap. 3, onde estava marcada. Revistas agora todas

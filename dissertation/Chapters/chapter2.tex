@@ -312,10 +312,15 @@ ARN~\cite{awsCloudFormationDependsOn}.
 The Step Functions plugin for the Serverless Framework accepts \texttt{Fn::GetAtt: [hello, Arn]} ---
 the same intrinsic in its long form --- as the \texttt{Resource} of a task, and resolves it to the
 ARN of the function \texttt{hello} declared in the same service~\cite{serverlessStepFunctionsPlugin}.
-In Terraform, a state machine definition can interpolate
-\texttt{\$\{aws\_lambda\_function.lambda.arn\}}, the \texttt{arn} attribute of the Lambda resource
-named \texttt{lambda}~\cite{terraformSfnStateMachine}; such a reference also creates an implicit
-dependency between the two resources, so the function is created before the workflow that names
+In Terraform, the state machine's definition is a string into which the tool interpolates
+expressions written as \texttt{\$\{\ldots\}}, evaluated when the configuration is applied:
+\texttt{\$\{aws\_lambda\_function.lambda.arn\}} names, in that order, the resource type
+\texttt{aws\_lambda\_function}, the label \texttt{lambda} given to one such resource in the same
+configuration, and the \texttt{arn} attribute that resource exports~\cite{terraformSfnStateMachine}.
+As with \texttt{MyFunction} above, \texttt{lambda} is the label the configuration uses internally
+rather than the name the function carries in AWS, and the attribute only holds a value once the
+function has been created. Such a reference also creates an implicit dependency between the two
+resources, so the function is created before the workflow that names
 it~\cite{terraformReferences}. Pulumi likewise records a dependency when one resource's output is
 passed as another's input, and orders their creation accordingly~\cite{pulumiInputsOutputs}. In each
 case the function is declared alongside the workflow and deployed with it, and its endpoint is
