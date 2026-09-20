@@ -297,7 +297,10 @@ service, then the region and the account in which the function was created, and 
 it was given there. Only the first fields are known when the template is written --- the account
 and the deployed name are not, and \texttt{MyFunction} is the resource's logical identifier inside
 the template rather than the name the function ends up carrying --- which is why the workflow names
-it through an expression instead of a literal string.
+it through an expression instead of a literal string. The reference also fixes the order of the
+deployment: CloudFormation reads a \texttt{!GetAtt} to another resource as an implicit dependency,
+and so creates the function before the state machine that substitutes its
+ARN~\cite{awsCloudFormationDependsOn}.
 The Step Functions plugin for the Serverless Framework accepts \texttt{Fn::GetAtt: [hello, Arn]} ---
 the same intrinsic in its long form --- as the \texttt{Resource} of a task, and resolves it to the
 ARN of the function \texttt{hello} declared in the same service~\cite{serverlessStepFunctionsPlugin}.

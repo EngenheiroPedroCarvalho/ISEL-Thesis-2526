@@ -8,6 +8,29 @@ este ficheiro.)
 
 ## 2026-09-20
 
+### Dependência implícita do `!GetAtt` (assimetria no parágrafo de *deployment-time binding*)
+
+Ainda no parágrafo do cap. 2, §2.5.1: o texto dizia que a referência do Terraform *"also creates an
+implicit dependency between the two resources, so the function is created before the workflow that
+names it"* e que o Pulumi *"likewise records a dependency"*, mas não dizia o mesmo do
+CloudFormation, que é o primeiro exemplo da lista e faz exatamente isso. Lido em sequência, dava a
+entender que a ordenação era uma vantagem do Terraform/Pulumi sobre o SAM.
+
+Acrescentada uma frase no fim do bloco do SAM: a referência fixa a ordem do deployment, porque o
+CloudFormation lê um `!GetAtt` a outro recurso como dependência implícita e cria a função antes da
+state machine que substitui o ARN. Redigida de forma a não repetir textualmente a frase do
+Terraform que vem três linhas abaixo.
+
+Nova entrada na bibliografia, `awsCloudFormationDependsOn` (*DependsOn attribute*, AWS
+CloudFormation Template Reference Guide), verificada na fonte: *"Dependent stacks also have
+implicit dependencies in the form of target properties `!Ref`, `!GetAtt`, and `!Sub` … Resource B is
+created before resource A."* Por ser entrada nova, foi preciso o procedimento do `defernumbers`
+descrito em `CLAUDE.md` (apagar `.aux`/`.bbl`/`.fdb_latexmk` e refazer o ciclo pdflatex/bibtex),
+senão era impressa como `[0]`: agora são 48 entradas citadas e 48 numeradas, 1 a 48 sem repetições.
+
+Compilado: 97 páginas, sem referências por resolver e com os mesmos 8 avisos de *overfull hbox* do
+template.
+
 ### Decomposição do ARN na nota `????` da pág. 37
 
 Seguimento da nota `????` sobre `!GetAtt MyFunction.Arn` (cap. 2, §2.5.1): a frase acrescentada na
