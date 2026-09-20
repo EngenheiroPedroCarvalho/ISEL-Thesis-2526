@@ -105,7 +105,15 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 	\item \textbf{Authentication Configuration:} The retrieved Client ID and Secret are injected into the authentication module. The developer runs the auxiliary Node.js server to initiate the OAuth protocol, successfully retrieving the \texttt{access\_token} required for deployment.
 	
 	\item \textbf{Deployment Definition:} Once the token is obtained, the developer populates the deployment file, \texttt{func-deployment.json} (Listing \ref{lst:quickfaas_json_config}). This JSON object defines the target infrastructure, including the  \texttt{cloudProvider}, \texttt{project} name and the \texttt{accessToken} the developer acquired from the authentication mechanism. It also specifies function metadata such as the \texttt{runtime} (e.g., \texttt{java17}) and trigger type.
-	Lastly, the location of the cloud-agnostic function file the developer wish to deploy. 
+	Lastly, the location of the cloud-agnostic function file the developer wishes to deploy. 
+	The remaining fields complete the description. Inside \texttt{function}, \texttt{location} is the
+	region the function is created in, and \texttt{bucket} names the Cloud Storage bucket used to
+	stage the packaged source before the function is provisioned. The two trailing fields are
+	optional, and are left empty in this example: \texttt{dependenciesFile} points at a file whose
+	contents are injected into the dependency block of the generated \texttt{pom.xml}, so a function
+	that uses no third-party library needs none, and \texttt{configurationsFile} supplies the
+	\texttt{function-configs.json} packaged with the function and read at execution time through the
+	QuickFaaS libraries. Both fall back to an empty default when omitted.
  
 	
 	\begin{lstlisting}[language=json, caption={Configuration JSON for QuickFaaS function deployment}, label={lst:quickfaas_json_config}]

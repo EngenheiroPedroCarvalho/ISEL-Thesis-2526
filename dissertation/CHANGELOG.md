@@ -8,6 +8,41 @@ este ficheiro.)
 
 ## 2026-09-20
 
+### Nota "explica as figuras e o código" alargada aos restantes capítulos
+
+A nota dos orientadores tinha sido aplicada só ao cap. 3, onde estava marcada. Revistas agora todas
+as figuras e listagens dos outros capítulos: 3 listagens no cap. 2, 3 figuras e 2 listagens no
+cap. 4 (`chapter5.tex`), 1 listagem no cap. 5 (`chapter6.tex`) e, no cap. 6 (`chapter7.tex`), as 14
+figuras T1–T14 mais as tabelas de correção, de chamadas à API, de esforço manual e a S1.
+
+Estavam quase todas já lidas pelo texto (o encadeamento da Listing 2.3 tem três parágrafos; o
+modelo de classes, a sequência de deployment e a invocação em runtime do cap. 4 têm um parágrafo
+cada; cada figura T do cap. 6 tem o seu parágrafo de discussão e é referida uma vez por `\ref`).
+Só havia duas lacunas, ambas corrigidas:
+
+- **Cap. 2, Listing 2.1 (`func-deployment.json`)** — o item "Deployment Definition" nomeava
+  `cloudProvider`, `project`, `accessToken`, `runtime`, `trigger` e `functionFile`, mas deixava por
+  explicar quatro campos visíveis na listagem. Acrescentado um parágrafo: `function.location` (a
+  região) e `function.bucket` (o bucket de Cloud Storage onde a fonte empacotada é estacionada
+  antes do provisionamento); e os dois campos opcionais que na listagem aparecem a vazio —
+  `dependenciesFile`, cujo conteúdo é injetado no bloco de dependências do `pom.xml` gerado, e
+  `configurationsFile`, que fornece o `function-configs.json` empacotado com a função e lido em
+  execução pelas bibliotecas QuickFaaS. Verificado em `GcpBuildScripts.kt:18,24`,
+  `JavaUtils.setPomDependencies` e `Utils.CONFIGS_FILE`; os dois campos caem num valor por omissão
+  vazio quando não são dados (`Main.kt:65-70`, `Runtime.kt:22`).
+- **Cap. 4 (`chapter5.tex`), Listing 4.3 (estado Step Functions gerado)** — o texto explicava
+  `Resource`, `Parameters`/`FunctionName`, `ResultSelector` e `ResultPath`, mas a listagem mostra
+  também `InputPath` e `Next`, sem referência. Acrescentada uma frase: `InputPath`, fixo em `"$"`,
+  entrega o documento de estado inteiro à task, e `Next` nomeia o passo seguinte — ambos emitidos
+  igualmente para uma task `apigateway:invoke`. Confirmado em `AmazonCallRenderer.kt:44,63`
+  (os dois ramos emitem o mesmo `InputPath`) e `:110` (`Next`).
+
+Corrigida ainda a concordância na frase imediatamente anterior à adição do cap. 2 (*"the function
+file the developer wish to deploy"* → *"wishes to deploy"*).
+
+Compilado: 98 páginas (mais uma, do parágrafo do cap. 2), sem referências por resolver e com os
+mesmos 8 avisos de *overfull hbox* do template.
+
 ### Dependência implícita do `!GetAtt` (assimetria no parágrafo de *deployment-time binding*)
 
 Ainda no parágrafo do cap. 2, §2.5.1: o texto dizia que a referência do Terraform *"also creates an

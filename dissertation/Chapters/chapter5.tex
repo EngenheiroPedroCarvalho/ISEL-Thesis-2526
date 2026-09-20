@@ -408,7 +408,9 @@ the Lambda form the result is extracted with a \texttt{ResultSelector} that read
 \texttt{\$.Payload} into the step's result variable, and the value is scoped under a
 \texttt{ResultPath} named after the step so that later steps can reference it. Listing
 \ref{lst:rendered-lambda} shows the state a \texttt{call} to \texttt{internalFunction("fraud-check")}
-renders to.
+renders to. Its two remaining fields belong to neither form in particular: \texttt{InputPath}, fixed
+at \texttt{"\$"}, hands the whole state document to the task, and \texttt{Next} names the step that
+runs after it --- both emitted for an \texttt{apigateway:invoke} task as well.
 
 \begin{lstlisting}[language=json,caption={Step Functions state rendered for an internal Lambda call.},label={lst:rendered-lambda}]
 "fraud-check": {
