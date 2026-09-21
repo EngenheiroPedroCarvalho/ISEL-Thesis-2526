@@ -6,6 +6,31 @@ Só alterações ainda não enviadas (push). Base: `83beba1` (último commit em
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
 este ficheiro.)
 
+## 2026-09-21
+
+### Referência do artigo do CISTI reduzida ao que é sabido (`bibliography.bib`)
+
+A entrada `carvalho2026towards` era um `@inproceedings` com `booktitle` ("2026 21st Iberian
+Conference on Information Systems and Technologies (CISTI)"), `publisher` (IEEE) e uma nota
+`TODO: local, páginas e DOI`. Passa a um `@proceedings` com apenas os três campos que já se
+conhecem --- `author`, `title` e `year` --- seguindo o template `proceedings` da BibTeX.com. Os
+dados que ainda faltam deixam de estar prometidos numa nota visível.
+
+**Consequência conhecida e aceite:** o biblatex, no tipo `@proceedings` (que descreve o volume de
+atas, não um artigo dentro dele), imprime `editor` e não `author`, por isso os três autores ficam
+no `.bib` mas **não aparecem na bibliografia**. A referência [7] sai como "Towards Cloud-Agnostic
+Serverless Applications: Unifying Function Deployment and Workflow Orchestration. 2026". O `author`
+continua a servir de `labelname`, por isso a entrada mantém-se ordenada sob "C" (Carvalho), entre
+Buyya e Cloud. A alternativa --- voltar a `@inproceedings`, que imprime o autor --- foi ponderada e
+recusada.
+
+A citação no cap. 1 (`chapter1.tex`, §1.4) não foi tocada: o texto já nomeia a conferência e o
+título do artigo, por isso a frase continua a identificar a publicação mesmo com a referência
+reduzida.
+
+Compilado: 98 páginas, sem referências por resolver, 48 entradas numeradas para 48 citadas e os
+mesmos 8 avisos de *overfull hbox* do template.
+
 ## 2026-09-20
 
 ### Sintaxe de interpolação do Terraform explicada (`chapter2.tex`)
