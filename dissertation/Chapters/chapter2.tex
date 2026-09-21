@@ -2,12 +2,12 @@
 \label{cha:background}
 
 This chapter has two parts. Section~\ref{sec:background} establishes the technical foundation for
-the proposed integration: first the two layers the work builds on --- Serverless Computing and
-Function-as-a-Service (FaaS), and then the workflow layer that orchestrates the resulting functions
---- highlighting in each the form of vendor lock-in that motivates this work; and then the two base
-technologies this dissertation extends, \textbf{QuickFaaS}, which handles the portable deployment
-of compute units, and \textbf{OmniFlow}, which manages the portable definition of orchestration
-logic. Section~\ref{ch:related-works} turns to the state of the art, reviewing related research and
+the proposed integration: first the two layers the work builds on, Serverless Computing and
+Function-as-a-Service (FaaS), and then the workflow layer that orchestrates the resulting
+functions, highlighting in each the form of vendor lock-in that motivates this work; and then the
+two base technologies this dissertation extends, \textbf{QuickFaaS}, which handles the portable
+deployment of compute units, and \textbf{OmniFlow}, which manages the portable definition of
+orchestration logic. Section~\ref{ch:related-works} turns to the state of the art, reviewing related research and
 existing industry tools and identifying the gap in unified workflow orchestration that this work
 aims to close.
 
@@ -23,14 +23,15 @@ Function-as-a-Service (FaaS) is the primary realization of the serverless model.
 This coupling manifests along two independent axes, both relevant to this dissertation. The first
 is the \emph{programming model}: each provider defines its own function signature and request/response
 types, so the same logic must be rewritten per provider unless an abstraction hides those
-differences --- the problem QuickFaaS addresses with its uniform hook/template model. The second is
+differences, which is the problem QuickFaaS addresses with its uniform hook/template model. The
+second is
 the \emph{packaging and deployment} axis: providers accept code through different mechanisms
 (inline editing, container images, source archives), with different naming, permission and trigger
 conventions. The compressed source archive (ZIP) is the common denominator across AWS, GCP and
 Azure, which is why QuickFaaS standardises on it. Beyond portability, the statelessness and
 event-driven nature of FaaS also shape how functions are \emph{composed}: because a function holds
 no state between invocations and cannot directly call another, non-trivial applications must lift
-control-flow and data-flow into an external orchestrator --- the workflow layer discussed next ---
+control-flow and data-flow into an external orchestrator (the workflow layer discussed next)
 rather than encoding them inside the functions themselves~\cite{serverlessComputing}.
 
 \subsection{Workflows and Orchestration}
@@ -181,10 +182,10 @@ At the DSL level, the workflow root typically includes a \texttt{name}, a \textt
 Each \textbf{Step} represents a unit of behaviour inside the workflow. A step belongs to one of four disjoint categories:
 
 \begin{itemize}
-  \item \textbf{Execution Step} - steps that perform concrete work such as HTTP calls or variable assignments (for example, the Call and Assign constructs in the OmniFlow DSL).
-  \item \textbf{Conditional Step} - steps that select between alternative branches based on one or more conditions (corresponding to Switch-like constructs).
-  \item \textbf{Iteration Step} - steps that repeatedly execute a nested block of steps over a range or collection.
-  \item \textbf{Parallel Step} - steps that execute multiple branches concurrently.
+  \item \textbf{Execution Step}: steps that perform concrete work such as HTTP calls or variable assignments (for example, the Call and Assign constructs in the OmniFlow DSL).
+  \item \textbf{Conditional Step}: steps that select between alternative branches based on one or more conditions (corresponding to Switch-like constructs).
+  \item \textbf{Iteration Step}: steps that repeatedly execute a nested block of steps over a range or collection.
+  \item \textbf{Parallel Step}: steps that execute multiple branches concurrently.
 \end{itemize}
 
 The specialisation is \emph{disjoint}, each step instance is exactly one of these four kinds, which clarifies that a given step cannot simultaneously be, for example, both an execution and a conditional step. This abstract view aligns with the concrete DSL described in~\cite{silva2025advanced, costa2023omniflow}, where execution-oriented constructs (Call, Assign), control-flow constructs (Switch) and structuring constructs (Iteration, Parallel) are all represented as steps that differ only in their role within the workflow.
@@ -242,7 +243,7 @@ val ChainWorkflow = workflow {
 
 Once a workflow is defined, OmniFlow renders it into the target provider format (e.g., a YAML workflow for Google Cloud Workflows) and then deploys it via the provider interface~\cite{costa2023omniflow,silva2025advanced}. Importantly, for a single deployment target, the resulting workflow is intended to invoke only endpoints that exist in that same provider account/project.
 
-OmniFlow's call step is itself agnostic to what kind of compute resource answers at that endpoint: on GCP, it invokes whatever HTTP host and path the developer supplies, whether that address belongs to a (first-generation) Cloud Function or a Cloud Run service --- the DSL and the renderer have no notion of the distinction described in \S\ref{sec:background_quickfaas}. This becomes significant once function endpoints are resolved automatically rather than hard-coded by the developer (Chapter~\ref{ch:proposed_solution}), since an automatic resolution mechanism must itself account for a difference that OmniFlow, by design, never had to.
+OmniFlow's call step is itself agnostic to what kind of compute resource answers at that endpoint: on GCP, it invokes whatever HTTP host and path the developer supplies, whether that address belongs to a (first-generation) Cloud Function or a Cloud Run service; the DSL and the renderer have no notion of the distinction described in \S\ref{sec:background_quickfaas}. This becomes significant once function endpoints are resolved automatically rather than hard-coded by the developer (Chapter~\ref{ch:proposed_solution}), since an automatic resolution mechanism must itself account for a difference that OmniFlow, by design, never had to.
 
 A practical limitation follows from this design: OmniFlow call steps require concrete invocation targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment time~\cite{silva2025advanced}. If the workflow references an endpoint that does not exist (for example, because the target function has not yet been deployed), workflow deployment may fail or the workflow may fail at runtime. In current usage, developers typically mitigate this by deploying functions first (to obtain their final invocation URLs) and only then completing the workflow definition. This manual synchronization is one of the main motivations for integrating OmniFlow with a function deployment mechanism in the proposed solution chapter.
 
@@ -278,7 +279,7 @@ A first family of approaches focuses on automating resource deployment and confi
 \textbf{CODE}~\cite{ristov2024code} is a more recent framework in this family, addressing
 \emph{federated FaaS}: running the same function across several regions of several providers.
 Following a ``code once, deploy everywhere'' principle, its DSL places the function at the top of a
-three-level hierarchy --- function, then providers, then regions --- so that one declaration covers
+three-level hierarchy (function, then providers, then regions) so that one declaration covers
 every target instead of being repeated per provider and per region, which the authors report as up
 to 9.23$\times$ fewer lines of code than Terraform or the Serverless Framework. A unified storage
 library backs this DSL: one command uploads a deployment package to, or copies it between, the
@@ -287,9 +288,9 @@ storage already holds it, with no provider-specific upload code. CODE therefore 
 thesis's ambition for the \textit{function} half of the problem, on the same two providers, but it
 deploys the functions a workflow invokes rather than the workflow itself: the authors list the
 automatic deployment of workflows written in their own choreography language, on top of CODE, as
-future work. That remaining step --- a portable workflow definition whose function references are
-turned into concrete endpoints as the workflow is deployed --- is what this dissertation
-addresses.
+future work. That remaining step is what this dissertation addresses: a portable workflow
+definition whose function references are turned into concrete endpoints as the workflow is
+deployed.
 
 These tools also resolve references between resources at deployment time, including the endpoint
 through which a workflow calls a function. Each of them lets the workflow definition name the
@@ -302,15 +303,15 @@ The value that expression yields is the function's Amazon Resource Name (ARN) in
 \S\ref{sec:int_cha_int_uni_multi}, \texttt{arn:\allowbreak aws:\allowbreak lambda:\allowbreak%
 <region>:\allowbreak <account-id>:\allowbreak function:\allowbreak <name>}: a fixed prefix, the
 service, then the region and the account in which the function was created, and finally the name
-it was given there. Only the first fields are known when the template is written --- the account
+it was given there. Only the first fields are known when the template is written: the account
 and the deployed name are not, and \texttt{MyFunction} is the resource's logical identifier inside
-the template rather than the name the function ends up carrying --- which is why the workflow names
+the template rather than the name the function ends up carrying. That is why the workflow names
 it through an expression instead of a literal string. The reference also fixes the order of the
 deployment: CloudFormation reads a \texttt{!GetAtt} to another resource as an implicit dependency,
 and so creates the function before the state machine that substitutes its
 ARN~\cite{awsCloudFormationDependsOn}.
-The Step Functions plugin for the Serverless Framework accepts \texttt{Fn::GetAtt: [hello, Arn]} ---
-the same intrinsic in its long form --- as the \texttt{Resource} of a task, and resolves it to the
+The Step Functions plugin for the Serverless Framework accepts \texttt{Fn::GetAtt: [hello, Arn]}
+(the same intrinsic in its long form) as the \texttt{Resource} of a task, and resolves it to the
 ARN of the function \texttt{hello} declared in the same service~\cite{serverlessStepFunctionsPlugin}.
 In Terraform, the state machine's definition is a string into which the tool interpolates
 expressions written as \texttt{\$\{\ldots\}}, evaluated when the configuration is applied:
@@ -324,7 +325,7 @@ resources, so the function is created before the workflow that names
 it~\cite{terraformReferences}. Pulumi likewise records a dependency when one resource's output is
 passed as another's input, and orders their creation accordingly~\cite{pulumiInputsOutputs}. In each
 case the function is declared alongside the workflow and deployed with it, and its endpoint is
-written into the workflow at deployment time --- the same static binding performed by the resolution
+written into the workflow at deployment time, the same static binding performed by the resolution
 cascade proposed in this dissertation and described in \S\ref{sec:resolution-cascade}.
 They also update a function whose code changed, which this work does not; conversely, they
 bind a workflow only to functions declared or explicitly referenced in the same template or

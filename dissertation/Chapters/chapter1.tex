@@ -7,7 +7,7 @@ Cloud computing has fundamentally reshaped the landscape of modern information t
 
 IBM defines cloud computing as a model for delivering computing services over the internet with flexible consumption, rapid elasticity and centralized management~\cite{ibmCloudComputing}. This shift has accelerated digital transformation across industries, enabling new business models, automated workflows and data-driven operations.
 
-Long before the term became common, Parkhill framed the idea of a \emph{computer utility} --- computing delivered as a shared service, accessed remotely and operated in a way comparable to other public utilities~\cite{parkhill1966challenge}. The term itself was only formalized in the late 2000s, when Vaquero et al.\ surveyed the recurring characteristics of elasticity, abstraction and resource sharing~\cite{vaquero2008breaks}, Armbrust et al.\ popularized the view of the cloud as a practical realization of utility-style computing~\cite{armbrust2010view} and Buyya et al.\ cast it as a ``fifth utility''~\cite{buyya2009cloud}. Virtualization, large-scale data centers and automated orchestration made that vision feasible, and with the introduction of Amazon EC2 in 2006, followed by Google and Microsoft, it became the dominant commercial model. Cloud platforms are consumed today through service models of decreasing operational responsibility --- infrastructure, platform and software as a service --- of which the paradigm this dissertation addresses, serverless computing, is the furthest step.
+Long before the term became common, Parkhill framed the idea of a \emph{computer utility}: computing delivered as a shared service, accessed remotely and operated in a way comparable to other public utilities~\cite{parkhill1966challenge}. The term itself was only formalized in the late 2000s, when Vaquero et al.\ surveyed the recurring characteristics of elasticity, abstraction and resource sharing~\cite{vaquero2008breaks}, Armbrust et al.\ popularized the view of the cloud as a practical realization of utility-style computing~\cite{armbrust2010view} and Buyya et al.\ cast it as a ``fifth utility''~\cite{buyya2009cloud}. Virtualization, large-scale data centers and automated orchestration made that vision feasible, and with the introduction of Amazon EC2 in 2006, followed by Google and Microsoft, it became the dominant commercial model. Cloud platforms are consumed today through service models of decreasing operational responsibility (infrastructure, platform and software as a service), of which the paradigm this dissertation addresses, serverless computing, is the furthest step.
 
 \section{The Emergence of Serverless and Event-Driven Architectures}
 \label{sec:int_eme_ser_eve_dri_arc}
@@ -90,8 +90,8 @@ directions.
 	and descriptor format is required so that the request can be issued automatically and
 	repeatably.
 
-	\item \textbf{Metadata synchronization:} a deployment returns invocation metadata --- an
-	endpoint and lightweight provider details --- which must be recorded where the next workflow
+	\item \textbf{Metadata synchronization:} a deployment returns invocation metadata (an
+	endpoint and lightweight provider details), which must be recorded where the next workflow
 	deployment will look for it, so that the endpoint is never carried across by hand. Only
 	non-secret metadata is involved: a function's name and its endpoint.
 \end{itemize}
@@ -107,8 +107,8 @@ added to a workflow, every move between regions, accounts or providers and every
 deployment target sends the developer back through the same sequence: deploy the function, read the
 endpoint it was given, write that endpoint into the workflow definition and check by hand that the
 two agree. The effort therefore grows with the number of functions a workflow calls and with the
-number of targets it is deployed to, and it grows in the one part of the process --- copying a
-value from one tool into another --- that contributes nothing to the application being built.
+number of targets it is deployed to, and it grows in the one part of the process (copying a
+value from one tool into another) that contributes nothing to the application being built.
 
 This dissertation is motivated by the opportunity to close that gap by integrating QuickFaaS and
 OmniFlow into a workflow-first development experience. Such an integration is intended to:
@@ -204,7 +204,7 @@ Applications: Unifying Function Deployment and Workflow
 Orchestration''~\cite{carvalho2026towards}. That paper reports the work in progress: the
 motivation, the layered architecture of the unified framework, the distinction between internal and
 external calls, and the Function Registry that maps logical function names to deployed endpoints.
-The dissertation carries that design to completion and adds what the paper left open --- the
+The dissertation carries that design to completion and adds what the paper left open: the
 resolution cascade with its validation and discovery levels, the AWS Lambda support, the case study,
 and the quantitative evaluation.
 
@@ -218,7 +218,7 @@ The remainder of this dissertation is organized as follows:
   \item \textbf{Chapter 2} provides the background on serverless computing, presents the two base technologies, QuickFaaS (function deployment) and OmniFlow (workflow definition and deployment), and surveys related work on function deployment automation and workflow composition/orchestration.
   \item \textbf{Chapter 3} presents the proposed solution: a workflow-first deployment procedure on a single cloud provider, based on logical function references (\texttt{functionRef}), a function registry for endpoint resolution, and the \texttt{internalFunction} construct on the call step, which delegates on-demand function deployment to QuickFaaS.
   \item \textbf{Chapter 4} describes the implementation of the integration: the function registry and its deployment-time resolution cascade, the AWS Lambda support added to QuickFaaS, and the runtime invocation of registry-resolved functions.
-  \item \textbf{Chapter 5} presents an illustrative case study --- real-time fraud detection for card payments --- that grounds the registry and resolution cascade in a concrete banking scenario, deployed to both AWS and GCP.
+  \item \textbf{Chapter 5} presents an illustrative case study (real-time fraud detection for card payments) that grounds the registry and resolution cascade in a concrete banking scenario, deployed to both AWS and GCP.
   \item \textbf{Chapter 6} evaluates the prototype and answers the research questions: it checks the decisions of the resolution cascade on both providers, and measures the resolution overhead and its scalability, the registry write path, and the packaging overhead of the AWS agnostic layer.
   \item \textbf{Chapter 7} concludes the dissertation, revisits the objectives, assesses the work critically, and outlines future work.
 \end{itemize}

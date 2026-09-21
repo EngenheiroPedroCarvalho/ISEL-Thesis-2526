@@ -8,7 +8,7 @@
 Deploying a serverless application means deploying two things: the functions that do the work and
 the workflow that orchestrates them. A different tool handles each, and the two are not
 independent. A workflow invokes a function through the endpoint the provider assigns when that
-function is deployed --- a Cloud Run URL, a Lambda ARN --- and that endpoint depends on the
+function is deployed (a Cloud Run URL, a Lambda ARN), and that endpoint depends on the
 account, project and region it was deployed to. The developer therefore deploys the functions with
 one tool, reads the endpoints it produced and copies them by hand into the workflow definition
 consumed by another. The copying is repeated for every deployment target, and a wrong endpoint goes

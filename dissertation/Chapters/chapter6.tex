@@ -15,14 +15,14 @@ a card-payment authorization workflow that screens every transaction for fraud b
 settled. The scenario is not a validated production deployment; it is a realistic composition of
 the \texttt{FraudPipeline} example already introduced in Section~\ref{sec:developer-workflow},
 extended to internalize both scoring functions and to make an authorization decision, used here
-to walk through the integration end to end and to discuss where it fits --- and where it does not
-yet fit --- an actual banking environment.
+to walk through the integration end to end and to discuss where it fits an actual banking
+environment, and where it does not yet fit one.
 
 The chapter is organised as follows. Section~\ref{sec:case-scenario} sets out the business
 requirements a payment-authorization workflow imposes and why they line up with the problem this
 work addresses. Section~\ref{sec:case-design} defines the workflow in the OmniFlow DSL.
 Section~\ref{sec:case-deployment} walks the resolution cascade through three deployments of that
-same workflow --- to a test and a production AWS account, then to GCP --- to show how the bindings
+same workflow (to a test and a production AWS account, then to GCP) to show how the bindings
 follow the deployment target.
 Section~\ref{sec:case-runtime} follows a transaction through the deployed workflow at runtime, and
 Section~\ref{sec:case-discussion} discusses the scenario's relevance and its limits, connecting
@@ -49,7 +49,7 @@ this dissertation:
     promotes the workflow from one to the next. A function deployed in each account has a different
     endpoint there: its ARN contains the account ID. If the workflow definition embedded those
     endpoints, every promotion would require editing them by hand, and the functions would have to
-    be deployed in the new account before the workflow could even be completed --- the two problems
+    be deployed in the new account before the workflow could even be completed: the two problems
     that motivate the Function Registry (Section~\ref{sec:int_cha_int_uni_multi}).
     \item \textbf{An exit strategy.} The Digital Operational Resilience Act (DORA) requires EU
     financial entities to put in place exit strategies for ICT services supporting critical or
@@ -70,10 +70,10 @@ this dissertation:
 Listing~\ref{lst:case-payment-workflow} defines \texttt{PaymentAuthorization}. The first two
 steps call \texttt{fraud-check} and \texttt{risk-score} through \texttt{internalFunction}, so
 their endpoints are resolved through the registry at deployment time rather than hard-coded, as
-described in Section~\ref{subsec:endpoint-resolution}. Unlike the external \texttt{risk-score}
-variant shown in Listing~\ref{lst:wf-external-part}, both scoring calls here are internal and
-therefore registry-managed --- a distinction to a partner-owned endpoint the bank happens to also
-call. Their results are captured in \texttt{fraudResult} and \texttt{riskResult}. A third step,
+described in Section~\ref{subsec:endpoint-resolution}. Unlike the partner-owned risk-scoring API
+of Listing~\ref{lst:wf-external-part}, which the workflow reaches through a literal endpoint, both
+scoring calls here run on functions the bank owns, and are therefore internal and
+registry-managed. Their results are captured in \texttt{fraudResult} and \texttt{riskResult}. A third step,
 \texttt{decision}, is a conditional (\texttt{switch}) step: it jumps to
 \texttt{decline-transaction} if the fraud check flagged the transaction or the risk score exceeds
 a threshold, and otherwise falls through to the \texttt{default}, \texttt{approve-transaction}.
@@ -160,7 +160,7 @@ deploys \texttt{PaymentAuthorization} to its AWS test account first. OmniFlow bo
 listing Lambda functions across every enabled region, finds it empty for both functions, and the
 cascade reaches Level~3 for each: QuickFaaS deploys \texttt{fraud-check} and \texttt{risk-score}
 as Lambda functions from the descriptors referenced in the workflow, following the AWS deployment
-sequence detailed in Figure~\ref{fig:aws-deploy-sequence} --- IAM role resolution, subprocess
+sequence detailed in Figure~\ref{fig:aws-deploy-sequence}: IAM role resolution, subprocess
 invocation, \texttt{GetFunction} polling and Step Functions invoke permissions. Both ARNs are
 written to the registry, and \texttt{PaymentAuthorization} is deployed as a state machine.
 
@@ -178,7 +178,7 @@ validation fails, the entry is treated as stale, and the production deployment a
 Now suppose the bank's exit strategy calls for the same fraud-screening workflow to run on a
 second provider (Section~\ref{sec:case-scenario}). Because
 \texttt{PaymentAuthorization} names no provider, deploying it to GCP requires no change to
-Listing~\ref{lst:case-payment-workflow} --- only different QuickFaaS descriptors (targeting Cloud
+Listing~\ref{lst:case-payment-workflow}, only different QuickFaaS descriptors (targeting Cloud
 Functions instead of Lambda) and the GCP deployer. On this first GCP deployment, the GCP registry is
 bootstrapped separately from the AWS one, both scoring functions miss at Level~1 and Level~2, and
 Level~3 deploys them as first-generation Cloud Functions instead, following the ZIP-based
@@ -229,8 +229,8 @@ with filesystem access and carrying no integrity guarantee, is not a control a b
 change-management or security function would accept as-is, and the AWS path's broad, automatically
 granted IAM role is similarly at odds with a least-privilege environment handling payment data.
 The applicability discussion in Section~\ref{sec:concl-applicability} and the corresponding future
-work in Section~\ref{sec:concl-future} --- a hardened, access-controlled registry backend with an
-attributable write history, and least-privilege IAM under change control --- describe exactly the
+work in Section~\ref{sec:concl-future} (a hardened, access-controlled registry backend with an
+attributable write history, and least-privilege IAM under change control) describe exactly the
 hardening this scenario would require before the workflow in
 Listing~\ref{lst:case-payment-workflow} could authorize real transactions.
 

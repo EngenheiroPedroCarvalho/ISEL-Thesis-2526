@@ -8,6 +8,125 @@ este ficheiro.)
 
 ## 2026-09-21
 
+### Hífenes soltos (`-`) usados como travessão (`chapter2.tex`)
+
+Continuação da varredura dos `---`, agora ao hífen. Varridas as três formas possíveis nos dez
+ficheiros de prosa; só uma tinha o defeito:
+
+- **Hífen espaçado (` - `) como separador de rótulo: 4 ocorrências, todas corrigidas.** Na lista
+  das quatro categorias de passo do §2.1.4 (`\textbf{Execution Step} - steps that perform…`,
+  e o mesmo para *Conditional*, *Iteration* e *Parallel Step*). É o mesmo padrão dos `---` já
+  tratados e, além disso, um defeito de composição: um hífen solto em LaTeX imprime-se como hífen,
+  não como travessão, por isso o rótulo aparecia ligado à definição como se fosse uma palavra
+  composta. Passaram todos a dois pontos, como as restantes listas rotuladas do documento.
+
+Não foram alteradas, por não serem travessões:
+
+- **Meio-travessão (`--`) na tabela comparativa** (`tab:related-comparison`, ~45 ocorrências): é o
+  marcador de "não" da tabela, declarado na própria legenda (`Y = yes, P = partial, -- = no`).
+  Removê-lo contradiria a legenda.
+- **`OmniFlow--QuickFaaS`** (2 ocorrências): meio-travessão a ligar dois nomes próprios, que é o
+  uso correto para um composto de duas entidades.
+- **Intervalos numéricos** (`T1--T14`, `T15--T18`, `T3--T5`, `0--5`, `15.8$--$19.2`): uso correto.
+- **Palavras compostas hifenizadas.** Verificadas as ocorrências em posição predicativa (depois do
+  nome), que é onde o hífen costuma sobrar: `is error-prone`, `are co-located`, `be unit-tested`,
+  `are non-deterministic`, `were re-measured`, `remain provider-specific`, `are
+  implementation-level`. Todas legítimas --- ou palavras de dicionário, ou prefixos, ou compostos
+  nome+adjetivo que se hifenizam nas duas posições. A maior parte dos hífenes do ficheiro está,
+  aliás, dentro de rótulos `\ref` (`sec:resolution-cascade`) e de identificadores de código
+  (`fraud-check`, `risk-score`), que não são prosa.
+
+Compilado: 98 páginas, sem referências por resolver e com os mesmos 8 avisos de *overfull hbox*.
+
+### Contraste com a chamada externa corrigido (`chapter6.tex`, cap. 5)
+
+No parágrafo que lê a Listing 5.1, a frase era *"Unlike the external `risk-score` variant shown in
+Listing 3.2, both scoring calls here are internal and therefore registry-managed, a distinction to
+a partner-owned endpoint the bank happens to also call."* Tinha dois defeitos:
+
+- **O aposto final não fechava a gramática.** "a distinction to a partner-owned endpoint the bank
+  happens to also call" não liga a nada; tentava dizer que a distinção é face a um *endpoint* de
+  terceiros, mas ficou pendurado.
+- **O nome estava trocado.** A Listing 3.2 não mostra nenhuma variante chamada `risk-score`: mostra
+  o passo `external-risk-api`, que chama `api.partner.example/v1/risk-score` com `host`/`path`
+  literais (confirmado em `chapter3.tex`, listagem `lst:wf-external-part`). Chamar-lhe "the
+  external `risk-score` variant" dava a entender que existe uma versão externa da função
+  `risk-score` do estudo de caso, o que não é verdade: são coisas diferentes, uma API de um
+  parceiro e uma função do banco.
+
+Passa a: *"Unlike the partner-owned risk-scoring API of Listing 3.2, which the workflow reaches
+through a literal endpoint, both scoring calls here run on functions the bank owns, and are
+therefore internal and registry-managed."* Mantém o contraste pretendido (função própria contra
+API de terceiros) e prepara a frase seguinte do mesmo parágrafo, que usa `external-risk-api` como
+o exemplo canónico de chamada externa ao descrever o passo de liquidação.
+
+Compilado: 98 páginas, sem referências por resolver e com os mesmos 8 avisos de *overfull hbox*.
+
+### Travessões (`---`) removidos de toda a prosa
+
+Varredura aos nove ficheiros de prosa (os dois resumos e os capítulos 1 a 7): **184 ocorrências,
+todas eliminadas**. Motivo: o travessão deixa por decidir a relação entre as duas orações, e usá-lo
+como conector universal é um dos sinais de escrita gerada que a lista dos *Signs of AI writing*
+identifica. Cada um foi substituído pela pontuação que nomeia a relação de facto:
+
+| Ficheiro | Ocorrências |
+|---|---|
+| `abstract-en.tex` / `abstract-pt.tex` | 1 + 1 |
+| `chapter1.tex` | 10 |
+| `chapter2.tex` | 15 |
+| `chapter3.tex` | 23 |
+| `chapter5.tex` | 28 |
+| `chapter6.tex` | 10 |
+| `chapter7.tex` | 75 |
+| `chapter8.tex` | 19 |
+
+Critério aplicado: parênteses quando o inciso é uma enumeração ou uma glosa (o caso mais comum);
+dois pontos quando a segunda metade explica ou exemplifica a primeira; vírgula quando é um aposto
+curto; ponto e vírgula entre duas orações independentes. As réguas de comentário dos
+`Config/*.tex` e do `ganttdiagram_.tex` (`%------`) não são travessões e ficaram como estavam, tal
+como os intervalos com meio-travessão (`T1--T14`, páginas na bibliografia).
+
+Dois grupos exigiram tratamento próprio:
+
+- **Legendas dos benchmarks do cap. 6** (32 ocorrências): o rótulo `T1 --- descrição` passou a
+  `T1: descrição`, em tabelas e figuras, incluindo a legenda curta da T12.
+- **Células de tabela onde `---` significava "não aplicável"** (6 ocorrências): na tabela de
+  chamadas à API a célula AWS da linha das funções de 1.ª geração passou a `n/a`; na tabela de
+  esforço manual as cinco células da coluna "Integrated" passaram a `Not needed`, mantendo a
+  explicação entre parênteses onde já existia. Ler "Not needed (granted by the deployer)" é mais
+  claro do que o travessão que lá estava.
+
+Em nove passagens a troca de pontuação não chegava e a frase foi reescrita, sem acrescentar nem
+perder nenhuma afirmação:
+
+- Cap. 2, introdução: frase de abertura re-quebrada depois de o inciso passar a vírgulas.
+- Cap. 2, fecho do parágrafo do CODE: `That remaining step --- X --- is what this dissertation
+  addresses` passou a `That remaining step is what this dissertation addresses: X`.
+- Cap. 2, `!GetAtt`: o inciso longo sobre os campos conhecidos passou a frase própria (`That is
+  why the workflow names it through an expression…`).
+- Cap. 3, os quatro *itens* de "Error and edge cases": `\textbf{Unresolvable function} --- absent…`
+  passou a `\textbf{Unresolvable function.} Absent…`, alinhando com o estilo do `enumerate` dos
+  Níveis 1--3, que já usava ponto depois do rótulo.
+- Cap. 4, Nível 2 do apêndice: o inciso que distinguia os dois *providers* passou a frase própria
+  ("The GCP path (a) covers the project's regions and the AWS path (b) every region enabled for
+  the account…"), evitando parênteses dentro de parênteses por causa dos rótulos (a)/(b).
+- Cap. 4, `InputPath`/`Next`: `--- both emitted for an apigateway:invoke task as well` passou a
+  `; both are emitted…`.
+- Cap. 5, abertura: `where it fits --- and where it does not yet fit --- an actual banking
+  environment` passou a `where it fits an actual banking environment, and where it does not yet
+  fit one`, porque com vírgulas o complemento ficava solto.
+- Cap. 6, proveniência do T6/T7: o inciso passou a frase própria, com `nonetheless` a manter a
+  concessão que o `but` fazia.
+- Cap. 6, T14: o inciso sobre o declive foi para parênteses (uma substituição automática das
+  legendas tinha apanhado indevidamente o `T11 ---` desta frase de prosa; corrigido).
+
+Verificado por *diff* palavra a palavra: as únicas alterações de texto (não de pontuação) são as
+seis células de tabela, as maiúsculas iniciais dos quatro itens do cap. 3 e as nove reescritas
+acima. Nenhuma afirmação, número, nome ou citação foi acrescentado ou perdido.
+
+Compilado: 98 páginas, sem referências por resolver, 48 entradas numeradas para 48 citadas e os
+mesmos 8 avisos de *overfull hbox* do template.
+
 ### Referência do artigo do CISTI reduzida ao que é sabido (`bibliography.bib`)
 
 A entrada `carvalho2026towards` era um `@inproceedings` com `booktitle` ("2026 21st Iberian

@@ -35,19 +35,19 @@ cost the local measurements cannot see.
 
 The evaluation has six parts:
 \begin{itemize}
-  \item \textbf{Correctness of the resolution cascade} (RQ1) --- the decision each production
+  \item \textbf{Correctness of the resolution cascade} (RQ1): the decision each production
   resolver takes in every situation the cascade can meet, checked by unit tests on both providers.
-  \item \textbf{Resolution overhead and scalability} (RQ2) --- the cost of resolving internal calls as a
+  \item \textbf{Resolution overhead and scalability} (RQ2): the cost of resolving internal calls as a
   function of the number of calls ($N$) and the size of the registry ($R$), and the effect of the
   single-read optimization.
-  \item \textbf{Real auto-deploy resolvers} (RQ2) --- the cost of the production resolvers
+  \item \textbf{Real auto-deploy resolvers} (RQ2): the cost of the production resolvers
   (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}, \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) and of the
   registry write path.
-  \item \textbf{Provider API calls} (RQ2) --- how many requests each cascade path sends to the
+  \item \textbf{Provider API calls} (RQ2): how many requests each cascade path sends to the
   provider, counted from the implementation rather than measured.
-  \item \textbf{Manual effort} (RQ1) --- the developer actions the integration removes, counted
+  \item \textbf{Manual effort} (RQ1): the developer actions the integration removes, counted
   against the procedure the two tools required separately.
-  \item \textbf{Packaging overhead} --- the size the AWS provider-agnostic layer adds to a Lambda
+  \item \textbf{Packaging overhead}: the size the AWS provider-agnostic layer adds to a Lambda
   deployment bundle.
 \end{itemize}
 
@@ -158,9 +158,9 @@ relationships between experiments would hold.
 \paragraph{Experiment identifiers.}
 Experiments keep the identifiers they carry in the benchmark suite, and this chapter reports
 T1--T14, which measure resolution and the registry, plus S1, which measures packaging size. The
-suite continues with T15--T18, which time OmniFlow's renderers alone --- rendering time against the
+suite continues with T15--T18, which time OmniFlow's renderers alone (rendering time against the
 number of functions, the number of call arguments, nesting depth, and the width of a
-\texttt{Choice} or \texttt{Parallel} --- and with S2, which measures the size of the rendered
+\texttt{Choice} or \texttt{Parallel}), and with S2, which measures the size of the rendered
 workflow definition. Those five exercise code this work did not change, and are therefore numbered
 after the experiments reported here rather than among them.
 
@@ -211,12 +211,12 @@ and path, and the rebuilding of the call node, which together cost about $0.22\,
 against about $0.006\,\mu$s for an external call, whose node is left unchanged. Resolving a 200-call
 workflow therefore costs $54.9\,\mu$s, of which the single read is roughly a fifth. Because the
 registry holds one entry, this experiment says nothing about the cost of reading a larger file;
-that is the variable the next experiment isolates. The $N{=}10$ point is noise --- its value,
+that is the variable the next experiment isolates. The $N{=}10$ point is noise: its value,
 $16.9 \pm 16.8\,\mu$s, has a confidence interval that reaches almost down to zero.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T1 --- resolution time ($\mu$s) of a workflow of $N$ calls, all internal vs.\ all
+  {\captionsetup{textfont=sf}\captionof{table}{T1: resolution time ($\mu$s) of a workflow of $N$ calls, all internal vs.\ all
   external, with $R{=}1$. Both columns include the one registry read the resolver always performs.}
   \label{tab:eval-t1}}
   \begin{minipage}[c]{0.31\textwidth}
@@ -248,7 +248,7 @@ $16.9 \pm 16.8\,\mu$s, has a confidence interval that reaches almost down to zer
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T1_resolution_overhead.png}
   \end{minipage}
-  {\captionof{figure}{T1 --- resolution time of a workflow of $N$ calls, all internal against all external,
+  {\captionof{figure}{T1: resolution time of a workflow of $N$ calls, all internal against all external,
   with $R{=}1$. Both lines start from the one registry read the resolver always performs; only the
   internal line then grows with $N$. The error bar at $N{=}10$ reaches almost down to zero.}
   \label{fig:eval-t1}}
@@ -267,12 +267,12 @@ are equal when $0.17\,R = 10.3$, that is at $R \approx 60$: below that size the 
 opening and parsing the file dominates, and only
 above it does the number of entries become the larger term. A registry holding the few dozen
 functions of a realistic system therefore sits around or below that crossover, where the fixed cost
-rules, which is what makes reading it once per workflow --- rather than once per call --- the
+rules, which is what makes reading it once per workflow (rather than once per call) the
 change worth making.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T2 --- per-call resolution cost as a function of registry size $R$, with the registry
+  {\captionsetup{textfont=sf}\captionof{table}{T2: per-call resolution cost as a function of registry size $R$, with the registry
   re-read on every internal call: total time divided by $N$, averaged over $N \in \{1, 10, 50,
   200\}$.}
   \label{tab:eval-t2}}
@@ -299,7 +299,7 @@ change worth making.
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T2_registry_scaling.png}
   \end{minipage}
-  {\captionof{figure}{T2 --- per-call resolution cost as a function of registry size $R$, for $N \in \{1, 10,
+  {\captionof{figure}{T2: per-call resolution cost as a function of registry size $R$, for $N \in \{1, 10,
   50, 200\}$ internal calls; the external-call control does not read the registry.}
   \label{fig:eval-t2}}
 \end{figure}
@@ -311,15 +311,15 @@ together, becoming instead one read proportional to the registry size plus a che
 lookup per call. Table~\ref{tab:eval-t3} compares resolving the registry per call (naive) against a
 single read per resolution (optimized), and Figure~\ref{fig:eval-t3} plots the two on a shared
 logarithmic axis. With the snapshot, the cost becomes almost independent of
-$N$ --- each row is flat to within a few tenths of a microsecond across a two-hundred-fold increase
-in the number of calls --- and reduces to the cost of one read of an $R$-entry file. The speedup
+$N$ (each row is flat to within a few tenths of a microsecond across a two-hundred-fold increase
+in the number of calls) and reduces to the cost of one read of an $R$-entry file. The speedup
 therefore grows with the product $N \cdot R$, reaching $200\times$ in the worst corner
 ($N{=}200$, $R{=}1000$: $36.7$\,ms down to $0.18$\,ms). Experiments T4 and T5 confirm the same
 trend on real \texttt{Workflow} objects rather than the isolated store primitive.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T3 --- total resolution time ($\mu$s), naive (per-call read) vs.\ optimized (single
+  {\captionsetup{textfont=sf}\captionof{table}{T3: total resolution time ($\mu$s), naive (per-call read) vs.\ optimized (single
   read).}
   \label{tab:eval-t3}}
   \small
@@ -344,7 +344,7 @@ trend on real \texttt{Workflow} objects rather than the isolated store primitive
   \vspace{4mm}
   \includegraphics[width=0.62\textwidth]{images/benchmarks/T3a_resolution_sem_cache.png}\\[2mm]
   \includegraphics[width=0.62\textwidth]{images/benchmarks/T3b_resolution_com_cache.png}
-  {\captionof{figure}{T3 --- reading the registry once per call (top) against reading it once per resolution
+  {\captionof{figure}{T3: reading the registry once per call (top) against reading it once per resolution
   (bottom), on a shared logarithmic axis. Per call, the cost grows with both $N$ and $R$; with the
   single read, every curve is flat in $N$ and set only by $R$.}
   \label{fig:eval-t3}}
@@ -354,7 +354,7 @@ trend on real \texttt{Workflow} objects rather than the isolated store primitive
 T4 exercises the resolution of a real \texttt{Workflow} object, not the isolated store primitive,
 across a grid of $1$ to $50$ distinct functions and $1$ to $200$ calls, with the registry always
 hitting ($R{=}F$). The naive path is dominated by the number of calls, at roughly $10\,\mu$s per
-call --- one whole registry read each --- and grows only mildly with $F$, since a larger $F$ means
+call (one whole registry read each) and grows only mildly with $F$, since a larger $F$ means
 a larger file to re-read (Table~\ref{tab:eval-t4-naive}). The optimized path pays that read once
 and then about $0.22\,\mu$s per call, so it grows with $F$ (the size of the single read) far more
 than with $N$ (Table~\ref{tab:eval-t4-optimized}; both paths are plotted in
@@ -367,7 +367,7 @@ climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
-    {\captionsetup{textfont=sf}\captionof{table}{T4 --- naive resolution time ($\mu$s) of a real workflow, $F$ distinct functions vs.\
+    {\captionsetup{textfont=sf}\captionof{table}{T4: naive resolution time ($\mu$s) of a real workflow, $F$ distinct functions vs.\
     $N$ calls, $R{=}F$.}
     \label{tab:eval-t4-naive}}
     \small
@@ -391,7 +391,7 @@ climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
   \end{minipage}\hfill
   \begin{minipage}[t]{0.48\textwidth}
     \centering
-    {\captionsetup{textfont=sf}\captionof{table}{T4 --- optimized (single-read) resolution time ($\mu$s) of a real workflow, same grid
+    {\captionsetup{textfont=sf}\captionof{table}{T4: optimized (single-read) resolution time ($\mu$s) of a real workflow, same grid
     as Table~\ref{tab:eval-t4-naive}.}
     \label{tab:eval-t4-optimized}}
     \small
@@ -417,7 +417,7 @@ climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
   \vspace{4mm}
   \includegraphics[width=0.62\textwidth]{images/benchmarks/T4a_resolution_sem_cache.png}\\[2mm]
   \includegraphics[width=0.62\textwidth]{images/benchmarks/T4b_resolution_com_cache.png}
-  {\captionof{figure}{T4 --- resolution of a real \texttt{Workflow} object, naive (top) against optimized
+  {\captionof{figure}{T4: resolution of a real \texttt{Workflow} object, naive (top) against optimized
   (bottom), on a shared logarithmic axis, one curve per number of distinct functions $F$ and
   $R{=}F$. The naive path is ordered by $N$, the optimized path by $F$.}
   \label{fig:eval-t4}}
@@ -432,7 +432,7 @@ column is the cost of one read plus 50 lookups, and tracks the per-read cost mea
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T5 --- resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
+  {\captionsetup{textfont=sf}\captionof{table}{T5: resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
   \label{tab:eval-t5}}
   \begin{minipage}[c]{0.31\textwidth}
     \centering
@@ -460,7 +460,7 @@ column is the cost of one read plus 50 lookups, and tracks the per-read cost mea
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T5_resolution_by_registry.png}
   \end{minipage}
-  {\captionof{figure}{T5 --- resolution time against registry size $R$ with $F{=}10$/$N{=}50$ fixed,
+  {\captionof{figure}{T5: resolution time against registry size $R$ with $F{=}10$/$N{=}50$ fixed,
   per-call read against single read (logarithmic vertical axis). Both paths grow with $R$, and the
   gap between them widens with it.}
   \label{fig:eval-t5}}
@@ -504,7 +504,7 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T6 --- AWS provider: resolution time ($\mu$s) of the real resolver
+  {\captionsetup{textfont=sf}\captionof{table}{T6: AWS provider: resolution time ($\mu$s) of the real resolver
   (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with the
   single-read optimization and without per-call console output.}
   \label{tab:eval-t6}}
@@ -529,7 +529,7 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
 
   \vspace{4mm}
   \includegraphics[width=0.7\textwidth]{images/benchmarks/T6_aws_internal_resolution.png}
-  {\captionof{figure}{T6 --- AWS provider: resolution time of
+  {\captionof{figure}{T6: AWS provider: resolution time of
   \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} against the number of
   internal calls $N$, one curve per number of distinct functions $F$, with $R{=}F$ (logarithmic
   vertical axis).}
@@ -538,7 +538,7 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T7 --- GCP provider: resolution time ($\mu$s) of the real resolver
+  {\captionsetup{textfont=sf}\captionof{table}{T7: GCP provider: resolution time ($\mu$s) of the real resolver
   (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with
   the single-read optimization and without per-call console output.}
   \label{tab:eval-t7}}
@@ -563,7 +563,7 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
 
   \vspace{4mm}
   \includegraphics[width=0.7\textwidth]{images/benchmarks/T7_google_internal_resolution.png}
-  {\captionof{figure}{T7 --- GCP provider: resolution time of
+  {\captionof{figure}{T7: GCP provider: resolution time of
   \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} against the number
   of internal calls $N$, one curve per number of distinct functions $F$, with $R{=}F$ (logarithmic
   vertical axis). The curves rise more steeply in $N$ than T6's because this resolver parses the
@@ -576,9 +576,9 @@ Writing is more expensive than resolving. Every \texttt{put()} re-reads and rewr
 registry file, so registering $K$ functions costs close to $K$ times one write, and one write costs
 what it costs to rewrite a file of the current size (Table~\ref{tab:eval-t8} and
 Figure~\ref{fig:eval-t8}). Both factors are
-visible. Across $K$, the cost per write is nearly constant --- at $R_0{=}0$ it moves only from
+visible. Across $K$, the cost per write is nearly constant (at $R_0{=}0$ it moves only from
 $45.5$ to $59.1\,\mu$s between $K{=}1$ and $K{=}100$, the mild increase expected from a file that
-has gained $K$ entries during the run --- so the total is linear in $K$, not compounding. Across
+has gained $K$ entries during the run), so the total is linear in $K$, not compounding. Across
 $R_0$, the cost per write grows roughly in proportion to the file: about $45\,\mu$s on an empty
 registry, $114\,\mu$s at $R_0{=}200$ and $490\,\mu$s at $R_0{=}1000$. The registry size is
 therefore not a second-order term for writes as it is for reads; it multiplies the cost of every
@@ -587,8 +587,8 @@ write.
 The miss-then-write pattern the real resolvers perform before any cloud call
 (\texttt{tryResolveEntry} followed by \texttt{put}) adds between 26\% and 62\%
 (Table~\ref{tab:eval-t9} and Figure~\ref{fig:eval-t9}), because \texttt{tryResolveEntry} reads the whole file once more before
-the write rewrites it. The surcharge grows with $R_0$ --- about 30\% on an empty registry, about
-60\% at $R_0{=}1000$ --- which is what an extra full read of a growing file predicts. One point
+the write rewrites it. The surcharge grows with $R_0$ (about 30\% on an empty registry, about
+60\% at $R_0{=}1000$), which is what an extra full read of a growing file predicts. One point
 disagrees, $K{=}10$ at $R_0{=}10$, and its confidence interval ($\pm732\,\mu$s on a mean of
 $874\,\mu$s) says it is noise rather than an effect. In absolute terms both tables stay in
 microseconds per write and reach tens of milliseconds only for $K{=}100$ successive writes into a
@@ -596,7 +596,7 @@ thousand-entry registry.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T8 --- total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
+  {\captionsetup{textfont=sf}\captionof{table}{T8: total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
   size $R_0$.}
   \label{tab:eval-t8}}
   \small
@@ -618,7 +618,7 @@ thousand-entry registry.
 
   \vspace{4mm}
   \includegraphics[width=0.7\textwidth]{images/benchmarks/T8_registry_write_scaling.png}
-  {\captionof{figure}{T8 --- total time of $K$ successive \texttt{put} calls, one curve per initial registry
+  {\captionof{figure}{T8: total time of $K$ successive \texttt{put} calls, one curve per initial registry
   size $R_0$ (both axes logarithmic). The curves are parallel straight lines of slope one: the
   total is linear in $K$, and $R_0$ only shifts it.}
   \label{fig:eval-t8}}
@@ -626,7 +626,7 @@ thousand-entry registry.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T9 --- total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
+  {\captionsetup{textfont=sf}\captionof{table}{T9: total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
   registry size $R_0$.}
   \label{tab:eval-t9}}
   \small
@@ -648,7 +648,7 @@ thousand-entry registry.
 
   \vspace{4mm}
   \includegraphics[width=0.7\textwidth]{images/benchmarks/T9_registry_miss_and_deploy.png}
-  {\captionof{figure}{T9 --- total time of $K$ successive miss+\texttt{put} pairs, one curve per initial
+  {\captionof{figure}{T9: total time of $K$ successive miss+\texttt{put} pairs, one curve per initial
   registry size $R_0$ (both axes logarithmic). The shape matches T8, raised by the extra full read
   that \texttt{tryResolveEntry} performs before each write.}
   \label{fig:eval-t9}}
@@ -661,12 +661,12 @@ thousand-entry registry.
 The suffix-match path (regional disambiguation) fails the exact lookup and scans the loaded map,
 reintroducing a cost proportional to the registry size, but over an already-loaded map: the ratio
 to exact match grows steadily from $1.28\times$ at $R{=}10$ to $1.95\times$ at $R{=}1000$, and
-stays cheap in absolute terms --- $391\,\mu$s for fifty suffix lookups over a thousand-entry
+stays cheap in absolute terms: $391\,\mu$s for fifty suffix lookups over a thousand-entry
 registry (Table~\ref{tab:eval-t10} and Figure~\ref{fig:eval-t10}).
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T10 --- exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
+  {\captionsetup{textfont=sf}\captionof{table}{T10: exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
   \label{tab:eval-t10}}
   \begin{minipage}[c]{0.31\textwidth}
     \centering
@@ -693,7 +693,7 @@ registry (Table~\ref{tab:eval-t10} and Figure~\ref{fig:eval-t10}).
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T10_resolution_key_match_strategy.png}
   \end{minipage}
-  {\captionof{figure}{T10 --- exact against suffix match in the single-read resolver, $F{=}10$/$N{=}50$
+  {\captionof{figure}{T10: exact against suffix match in the single-read resolver, $F{=}10$/$N{=}50$
   fixed (logarithmic vertical axis). Both grow with $R$ because of the read; the suffix path adds
   a scan of the loaded map on top of it.}
   \label{fig:eval-t10}}
@@ -711,7 +711,7 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T11 --- resolution time ($\mu$s) of a mixed workflow, $R{=}F{=}10$ fixed;
+  {\captionsetup{textfont=sf}\captionof{table}{T11: resolution time ($\mu$s) of a mixed workflow, $R{=}F{=}10$ fixed;
   $I$ internal vs.\ $E$ external calls.}
   \label{tab:eval-t11}}
   \small
@@ -735,7 +735,7 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12
 
   \vspace{4mm}
   \includegraphics[width=0.7\textwidth]{images/benchmarks/T11_resolution_internal_external_mix.png}
-  {\captionof{figure}{T11 --- resolution time of a mixed workflow with $R{=}F{=}10$ fixed, one curve per
+  {\captionof{figure}{T11: resolution time of a mixed workflow with $R{=}F{=}10$ fixed, one curve per
   number of internal calls $I$. Each curve is flat in the number of external calls $E$, and the
   curves separate by $I$ alone.}
   \label{fig:eval-t11}}
@@ -743,7 +743,7 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T12 --- resolution time ($\mu$s) vs.\ registry size $R$, mixed workflow with
+  {\captionsetup{textfont=sf}\captionof{table}{T12: resolution time ($\mu$s) vs.\ registry size $R$, mixed workflow with
   $I{=}40$/$E{=}10$/$F{=}10$ fixed.}
   \label{tab:eval-t12}}
   \begin{minipage}[c]{0.31\textwidth}
@@ -771,7 +771,7 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T12_resolution_by_registry_mixed.png}
   \end{minipage}
-  {\captionof{figure}[T12 --- resolution time against registry size for a mixed workflow.]{T12 ---
+  {\captionof{figure}[T12: resolution time against registry size for a mixed workflow.]{T12:
   resolution time against registry size $R$ for a mixed workflow with
   $I{=}40$/$E{=}10$/$F{=}10$ fixed. The curve is the cost of the one read, unaffected by the
   external calls.}
@@ -782,8 +782,8 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12
 Nesting depth (T13) leaves the time essentially constant, $15.8$--$19.2\,\mu$s across depths 0--5
 with 20 internal calls held fixed; the depth-2 point ($69.0 \pm 40.8\,\mu$s) is noise, as its own
 confidence interval shows. Parallel width (T14) grows only with the total number of internal leaf
-calls ($N = 5\times\text{width}$), at $0.22\,\mu$s per call --- the same slope as the flat
-workflows of T1 and T11 --- from $12.5\,\mu$s at $N{=}5$ to $119\,\mu$s at $N{=}500$
+calls ($N = 5\times\text{width}$), at $0.22\,\mu$s per call (the same slope as the flat
+workflows of T1 and T11), from $12.5\,\mu$s at $N{=}5$ to $119\,\mu$s at $N{=}500$
 (Tables~\ref{tab:eval-t13} and~\ref{tab:eval-t14}, plotted in Figures~\ref{fig:eval-t13}
 and~\ref{fig:eval-t14}). Although the resolver recurses explicitly into
 \texttt{Iteration} and \texttt{Parallel} contexts, the shape of the tree is irrelevant: only the
@@ -791,7 +791,7 @@ count of internal calls matters.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T13 --- resolution time ($\mu$s) vs.\ nesting depth, 20 internal calls fixed,
+  {\captionsetup{textfont=sf}\captionof{table}{T13: resolution time ($\mu$s) vs.\ nesting depth, 20 internal calls fixed,
   $R{=}F{=}10$.}
   \label{tab:eval-t13}}
   \begin{minipage}[c]{0.31\textwidth}
@@ -819,7 +819,7 @@ count of internal calls matters.
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T13_internal_resolution_by_nesting.png}
   \end{minipage}
-  {\captionof{figure}{T13 --- resolution time against nesting depth with 20 internal calls and $R{=}F{=}10$
+  {\captionof{figure}{T13: resolution time against nesting depth with 20 internal calls and $R{=}F{=}10$
   fixed (logarithmic vertical axis). The depth-2 spike carries a confidence interval that covers
   the rest of the curve.}
   \label{fig:eval-t13}}
@@ -827,7 +827,7 @@ count of internal calls matters.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T14 --- resolution time ($\mu$s) vs.\ \texttt{Parallel} branch width,
+  {\captionsetup{textfont=sf}\captionof{table}{T14: resolution time ($\mu$s) vs.\ \texttt{Parallel} branch width,
   $N = 5\times$ width, $R{=}F{=}10$.}
   \label{tab:eval-t14}}
   \begin{minipage}[c]{0.31\textwidth}
@@ -857,7 +857,7 @@ count of internal calls matters.
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T14_internal_resolution_by_branch_width.png}
   \end{minipage}
-  {\captionof{figure}{T14 --- resolution time against \texttt{Parallel} branch width, five internal calls per
+  {\captionof{figure}{T14: resolution time against \texttt{Parallel} branch width, five internal calls per
   branch and $R{=}F{=}10$ fixed (logarithmic vertical axis). The time follows the total number of
   leaf calls $N = 5\times\text{width}$, not the shape of the tree.}
   \label{fig:eval-t14}}
@@ -871,7 +871,7 @@ count of internal calls matters.
 The experiments above replace the provider with a local double, so they measure none of the network
 traffic the cascade generates. This section counts that traffic rather than measuring it: the
 figures are read from the code of the two resolvers and of the clients they use, and they are
-numbers of provider API requests, not latencies. Let $G$ be the number of candidate regions --- the
+numbers of provider API requests, not latencies. Let $G$ be the number of candidate regions: the
 regions enabled for the AWS account, or the Cloud Run locations visible to the GCP project.
 
 \paragraph{What the count grows with.}
@@ -898,7 +898,7 @@ Table~\ref{tab:eval-api-calls} gives the count for each path through the cascade
     Level~1, registry hit validated & 1 (\texttt{GetFunction} in the region taken from the stored
     ARN) & 1 (Cloud Run \texttt{services.get}) \\
     \hline
-    Level~1, first-generation Cloud Function in the registry & --- & 0 (validation skipped,
+    Level~1, first-generation Cloud Function in the registry & n/a & 0 (validation skipped,
     \S\ref{subsec:store-internals}) \\
     \hline
     Level~1, entry stale & 1 validation $+$ up to $G$ lookups (rediscovery) & 1 validation $+$ up
@@ -920,7 +920,7 @@ Two requests fall outside the per-call count. The candidate-region list costs on
 page on GCP; it is fetched lazily, so a deployment whose calls all resolve at Level~1 never pays
 it. The registry bootstrap, which runs only when the registry file is absent and the workflow has
 internal calls, costs that same region list plus one catalog request per region and per response
-page --- \texttt{ListFunctions} on AWS, \texttt{services.list} on GCP.
+page: \texttt{ListFunctions} on AWS, \texttt{services.list} on GCP.
 
 \paragraph{The deployment itself (Level~3).}
 A Level~3 deployment is the only path that writes to the provider, and it is dominated not by the
@@ -949,19 +949,19 @@ buys the same bound for a call that has to miss.
 The unification is meant to remove manual steps, so it is worth stating which ones, and counting
 them. The comparison below is procedural, not a user study: it follows the QuickFaaS procedure
 documented in \S\ref{subsec:quickfaas-example} and the integrated procedure of
-\S\ref{sec:developer-workflow} for the same task --- making one internal function available to one
-workflow on GCP --- and counts the developer actions each requires, and the values the developer
+\S\ref{sec:developer-workflow} for the same task (making one internal function available to one
+workflow on GCP) and counts the developer actions each requires, and the values the developer
 has to carry by hand from one step to the next.
 
 Table~\ref{tab:eval-manual-effort} lists the two sequences. What distinguishes them is not the
-total amount of configuration --- the deployment descriptor is written either way --- but the
+total amount of configuration (the deployment descriptor is written either way) but the
 hand-carried values: in the separate procedure three values produced by one step are read by a
 human and typed into the next (the OAuth client ID and secret into the authentication module, the
 resulting \texttt{access\_token} into the descriptor, and the generated trigger URL into the
 workflow definition), and each is a point where a typo produces a workflow that deploys
 successfully and fails at run time. In the integrated procedure that number is zero: the access
 token is taken from Application Default Credentials by the deployer, the invoker permission is
-granted by the deployer, and the endpoint never leaves the tool --- it goes from the provider into
+granted by the deployer, and the endpoint never leaves the tool: it goes from the provider into
 the registry and from the registry into the rendered workflow.
 
 \begin{table}[htbp]
@@ -975,23 +975,23 @@ the registry and from the registry into the rendered workflow.
     \textbf{QuickFaaS and OmniFlow used separately} & \textbf{Integrated (this work)} \\
     \hline
     Create an OAuth 2.0 client in the console; copy the client ID and secret \emph{(2 carried by
-    hand)} & --- (the deployer uses Application Default Credentials, configured once per machine)
+    hand)} & Not needed (the deployer uses Application Default Credentials, configured once per machine)
     \\
     \hline
     Run the auxiliary server, complete the OAuth flow, copy the \texttt{access\_token} into the
-    descriptor \emph{(1 carried by hand)} & --- \\
+    descriptor \emph{(1 carried by hand)} & Not needed \\
     \hline
     Write \texttt{func-deployment.json} & Write \texttt{func-deployment.json} (same fields, without
     \texttt{accessToken}) \\
     \hline
     Write the cloud-agnostic function class & Write the cloud-agnostic function class \\
     \hline
-    Run QuickFaaS to deploy the function & --- (the deployment is triggered by the workflow
+    Run QuickFaaS to deploy the function & Not needed (the deployment is triggered by the workflow
     deployment, and only if the function is absent) \\
     \hline
-    Grant the function public or invoker access in the console & --- (granted by the deployer) \\
+    Grant the function public or invoker access in the console & Not needed (granted by the deployer) \\
     \hline
-    Read the generated trigger URL from the console or terminal & --- \\
+    Read the generated trigger URL from the console or terminal & Not needed \\
     \hline
     Write the workflow, pasting that URL as \texttt{host}/\texttt{path} \emph{(1 carried by hand)} &
     Write the workflow, naming the function:
@@ -1006,7 +1006,7 @@ the registry and from the registry into the rendered workflow.
 
 Two qualifications keep the comparison honest. First, the integrated procedure does not remove
 configuration, it relocates it: the descriptor is still written by hand, and the credentials still
-have to exist --- Application Default Credentials on GCP, environment credentials on AWS --- so
+have to exist (Application Default Credentials on GCP, environment credentials on AWS), so
 what is saved is the copying, not the setup. Second, the saving is per function and per endpoint
 change, so it grows with the number of internal functions a workflow calls and with how often they
 are redeployed, and it is largest exactly where the manual procedure is most error-prone: a
@@ -1018,14 +1018,14 @@ workflow that calls several internal functions in several accounts (\S\ref{cha:c
 The AWS provider added in this work packages a Lambda through the QuickFaaS agnostic layer (the
 developer hook plus the \texttt{AwsHttpTemplate} adapter and \texttt{aws-lambda-java-core}). Table
 \ref{tab:eval-s1} compares the resulting bundle against an equivalent native \texttt{RequestHandler}
-implementation of the same logic. The agnostic layer adds about $0.9$\,KB --- 6.6\% of a trivial
-bundle, and well under 0.1\% of a real function --- consistent with the original QuickFaaS
+implementation of the same logic. The agnostic layer adds about $0.9$\,KB (6.6\% of a trivial
+bundle, and well under 0.1\% of a real function), consistent with the original QuickFaaS
 evaluation for GCP and Azure.
 
 \begin{table}[htbp]
   \centering
   \small
-  \caption{S1 --- Lambda bundle size, AWS agnostic layer vs.\ native implementation.}
+  \caption{S1: Lambda bundle size, AWS agnostic layer vs.\ native implementation.}
   \label{tab:eval-s1}
   \begin{tabular}{|l|r|}
     \hline
@@ -1063,7 +1063,7 @@ registry file up to $R \approx 60$ (\S\ref{sec:eval-resolution}). Second, the si
 optimization eliminates that
 call-times-registry-size product, reducing resolution to one read of the registry plus about
 $0.22\,\mu$s per internal call, a speedup of $200\times$ in the worst corner measured
-(T3, T4, T5) --- a full \emph{identify (T2) $\rightarrow$ fix $\rightarrow$ quantify (T3)} loop.
+(T3, T4, T5), a full \emph{identify (T2) $\rightarrow$ fix $\rightarrow$ quantify (T3)} loop.
 Third, this optimization has since been propagated to the production resolvers (T6, T7), which
 now show the same one-read-plus-a-constant shape as the optimized reference path rather than the
 call-times-registry-size cost they used to pay: $29\,\mu$s (AWS) and $81\,\mu$s (GCP) for a
@@ -1079,8 +1079,8 @@ is free in practice (T13, T14).
 \paragraph{Global framing.}
 All measured values lie between microseconds and, in the worst write case, tens of milliseconds:
 resolving a 200-call workflow costs $29\,\mu$s on AWS and $81\,\mu$s on GCP (T6, T7), and a
-hundred successive miss-and-register pairs against a thousand-entry registry --- the most
-expensive operation measured --- cost $59$\,ms (T9). Endpoint
+hundred successive miss-and-register pairs against a thousand-entry registry (the most
+expensive operation measured) cost $59$\,ms (T9). Endpoint
 resolution is therefore not the bottleneck of an integrated deployment: the dominant cost is the
 actual cloud deployment (seconds). With the single-read
 optimization now applied uniformly across both production resolvers, the local overhead of the
@@ -1105,10 +1105,10 @@ hardware factor these figures are most sensitive to.
 
 A second limit is one of provenance. T6 and T7 come from a second measurement session, run after
 the per-call console output was removed from both resolvers, while every other experiment comes
-from the earlier run of the same evening. The two sessions agree on the quantity they share --- the
-cost of one registry read (\S\ref{sec:eval-methodology}) --- but the comparison between T6, T7
-and the reference path of T4 crosses that boundary and should be read as an order-of-magnitude
-comparison rather than an exact one.
+from the earlier run of the same evening. The two sessions agree on the quantity they share, the
+cost of one registry read (\S\ref{sec:eval-methodology}). The comparison between T6, T7
+and the reference path of T4 nonetheless crosses that boundary and should be read as an
+order-of-magnitude comparison rather than an exact one.
 
 The evaluation is also intentionally local-only: it quantifies the resolution and packaging
 overhead, not the end-to-end cloud deployment latency, which depends on provider-side behaviour
