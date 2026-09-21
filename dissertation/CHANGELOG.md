@@ -8,6 +8,19 @@ este ficheiro.)
 
 ## 2026-09-21
 
+### Ordem dos símbolos na tabela de notação (`chapter7.tex`, Tabela 6.2)
+
+As cinco linhas estavam por N, R, F, I, E. Passam a **N, I, E, R, F**: o $N$ continua a abrir, e o
+$I$ e o $E$ passam a segui-lo imediatamente, por serem as duas parcelas da soma que a própria
+linha do $N$ declara ($N = I + E$). O $R$ e o $F$ ficam juntos no fim, o que também ajuda o
+parágrafo logo a seguir à tabela, que existe precisamente para os distinguir ("$R$ is the physical
+size of the registry file and is not the same as $F$").
+
+Só a ordem das linhas mudou; nenhuma definição foi alterada. O parágrafo de introdução não lista
+os símbolos por ordem, por isso não precisou de acerto.
+
+Compilado: 98 páginas, sem referências por resolver e com os mesmos 8 avisos de *overfull hbox*.
+
 ### Número de listagem corrigido numa entrada de 20/09
 
 A entrada "Nota 'explica as figuras e o código' alargada aos restantes capítulos" dizia
