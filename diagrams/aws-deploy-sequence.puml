@@ -11,20 +11,34 @@ participant "AwsLambdaDeployer" as ALD
 participant "AwsLambdaIamHelper" as IAM
 participant "QuickFaasProcessInvoker" as PI
 participant "QuickFaaS JAR\n(AwsProvider)" as QF
-participant "AWS APIs\n(IAM, S3, Lambda)" as AWS
+participant "AWS APIs\n(EC2, IAM, S3, Lambda)" as AWS
 participant "AWS Step Functions" as SFN
 
-ACD -> R : resolve(workflow)
-loop for each CallContext with internalFunction
-  R -> REG : tryResolveEntry(name)
-  alt registry hit
-    REG --> R : (key, metadata) - url = ARN
-  else registry miss
-    R -> AWS : GetFunction(name)
-    alt function exists in AWS
+opt workflow has internal calls
+  opt registry file missing
+    ACD -> AWS : DescribeRegions + ListFunctions\n(every enabled region)
+    ACD -> REG : writeNew(functions)
+  end
+  ACD -> R : resolve(workflow)
+  R -> REG : readAll()
+  REG --> R : snapshot
+  loop for each CallContext with internalFunction
+    R -> R : tryResolveEntryIn(name, snapshot)
+    alt Level 1 - registry hit
+      R -> AWS : GetFunction(region from ARN, serviceName)
+      note right of R
+        drift, rediscovery and stale-entry removal
+        as in resolution-cascade-level1-aws.puml
+      end note
       AWS --> R : FunctionArn
+    else Level 2 - registry miss, function found by discovery
+      R -> AWS : DescribeRegions (enabled regions)
+      loop for each region, preferred first, until >1 match
+        R -> AWS : GetFunction(region, name)
+      end
+      AWS --> R : exactly one FunctionArn
       R -> REG : put(name, metadata)
-    else absent, descriptor provided
+    else Level 3 - absent in every region, descriptor provided
       R -> ALD : deployOrUpdate(name, descriptorPath)
       ALD -> IAM : resolveOrCreateLambdaExecutionRole(iamRoleArn)
       IAM -> AWS : GetRole / CreateRole + AttachRolePolicy
@@ -37,7 +51,7 @@ loop for each CallContext with internalFunction
       QF -> QF : build hook + template,\nzip sources
       QF -> AWS : PutObject (S3 bucket)
       QF -> AWS : CreateFunction /\nUpdateFunctionCode
-      QF -> AWS : CreateFunctionUrlConfig
+      QF -> AWS : GetFunctionUrlConfig /\nCreateFunctionUrlConfig
       QF --> PI : deployment finished
       ALD -> AWS : GetFunction - poll until\nState = Active (<=180 s, 5 s interval)
       ALD -> AWS : GetFunction -> FunctionArn
@@ -45,13 +59,13 @@ loop for each CallContext with internalFunction
       IAM -> AWS : AddPermission\n(principal = states.amazonaws.com)
       ALD --> R : FunctionInvocationMetadata\n(serviceName, url = ARN)
       R -> REG : put(name, metadata)
-    else absent, no descriptor
+    else absent, no descriptor / ambiguous / regions inaccessible
       R --> ACD : IllegalStateException (fail fast)
     end
+    R -> R : call.copy(host = "lambda://" + ARN,\npath = e)
   end
-  R -> R : call.copy(host = "lambda://" + ARN,\npath = e)
+  R --> ACD : resolved workflow
 end
-R --> ACD : resolved workflow
 ACD -> ACD : render -> ASL with Resource\n"arn:aws:states:::lambda:invoke"
 ACD -> SFN : CreateStateMachine(name, roleArn, definition)
 SFN --> ACD : StateMachineArn

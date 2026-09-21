@@ -24,6 +24,6 @@ QF1 --> FN1
 
 note bottom of ACD1
   No function-deployment capability on AWS
-  (NoopInternalFunctionDeployer)
+  (QuickFaaS targets GCP and Azure only)
 end note
 @enduml

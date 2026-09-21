@@ -6,7 +6,6 @@ skinparam defaultFontName Helvetica
 skinparam defaultFontSize 13
 skinparam titleFontSize 16
 skinparam titleFontStyle bold
-skinparam padding 3
 skinparam nodesep 20
 skinparam ranksep 40
 
@@ -39,6 +38,10 @@ skinparam database {
   BackgroundColor #ECECEC
   BorderColor #595959
 }
+skinparam database<<new>> {
+  BackgroundColor #E7EFFB
+  BorderColor #3B6FA0
+}
 
 skinparam cloud {
   BackgroundColor #FCFCFC
@@ -63,24 +66,24 @@ skinparam legend {
 title Unified Deployment from a Single Workflow Definition
 
 actor "Developer" as D2
-component "OmniFlow DSL\n(+ ""internalFunction"" construct)" as DSL2
+component "OmniFlow DSL\n(+ ""internalFunction"" construct)" as DSL2 <<extended>>
 
 rectangle "GCP Deployment Path" {
-  component "GoogleCloudDeployer" as GCD2
-  component "WorkflowInternalFunctionResolver" as WIFR
-  component "QuickFaasDeployer" as QFD
+  component "GoogleCloudDeployer" as GCD2 <<extended>>
+  component "WorkflowInternalFunctionResolver" as WIFR <<new>>
+  component "QuickFaasDeployer" as QFD <<new>>
   cloud "Google Cloud\nWorkflows" as GCW2
   cloud "GCP Cloud\nFunctions" as GFN
-  database "function-registry.gcp.json" as REGG
+  database "function-registry.gcp.json" as REGG <<new>>
 }
 
 rectangle "AWS Deployment Path" {
-  component "AmazonCloudDeployer" as ACD2
+  component "AmazonCloudDeployer" as ACD2 <<extended>>
   component "AwsInternalFunctionResolver" as AIFR <<new>>
   component "AwsLambdaDeployer" as ALD <<new>>
   cloud "AWS Step\nFunctions" as SF2
   cloud "AWS Lambda" as LAM
-  database "function-registry.aws.json" as REGA
+  database "function-registry.aws.json" as REGA <<new>>
 }
 
 component "QuickFaaS JAR\n(+ AwsProvider)" as JAR <<extended>>
@@ -108,12 +111,12 @@ SF2 --> LAM : lambda:invoke (ARN)
 
 legend right
   |= Marker |= Meaning |
-  |<back:#E7EFFB>    </back>| new component (Part A/B) |
-  |<back:#FBEEE0>    </back>| extended component (Part A) |
+  |<#E7EFFB>        | new component (this work) |
+  |<#FBEEE0>        | extended component (this work) |
   |  --> | direct call / render target |
   |  ..> | subprocess invocation |
   | <--> | registry read / write |
-  Components without a marker are unmodified, pre-existing OmniFlow/QuickFaaS classes.
+  Unmarked elements are the cloud services the tools target.
 endlegend
 
 @enduml

@@ -8,15 +8,18 @@ participant "Resolver\n(AwsInternalFunctionResolver)" as R
 participant "FunctionRegistryStore" as REG
 participant "LambdaFunctionInspector" as AI
 
-R -> REG : tryResolveEntry(functionRef)\n[exact match, then "<region>/<functionRef>" suffix]
+note over R, REG
+  resolve() reads the registry once (readAll) into a snapshot;
+  lookups run against it, and every put/remove updates both
+end note
+R -> R : tryResolveEntryIn(functionRef, snapshot)\n[exact match, then "<region>/<functionRef>" suffix]
 alt registry miss
-  REG --> R : null
   note over R
     continues at Level 2 - Provider discovery
     (see resolution-cascade-level2-aws.puml)
   end note
 else registry hit
-  REG --> R : (key, metadata)
+  R -> R : entry = (key, metadata)
   R -> R : region = regionFromArn(metadata.url)
 
   R -> AI : lookup(region, metadata.serviceName)
@@ -30,9 +33,14 @@ else registry hit
   else NotFound (or region unparseable)
     AI --> R : NotFound
     R -> R : discoverFunctionForRef(functionRef)\n[scan every region enabled for the account]
-    alt rediscovered elsewhere
-      R -> REG : put(key, newMetadata)
+    alt rediscovered elsewhere (exactly one match)
+      opt key != functionRef
+        R -> REG : remove(key)
+      end
+      R -> REG : put(functionRef, newMetadata)
       R --> R : return newArn
+    else ambiguous, or some regions not accessible
+      R --> R : throw IllegalStateException
     else still not found
       R -> REG : remove(key)
       R --> R : throw IllegalStateException\n(stale entry removed - deleted function)

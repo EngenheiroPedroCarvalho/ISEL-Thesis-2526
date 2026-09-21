@@ -4,27 +4,33 @@ skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam defaultFontSize 12
 title Integration layer added to OmniFlow
+left to right direction
+hide empty members
 
 interface InternalFunctionDeployer {
-  +deployOrUpdate(functionName, descriptorPath) : FunctionInvocationMetadata
+  +deployOrUpdate(functionName, deploymentDescriptorPath) : FunctionInvocationMetadata
 }
 
-class NoopInternalFunctionDeployer {
-  +deployOrUpdate() : UnsupportedOperationException
+class NoopInternalFunctionDeployer <<object>> {
+  +deployOrUpdate(...) : throws UnsupportedOperationException
 }
 
 class QuickFaasDeployer {
   -quickFaasJarPath : Path
   -projectId : String
   -region : String
+  -invokerServiceAccount : String[0..1]
+  -readinessTimeoutSeconds : Long
+  -readinessPollIntervalSeconds : Long
   +deployOrUpdate(...) : FunctionInvocationMetadata
 }
 
-class AwsLambdaDeployer <<new in this work>> {
+class AwsLambdaDeployer {
   -quickFaasJarPath : Path
   -region : String
   -roleArn : String
   -readinessTimeoutSeconds : Long
+  -readinessPollIntervalSeconds : Long
   +deployOrUpdate(...) : FunctionInvocationMetadata
   -patchIamRoleArn(path, roleArn) : Path
   -invokeWithRoleRetry(invoker, path)
@@ -36,24 +42,40 @@ class WorkflowInternalFunctionResolver {
   -projectId : String
   -preferredRegion : String[0..1]
   +resolve(workflow) : Workflow
-  -resolveOrDiscoverInternal(ref, fn) : String
+  -resolveOrDiscoverInternal(ref, fn, snapshot) : String
   -discoverServiceForRef(ref) : List
 }
 
-class AwsInternalFunctionResolver <<new in this work>> {
-  -region : String
+class AwsInternalFunctionResolver {
+  -preferredRegion : String[0..1]
   +resolve(workflow) : Workflow
-  -resolveOrDeploy(name, fn) : String
-  -checkLambdaFunctionUrl(name) : String[0..1]
+  -resolveOrDeploy(ref, fn, snapshot) : String
+  -discoverFunctionForRef(ref) : List
+}
+
+class CloudRunV2ServiceInspector {
+  +lookupByServiceName(serviceName) : LookupResult
+  +lookup(projectId, region, serviceId) : LookupResult
+}
+
+class CloudRunLocationsV1RestClient {
+  +listProjectLocations(projectId) : List<String>
+}
+
+interface LambdaFunctionInspector {
+  +lookup(region, functionName) : LookupResult
+}
+
+interface AwsRegionsLister {
+  +listRegions(bootstrapRegion) : List<String>
 }
 
 class FunctionRegistryStore {
   -file : Path
   +readAll() : Map
-  +tryResolveEntry(ref) : Pair[0..1]
+  +tryResolveEntryIn(ref, snapshot) : Pair[0..1]
   +put(key, metadata)
   +remove(key)
-  +resolveUrlIn(name, snapshot) : String
 }
 
 class FunctionInvocationMetadata {
@@ -62,7 +84,11 @@ class FunctionInvocationMetadata {
 }
 
 class FunctionRegistryBootstrapper {
-  +bootstrapIfMissing(projectId)
+  +bootstrapIfMissing(scope)
+}
+
+interface CloudFunctionsCatalog {
+  +listHttpFunctions(scope) : Map
 }
 
 class GoogleCloudDeployer
@@ -73,15 +99,34 @@ InternalFunctionDeployer <|.. QuickFaasDeployer
 InternalFunctionDeployer <|.. AwsLambdaDeployer
 GoogleCloudDeployer --> WorkflowInternalFunctionResolver
 AmazonCloudDeployer --> AwsInternalFunctionResolver
+GoogleCloudDeployer --> FunctionRegistryBootstrapper
+AmazonCloudDeployer --> FunctionRegistryBootstrapper
 WorkflowInternalFunctionResolver --> FunctionRegistryStore
 AwsInternalFunctionResolver --> FunctionRegistryStore
 WorkflowInternalFunctionResolver --> InternalFunctionDeployer
 AwsInternalFunctionResolver --> InternalFunctionDeployer
+WorkflowInternalFunctionResolver --> CloudRunV2ServiceInspector
+WorkflowInternalFunctionResolver --> CloudRunLocationsV1RestClient
+AwsInternalFunctionResolver --> LambdaFunctionInspector
+AwsInternalFunctionResolver --> AwsRegionsLister
 FunctionRegistryStore ..> FunctionInvocationMetadata
 FunctionRegistryBootstrapper --> FunctionRegistryStore
+FunctionRegistryBootstrapper --> CloudFunctionsCatalog
 
 note bottom of FunctionInvocationMetadata
   url holds an HTTPS endpoint on GCP
   and a Lambda ARN on AWS
+end note
+
+note bottom of FunctionRegistryStore
+  each resolve() reads the registry once (readAll)
+  into a snapshot; lookups use tryResolveEntryIn
+  and every put/remove also updates the snapshot
+end note
+
+note bottom of CloudFunctionsCatalog
+  scope = GCP project id or AWS region;
+  implemented by CloudRunV2RestCatalog
+  and LambdaFunctionsCatalog
 end note
 @enduml
