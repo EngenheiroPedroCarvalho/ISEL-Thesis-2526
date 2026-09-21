@@ -356,10 +356,11 @@ across a grid of $1$ to $50$ distinct functions and $1$ to $200$ calls, with the
 hitting ($R{=}F$). The naive path is dominated by the number of calls, at roughly $10\,\mu$s per
 call (one whole registry read each) and grows only mildly with $F$, since a larger $F$ means
 a larger file to re-read (Table~\ref{tab:eval-t4-naive}). The optimized path pays that read once
-and then about $0.22\,\mu$s per call, so it grows with $F$ (the size of the single read) far more
-than with $N$ (Table~\ref{tab:eval-t4-optimized}; both paths are plotted in
-Figure~\ref{fig:eval-t4}): at $F{=}1$ it goes from $10.2$ to
-$54.7\,\mu$s as $N$ goes from 1 to 200, where the naive path goes from $10.4$ to $2\,069\,\mu$s.
+and then about $0.22\,\mu$s per call, so $N$ still weighs more than $F$, but far less than on the
+naive path (Table~\ref{tab:eval-t4-optimized}; both paths are plotted in
+Figure~\ref{fig:eval-t4}): at $F{=}1$ it goes from $10.2$ to $54.7\,\mu$s as $N$ goes from 1 to
+200, where the naive path goes from $10.4$ to $2\,069\,\mu$s, while at $N{=}1$ it goes only from
+$10.2$ to $18.5\,\mu$s as $F$ goes from 1 to 50.
 The speedup is therefore $1\times$ at $N{=}1$, where both paths read the file exactly once, and
 climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
 
@@ -419,7 +420,8 @@ climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
   \includegraphics[width=0.62\textwidth]{images/benchmarks/T4b_resolution_com_cache.png}
   {\captionof{figure}{T4: resolution of a real \texttt{Workflow} object, naive (top) against optimized
   (bottom), on a shared logarithmic axis, one curve per number of distinct functions $F$ and
-  $R{=}F$. The naive path is ordered by $N$, the optimized path by $F$.}
+  $R{=}F$. On both paths the curves are ordered by $F$ and climb with $N$, steeply on the naive
+  path and gently on the optimized one.}
   \label{fig:eval-t4}}
 \end{figure}
 
@@ -584,10 +586,11 @@ registry, $114\,\mu$s at $R_0{=}200$ and $490\,\mu$s at $R_0{=}1000$. The regist
 therefore not a second-order term for writes as it is for reads; it multiplies the cost of every
 write.
 
-The miss-then-write pattern the real resolvers perform before any cloud call
+The miss-then-write pattern at the level of the store
 (\texttt{tryResolveEntry} followed by \texttt{put}) adds between 26\% and 62\%
 (Table~\ref{tab:eval-t9} and Figure~\ref{fig:eval-t9}), because \texttt{tryResolveEntry} reads the whole file once more before
-the write rewrites it. The surcharge grows with $R_0$ (about 30\% on an empty registry, about
+the write rewrites it. The production resolvers do not pay this surcharge: they look every call up
+in the snapshot with \texttt{tryResolveEntryIn}, so their writes cost what T8 measures. The surcharge grows with $R_0$ (about 30\% on an empty registry, about
 60\% at $R_0{=}1000$), which is what an extra full read of a growing file predicts. One point
 disagrees, $K{=}10$ at $R_0{=}10$, and its confidence interval ($\pm732\,\mu$s on a mean of
 $874\,\mu$s) says it is noise rather than an effect. In absolute terms both tables stay in
@@ -619,8 +622,9 @@ thousand-entry registry.
   \vspace{4mm}
   \includegraphics[width=0.7\textwidth]{images/benchmarks/T8_registry_write_scaling.png}
   {\captionof{figure}{T8: total time of $K$ successive \texttt{put} calls, one curve per initial registry
-  size $R_0$ (both axes logarithmic). The curves are parallel straight lines of slope one: the
-  total is linear in $K$, and $R_0$ only shifts it.}
+  size $R_0$ (both axes logarithmic). The curves are nearly parallel straight lines, with slopes
+  from $1.06$ ($R_0{=}0$) down to $0.93$ ($R_0{=}1000$): the total is close to linear in $K$, and
+  $R_0$ mainly shifts it.}
   \label{fig:eval-t8}}
 \end{figure}
 
@@ -703,8 +707,9 @@ registry (Table~\ref{tab:eval-t10} and Figure~\ref{fig:eval-t10}).
 The first workflows to mix internal and external calls confirm that resolution cost scales with
 $I$ (internal calls), not with $N{=}I{+}E$: the $I{=}0$ row stays at $11$--$14\,\mu$s as $E$ grows
 to 200, because external calls incur no registry lookup, while reading down a column from $I{=}0$
-to $I{=}200$ multiplies the cost by five (Table~\ref{tab:eval-t11} and Figure~\ref{fig:eval-t11}). Each row is flat and each
-column grows at about $0.22\,\mu$s per internal call, the same per-call figure as T1. The
+to $I{=}200$ multiplies the cost by five (Table~\ref{tab:eval-t11} and Figure~\ref{fig:eval-t11}). Each row is flat apart from
+isolated jumps of 16--22\% that vanish at the next point (at $E{=}10$ for $I{=}50$ and $I{=}200$,
+and at $E{=}50$ for $I{\le}1$), and each column grows at about $0.22\,\mu$s per internal call, the same per-call figure as T1. The
 registry-size effect proved in T5 is unchanged when a fraction of the calls are external: with
 $I{=}40$ internal calls the cost still tracks the one read, from $20\,\mu$s at $R{=}10$ to
 $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12}).
@@ -736,8 +741,8 @@ $199\,\mu$s at $R{=}1000$ (Table~\ref{tab:eval-t12} and Figure~\ref{fig:eval-t12
   \vspace{4mm}
   \includegraphics[width=0.7\textwidth]{images/benchmarks/T11_resolution_internal_external_mix.png}
   {\captionof{figure}{T11: resolution time of a mixed workflow with $R{=}F{=}10$ fixed, one curve per
-  number of internal calls $I$. Each curve is flat in the number of external calls $E$, and the
-  curves separate by $I$ alone.}
+  number of internal calls $I$. Each curve is flat in the number of external calls $E$ apart
+  from isolated jumps that vanish at the next point, and the curves separate by $I$ alone.}
   \label{fig:eval-t11}}
 \end{figure}
 
@@ -820,8 +825,8 @@ count of internal calls matters.
     \includegraphics[width=\linewidth]{images/benchmarks/T13_internal_resolution_by_nesting.png}
   \end{minipage}
   {\captionof{figure}{T13: resolution time against nesting depth with 20 internal calls and $R{=}F{=}10$
-  fixed (logarithmic vertical axis). The depth-2 spike carries a confidence interval that covers
-  the rest of the curve.}
+  fixed (logarithmic vertical axis). The depth-2 spike carries a confidence interval of
+  $\pm40.8\,\mu$s, more than half its mean, which marks it as noise.}
   \label{fig:eval-t13}}
 \end{figure}
 

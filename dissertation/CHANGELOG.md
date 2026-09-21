@@ -33,3 +33,24 @@ este ficheiro.)
   work", já que toda a camada de integração é deste trabalho.
 - Secção AWS Lambda Support: a descrição da Fig. `aws-deploy-sequence` passa a referir um `alt` com um
   ramo por nível e um quarto para as falhas, em vez de três fragmentos `alt`.
+
+### Texto alinhado com as figuras e o código
+
+- Cap. 3, Proposed Solution (`Chapters/chapter3.tex`): o passo 4 do fluxo deixa de dizer que todo o
+  metadata resolvido é escrito no registo; só o que vem de descoberta, deploy ou drift.
+- Cap. 4, Implementation (`Chapters/chapter5.tex`):
+  - Um hit validado sem alterações não escreve no registo; só descoberta, deploy ou drift chamam
+    `put()`.
+  - O resolver AWS reporta um nome em várias regiões como ambíguo, em vez de o "desambiguar".
+  - A redescoberta do Nível 1 percorre todas as regiões, ou só a região da forma `"region/functionRef"`
+    (também na legenda da Fig. do Nível 1, `Chapters/appendix-cascade.tex`).
+  - O texto e a legenda da Fig. `aws-deploy-sequence` descrevem a sequência completa, com o Nível 3
+    expandido, em vez de só o pior caso.
+- Cap. 6, Evaluation (`Chapters/chapter7.tex`):
+  - T4: o caminho otimizado cresce mais com N do que com F (antes dizia o contrário); a legenda diz
+    que as curvas são por F nos dois gráficos.
+  - T8: a legenda dá os declives (1,06 a 0,93) em vez de "slope one".
+  - T9: o padrão `tryResolveEntry` + `put` é do store; os resolvers de produção usam o snapshot e
+    não pagam a leitura extra.
+  - T11: texto e legenda referem os saltos isolados de 16–22% em E=10 e E=50.
+  - T13: a legenda deixa de dizer que o intervalo de confiança cobre o resto da curva.

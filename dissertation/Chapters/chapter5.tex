@@ -134,9 +134,9 @@ locations API, whereas AWS has no equivalent for Lambda, so a dedicated
 play that role; an optional preferred region, when supplied, is tried first in both the
 rediscovery and the miss-path scan described next. \\
 On a registry miss, the AWS resolver performs
-the same style of scan as GCP: it searches every enabled region for a function-name match,
-disambiguating a name found in more than one region, unless the caller supplies the
-fully-qualified \texttt{"<region> /<functionRef>"} form, which resolves a single region directly. A
+the same style of scan as GCP: it searches every enabled region for a function-name match and
+reports a name found in more than one region as ambiguous; the caller skips the scan by supplying
+the fully-qualified \texttt{"<region> /<functionRef>"} form, which resolves a single region directly. A
 region reporting \texttt{ResourceNotFoundException} and one reporting a permissions failure are
 both simply excluded from the candidate set while the scan runs, but the two are told apart at the
 end, exactly as on the GCP path: if the function is found in no region and at least one of the
@@ -147,9 +147,10 @@ scanned region reported a clean \texttt{NotFound}
 distinguishes the two resolvers is only the underlying provider API each one calls (the Cloud
 Run Locations API versus EC2 \texttt{DescribeRegions} for region discovery, a Cloud Run lookup
 versus \texttt{GetFunction} for the per-region check) and the GCP-only short-circuit for
-first-generation Cloud Functions noted above, which has no AWS counterpart. In both resolvers, a hit or a
-successful discovery writes the metadata back through \texttt{put()} before the endpoint is
-injected into the call, so the registry converges toward a complete set of bindings as workflows
+first-generation Cloud Functions noted above, which has no AWS counterpart. In both resolvers, a successful
+discovery or deployment writes the metadata back through \texttt{put()} before the endpoint is
+injected into the call, and so does a hit whose endpoint has drifted (a hit that validates
+unchanged writes nothing), so the registry converges toward a complete set of bindings as workflows
 are deployed.
 
 To keep resolution cheap when a workflow contains many internal calls, both provider resolvers
@@ -185,8 +186,8 @@ are collected in Appendix~\ref{app:cascade-sequences} rather than placed inline.
 Figure~\ref{fig:resolution-cascade-level1} (Appendix~\ref{app:cascade-sequences}) details Level~1
 on each provider: a registry hit is validated against the live resource before being trusted. The
 two panels show matching behaviour on a \texttt{NotFound} result: both the GCP path (a) and
-the AWS path (b) attempt rediscovery across every region before removing the stale entry and
-aborting.
+the AWS path (b) attempt rediscovery (across every region, or in the one region a
+\texttt{"region/functionRef"} reference names) before removing the stale entry and aborting.
 
 Figure~\ref{fig:resolution-cascade-level2} (Appendix~\ref{app:cascade-sequences}) details Level~2,
 reached on a registry miss. Both resolvers search across every region, or a single region when the
@@ -308,13 +309,13 @@ deployment time through a resolution cascade (registry, provider discovery, Quic
 deployment as a last resort). This improves maintainability, supports repeatable deployments, and provides explicit, fail-fast diagnostics when registry bindings are missing or inconsistent.
 
 \section{AWS Lambda Support in QuickFaaS}
-Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment for the most demanding path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment has one branch for each of the three levels of the resolution cascade described in Section~\ref{subsec:endpoint-resolution}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work that has no GCP equivalent: it resolves or creates the Lambda execution IAM role, patches the resolved role ARN into a temporary copy of the descriptor, determines the effective region from the S3 bucket's location, and invokes QuickFaaS as a subprocess — retrying up to three times with a 20~s back-off to absorb IAM eventual consistency. After the subprocess returns, it polls \texttt{GetFunction} until the function reaches the \texttt{Active} state (bounded by a 180~s timeout), retrieves the ARN, and grants the Step Functions service permission to invoke the function. The ARN is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{CreateStateMachine}. This diagram makes explicit the operational steps that the conceptual cascade abstracts away. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
+Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{CreateStateMachine}, and expands the most demanding path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment has one branch for each of the three levels of the resolution cascade described in Section~\ref{subsec:endpoint-resolution}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work that has no GCP equivalent: it resolves or creates the Lambda execution IAM role, patches the resolved role ARN into a temporary copy of the descriptor, determines the effective region from the S3 bucket's location, and invokes QuickFaaS as a subprocess — retrying up to three times with a 20~s back-off to absorb IAM eventual consistency. After the subprocess returns, it polls \texttt{GetFunction} until the function reaches the \texttt{Active} state (bounded by a 180~s timeout), retrieves the ARN, and grants the Step Functions service permission to invoke the function. The ARN is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{CreateStateMachine}. This diagram makes explicit the operational steps that the conceptual cascade abstracts away. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/aws-deploy-sequence.png}
-  \caption{Deployment sequence on AWS for the worst-case path (function absent from
-  both the registry and the provider).}
+  \caption{Deployment sequence on AWS, with one branch per level of the resolution cascade and
+  the Level~3 path (function absent from both the registry and the provider) expanded.}
   \label{fig:aws-deploy-sequence}
 \end{figure}
 

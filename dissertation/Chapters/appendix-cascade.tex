@@ -25,7 +25,8 @@ resolvers in \S\ref{subsec:store-internals}, one per level of the resolution cas
   \end{minipage}
   \caption{Level~1 (Registry): a registry hit is validated against the live Cloud Run service on
   GCP (a) and against \texttt{GetFunction} on AWS (b); on a \texttt{NotFound} result, both paths
-  attempt rediscovery across every region before a stale entry is removed. On GCP, bindings to
+  attempt rediscovery (across every region, or in the one region a \texttt{"region/functionRef"}
+  reference names) before a stale entry is removed. On GCP, bindings to
   first-generation Cloud Functions skip this validation (\S\ref{subsec:store-internals}).}
   \label{fig:resolution-cascade-level1}
 \end{figure}

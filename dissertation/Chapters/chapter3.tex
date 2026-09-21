@@ -51,7 +51,8 @@ The end-to-end flow proceeds as follows:
   \item OmniFlow parses the workflow and, for each such call,
   \item resolves the endpoint from the registry, discovers it directly on the provider, or
   deploys it through QuickFaaS;
-  \item the returned metadata is written to the registry; and
+  \item metadata obtained by discovery or deployment, or refreshed after drift, is written to
+  the registry; and
   \item the resolved workflow is rendered and deployed to the provider's workflow service.
 \end{enumerate}
 Calls that already carry a literal endpoint bypass the registry entirely.
