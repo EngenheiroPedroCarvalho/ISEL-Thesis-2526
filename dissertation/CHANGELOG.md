@@ -8,6 +8,28 @@ este ficheiro.)
 
 ## 2026-09-21
 
+### Número de listagem corrigido numa entrada de 20/09
+
+A entrada "Nota 'explica as figuras e o código' alargada aos restantes capítulos" dizia
+**Listing 4.3** para o estado Step Functions gerado. O cap. 4 só tem duas listagens: é a
+**Listing 4.2** (p. 43), como confirma `template.lol` (`lst:aws-descriptor` = 4.1,
+`lst:rendered-lambda` = 4.2). Corrigido o número; o resto da entrada mantém-se.
+
+Detetado ao preparar `REVISAO-2026-09.md`, que leva já o número certo.
+
+### Nota de alterações para os orientadores (`REVISAO-2026-09.md`)
+
+Ficheiro novo, para entregar com o PDF. Mapeia as 14 anotações de `pedro-mst 1.pdf` (7 de 17/09 e
+7 de 20/09) ao que foi feito e ao sítio correspondente no PDF novo, com número de página. Abre com
+a tabela de tradução da numeração dos capítulos, que desceu um número desde o PDF revisto por
+causa da fusão Background + Related Work --- sem ela, quem procurar uma nota vai ao capítulo
+errado. Tem ainda a nota das figuras e código em detalhe (as cinco lacunas fechadas), as
+alterações que não estavam marcadas na revisão, o estado da compilação e a limitação da 1.ª
+geração no GCP.
+
+Derivado deste changelog; não o substitui. Este continua a ser o registo interno, por alteração;
+aquele é a vista por nota de revisão.
+
 ### Hífenes soltos (`-`) usados como travessão (`chapter2.tex`)
 
 Continuação da varredura dos `---`, agora ao hífen. Varridas as três formas possíveis nos dez
@@ -195,7 +217,7 @@ Só havia duas lacunas, ambas corrigidas:
   execução pelas bibliotecas QuickFaaS. Verificado em `GcpBuildScripts.kt:18,24`,
   `JavaUtils.setPomDependencies` e `Utils.CONFIGS_FILE`; os dois campos caem num valor por omissão
   vazio quando não são dados (`Main.kt:65-70`, `Runtime.kt:22`).
-- **Cap. 4 (`chapter5.tex`), Listing 4.3 (estado Step Functions gerado)** — o texto explicava
+- **Cap. 4 (`chapter5.tex`), Listing 4.2 (estado Step Functions gerado)** — o texto explicava
   `Resource`, `Parameters`/`FunctionName`, `ResultSelector` e `ResultPath`, mas a listagem mostra
   também `InputPath` e `Next`, sem referência. Acrescentada uma frase: `InputPath`, fixo em `"$"`,
   entrega o documento de estado inteiro à task, e `Next` nomeia o passo seguinte — ambos emitidos
