@@ -241,7 +241,7 @@ val ChainWorkflow = workflow {
 }
 \end{lstlisting}
 
-Once a workflow is defined, OmniFlow renders it into the target provider format (e.g., a YAML workflow for Google Cloud Workflows) and then deploys it via the provider interface~\cite{costa2023omniflow,silva2025advanced}. Importantly, for a single deployment target, the resulting workflow is intended to invoke only endpoints that exist in that same provider account/project.
+Once a workflow is defined, OmniFlow renders it into the target provider format (e.g., a YAML workflow for Google Cloud Workflows) and then deploys it via the provider interface~\cite{costa2023omniflow,silva2025advanced}.
 
 OmniFlow's call step is itself agnostic to what kind of compute resource answers at that endpoint: on GCP, it invokes whatever HTTP host and path the developer supplies, whether that address belongs to a (first-generation) Cloud Function or a Cloud Run service; the DSL and the renderer have no notion of the distinction described in \S\ref{sec:background_quickfaas}. This becomes significant once function endpoints are resolved automatically rather than hard-coded by the developer (Chapter~\ref{ch:proposed_solution}), since an automatic resolution mechanism must itself account for a difference that OmniFlow, by design, never had to.
 
