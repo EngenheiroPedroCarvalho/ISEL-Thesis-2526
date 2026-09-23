@@ -1,6 +1,6 @@
 # Alterações feitas após a revisão de setembro de 2026
 
-Nota de acompanhamento do PDF novo (`template.pdf`, 94 páginas, compilado a 23/09/2026).
+Nota de acompanhamento do PDF novo (`template.pdf`, 93 páginas, compilado a 23/09/2026).
 
 Responde às **14 anotações** do PDF revisto `pedro-mst 1.pdf`: as 7 da primeira leitura (17/09) e
 as 7 acrescentadas na segunda (20/09). Estão todas aplicadas.
@@ -27,7 +27,7 @@ referências cruzadas.
 
 ### Depois de 21/09: duas subsecções a menos em §4.1
 
-A 23/09 a dissertação foi revista duas vezes à procura de informação repetida, e cada assunto
+A 23/09 a dissertação foi revista três vezes à procura de informação repetida, e cada assunto
 passou a ser explicado num só sítio, com remissões nos outros. Os capítulos mantêm a numeração, mas §4.1 perdeu
 duas subsecções, que não traziam nada que não estivesse noutro lado:
 
@@ -37,7 +37,7 @@ duas subsecções, que não traziam nada que não estivesse noutro lado:
 | §4.1.10 Evolution of the Registry Design | **§4.1.9** |
 | §4.1.11 Summary | retirada (repetia §3.1.1 e §4.1.5) |
 
-Com estes cortes o PDF passou de 98 para 94 páginas, por isso as páginas indicadas abaixo são as do
+Com estes cortes o PDF passou de 98 para 93 páginas, por isso as páginas indicadas abaixo são as do
 PDF de 23/09.
 
 ---
@@ -121,7 +121,7 @@ Trabalho de consistência que saiu da revisão, mas que não estava assinalado:
 
 ## Estado da compilação
 
-94 páginas, sem referências por resolver, 48 entradas na bibliografia para 48 citadas, e os 8
+93 páginas, sem referências por resolver, 48 entradas na bibliografia para 48 citadas, e os 8
 avisos de *overfull hbox* do template referidos acima.
 
 ## Limitação conhecida, documentada e não fechada
