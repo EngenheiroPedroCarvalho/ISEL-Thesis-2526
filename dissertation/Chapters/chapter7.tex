@@ -1100,20 +1100,17 @@ the scope of this evaluation (\S\ref{sec:eval-threats}).
 \section{Threats to Validity}
 \label{sec:eval-threats}
 
-The absolute numbers were obtained on a laptop that was idle but not dedicated to benchmarking, so
-they characterise this machine rather than serverless deployment hardware in general. The whole
-suite was run in one session with three forks, which makes the experiments comparable with one
-another and keeps the confidence intervals tight (\S\ref{sec:eval-methodology}); the individual
-points whose intervals are wide are identified where they appear and are not used to support any
-claim. File I/O dominates several experiments, so storage speed, not processor speed, is the
-hardware factor these figures are most sensitive to.
+The absolute numbers characterise the machine they were measured on rather than serverless
+deployment hardware in general, and the factor they are most sensitive to is storage rather than
+processor speed (\S\ref{sec:eval-methodology}). What they support is therefore the shape of each
+cost and the relationships between the experiments, which the shared measurement conditions make
+comparable, rather than the values themselves; the individual points whose confidence intervals
+are wide are identified where they appear and are not used to support any claim.
 
-A second limit is one of provenance. T6 and T7 come from a second measurement session, run after
-the per-call console output was removed from both resolvers, while every other experiment comes
-from the earlier run of the same evening. The two sessions agree on the quantity they share, the
-cost of one registry read (\S\ref{sec:eval-methodology}). The comparison between T6, T7
-and the reference path of T4 nonetheless crosses that boundary and should be read as an
-order-of-magnitude comparison rather than an exact one.
+A second limit is one of provenance: T6 and T7 come from a second measurement session while every
+other experiment comes from the first (\S\ref{sec:eval-methodology}). The two sessions agree on
+the quantity they share, but the comparison between T6, T7 and the reference path of T4 crosses
+that boundary and should be read as an order-of-magnitude comparison rather than an exact one.
 
 The evaluation is also intentionally local-only: it quantifies the resolution and packaging
 overhead, not the end-to-end cloud deployment latency, which depends on provider-side behaviour

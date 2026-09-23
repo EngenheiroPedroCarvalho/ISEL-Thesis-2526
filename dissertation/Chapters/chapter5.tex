@@ -181,31 +181,16 @@ bootstrap already implemented; this is listed as future work (Section~\ref{sec:c
 The description of the two resolvers above is expanded into six sequence diagrams, one per
 cascade level and provider, making explicit the messages exchanged with the registry and with
 each provider's inspection API; to keep this chapter's flow uninterrupted, the diagrams themselves
-are collected in Appendix~\ref{app:cascade-sequences} rather than placed inline.
+are collected in Appendix~\ref{app:cascade-sequences} rather than placed inline:
+Figure~\ref{fig:resolution-cascade-level1} for Level~1,
+Figure~\ref{fig:resolution-cascade-level2} for Level~2 and
+Figure~\ref{fig:resolution-cascade-level3} for Level~3, each contrasting the GCP panel (a) with
+the AWS panel (b) and captioned with the behaviour it shows.
 
-Figure~\ref{fig:resolution-cascade-level1} (Appendix~\ref{app:cascade-sequences}) details Level~1
-on each provider: a registry hit is validated against the live resource before being trusted. The
-two panels show matching behaviour on a \texttt{NotFound} result: both the GCP path (a) and
-the AWS path (b) attempt rediscovery (across every region, or in the one region a
-\texttt{"region/functionRef"} reference names) before removing the stale entry and aborting.
-
-Figure~\ref{fig:resolution-cascade-level2} (Appendix~\ref{app:cascade-sequences}) details Level~2,
-reached on a registry miss. Both resolvers search across every region, or a single region when the
-fully-qualified \texttt{"region/function- Ref"} form is used, reporting more than one match as
-ambiguous. The GCP path (a) covers the project's regions and the AWS path (b) every region
-enabled for the account, discovered via EC2 \texttt{DescribeRegions}. On both
-paths, a per-region permissions failure is not distinguished from a genuine absence in that region
-while at least one other region remains reachable, but if no match is found anywhere and at least
-one region was inaccessible, the resolver reports the inaccessible regions explicitly rather than
-treating the miss as a plain absence (\S\ref{subsec:validation-error-semantics}).
-
-Figure~\ref{fig:resolution-cascade-level3} (Appendix~\ref{app:cascade-sequences}) details Level~3,
-reached only when a \texttt{deployment\allowbreak Descripto-\allowbreak rPath} was supplied and the function was found on
-neither the registry nor the provider. Both panels stay at the cascade's conceptual level; the
-full operational breakdown of the AWS branch (the IAM role, the region derived from the S3
-bucket, subprocess retries, and \texttt{GetFunction} polling) is traced separately for the
-worst-case path in Figure~\ref{fig:aws-deploy-sequence}, introduced in the AWS Lambda Support
-section that follows.
+The Level~3 panels stay at the cascade's conceptual level; the full operational breakdown of the
+AWS branch (the IAM role, the region derived from the S3 bucket, subprocess retries, and
+\texttt{GetFunction} polling) is traced separately for the worst-case path in
+Figure~\ref{fig:aws-deploy-sequence}, introduced in the AWS Lambda Support section that follows.
 
 \subsection{Validation and Error Semantics}
 \label{subsec:validation-error-semantics}
@@ -259,11 +244,9 @@ deployment time. The registry exists precisely to hold that binding.
 Each function is represented in the registry by a single structured record,
 \texttt{FunctionInvocationMetadata} (a \texttt{serviceName} plus a \texttt{url}), which the two
 production resolvers, \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
-\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly.
-Both resolvers read the registry once into an in-memory snapshot per \texttt{resolve()} call and
-resolve every internal call against that snapshot, kept in sync with every subsequent
-\texttt{put()}/\texttt{remove()}, instead of re-reading the file per call
-(Section~\ref{sec:eval-real-resolvers}). The same single-read strategy, isolated from any
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly from the
+snapshot they read once per \texttt{resolve()} call (\S\ref{subsec:store-internals}), at the cost
+measured in Section~\ref{sec:eval-real-resolvers}. The same single-read strategy, isolated from any
 cloud-side validation, is also implemented by a benchmark fixture,
 \texttt{OptimizedEndpointResolver}, which the local-resolution benchmark suite uses as a pure,
 provider-agnostic reference implementation, deliberately decoupled from the live-validation step
