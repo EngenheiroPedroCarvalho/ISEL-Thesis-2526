@@ -57,9 +57,7 @@ the provider assigns and whose form it defines.
 	\item \textbf{The endpoint exists only after deployment:} the provider assigns a function's
 	invocation identifier when the function is first deployed. Its form may be predictable (an AWS
 	ARN is built from the region, the account ID and the function name), but it refers to nothing
-	until the function exists. In practice, a workflow that calls a new function can be completed
-	only after that function has been deployed, which fixes the order in which the two tools are
-	used.
+	until the function exists.
 
 	\item \textbf{The endpoint depends on the deployment target:} the identifier records where the
 	function was deployed. On AWS, a Lambda function is invoked through an Amazon Resource Name
@@ -184,8 +182,8 @@ The contributions of this dissertation are the following:
 	deploying a function that may already exist.
 
 	\item \textbf{AWS Lambda support in QuickFaaS.} QuickFaaS, which deployed to GCP and Azure,
-	gains an AWS provider, and OmniFlow gains the matching function deployer. The unification is
-	therefore available on both providers OmniFlow renders for, instead of on GCP alone.
+	gains an AWS provider, and OmniFlow gains the matching function deployer, which extends the
+	unification to AWS.
 
 	\item \textbf{A prototype and a case study.} The two tools are integrated into a working
 	prototype in which a single workflow definition deploys, with its internal functions, to AWS or

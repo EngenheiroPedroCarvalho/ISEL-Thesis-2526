@@ -8,10 +8,7 @@
 \label{cha:impl}
 
 This chapter describes how the architecture and resolution cascade introduced in
-Chapter~\ref{ch:proposed_solution} are realised in code. It follows the same two-part structure
-as the contribution itself: the Function Registry and the deployment-time resolution mechanism
-shared by both cloud providers, and the AWS Lambda support added to QuickFaaS that the
-AWS side resolver and deployer depend on.
+Chapter~\ref{ch:proposed_solution} are realised in code.
 
 The chapter is organised in three sections. Section~\ref{sec:function-registry} presents the
 Function Registry itself: its file format, how entries are created and kept up to date, and the
@@ -36,9 +33,11 @@ Figure~\ref{fig:omniflow-integration-classes} details the classes that realise t
 
 
 \subsection{Motivation}
-In the original OmniFlow usage model, a \texttt{call} step requires concrete endpoint information (namely \texttt{host} and \texttt{path}). This ties the workflow definition to one deployment of each function: the endpoint is known only after the function is deployed, and it differs for each account, project and provider (Section~\ref{sec:int_cha_int_uni_multi}). The Function Registry addresses this problem: workflows reference internal functions through stable logical identifiers instead of concrete endpoints. The actual endpoint is only bound to that identifier at deployment time. Beyond endpoint indirection, the registry also serves as the persistence layer for the
-automatic function resolution mechanism described below: entries are created and refreshed
-automatically as functions are discovered on the target provider or deployed through QuickFaaS.
+A literal \texttt{host}/\texttt{path} ties the workflow definition to one deployment of each
+function (Section~\ref{sec:int_cha_int_uni_multi}). The Function Registry removes that tie:
+workflows reference internal functions through stable logical identifiers, and the endpoint is
+bound to the identifier only at deployment time. Beyond endpoint indirection, the registry also serves as the persistence layer of the
+resolution cascade, which creates and refreshes its entries (\S\ref{subsec:registry-updates}).
 
 
 
@@ -49,13 +48,16 @@ forbids combining it with a literal \texttt{host}/\texttt{path}) is defined in
 \S\ref{sec:dsl-extensions}, with an example call step in Listing~\ref{lst:call-step-internal}.
 What matters for the implementation is where that rule is enforced: the DSL builder rejects
 the illegal combination when the workflow is constructed, and each resolver checks it again before
-rendering, so an ambiguous call can never reach a provider artifact. External calls never enter
-this path and carry their literal endpoint into the rendered workflow untouched.
+rendering, so an ambiguous call can never reach a provider artifact.
 
 \subsection{Registry File Format}
-Each provider has its own registry, stored as a JSON file (\texttt{function-registry.gcp.json} or \texttt{function-registry.aws.json} in the working directory by default) and containing only non-secret invocation metadata. It maps each \texttt{functionRef} to the concrete values required to invoke the function (serviceName and url, where url is an HTTPS endpoint on GCP and a Lambda ARN on AWS). The registry also stores an \texttt{updatedAt} timestamp for traceability. Listing~\ref{lst:registry-structure} shows the shape of both files. Two conventions become visible only in a registry that has been in use. A function deployed by QuickFaaS on GCP is stored under its plain \texttt{functionRef}, with a first-generation \texttt{cloudfunctions.net} URL; a Cloud Run service found by discovery is stored under a region-qualified key such as \texttt{"europe-west1/risk-score"}, whose \texttt{serviceName} is the full resource name \texttt{projects/proj/locations/europe-west1/services/risk-score} rather than the bare service id.
+The file format is the one described in \S\ref{sec:dsl-extensions} and shown in
+Listing~\ref{lst:registry-structure}: one JSON file per provider
+(\texttt{function-registry.gcp.json} or \texttt{function-registry.aws.json} by default), holding
+only non-secret invocation metadata. Two conventions become visible only in a registry that has been in use. A function deployed by QuickFaaS on GCP is stored under its plain \texttt{functionRef}, with a first-generation \texttt{cloudfunctions.net} URL; a Cloud Run service found by discovery is stored under a region-qualified key such as \texttt{"europe-west1/risk-score"}, whose \texttt{serviceName} is the full resource name \texttt{projects/proj/locations/europe-west1/services/risk-score} rather than the bare service id. The file is kept in a writable location (the working directory by default, or a path given to the deployer), never inside packaged resources, which are typically read-only in production.
 
 \subsection{Creation, Bootstrap and Updates}
+\label{subsec:registry-updates}
 The registry management layer provides the following behavior:
 
 \begin{itemize}
@@ -75,8 +77,8 @@ The registry management layer provides the following behavior:
     \item \textbf{Drift handling:} on every registry hit, the stored endpoint is validated
     against the live resource (Cloud Run service on GCP, Lambda function on AWS) and the entry is
     refreshed if it changed; a resource that no longer exists is treated as a stale entry
-    (\S\ref{subsec:validation-error-semantics}). First-generation Cloud Functions
-    on GCP are not validated (see the limitation at the end of Section~\ref{subsec:store-internals}).
+    (\S\ref{sec:walkthrough}), except for first-generation Cloud Functions on GCP
+    (\S\ref{subsec:store-internals}).
 \end{itemize}
 
 Every write refreshes the top-level \texttt{updatedAt} timestamp.
@@ -107,14 +109,11 @@ re-reads the file via \texttt{readAll()} and delegates the two-step lookup (exac
 match is ambiguous) entirely to its pure counterpart, \texttt{tryResolveEntryIn()}, which performs
 that lookup against an already-loaded map with no I/O of its own (the same split
 \texttt{resolveUrl()}/\texttt{resolveUrlIn()} already had); \texttt{put()} inserts or refreshes one entry; and
-\texttt{remove()} deletes a stale entry. Every mutating operation rewrites the top-level
-\texttt{updatedAt} timestamp. The store itself keeps no in-memory state between calls, so
+\texttt{remove()} deletes a stale entry. The store itself keeps no in-memory state between calls, so
 \texttt{readAll()}/\texttt{tryResolveEntry()} re-read and re-parse the file on every call; the
-performance consequences of this choice, and the single-read mitigation built on
-\texttt{tryResolveEntryIn()}, are analysed in Chapter~\ref{cha:evaluation}.
+performance consequences of this choice are analysed in Chapter~\ref{cha:evaluation}.
 
-The two provider resolvers sit on top of this store and are symmetric in shape, differing only
-in the provider-discovery calls that reflect the two clouds' invocation models. \\
+The two provider resolvers sit on top of this store. \\
 \texttt{WorkflowInternalFunctionResolver} (GCP) treats a registry hit as provisional: it
 validates the stored URL against the live Cloud Run service and, if the URL has drifted, refreshes
 the entry; if the service has disappeared, it attempts rediscovery across the project's regions
@@ -136,14 +135,12 @@ rediscovery and the miss-path scan described next. \\
 On a registry miss, the AWS resolver performs
 the same style of scan as GCP: it searches every enabled region for a function-name match and
 reports a name found in more than one region as ambiguous; the caller skips the scan by supplying
-the fully-qualified \texttt{"<region> /<functionRef>"} form, which resolves a single region directly. A
-region reporting \texttt{ResourceNotFoundException} and one reporting a permissions failure are
-both simply excluded from the candidate set while the scan runs, and are told apart only once it
-ends, exactly as on the GCP path (\S\ref{subsec:validation-error-semantics}). What
+the fully-qualified \texttt{"region/functionRef"} form, which resolves a single region directly. Regions where the
+lookup is refused are handled as on the GCP path (\S\ref{subsec:validation-error-semantics}). What
 distinguishes the two resolvers is only the underlying provider API each one calls (the Cloud
 Run Locations API versus EC2 \texttt{DescribeRegions} for region discovery, a Cloud Run lookup
-versus \texttt{GetFunction} for the per-region check) and the GCP-only short-circuit for
-first-generation Cloud Functions noted above, which has no AWS counterpart. In both resolvers, a successful
+versus \texttt{GetFunction} for the per-region check) and the GCP-only short-circuit noted above.
+In both resolvers, a successful
 discovery or deployment writes the metadata back through \texttt{put()} before the endpoint is
 injected into the call, and so does a hit whose endpoint has drifted (a hit that validates
 unchanged writes nothing), so the registry converges toward a complete set of bindings as workflows
@@ -183,26 +180,19 @@ Figure~\ref{fig:resolution-cascade-level2} for Level~2 and
 Figure~\ref{fig:resolution-cascade-level3} for Level~3, each contrasting the GCP panel (a) with
 the AWS panel (b) and captioned with the behaviour it shows.
 
-The Level~3 panels stay at the cascade's conceptual level; the full operational breakdown of the
-AWS branch (the IAM role, the region derived from the S3 bucket, subprocess retries, and
-\texttt{GetFunction} polling) is traced separately for the worst-case path in
-Figure~\ref{fig:aws-deploy-sequence}, introduced in the AWS Lambda Support section that follows.
+The Level~3 panels stay at the cascade's conceptual level; the operational steps of the AWS
+branch are traced for the worst-case path in Figure~\ref{fig:aws-deploy-sequence}, introduced in
+the AWS Lambda Support section that follows.
 
 \subsection{Validation and Error Semantics}
 \label{subsec:validation-error-semantics}
-Several correctness constraints are enforced to avoid silent misconfiguration. Two of them, an
-unresolvable function and an ambiguous reference, are stated with the rest of the cascade's failure
-modes in \S\ref{sec:walkthrough}, and both abort the deployment before any provider artifact is
+Several correctness constraints are enforced to avoid silent misconfiguration. Three of them, an
+unresolvable function, an ambiguous reference and a stale registry entry, are stated with the rest
+of the cascade's failure modes in \S\ref{sec:walkthrough}, and all abort the deployment before any provider artifact is
 rendered. One consequence of the second belongs here: an ambiguous reference is not rescued by
 supplying a \texttt{deploymentDescriptorPath}, because ambiguity is a data-consistency problem
-rather than an absence one, so QuickFaaS is never invoked to paper over it. The remaining two
-constraints are implementation-level.
-
-\paragraph{Stale registry entries.}
-If a registry entry points to a resource that no longer exists (a Cloud Run service on GCP, or
-a Lambda on AWS, for which rediscovery across every region also fails), the stale entry is
-removed and deployment aborts with an explicit diagnostic, preventing the workflow from being
-deployed against a dead endpoint.
+rather than an absence one, so QuickFaaS is never invoked to paper over it. The remaining
+constraint is implementation-level.
 
 \paragraph{Insufficient permissions.}
 If the live lookup used to validate a registry hit is refused (an authorization failure rather
@@ -217,29 +207,18 @@ the scan ends with no match anywhere and at least one region could not be checke
 diagnostic naming the inaccessible regions instead of silently concluding the function is absent
 everywhere.
 
-\subsection{Registry Location}
-The registry file is stored in a writable location at runtime (e.g., the working directory or a configurable path provided to the deployer). This avoids attempting to write into packaged resources (which are typically read-only in production).
-
 \subsection{Evolution of the Registry Design}
 \label{subsec:registry-evolution}
 
 The registry did not arrive at its current form in a single step; the source tree still exposes
-the intermediate stages, which makes the design decisions worth recounting. Five threads describe
-how it evolved.
-
-\paragraph{From literal endpoints to logical indirection.}
-The starting point was the plain OmniFlow \texttt{call} step, with the coupling that its literal
-\texttt{host}/\texttt{path} creates. The
-first design move was therefore to introduce a level of indirection: the workflow names a function
-through a stable \texttt{functionRef}, and the concrete endpoint is bound from the registry at
-deployment time. The registry exists precisely to hold that binding.
+the intermediate stages, which makes the design decisions worth recounting. Its starting point was
+the indirection motivated above; four threads describe how it evolved from there.
 
 \paragraph{A metadata record per function.}
 Each function is represented in the registry by a single structured record,
 \texttt{FunctionInvocationMetadata}, which the two
 production resolvers, \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
-\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly from the
-snapshot they read once per \texttt{resolve()} call (\S\ref{subsec:store-internals}), at the cost
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly (\S\ref{subsec:store-internals}), at the cost
 measured in Section~\ref{sec:eval-real-resolvers}. The same single-read strategy, isolated from any
 cloud-side validation, is also implemented by a benchmark fixture,
 \texttt{OptimizedEndpointResolver}, which the local-resolution benchmark suite uses as a pure,
@@ -255,10 +234,8 @@ provider-aware. The registry thus stayed a single, symmetric abstraction across 
 
 \paragraph{From a manually edited file to an auto-managed source of truth.}
 The registry also evolved from something the developer would maintain by hand into something the
-integration maintains automatically. It is bootstrapped by discovery when absent, populated on the
-fly when a function is found on the provider, refreshed after a QuickFaaS deployment, corrected when
-a stored URL has drifted, and pruned when an entry becomes stale, with every write stamping the
-top-level \texttt{updatedAt} field. In parallel, the resolution path itself was refined from
+integration maintains automatically, through the bootstrap, registration, refresh and pruning
+listed in \S\ref{subsec:registry-updates}. In parallel, the resolution path itself was refined from
 re-reading the whole file on every lookup (\texttt{resolveUrl}) toward reading it once into a
 snapshot and resolving in memory (\texttt{readAll} + \texttt{resolveUrlIn}); the performance effect
 of that refinement, and its propagation into the two production resolvers, are quantified in
@@ -279,14 +256,8 @@ already named is still accurate, not what to look up or whether a deployment is 
 and idempotency, the two properties that motivated the registry in the first place
 (\S\ref{sec:resolution-cascade}), are unaffected by whether the hit is trusted or verified.
 
-\subsection{Summary}
-The Function Registry introduces a stable indirection layer between workflow definitions and deployed function endpoints. Internal workflow calls declare a logical \texttt{functionRef} through the
-\texttt{internalFunction} DSL construct, and concrete endpoint binding is performed at
-deployment time through a resolution cascade (registry, provider discovery, QuickFaaS
-deployment as a last resort). This improves maintainability, supports repeatable deployments, and provides explicit, fail-fast diagnostics when registry bindings are missing or inconsistent.
-
 \section{AWS Lambda Support in QuickFaaS}
-Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{CreateStateMachine}, and expands the most demanding path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment has one branch for each of the three levels of the resolution cascade described in Section~\ref{subsec:endpoint-resolution}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work that has no GCP equivalent — the Lambda execution IAM role, the region taken from the S3 bucket, the QuickFaaS subprocess and the wait for the function to become active — traced step by step in Section~\ref{subsec:omniflow-aws-deployer}. The ARN it returns is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{CreateStateMachine}. This diagram makes explicit the operational steps that the conceptual cascade abstracts away. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
+Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{CreateStateMachine}, and expands the most demanding path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment has one branch for each of the three levels of the resolution cascade described in Section~\ref{subsec:endpoint-resolution}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work described step by step in Section~\ref{subsec:omniflow-aws-deployer}. The ARN it returns is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{CreateStateMachine}. This diagram makes explicit the operational steps that the conceptual cascade abstracts away. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
 
 \begin{figure}[htbp]
   \centering
@@ -316,9 +287,8 @@ adapts the Lambda request to the developer's hook, and the supported runtimes ar
 and \texttt{java17}. Because \texttt{GetBucketLocation} must be issued against the global endpoint,
 the provider resolves the bucket's region from \texttt{us-east-1} and then pins the Lambda client
 to that same region, ensuring the function and its code bucket are co-located. Finally, the
-provider creates (or reuses) a Lambda \emph{Function URL} with \texttt{AuthType = AWS\_IAM}. This
-Function URL is QuickFaaS's own notion of an invocation endpoint; as explained below, the OmniFlow
-integration does not use it, preferring the function ARN.
+provider creates (or reuses) a Lambda \emph{Function URL} with \texttt{AuthType = AWS\_IAM},
+QuickFaaS's own notion of an invocation endpoint, which the OmniFlow integration does not use.
 
 \subsection{The OmniFlow-Side Deployer}
 \label{subsec:omniflow-aws-deployer}

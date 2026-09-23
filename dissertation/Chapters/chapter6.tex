@@ -156,12 +156,10 @@ Section~\ref{sec:case-deployment} shows next.
 \label{sec:case-deployment}
 
 Suppose neither \texttt{fraud-check} nor \texttt{risk-score} has been deployed yet, and the bank
-deploys \texttt{PaymentAuthorization} to its AWS test account first. OmniFlow bootstraps an AWS registry by
-listing Lambda functions across every enabled region, finds it empty for both functions, and the
-cascade reaches Level~3 for each: QuickFaaS deploys \texttt{fraud-check} and \texttt{risk-score}
+deploys \texttt{PaymentAuthorization} to its AWS test account first. The cascade runs as in the
+walkthrough of \S\ref{sec:walkthrough}, and reaches Level~3 for both calls: QuickFaaS deploys \texttt{fraud-check} and \texttt{risk-score}
 as Lambda functions from the descriptors referenced in the workflow, following the AWS deployment
-sequence detailed in Figure~\ref{fig:aws-deploy-sequence}: IAM role resolution, subprocess
-invocation, \texttt{GetFunction} polling and Step Functions invoke permissions. Both ARNs are
+sequence of Figure~\ref{fig:aws-deploy-sequence}. Both ARNs are
 written to the registry, and \texttt{PaymentAuthorization} is deployed as a state machine.
 
 The bank then promotes \texttt{PaymentAuthorization} to its production account. The workflow
@@ -173,11 +171,10 @@ Level~3 deploys both there, recording ARNs that carry the production account ID.
 copied between accounts. The registry file must not be shared between the two accounts: an entry
 written for the test account names a function the production account does not have, so its
 validation fails, the entry is treated as stale, and the production deployment aborts
-(\S\ref{subsec:validation-error-semantics}).
+(\S\ref{sec:walkthrough}).
 
 Now suppose the bank's exit strategy calls for the same fraud-screening workflow to run on a
-second provider (Section~\ref{sec:case-scenario}). Because
-\texttt{PaymentAuthorization} names no provider, deploying it to GCP requires no change to
+second provider (Section~\ref{sec:case-scenario}). Deploying it to GCP requires no change to
 Listing~\ref{lst:case-payment-workflow}, only different QuickFaaS descriptors (targeting Cloud
 Functions instead of Lambda) and the GCP deployer. On this first GCP deployment, the GCP registry is
 bootstrapped separately from the AWS one, both scoring functions miss at Level~1 and Level~2, and
@@ -218,7 +215,7 @@ strategy, deploy it on a second cloud provider, changing deployment descriptors 
 workflow itself. In each new target the missing functions are deployed and their endpoints bound
 without anyone copying an ARN or URL by hand. The fraud team's frequent model updates are a
 different matter: retraining \texttt{fraud-check} and redeploying it in place with QuickFaaS keeps
-its ARN or URL, so the deployed workflow calls the new model without any change, with or without
+its ARN or URL (\S\ref{sec:resolution-cascade}), so the deployed workflow calls the new model without any change, with or without
 the registry. Conversely, a workflow deployment never deploys the new model itself, because the
 cascade only deploys missing functions (Section~\ref{sec:concl-critical}).
 
@@ -228,11 +225,8 @@ holding the live endpoint of a bank's fraud-screening function, writable by any 
 with filesystem access and carrying no integrity guarantee, is not a control a bank's
 change-management or security function would accept as-is, and the AWS path's broad, automatically
 granted IAM role is similarly at odds with a least-privilege environment handling payment data.
-The applicability discussion in Section~\ref{sec:concl-applicability} and the corresponding future
-work in Section~\ref{sec:concl-future} (a hardened, access-controlled registry backend with an
-attributable write history, and least-privilege IAM under change control) describe exactly the
-hardening this scenario would require before the workflow in
-Listing~\ref{lst:case-payment-workflow} could authorize real transactions.
+The hardening required before the workflow in Listing~\ref{lst:case-payment-workflow} could
+authorize real transactions is set out in Section~\ref{sec:concl-applicability}.
 
 
 

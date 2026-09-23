@@ -10,11 +10,6 @@
 This chapter evaluates the prototype described in Chapter~\ref{cha:impl} and answers the two
 research questions of Section~\ref{sec:int_objectives}: whether internal function calls are bound
 correctly at deployment time on both providers (RQ1), and how much that resolution costs (RQ2).
-Because the contribution of this work is the \emph{unification} layer (the function registry and
-the deployment-time resolution cascade) and the AWS provider added to QuickFaaS, the evaluation
-concentrates on the decisions the resolution cascade takes, on the cost of resolving
-internal-function endpoints and how that cost scales, and on the size overhead of the AWS agnostic
-packaging layer.
 
 \section{Scope and Goals}
 \label{sec:eval-scope}
@@ -66,7 +61,7 @@ written into the call, the registry contents afterwards and, where relevant, whe
 was called or the resolution aborted.
 
 Table~\ref{tab:eval-correctness} lists the situations with the behaviour that the cascade
-semantics prescribe (\S\ref{subsec:validation-error-semantics}). The observed behaviour matches the
+semantics prescribe (\S\ref{sec:walkthrough} and \S\ref{subsec:validation-error-semantics}). The observed behaviour matches the
 expected behaviour in every case: all 45 resolver tests (22 for AWS, 23 for GCP) pass, as do the
 two tests of the registry bootstrap.
 
@@ -123,9 +118,8 @@ two tests of the registry bootstrap.
   \end{tabular}
 \end{table}
 
-The tests check the decisions of the cascade, not the behaviour of the providers: they show that
-each resolver acts correctly on what the provider reports, not that the real AWS and GCP APIs
-report what the test doubles assume (Section~\ref{sec:eval-threats}).
+The tests check the decisions of the cascade, not the behaviour of the providers
+(Section~\ref{sec:eval-threats}).
 
 \section{Methodology}
 \label{sec:eval-methodology}
@@ -1083,8 +1077,7 @@ is free in practice (T13, T14).
 
 \paragraph{Global framing.}
 All measured values lie between microseconds and, in the worst write case, tens of milliseconds:
-resolving a 200-call workflow costs $29\,\mu$s on AWS and $81\,\mu$s on GCP (T6, T7), and a
-hundred successive miss-and-register pairs against a thousand-entry registry (the most
+a hundred successive miss-and-register pairs against a thousand-entry registry (the most
 expensive operation measured) cost $59$\,ms (T9). Endpoint
 resolution is therefore not the bottleneck of an integrated deployment: the dominant cost is the
 actual cloud deployment (seconds). With the single-read
@@ -1108,8 +1101,7 @@ comparable, rather than the values themselves; the individual points whose confi
 are wide are identified where they appear and are not used to support any claim.
 
 A second limit is one of provenance: T6 and T7 come from a second measurement session while every
-other experiment comes from the first (\S\ref{sec:eval-methodology}). The two sessions agree on
-the quantity they share, but the comparison between T6, T7 and the reference path of T4 crosses
+other experiment comes from the first (\S\ref{sec:eval-methodology}), so the comparison between T6, T7 and the reference path of T4 crosses
 that boundary and should be read as an order-of-magnitude comparison rather than an exact one.
 
 The evaluation is also intentionally local-only: it quantifies the resolution and packaging

@@ -27,8 +27,8 @@ differences, which is the problem QuickFaaS addresses with its uniform hook/temp
 second is
 the \emph{packaging and deployment} axis: providers accept code through different mechanisms
 (inline editing, container images, source archives), with different naming, permission and trigger
-conventions. The compressed source archive (ZIP) is the common denominator across AWS, GCP and
-Azure, which is why QuickFaaS standardises on it. Beyond portability, the statelessness and
+conventions, and QuickFaaS standardises on the one AWS, GCP and Azure all accept
+(\S\ref{sec:background_quickfaas}). Beyond portability, the statelessness and
 event-driven nature of FaaS also shape how functions are \emph{composed}: because a function holds
 no state between invocations and cannot directly call another, non-trivial applications must lift
 control-flow and data-flow into an external orchestrator (the workflow layer discussed next)
@@ -37,7 +37,7 @@ rather than encoding them inside the functions themselves~\cite{serverlessComput
 \subsection{Workflows and Orchestration}
 \label{sec:workflows}
 
-A \textit{workflow} describes how a process is executed as a sequence of steps, typically representing a business or operational procedure. In cloud environments, workflows are commonly modeled as \textit{state machines}, where each state performs a unit of work, makes a decision or controls execution flow, while passing data between states~\cite{aws_stepfunctions_concepts}. This is the layer the previous section pointed to: because functions are small and stateless, non-trivial applications are built by orchestrating several of them, so that control flow, data flow and error handling live in the orchestrator rather than inside the functions themselves~\cite{sebsflow_arxiv}.
+A \textit{workflow} describes how a process is executed as a sequence of steps, typically representing a business or operational procedure. In cloud environments, workflows are commonly modeled as \textit{state machines}, where each state performs a unit of work, makes a decision or controls execution flow, while passing data between states~\cite{aws_stepfunctions_concepts}. This is the layer the previous section pointed to, where the control flow, data flow and error handling of a multi-function application live~\cite{sebsflow_arxiv}.
 
 Workflow systems typically provide support for:
 \begin{itemize}
@@ -87,12 +87,9 @@ code~\cite{gcpFunctionsVersionComparison}. This dissertation keeps the generatio
 they are what distinguishes the two APIs the code calls. The resulting function is reachable at a
 URL of the form \texttt{https://\allowbreak <region>-\allowbreak <project-id>.\allowbreak cloudfunctions.\allowbreak net/\allowbreak <name>}, and its
 invocation permissions and deployment status are managed through that same first-generation API.
-This distinction becomes relevant later, where the registry store and resolver internals are
-described (\S\ref{subsec:store-internals}): the
-proposed Function Registry validates and discovers GCP endpoints through the Cloud Run API, so
-first-generation functions are recognised separately, by their \texttt{cloudfunctions.net} URL, and
-are not yet covered by that validation and discovery. That domain is a heuristic rather than a
-guarantee: a function created through the Cloud Functions v2 API is served on \texttt{run.app} but
+The distinction matters to the proposed Function Registry, which recognises a first-generation
+function by its \texttt{cloudfunctions.net} URL; its consequences are assessed in
+\S\ref{subsec:store-internals}. That domain is a heuristic rather than a guarantee: a function created through the Cloud Functions v2 API is served on \texttt{run.app} but
 keeps a \texttt{cloudfunctions.net} endpoint as well~\cite{gcpFunctionsVersionComparison}.
 
 
@@ -166,11 +163,11 @@ OmniFlow is a Kotlin-based library and Domain Specific Language (DSL) for defini
 OmniFlow is designed as a client-side library integrated into the developer’s application. Conceptually, the library can be understood as a pipeline with three major responsibilities: (i) the DSL used to define the workflow, (ii) an internal representation of that workflow and (iii) a rendering and deployment layer that produces and deploys the provider-specific workflow artifact~\cite{silva2025advanced}.
 
 \begin{enumerate}
-	\item \textbf{Domain Specific Language (DSL):} the developer-facing interface used to define workflows in Kotlin. OmniFlow relies on Kotlin’s \emph{type-safe builder} style to provide a structured and readable syntax for declaring workflow metadata and steps~\cite{type-safe_builders}. In OmniFlow, a workflow definition typically contains a \texttt{name}, \texttt{description}, \texttt{input}, \texttt{steps} and a \texttt{result}~\cite{silva2025advanced}.
+	\item \textbf{Domain Specific Language (DSL):} the developer-facing interface used to define workflows in Kotlin. OmniFlow relies on Kotlin’s \emph{type-safe builder} style to provide a structured and readable syntax for declaring workflow metadata and steps~\cite{type-safe_builders}.
 
 	\item \textbf{Internal Model:} the DSL constructs an internal, provider-agnostic representation of the workflow. Internally, workflows are represented as a \emph{hierarchical tree} of nodes: the workflow is the root node and each step corresponds to a child node, where some step types may contain nested child steps~\cite{silva2025advanced}. This tree-based representation is the basis for workflow traversal and rendering.
 
-	\item \textbf{Renderer:} the renderer traverses the internal model and produces the provider-specific workflow artifact. OmniFlow performs this traversal using a depth-first search (DFS) over the workflow tree to ensure steps are rendered in a predictable and structured order~\cite{silva2025advanced}. Rendering is organized around the \texttt{NodeRenderer} abstraction: for each node type, a corresponding renderer is selected (via a strategy-based matching mechanism) and invoked during traversal~\cite{silva2025advanced}. The resulting output is typically a textual artifact (e.g., YAML for Google Cloud Workflows) suitable for deployment.
+	\item \textbf{Renderer:} the renderer traverses the internal model and produces the provider-specific workflow artifact. OmniFlow performs this traversal using a depth-first search (DFS) over the workflow tree to ensure steps are rendered in a predictable and structured order~\cite{silva2025advanced}. Rendering is organized around the \texttt{NodeRenderer} abstraction: for each node type, a corresponding renderer is selected (via a strategy-based matching mechanism) and invoked during traversal~\cite{silva2025advanced}. Rendering follows a begin/end discipline, with a rendering context propagated through the traversal, so that nested steps become correctly scoped provider artefacts~\cite{silva2025advanced}. The resulting output is typically a textual artifact (e.g., YAML for Google Cloud Workflows) suitable for deployment.
 
 	\item \textbf{Deployment Services:} after rendering, a provider adapter is responsible for deploying the generated workflow definition to the chosen cloud provider’s workflow service (e.g., by invoking the provider API/SDK). From the developer perspective, this stage turns the rendered artifact into an executable workflow resource managed by the cloud provider~\cite{costa2023omniflow}.
 \end{enumerate}
@@ -194,15 +191,10 @@ The underlying implementation still associates each step with metadata such as a
 
 
 \subsubsection{Workflow Development Cycle}
-The typical OmniFlow lifecycle can be described as a synchronous three-phase process~\cite{costa2023omniflow,silva2025advanced}:
-
-\begin{enumerate}
-	\item \textbf{Definition:} the developer defines the workflow in Kotlin using the OmniFlow DSL~\cite{type-safe_builders}. This definition constructs a provider-agnostic internal model, represented as a hierarchical tree of workflow and step nodes~\cite{silva2025advanced}.
-
-	\item \textbf{Rendering:} OmniFlow traverses the internal workflow tree using DFS~\cite{silva2025advanced}. For each node, a corresponding \texttt{NodeRenderer} is selected and invoked to translate the abstract node into its provider-specific representation. Rendering follows a structured begin/end rendering discipline (with a rendering context propagated through traversal) so that nested steps can be converted into correctly scoped provider artefacts~\cite{silva2025advanced}.
-
-	\item \textbf{Deployment:} the rendered workflow artefact is submitted to the cloud provider’s workflow service via a provider adapter~\cite{costa2023omniflow}. At this point the workflow becomes a managed resource and can be executed by the cloud provider.
-\end{enumerate}
+The typical OmniFlow lifecycle runs the components above as a synchronous three-phase process:
+the developer \emph{defines} the workflow with the DSL, OmniFlow \emph{renders} the resulting tree
+into the provider's format, and then \emph{deploys} it, at which point the workflow becomes a
+managed resource that the provider executes~\cite{costa2023omniflow,silva2025advanced}.
 
 Listing~\ref{lst:omniflow_chain} illustrates a simple function-chaining pattern expressed in the OmniFlow DSL, where the output of one step becomes the input to the next step through workflow variables. The workflow is named \texttt{FunctionChain}, declares \texttt{args} as its input and defines two sequential steps inside \texttt{steps(\ldots)}.
 
@@ -241,11 +233,13 @@ val ChainWorkflow = workflow {
 }
 \end{lstlisting}
 
-Once a workflow is defined, OmniFlow renders it into the target provider format (e.g., a YAML workflow for Google Cloud Workflows) and then deploys it via the provider interface~\cite{costa2023omniflow,silva2025advanced}.
-
 OmniFlow's call step is itself agnostic to what kind of compute resource answers at that endpoint: on GCP, it invokes whatever HTTP host and path the developer supplies, whether that address belongs to a (first-generation) Cloud Function or a Cloud Run service; the DSL and the renderer have no notion of the distinction described in \S\ref{sec:background_quickfaas}. This becomes significant once function endpoints are resolved automatically rather than hard-coded by the developer (Chapter~\ref{ch:proposed_solution}), since an automatic resolution mechanism must itself account for a difference that OmniFlow, by design, never had to.
 
-A practical limitation follows from this design: OmniFlow call steps require concrete invocation targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment time~\cite{silva2025advanced}. If the workflow references an endpoint that does not exist (for example, because the target function has not yet been deployed), workflow deployment may fail or the workflow may fail at runtime. In current usage, developers typically mitigate this by deploying functions first (to obtain their final invocation URLs) and only then completing the workflow definition. This manual synchronization is one of the main motivations for integrating OmniFlow with a function deployment mechanism in the proposed solution chapter.
+A practical limitation follows from this design: OmniFlow call steps require concrete invocation
+targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment
+time~\cite{silva2025advanced}, so the functions they call must be deployed first and their
+endpoints copied into the definition. This is the manual synchronisation described in
+\S\ref{sec:int_cha_int_uni_multi}, which the proposed solution removes.
 
 \section{Related Work}
 \label{ch:related-works}
@@ -329,13 +323,9 @@ bind a workflow only to functions declared or explicitly referenced in the same 
 configuration, whereas the resolution cascade also discovers a function deployed by other means.
 What none of them offers is a workflow definition independent of the provider: the state machine is
 written in the Amazon States Language, and a GCP workflow would be a separate definition in another
-language, with its own references to its own functions.
-
-Overall, this category primarily addresses \textit{deployment automation}, and within one template
-it already binds workflows to functions at deployment time. What it does not provide is the
-combination targeted by this thesis: a single workflow definition that can be deployed to more than
-one provider, calling functions written against a provider-agnostic model, with their endpoints
-bound at deployment time on each provider.
+language, with its own references to its own functions. This category therefore addresses
+\textit{deployment automation}, binding a workflow to its functions within one template, but not
+for a workflow definition that can be deployed to more than one provider.
 
 \subsection{Portable Execution Layers and Code Transformation to FaaS}
 
@@ -432,5 +422,7 @@ AWS path that makes it available on AWS.
   both providers.}
 \end{table}
 
-This separation of concerns motivates the proposed integration in this thesis: none of the surveyed works simultaneously (i) translates portable workflow definitions into provider-specific workflow artifacts \emph{and} (ii) provides an on-demand mechanism to ensure the referenced functions exist on the target provider using a provider-agnostic function model.
-The OmniFlow--QuickFaaS integration seeks to combine these complementary capabilities while remaining aligned with provider-native execution surfaces (managed workflows and managed FaaS), avoiding the need to introduce and operate an entirely new workflow runtime layer.
+The OmniFlow--QuickFaaS integration combines these capabilities, including the on-demand
+deployment of a referenced function that is missing, while remaining aligned with provider-native
+execution surfaces (managed workflows and managed FaaS), avoiding the need to introduce and operate
+an entirely new workflow runtime layer.

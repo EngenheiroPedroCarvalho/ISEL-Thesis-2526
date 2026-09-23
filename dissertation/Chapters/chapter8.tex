@@ -35,8 +35,7 @@ QuickFaaS, previously limited to GCP and Azure, was extended with an AWS provide
 gained an \texttt{AwsLambdaDeployer} that performs the AWS-specific work (IAM execution role,
 region resolution from the S3 bucket, readiness polling, and granting Step Functions permission to
 invoke the Lambda). Internal AWS calls are rendered with the native
-\texttt{arn:aws:states:::lambda:invoke} integration rather than an HTTP task, keeping the
-invocation within the AWS control plane.
+\texttt{arn:aws:states:::lambda:invoke} integration rather than an HTTP task.
 
 \section{Objectives Revisited}
 \label{sec:concl-objectives}
@@ -141,9 +140,8 @@ structural ones.
   Cloud Functions~v2 API. A second-generation function \emph{is} a Cloud Run service, so the
   validation, discovery and bootstrap already built on the Cloud Run API would cover it unchanged,
   giving the GCP path the same drift detection and rediscovery guarantees as the AWS path. It would
-  also retire the heuristic that recognises first-generation functions by their URL, which the
-  second generation's own \texttt{cloudfunctions.net} endpoint
-  defeats~\cite{gcpFunctionsVersionComparison}. The cost falls on QuickFaaS: the request body is
+  also retire the URL heuristic that recognises first-generation functions
+  (\S\ref{sec:background_quickfaas}). The cost falls on QuickFaaS: the request body is
   restructured, the generated \texttt{run.app} URL has to be read from the deployed function
   instead of composed from the project and region, invoker permissions move to the Cloud Run Admin
   API, and the storage trigger's template has to adopt the CloudEvents interface. A Cloud
