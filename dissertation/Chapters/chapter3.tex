@@ -216,8 +216,6 @@ Figure~\ref{fig:call-step-model} shows how the \texttt{call} step is extended to
   \label{fig:call-step-model}
 \end{figure}
 
-The proposed solution introduces \texttt{internalFunction}(name, deploymentDescriptorPath) as an alternative construction path for the call step, mutually exclusive with \texttt{host}/\texttt{path}. Setting \texttt{internalFunction} declares that this call targets a function owned by the developer; \texttt{host} and \texttt{path} are then filled in automatically by OmniFlow at deployment time and must not be provided in the DSL. The optional second parameter, \texttt{deploymentDescriptorPath}, points to a QuickFaaS deployment descriptor and is consulted only if the function cannot be resolved from the registry or discovered directly on the target provider.
-
 With this extension, the call step can be used in two distinct ways:
 
 \begin{itemize}
@@ -225,9 +223,9 @@ With this extension, the call step can be used in two distinct ways:
   \item With an \textbf{automatically resolved endpoint}, the developer omits \texttt{host}/\texttt{path} and instead sets \texttt{internalFunction(name, deploymentDescriptorPath)}. The call targets a function owned by the developer; its concrete endpoint is resolved at deployment time (and the function deployed via the descriptor if necessary) and injected into the rendered workflow.
 \end{itemize}
 
-By introducing \texttt{internalFunction} directly in the call execution step, the DSL remains close to the original OmniFlow design—developers still describe calls using the familiar step vocabulary—while gaining a clear hook that connects such calls to the QuickFaaS-based deployment and registry mechanisms described in the following sections.
-
-The main DSL-related concepts can be summarised as follows:
+The concepts this second form relies on, and through which it connects to the QuickFaaS-based
+deployment and registry mechanisms described in the following sections, can be summarised as
+follows:
 
 \paragraph{Function Ownership Determines Resolution.}
 Whether a call's endpoint is filled in automatically depends on who owns the target. When the workflow developer owns the function's source code and is allowed to deploy and update it, the call declares it through \texttt{internalFunction(name, deploymentDescriptorPath)}; QuickFaaS manages its deployment and the Function Registry stores its invocation metadata. When the target is a function or API the developer does not own (for example, a third-party service) and is not allowed to deploy or update, the call instead provides a literal \texttt{host}/\texttt{path}; such dependencies are treated as unmanaged HTTP endpoints, are never deployed or updated through QuickFaaS, and are not recorded in the registry.
