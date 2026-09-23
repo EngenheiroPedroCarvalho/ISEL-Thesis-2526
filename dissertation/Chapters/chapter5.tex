@@ -130,9 +130,9 @@ rediscovery and the miss-path scan. \\
 On a registry miss, the caller can skip the AWS scan by supplying the fully-qualified
 \texttt{"region/\allowbreak functionRef"} form, which resolves a single region directly; regions where the
 lookup is refused are handled as on the GCP path (\S\ref{subsec:validation-error-semantics}). What
-distinguishes the two resolvers is only the underlying provider API each one calls (the Cloud
-Run Locations API versus EC2 \texttt{DescribeRegions} for region discovery, a Cloud Run lookup
-versus \texttt{GetFunction} for the per-region check) and the GCP-only short-circuit noted above.
+distinguishes the two resolvers is only the provider API each one calls (the region discovery
+above, and a Cloud Run lookup versus \texttt{GetFunction} for the per-region check) and the
+GCP-only short-circuit noted above.
 In both resolvers, the writes listed in \S\ref{subsec:registry-updates} go through
 \texttt{put()} before the endpoint is injected into the call, and a hit that validates unchanged
 writes nothing, so the registry converges toward a complete set of bindings as workflows
@@ -211,11 +211,10 @@ Each function is represented in the registry by a single structured record,
 \texttt{FunctionInvocationMetadata}, which the two
 production resolvers, \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly (\S\ref{subsec:store-internals}), at the cost
-measured in Section~\ref{sec:eval-real-resolvers}. The same single-read strategy, isolated from any
-cloud-side validation, is also implemented by a benchmark fixture,
+measured in Section~\ref{sec:eval-real-resolvers}. The same single-read strategy is also implemented by a benchmark fixture,
 \texttt{OptimizedEndpointResolver}, which the local-resolution benchmark suite uses as a pure,
-provider-agnostic reference implementation, deliberately decoupled from the live-validation step
-the real resolvers must perform against a cloud API.
+provider-agnostic reference implementation, without the live validation the real resolvers
+perform against a cloud API.
 
 \paragraph{From provider-specific fields to a uniform endpoint.}
 Collapsing the endpoint into one \texttt{url} field was the change that made the AWS extension
@@ -241,8 +240,9 @@ triple that only the registry supplies. \texttt{Aws\allowbreak Internal\allowbre
 trusted a hit outright, returning the cached ARN with no live check, since a Lambda name is
 already unique within a region and validating brought no discovery benefit on its own. This
 asymmetry was closed by introducing \texttt{Lambda\allowbreak Function\allowbreak Inspector}, the AWS counterpart to
-the Cloud Run inspector: a hit is now confirmed against \texttt{GetFunction} on both providers,
-refreshing a drifted ARN and removing a deleted one. The change did not make the registry
+the Cloud Run inspector: a hit is now confirmed live on both providers, through
+\texttt{GetFunction} on AWS, and a drifted or deleted function is handled the same way on each
+(\S\ref{subsec:store-internals}). The change did not make the registry
 redundant, only its trust model stricter: the live check answers whether a binding the registry
 already named is still accurate, not what to look up or whether a deployment is owed. Indirection
 and idempotency, the two properties that motivated the registry in the first place

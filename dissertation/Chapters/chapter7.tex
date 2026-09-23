@@ -300,16 +300,14 @@ change worth making.
 
 \paragraph{The single-read optimization (T3).}
 Reading the registry once per workflow into an in-memory snapshot and resolving against it
-eliminates that call-times-registry-size product: the cost no longer multiplies the two factors
-together, becoming instead one read proportional to the registry size plus a cheap constant-time
-lookup per call. Table~\ref{tab:eval-t3} compares resolving the registry per call (naive) against a
+removes that product: the cost becomes one read proportional to the registry size plus a cheap
+constant-time lookup per call. Table~\ref{tab:eval-t3} compares resolving the registry per call (naive) against a
 single read per resolution (optimized), and Figure~\ref{fig:eval-t3} plots the two on a shared
 logarithmic axis. With the snapshot, the cost becomes almost independent of
 $N$ (each row is flat to within a few tenths of a microsecond across a two-hundred-fold increase
 in the number of calls) and reduces to the cost of one read of an $R$-entry file. The speedup
 therefore grows with the product $N \cdot R$, reaching $200\times$ in the worst corner
-($N{=}200$, $R{=}1000$: $36.7$\,ms down to $0.18$\,ms). Experiments T4 and T5 confirm the same
-trend on real \texttt{Workflow} objects rather than the isolated store primitive.
+($N{=}200$, $R{=}1000$: $36.7$\,ms down to $0.18$\,ms).
 
 \begin{figure}[htbp]
   \centering
@@ -878,9 +876,7 @@ Both resolvers validate a registry hit on every internal \texttt{call} step, not
 function. The snapshot introduced in \S\ref{sec:eval-real-resolvers} removes the repeated
 \emph{file} reads, but it does not memoise the live lookup that follows them, so a workflow with
 $I$ internal calls that all hit the registry issues $I$ validation requests even when every call
-names the same function ($F{=}1$). T6 and T7 do not include these requests, since they replace
-the lookup with a local fake on AWS and skip it on GCP (\S\ref{sec:eval-real-resolvers}); with a
-real provider, each adds a network round-trip per internal call. The list of candidate regions, by contrast, is
+names the same function ($F{=}1$), each a network round-trip that T6 and T7 do not include. The list of candidate regions, by contrast, is
 fetched at most once per deployment and cached in the resolver, and a region scan is paid only by
 the calls that miss.
 
@@ -924,7 +920,7 @@ page: \texttt{ListFunctions} on AWS, \texttt{services.list} on GCP.
 
 \paragraph{The deployment itself (Level~3).}
 A Level~3 deployment is the only path that writes to the provider, and it is dominated not by the
-lookups above but by the deployment sequence. On AWS the resolver resolves the execution role
+lookups above but by the deployment sequence. On AWS the deployer resolves the execution role
 (\texttt{GetRole}, plus \texttt{CreateRole} and \texttt{AttachRolePolicy} the first time, plus
 \texttt{UpdateAssumeRolePolicy} when the trust policy has to be repaired), reads the bucket's
 region (\texttt{GetBucketLocation}), runs the QuickFaaS subprocess (which uploads the artifact to
@@ -955,11 +951,12 @@ has to carry by hand from one step to the next.
 
 Table~\ref{tab:eval-manual-effort} lists the two sequences. What distinguishes them is not the
 total amount of configuration (the deployment descriptor is written either way) but the
-hand-carried values: in the separate procedure three values produced by one step are read by a
+hand-carried values: in the separate procedure four values produced by one step are read by a
 human and typed into the next (the OAuth client ID and secret into the authentication module, the
 resulting \texttt{access\_token} into the descriptor, and the generated trigger URL into the
-workflow definition), and each is a point where a typo produces a workflow that deploys
-successfully and fails at run time. In the integrated procedure that number is zero: the access
+workflow definition). A typo in any of the first three stops the function from being deployed; a
+typo in the URL is the costlier one, because it produces a workflow that deploys successfully and
+fails only at run time. In the integrated procedure that number is zero: the access
 token is taken from Application Default Credentials by the deployer, the invoker permission is
 granted by the deployer, and the endpoint never leaves the tool: it goes from the provider into
 the registry and from the registry into the rendered workflow.
@@ -1066,7 +1063,7 @@ $0.22\,\mu$s per internal call, a speedup of $200\times$ in the worst corner mea
 (T3, T4, T5), a full \emph{identify (T2) $\rightarrow$ fix $\rightarrow$ quantify (T3)} loop.
 Third, this optimization has since been propagated to the production resolvers (T6, T7), which
 now show the same one-read-plus-a-constant shape as the optimized reference path rather than the
-call-times-registry-size cost they used to pay: $29\,\mu$s (AWS) and $81\,\mu$s (GCP) for a
+per-call reads they used to pay for: $29\,\mu$s (AWS) and $81\,\mu$s (GCP) for a
 200-call workflow.
 Fourth, the AWS agnostic packaging layer adds negligible size (S1). Fifth, resolution cost tracks
 the number of internal calls rather than the workflow's total call count: external calls add only
@@ -1080,15 +1077,9 @@ All measured values lie between microseconds and, in the worst write case, tens 
 a hundred successive miss-and-register pairs against a thousand-entry registry (the most
 expensive operation measured) cost $59$\,ms (T9). Endpoint
 resolution is therefore not the bottleneck of an integrated deployment: the dominant cost is the
-actual cloud deployment (seconds). With the single-read
-optimization now applied uniformly across both production resolvers, the local overhead of the
-unification is asymptotically linear and small beside the deployment it precedes. That conclusion
-covers the local work only. The production cascade also validates every registry hit against the
-live function and, when a call misses, scans the provider's regions; each of those is a network
-round-trip that these benchmarks replace with a local double, so the figures reported here are a
-lower bound on what an integrated deployment actually pays for resolution. How many such
-round-trips each path costs is counted in \S\ref{sec:eval-api-calls}; how long they take is outside
-the scope of this evaluation (\S\ref{sec:eval-scope}).
+actual cloud deployment (seconds). These figures are also a lower bound: the network
+round-trips that validation and discovery add are counted in \S\ref{sec:eval-api-calls}, not timed
+(\S\ref{sec:eval-scope}).
 
 \section{Threats to Validity}
 \label{sec:eval-threats}

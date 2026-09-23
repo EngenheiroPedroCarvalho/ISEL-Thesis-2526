@@ -71,8 +71,9 @@ actual deployment is a last resort rather than a default.
   (exact match first, then a suffix match on \texttt{"region/functionRef"}). A hit is the common
   case for a function that has already been deployed once. The stored endpoint is then validated
   against the live resource (the Cloud Run service on GCP, the Lambda function on AWS) so that
-  a stale binding cannot be used silently: a changed endpoint refreshes the entry, and a deleted one
-  removes it and aborts the deployment. Validation contacts the provider, but the registry keeps it
+  a stale binding cannot be used silently: a changed endpoint refreshes the entry, and a deleted
+  function is looked for in the other regions, its entry replaced if it is found there and removed
+  otherwise, in which case the deployment aborts. Validation contacts the provider, but the registry keeps it
   cheap: an entry records where the function lives (the region inside the Lambda ARN, the full
   resource name of the Cloud Run service), so validation is one lookup in a known place rather than
   the search across every region that Level~2 performs. On GCP, bindings to the first-generation
@@ -398,10 +399,8 @@ A second deployment of the same workflow behaves very differently and illustrate
 indirection: \texttt{fraud-check} is now a Level~1 registry hit, no descriptor is consulted, and no
 function is redeployed. The workflow definition did not change, and it would not have to change if,
 in the meantime, \texttt{fraud-check} had been recreated at a new endpoint (for example, in another
-region): Level~1 validation would find the function at its new endpoint, refresh the registry
-entry and bind the call to it (on GCP, a first-generation Cloud Function is the exception noted in
-\S\ref{sec:resolution-cascade}). Either way, the workflow deployed earlier keeps calling the old endpoint until this re-deployment,
-because the binding is static (\S\ref{sec:resolution-cascade}).
+region): as the static binding of \S\ref{sec:resolution-cascade} describes, this deployment would
+bind the call to the new endpoint, while the workflow deployed earlier keeps calling the old one.
 
 \paragraph{Error and edge cases.}
 The same procedure defines a small number of failure modes, all fail-fast and all reported before
