@@ -110,8 +110,7 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 	optional, and are left empty in this example: \texttt{dependenciesFile} points at a file whose
 	contents are injected into the dependency block of the generated \texttt{pom.xml}, so a function
 	that uses no third-party library needs none, and \texttt{configurationsFile} supplies the
-	\texttt{function-configs.json} packaged with the function and read at execution time through the
-	QuickFaaS libraries. Both fall back to an empty default when omitted.
+	\texttt{function-configs.json} packaged with the function. Both fall back to an empty default when omitted.
  
 	
 	\begin{lstlisting}[language=json, caption={Configuration JSON for QuickFaaS function deployment}, label={lst:quickfaas_json_config}]
@@ -185,9 +184,9 @@ Each \textbf{Step} represents a unit of behaviour inside the workflow. A step be
   \item \textbf{Parallel Step}: steps that execute multiple branches concurrently.
 \end{itemize}
 
-The specialisation is \emph{disjoint}, each step instance is exactly one of these four kinds, which clarifies that a given step cannot simultaneously be, for example, both an execution and a conditional step. This abstract view aligns with the concrete DSL described in~\cite{silva2025advanced, costa2023omniflow}, where execution-oriented constructs (Call, Assign), control-flow constructs (Switch) and structuring constructs (Iteration, Parallel) are all represented as steps that differ only in their role within the workflow.
+A step cannot be, for example, both an execution and a conditional step. In the concrete DSL~\cite{silva2025advanced, costa2023omniflow}, all four are represented as steps that differ only in their role within the workflow.
 
-The underlying implementation still associates each step with metadata such as a \texttt{name} and, internally, a context object that captures the details of the chosen step kind. For execution steps, this context includes parameters such as HTTP method, host and path or variable assignments; for conditional, iteration and parallel steps, the context describes the nested branches or bodies to be executed. This abstraction allows the rest of the dissertation to reason about workflows in terms of a small set of step categories while remaining compatible with the richer, concrete model implemented by OmniFlow and used for rendering provider-specific workflow definitions.
+The underlying implementation still associates each step with metadata such as a \texttt{name} and, internally, a context object that captures the details of the chosen step kind. For execution steps, this context includes parameters such as HTTP method, host and path or variable assignments; for the other categories, it describes the nested branches or bodies to be executed. This abstraction allows the rest of the dissertation to reason about workflows in terms of a small set of step categories while remaining compatible with the richer, concrete model implemented by OmniFlow and used for rendering provider-specific workflow definitions.
 
 
 \subsubsection{Workflow Development Cycle}
@@ -369,9 +368,7 @@ execute the workflow on their own runtime instead of a provider-native service. 
 deployment-time binding is not new in itself: the IaC tools already write a function's endpoint into
 the workflow when both are deployed. What no surveyed work combines is that binding with a workflow
 definition deployable to more than one provider-native service and with functions written against a
-provider-agnostic model. The two portability marks in this work's row come from OmniFlow and
-QuickFaaS; the contribution of this work is the binding across both providers, together with the
-AWS path that makes it available on AWS.
+provider-agnostic model.
 
 \begin{table}[htbp]
   \centering

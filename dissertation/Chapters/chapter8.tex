@@ -25,10 +25,7 @@ cascade}. Internal workflow calls declare a stable logical identifier through th
 step, mutually exclusive with the literal \texttt{host}/\texttt{path} of external calls. At
 deployment time OmniFlow traverses the workflow tree, and for each internal call resolves the
 endpoint from the registry, discovers it directly on the provider, or, as a last resort,
-deploys it through QuickFaaS, writing the resulting metadata back to the registry. Function
-deployment is abstracted behind the \texttt{InternalFunctionDeployer} strategy interface, which
-keeps the two providers symmetric and makes support for a further platform a matter of adding one
-resolver and one deployer.
+deploys it through QuickFaaS, writing the resulting metadata back to the registry.
 
 \paragraph{AWS support (complement).}
 QuickFaaS, previously limited to GCP and Azure, was extended with an AWS provider, and OmniFlow
@@ -122,8 +119,8 @@ symmetry, and explicit fail-fast diagnostics) fits the needs of an organisation 
 orchestration to several accounts or projects, and that must be able to move it to another provider
 (for example, to meet the exit-strategy requirements of the EU Digital Operational Resilience
 Act~\cite{dora2022}, or to expose open-banking functions under PSD2). Reaching that
-setting would require hardening the gaps above: a signed, access-controlled registry backend, an
-attributable write history for audit, and least-privilege IAM under change control. None of these
+setting would require hardening the registry and the IAM model, as proposed in
+Section~\ref{sec:concl-future}. None of these
 changes the resolution cascade itself; they harden the parts around it.
 Chapter~\ref{cha:case-study} works through a concrete instance of this setting (a card-payment
 fraud-screening workflow) to illustrate both the value of the integration and the extent of
@@ -150,11 +147,11 @@ structural ones.
   \item \textbf{Add an update path:} record a hash of each function's source in its registry entry
   and redeploy the function through QuickFaaS when the source its descriptor points to changes, so
   that a workflow deployment also brings its functions up to date.
-  \item \textbf{Harden the registry:} a pluggable backend (database or secret/parameter store)
+  \item \textbf{Harden the registry:} a pluggable, access-controlled backend (database or secret/parameter store)
   behind the current interface, with cross-process locking, per-entry integrity, an in-memory
   cache with explicit invalidation, and an append-only, attributable write history.
-  \item \textbf{Replace the subprocess boundary} by invoking QuickFaaS in-process as a library,
-  removing the two-build-system coupling and the fragile parsing of subprocess output.
+  \item \textbf{Replace the subprocess boundary} by invoking QuickFaaS in-process as a library
+  (Section~\ref{sec:design-rationale}).
   \item \textbf{Move to least-privilege, change-controlled IAM,} with pre-provisioned roles and a
   dry-run mode that reports the IAM changes it would make instead of applying them silently.
   \item \textbf{Introduce test seams} for the cloud-calling code, extracting the SDK interactions

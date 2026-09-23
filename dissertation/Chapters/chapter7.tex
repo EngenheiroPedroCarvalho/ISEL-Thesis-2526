@@ -878,8 +878,9 @@ Both resolvers validate a registry hit on every internal \texttt{call} step, not
 function. The snapshot introduced in \S\ref{sec:eval-real-resolvers} removes the repeated
 \emph{file} reads, but it does not memoise the live lookup that follows them, so a workflow with
 $I$ internal calls that all hit the registry issues $I$ validation requests even when every call
-names the same function ($F{=}1$). This is the mechanism behind the growth in $N$, flat in $F$,
-that T6 and T7 show for the production resolvers. The list of candidate regions, by contrast, is
+names the same function ($F{=}1$). T6 and T7 do not include these requests, since they replace
+the lookup with a local fake on AWS and skip it on GCP (\S\ref{sec:eval-real-resolvers}); with a
+real provider, each adds a network round-trip per internal call. The list of candidate regions, by contrast, is
 fetched at most once per deployment and cached in the resolver, and a region scan is paid only by
 the calls that miss.
 
@@ -1066,8 +1067,7 @@ $0.22\,\mu$s per internal call, a speedup of $200\times$ in the worst corner mea
 Third, this optimization has since been propagated to the production resolvers (T6, T7), which
 now show the same one-read-plus-a-constant shape as the optimized reference path rather than the
 call-times-registry-size cost they used to pay: $29\,\mu$s (AWS) and $81\,\mu$s (GCP) for a
-200-call workflow. The difference between the two providers is the per-call URL parsing the GCP
-resolver performs and the AWS one does not.
+200-call workflow.
 Fourth, the AWS agnostic packaging layer adds negligible size (S1). Fifth, resolution cost tracks
 the number of internal calls rather than the workflow's total call count: external calls add only
 the shared tree-traversal cost, never a registry lookup (T11, T12). Sixth, neither nesting depth
@@ -1088,7 +1088,7 @@ live function and, when a call misses, scans the provider's regions; each of tho
 round-trip that these benchmarks replace with a local double, so the figures reported here are a
 lower bound on what an integrated deployment actually pays for resolution. How many such
 round-trips each path costs is counted in \S\ref{sec:eval-api-calls}; how long they take is outside
-the scope of this evaluation (\S\ref{sec:eval-threats}).
+the scope of this evaluation (\S\ref{sec:eval-scope}).
 
 \section{Threats to Validity}
 \label{sec:eval-threats}
@@ -1104,11 +1104,7 @@ A second limit is one of provenance: T6 and T7 come from a second measurement se
 other experiment comes from the first (\S\ref{sec:eval-methodology}), so the comparison between T6, T7 and the reference path of T4 crosses
 that boundary and should be read as an order-of-magnitude comparison rather than an exact one.
 
-The evaluation is also intentionally local-only: it quantifies the resolution and packaging
-overhead, not the end-to-end cloud deployment latency, which depends on provider-side behaviour
-outside the scope of this work.
-
-The correctness evidence for RQ1 has a similar limit. The resolver tests replace the provider with
+The correctness evidence for RQ1 is local as well. The resolver tests replace the provider with
 test doubles, so they establish that each resolver takes the right decision given what the provider
 reports, not that the real AWS and GCP APIs report what the doubles assume. Evidence against the
 live providers therefore remains to be produced, and the two full-deployment tests the code base
