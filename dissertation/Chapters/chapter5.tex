@@ -44,10 +44,10 @@ automatically as functions are discovered on the target provider or deployed thr
 
 \subsection{Concept and Conventions}
 The DSL-level contract (the \texttt{functionRef} identifier, the
-\texttt{internalFunction(name, \allowbreak deployment\allowbreak Descriptor\allowbreak Path)} construct and the XOR invariant that
+\texttt{internalFunction(name, \allowbreak deployment\allowbreak Descriptor\allowbreak Path)} construct and the rule that
 forbids combining it with a literal \texttt{host}/\texttt{path}) is defined in
 \S\ref{sec:dsl-extensions}, with an example call step in Listing~\ref{lst:call-step-internal}.
-What matters for the implementation is where that invariant is enforced: the DSL builder rejects
+What matters for the implementation is where that rule is enforced: the DSL builder rejects
 the illegal combination when the workflow is constructed, and each resolver checks it again before
 rendering, so an ambiguous call can never reach a provider artifact. External calls never enter
 this path and carry their literal endpoint into the rendered workflow untouched.

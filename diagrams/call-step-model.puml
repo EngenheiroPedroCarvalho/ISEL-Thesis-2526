@@ -31,7 +31,7 @@ StepContext <|.. CallContext
 CallContext "0..1" --> InternalFunction : internalFunction
 
 note bottom of CallContext
-  XOR invariant (enforced at DSL build time,
+  Mutually exclusive (enforced at DSL build time,
   re-checked by the resolvers):
   - external call: host set AND internalFunction = null
   - internal call: internalFunction != null AND host = path = e
