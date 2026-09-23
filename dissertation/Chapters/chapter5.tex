@@ -26,7 +26,7 @@ through to its actual invocation once the workflow has been deployed.
 
 This work introduces a \textit{Function Registry} to decouple workflow definitions from concrete function endpoints, reducing manual coordination between function deployments and workflow orchestration.
 
-Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS). Each provider deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer}, \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{Function\allowbreak Registry\allowbreak Store} and the deployer strategy. The store persists each binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, a \texttt{serviceName} together with a \texttt{url} that is an HTTPS endpoint on GCP and a Lambda ARN on AWS. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer a clean extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
+Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS). Each provider deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer}, \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{Function\allowbreak Registry\allowbreak Store} and the deployer strategy. The store persists each binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, in the file format described below. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer a clean extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
@@ -73,9 +73,9 @@ The registry management layer provides the following behavior:
     resulting invocation metadata is written to the registry, so subsequent deployments
     resolve the function without redeploying it.
     \item \textbf{Drift handling:} on every registry hit, the stored endpoint is validated
-    against the live resource (Cloud Run service on GCP, Lambda function on AWS); if it
-    changed, the entry is refreshed, and if the resource no longer exists, the stale entry is
-    removed and deployment fails with an explicit diagnostic. First-generation Cloud Functions
+    against the live resource (Cloud Run service on GCP, Lambda function on AWS) and the entry is
+    refreshed if it changed; a resource that no longer exists is treated as a stale entry
+    (\S\ref{subsec:validation-error-semantics}). First-generation Cloud Functions
     on GCP are not validated (see the limitation at the end of Section~\ref{subsec:store-internals}).
 \end{itemize}
 
@@ -138,12 +138,8 @@ the same style of scan as GCP: it searches every enabled region for a function-n
 reports a name found in more than one region as ambiguous; the caller skips the scan by supplying
 the fully-qualified \texttt{"<region> /<functionRef>"} form, which resolves a single region directly. A
 region reporting \texttt{ResourceNotFoundException} and one reporting a permissions failure are
-both simply excluded from the candidate set while the scan runs, but the two are told apart at the
-end, exactly as on the GCP path: if the function is found in no region and at least one of the
-scanned regions was inaccessible, the resolver raises a diagnostic naming those regions instead of
-concluding the function is absent everywhere; the absence conclusion is only drawn when every
-scanned region reported a clean \texttt{NotFound}
-(see \S\ref{subsec:validation-error-semantics}). What
+both simply excluded from the candidate set while the scan runs, and are told apart only once it
+ends, exactly as on the GCP path (\S\ref{subsec:validation-error-semantics}). What
 distinguishes the two resolvers is only the underlying provider API each one calls (the Cloud
 Run Locations API versus EC2 \texttt{DescribeRegions} for region discovery, a Cloud Run lookup
 versus \texttt{GetFunction} for the per-region check) and the GCP-only short-circuit for
@@ -219,7 +215,7 @@ refused is simply excluded from the candidate set, the same as a region where th
 absent, so a permissions gap in one region does not by itself stop a match found elsewhere; but if
 the scan ends with no match anywhere and at least one region could not be checked, it surfaces a
 diagnostic naming the inaccessible regions instead of silently concluding the function is absent
-everywhere (see \S\ref{subsec:store-internals}).
+everywhere.
 
 \subsection{Registry Location}
 The registry file is stored in a writable location at runtime (e.g., the working directory or a configurable path provided to the deployer). This avoids attempting to write into packaged resources (which are typically read-only in production).
@@ -242,7 +238,7 @@ deployment time. The registry exists precisely to hold that binding.
 
 \paragraph{A metadata record per function.}
 Each function is represented in the registry by a single structured record,
-\texttt{FunctionInvocationMetadata} (a \texttt{serviceName} plus a \texttt{url}), which the two
+\texttt{FunctionInvocationMetadata}, which the two
 production resolvers, \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly from the
 snapshot they read once per \texttt{resolve()} call (\S\ref{subsec:store-internals}), at the cost
@@ -369,7 +365,7 @@ request automatic role creation).
 
 \section{Runtime Invocation}
 \label{sec:runtime-invocation}
-Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Unlike external calls — which are rendered as \texttt{apigateway:invoke} HTTP tasks — internal calls use the native \texttt{arn:aws:states:::lambda:invoke} integration, with the ARN fixed at deployment time. Step Functions invokes the Lambda directly with the step's payload; the QuickFaaS template entry point adapts the request and delegates to the developer's hook function, and the response is returned under \texttt{\$.Payload}, from which a \texttt{ResultSelector} extracts the value into the step's result variable. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane; this choice is confirmed by the renderer, whose emitted resource for internal calls is \texttt{lambda:invoke} (\texttt{AmazonConstantsUtils}).
+Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Step Functions invokes the Lambda directly, through the native \texttt{arn:aws:states:::lambda:invoke} integration and with the ARN fixed at deployment time, passing it the step's payload; the QuickFaaS template entry point adapts the request and delegates to the developer's hook function, and the response is returned under \texttt{\$.Payload}. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane.
 
 \begin{figure}[htbp]
   \centering
@@ -380,8 +376,9 @@ Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoke
 \end{figure}
 
 
-The distinction between the two forms is made entirely by the renderer,
-\texttt{AmazonCall\allowbreak Renderer}, from the \texttt{host} value injected during resolution. If the host
+Internal and external calls are told apart entirely by the renderer,
+\texttt{AmazonCall\allowbreak Renderer} (whose emitted resource strings live in
+\texttt{AmazonConstantsUtils}), from the \texttt{host} value injected during resolution. If the host
 carries the \texttt{lambda://} prefix (the marker written by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}),
 the renderer emits a \texttt{Task} whose \texttt{Resource} is
 \texttt{arn:aws:states:::lambda:invoke} and whose \texttt{Parameters} carry the
