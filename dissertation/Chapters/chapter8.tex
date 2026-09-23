@@ -67,9 +67,8 @@ follows:
   \item \textbf{Implement an orchestration prototype}: \emph{met on AWS, partially met on GCP.}
   The prototype resolves the internal functions of a workflow on both providers, and deploys the
   missing ones, without endpoints being copied by hand. On GCP, however, the first-generation Cloud
-  Functions that QuickFaaS deploys are not covered by validation or discovery: a stale binding to
-  one of them goes undetected, and a binding lost from the registry cannot be rediscovered
-  (\S\ref{subsec:store-internals}).
+  Functions that QuickFaaS deploys are not covered by validation or discovery
+  (Section~\ref{sec:concl-critical}).
   \item \textbf{Extend QuickFaaS to AWS Lambda}: \emph{met.} QuickFaaS gained an AWS provider
   and OmniFlow an \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
   and~\ref{subsec:omniflow-aws-deployer}). The provider-agnostic packaging layer adds about
