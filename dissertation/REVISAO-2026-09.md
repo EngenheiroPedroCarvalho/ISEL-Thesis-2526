@@ -1,6 +1,6 @@
 # Alterações feitas após a revisão de setembro de 2026
 
-Nota de acompanhamento do PDF novo (`template.pdf`, 98 páginas, compilado a 21/09/2026).
+Nota de acompanhamento do PDF novo (`template.pdf`, 95 páginas, compilado a 23/09/2026).
 
 Responde às **14 anotações** do PDF revisto `pedro-mst 1.pdf`: as 7 da primeira leitura (17/09) e
 as 7 acrescentadas na segunda (20/09). Estão todas aplicadas.
@@ -25,6 +25,21 @@ nota, é preciso traduzir:
 As etiquetas internas (`cha:background`, `ch:related-works`) não foram renomeadas, para não partir
 referências cruzadas.
 
+### Depois de 21/09: duas subsecções a menos em §4.1
+
+A 23/09 a dissertação foi revista à procura de informação repetida, e cada assunto passou a ser
+explicado num só sítio, com remissões nos outros. Os capítulos mantêm a numeração, mas §4.1 perdeu
+duas subsecções, que não traziam nada que não estivesse noutro lado:
+
+| PDF de 21/09 | PDF de 23/09 |
+|---|---|
+| §4.1.9 Registry Location | integrada em §4.1.3 Registry File Format |
+| §4.1.10 Evolution of the Registry Design | **§4.1.9** |
+| §4.1.11 Summary | retirada (repetia §3.1.1 e §4.1.5) |
+
+Com estes cortes o PDF passou de 98 para 95 páginas, por isso as páginas indicadas abaixo são as do
+PDF de 23/09.
+
 ---
 
 ## As 14 notas, uma a uma
@@ -36,19 +51,19 @@ referências cruzadas.
 | 1 | p. 27 — "Juntar background com related work" | Os dois capítulos passaram a um só, com o título "Serverless Portability: Background and State of the Art". As quatro secções de background passaram a subsecções de §2.1; o Related Work e as suas quatro subsecções ficaram em §2.2. | Cap. 2, **p. 7** |
 | 2 | p. 27 — "Alterar parágrafo inicial e ter duas secções, uma de background e outra de related work" | O capítulo tem hoje exatamente duas secções. O parágrafo de abertura foi reescrito: abre com "This chapter has two parts" e anuncia as duas, em vez de anunciar um capítulo só de background. | Cap. 2, abertura, **p. 7** |
 | 3 | p. 30 — "Rever isto" | Revisto o parágrafo sobre o que o QuickFaaS provisiona no GCP, contra o código e a documentação atual da Google. Registada a renomeação das duas gerações (hoje *Cloud Run function (1st gen)* e *Cloud Run function*) e explicado porque é que a dissertação mantém os nomes por geração: é o que distingue as duas APIs que o código chama. URL corrigido para `<project-id>`. Acrescentada a ressalva de que o domínio `cloudfunctions.net` não prova que a função é de 1.ª geração. | §2.1.3.3 "FaaS Deployment Model: The ZIP Strategy", **p. 9** |
-| 4 | p. 36 — "Relê o texto todo, há partes que não se está a perceber bem, vê o CODE" | Secção relida por inteiro. O parágrafo de abertura passou a nomear os quatro grupos antes de os discutir (antes dizia "each group" sem nunca dizer quais). O parágrafo do CODE foi reescrito contra o artigo original (Ristov et al., FGCS 160, 2024): alvo, hierarquia de três níveis, redução de até 9,23× em linhas de código, biblioteca de armazenamento unificada, e o posicionamento face à tese sustentado pelo próprio artigo. Corrigidos erros que quebravam frases e uma família sem numeração em §2.2.3. | §2.2, **p. 15**; parágrafo do CODE em §2.2.1, **p. 16** |
-| 5, 6, 7 | p. 37 — "??", "Section 4.1.1??", "????" | Reescrito o parágrafo sobre a resolução de referências entre recursos em tempo de *deployment*. Frase introdutória nova a dizer o que os mecanismos têm em comum; cada fragmento de sintaxe passou a ser identificado (`!GetAtt MyFunction.Arn`, `Fn::GetAtt: [hello, Arn]`, `${aws_lambda_function.lambda.arn}`); e o ARN passou a ser decomposto campo a campo. As referências cruzadas soltas deixaram de ser um `§` isolado e passaram a nomear o que referenciam. | §2.2.1, **p. 16–17**; referência cruzada corrigida em §2.1.3.3, **p. 9** |
+| 4 | p. 36 — "Relê o texto todo, há partes que não se está a perceber bem, vê o CODE" | Secção relida por inteiro. O parágrafo de abertura passou a nomear os quatro grupos antes de os discutir (antes dizia "each group" sem nunca dizer quais). O parágrafo do CODE foi reescrito contra o artigo original (Ristov et al., FGCS 160, 2024): alvo, hierarquia de três níveis, redução de até 9,23× em linhas de código, biblioteca de armazenamento unificada, e o posicionamento face à tese sustentado pelo próprio artigo. Corrigidos erros que quebravam frases e uma família sem numeração em §2.2.3. | §2.2, **p. 14**; parágrafo do CODE em §2.2.1, **p. 15** |
+| 5, 6, 7 | p. 37 — "??", "Section 4.1.1??", "????" | Reescrito o parágrafo sobre a resolução de referências entre recursos em tempo de *deployment*. Frase introdutória nova a dizer o que os mecanismos têm em comum; cada fragmento de sintaxe passou a ser identificado (`!GetAtt MyFunction.Arn`, `Fn::GetAtt: [hello, Arn]`, `${aws_lambda_function.lambda.arn}`); e o ARN passou a ser decomposto campo a campo. As referências cruzadas soltas deixaram de ser um `§` isolado e passaram a nomear o que referenciam. | §2.2.1, **p. 16**; referência cruzada corrigida em §2.1.3.3, **p. 9** |
 
 ### Segunda leitura (20/09)
 
 | # | Nota (pág. no PDF revisto) | O que foi feito | Onde ver agora |
 |---|---|---|---|
-| 8 | p. 41 — "Dizer também como está organizado o capítulo" | Acrescentado um parágrafo de roteiro no fim da introdução, no mesmo formato do que o capítulo seguinte já tinha. Nomeia as quatro secções e as duas subsecções. | Cap. 3, introdução, **p. 21** |
+| 8 | p. 41 — "Dizer também como está organizado o capítulo" | Acrescentado um parágrafo de roteiro no fim da introdução, no mesmo formato do que o capítulo seguinte já tinha. Nomeia as quatro secções e as duas subsecções. | Cap. 3, introdução, **p. 20** |
 | 9 | p. 41 — "Todas as figuras têm de ter texto que as descreve, no código o mesmo, não pode ser apenas como se vê na listing 2.1" | Ver a secção seguinte: a nota estava marcada no cap. 3, mas foi aplicada a **todos** os capítulos. | Ver abaixo |
-| 10 | p. 42 — "Step 3 in section xxx, em vez de above" | "Step (3) above" passou a "Step (3) of the end-to-end flow listed in Section 3.1", que nomeia a lista em vez de depender da posição na página. | §3.1.1 "The Resolution Cascade", **p. 23** |
-| 11 | p. 48 — "Explica com algum detalhe" | A listagem dos ficheiros de registry era introduzida por uma só frase. Tem hoje dois parágrafos que a leem: os dois campos de topo, a chave (e quando é promovida a `"region/functionRef"`), os dois campos de cada valor, e o contraste entre os dois exemplos (URL HTTPS no GCP, ARN na AWS). Fica dito também o que *não* está no ficheiro. | Listing 3.1, **p. 28** |
-| 12 | p. 49 — "Tens de explicar o código" | O parágrafo do descritor QuickFaaS remetia para a Listing 2.1 sem dizer o que lá está. Descreve hoje os campos em três grupos (onde, o quê, e o código), seguidos dos dois que importam à integração: `function.name` tem de ser igual ao `functionRef`, e `function.location` fixa a região. Acrescentada a ressalva de que na AWS o `accessToken` fica vazio, porque o *provider* lê as credenciais do ambiente. | Parágrafo "QuickFaaS Deployment Descriptor and Code File", **p. 29** |
-| 13, 14 | p. 52 — "Rever" (×2) | Eram dois defeitos de composição na mesma frase: o nome de uma classe impresso partido com hífen entre linhas (como se a classe se chamasse `Google-CloudDeployer`) e outro identificador a entrar pela margem. Ambos corrigidos, e a frase — que acumulava dois parêntesis encaixados — foi dividida em duas. Sem alteração de conteúdo. | §4.1, abertura, **p. 33** |
+| 10 | p. 42 — "Step 3 in section xxx, em vez de above" | "Step (3) above" passou a "Step (3) of the end-to-end flow listed in Section 3.1", que nomeia a lista em vez de depender da posição na página. | §3.1.1 "The Resolution Cascade", **p. 22** |
+| 11 | p. 48 — "Explica com algum detalhe" | A listagem dos ficheiros de registry era introduzida por uma só frase. Tem hoje dois parágrafos que a leem: os dois campos de topo, a chave (e quando é promovida a `"region/functionRef"`), os dois campos de cada valor, e o contraste entre os dois exemplos (URL HTTPS no GCP, ARN na AWS). Fica dito também o que *não* está no ficheiro. | Listing 3.1, **p. 26–27** |
+| 12 | p. 49 — "Tens de explicar o código" | O parágrafo do descritor QuickFaaS remetia para a Listing 2.1 sem dizer o que lá está. Descreve hoje os campos em três grupos (onde, o quê, e o código), seguidos dos dois que importam à integração: `function.name` tem de ser igual ao `functionRef`, e `function.location` fixa a região. Acrescentada a ressalva de que na AWS o `accessToken` fica vazio, porque o *provider* lê as credenciais do ambiente. | Parágrafo "QuickFaaS Deployment Descriptor and Code File", **p. 28** |
+| 13, 14 | p. 52 — "Rever" (×2) | Eram dois defeitos de composição na mesma frase: o nome de uma classe impresso partido com hífen entre linhas (como se a classe se chamasse `Google-CloudDeployer`) e outro identificador a entrar pela margem. Ambos corrigidos, e a frase — que acumulava dois parêntesis encaixados — foi dividida em duas. Sem alteração de conteúdo. | §4.1, abertura, **p. 32** |
 
 ---
 
@@ -62,10 +77,10 @@ Quase todas já eram lidas pelo texto. Havia cinco lacunas, todas fechadas:
 | Onde | O que faltava |
 |---|---|
 | Listing 2.1 (`func-deployment.json`), **p. 11** | Quatro campos visíveis na listagem ficavam por explicar. Novo parágrafo sobre `function.location`, `function.bucket`, e os dois opcionais `dependenciesFile` e `configurationsFile`. |
-| Listing 3.1 (ficheiros de registry), **p. 28** | Nota 11, acima. |
-| Listing 3.2 (call step com `internalFunction`), **p. 29** | Só tinha a frase "Listing 3.2 shows a call step". Novo parágrafo a explicar o código: o vocabulário comum a qualquer step, e sobretudo a ausência de `host`/`path`, substituídos pelo `functionRef` e pelo caminho do descritor. |
-| Parágrafo do descritor QuickFaaS, **p. 29** | Nota 12, acima. |
-| Listing 4.2 (estado Step Functions gerado), **p. 43** | O texto explicava quatro campos, mas a listagem mostra também `InputPath` e `Next`. Acrescentada a frase que os cobre. |
+| Listing 3.1 (ficheiros de registry), **p. 26–27** | Nota 11, acima. |
+| Listing 3.2 (call step com `internalFunction`), **p. 27–28** | Só tinha a frase "Listing 3.2 shows a call step". Novo parágrafo a explicar o código: o vocabulário comum a qualquer step, e sobretudo a ausência de `host`/`path`, substituídos pelo `functionRef` e pelo caminho do descritor. |
+| Parágrafo do descritor QuickFaaS, **p. 28** | Nota 12, acima. |
+| Listing 4.2 (estado Step Functions gerado), **p. 41** | O texto explicava quatro campos, mas a listagem mostra também `InputPath` e `Next`. Acrescentada a frase que os cobre. |
 
 As restantes já tinham texto descritivo: o encadeamento da Listing 2.3 tem três parágrafos; o
 modelo de classes, a sequência de *deployment* e a invocação em execução do cap. 4 têm um parágrafo
@@ -98,7 +113,7 @@ Trabalho de consistência que saiu da revisão, mas que não estava assinalado:
 - **Referência do artigo do CISTI** (bibliografia). Reduzida ao que já se sabe — autores, título e
   ano — enquanto não houver local, páginas e DOI.
 
-- **Cap. 5, parágrafo da Listing 5.1** (p. 45). Uma frase contrastava as chamadas internas com "the
+- **Cap. 5, parágrafo da Listing 5.1** (p. 43). Uma frase contrastava as chamadas internas com "the
   external `risk-score` variant" da Listing 3.4, que não mostra variante nenhuma com esse nome:
   mostra o passo `external-risk-api`, uma API de um parceiro. Reescrita.
 
@@ -106,7 +121,7 @@ Trabalho de consistência que saiu da revisão, mas que não estava assinalado:
 
 ## Estado da compilação
 
-98 páginas, sem referências por resolver, 48 entradas na bibliografia para 48 citadas, e os 8
+95 páginas, sem referências por resolver, 48 entradas na bibliografia para 48 citadas, e os 8
 avisos de *overfull hbox* do template referidos acima.
 
 ## Limitação conhecida, documentada e não fechada
