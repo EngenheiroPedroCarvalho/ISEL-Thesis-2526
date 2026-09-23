@@ -228,10 +228,8 @@ the intermediate stages, which makes the design decisions worth recounting. Five
 how it evolved.
 
 \paragraph{From literal endpoints to logical indirection.}
-The starting point was the plain OmniFlow \texttt{call} step, which embeds a concrete
-\texttt{host}/\texttt{path}. This couples the workflow definition to a specific deployed instance
-of a function, so deploying that function anywhere else (another region, account, project or
-provider) forces an edit to the workflow. The
+The starting point was the plain OmniFlow \texttt{call} step, with the coupling that its literal
+\texttt{host}/\texttt{path} creates. The
 first design move was therefore to introduce a level of indirection: the workflow names a function
 through a stable \texttt{functionRef}, and the concrete endpoint is bound from the registry at
 deployment time. The registry exists precisely to hold that binding.

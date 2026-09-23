@@ -300,11 +300,8 @@ placeholders in its Amazon States Language definition to values such as
 \texttt{!GetAtt MyFunction.Arn}, a CloudFormation expression that reads the \texttt{Arn} attribute
 of the function resource \texttt{MyFunction} declared in the same template~\cite{awsSamStateMachine}.
 The value that expression yields is the function's Amazon Resource Name (ARN) introduced in
-\S\ref{sec:int_cha_int_uni_multi}, \texttt{arn:\allowbreak aws:\allowbreak lambda:\allowbreak%
-<region>:\allowbreak <account-id>:\allowbreak function:\allowbreak <name>}: a fixed prefix, the
-service, then the region and the account in which the function was created, and finally the name
-it was given there. Only the first fields are known when the template is written: the account
-and the deployed name are not, and \texttt{MyFunction} is the resource's logical identifier inside
+\S\ref{sec:int_cha_int_uni_multi}. Only its first fields are known when the template is written:
+the account and the deployed name are not, and \texttt{MyFunction} is the resource's logical identifier inside
 the template rather than the name the function ends up carrying. That is why the workflow names
 it through an expression instead of a literal string. The reference also fixes the order of the
 deployment: CloudFormation reads a \texttt{!GetAtt} to another resource as an implicit dependency,
