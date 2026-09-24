@@ -159,7 +159,7 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 OmniFlow is a Kotlin-based library and Domain Specific Language (DSL) for defining serverless workflows independently of a specific provider workflow schema. The developer writes the workflow once using the OmniFlow DSL and the library translates that abstract definition into the workflow format required by a chosen cloud provider (e.g., Google Cloud Workflows) and deploys it through the provider APIs. By separating \emph{workflow logic} from \emph{provider-specific workflow definitions}, OmniFlow aims to reduce orchestration-level lock-in and make workflow specifications easier to maintain over time~\cite{costa2023omniflow,silva2025advanced}.
 
 \subsubsection{Components Overview}
-OmniFlow is designed as a client-side library integrated into the developer’s application. Conceptually, the library can be understood as a pipeline with three major responsibilities: (i) the DSL used to define the workflow, (ii) an internal representation of that workflow and (iii) a rendering and deployment layer that produces and deploys the provider-specific workflow artifact~\cite{silva2025advanced}.
+OmniFlow is designed as a client-side library integrated into the developer’s application, organised in four components that run in sequence~\cite{silva2025advanced}:
 
 \begin{enumerate}
 	\item \textbf{Domain Specific Language (DSL):} the developer-facing interface used to define workflows in Kotlin. OmniFlow relies on Kotlin’s \emph{type-safe builder} style to provide a structured and readable syntax for declaring workflow metadata and steps~\cite{type-safe_builders}.
@@ -226,8 +226,6 @@ val ChainWorkflow = workflow {
   result("processedData")
 }
 \end{lstlisting}
-
-OmniFlow's call step is itself agnostic to what kind of compute resource answers at that endpoint: on GCP, it invokes whatever HTTP host and path the developer supplies, whether that address belongs to a (first-generation) Cloud Function or a Cloud Run service; the DSL and the renderer have no notion of the distinction described in \S\ref{sec:background_quickfaas}. This becomes significant once function endpoints are resolved automatically rather than hard-coded by the developer (Chapter~\ref{ch:proposed_solution}), since an automatic resolution mechanism must itself account for a difference that OmniFlow, by design, never had to.
 
 A practical limitation follows from this design: OmniFlow call steps require concrete invocation
 targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment
@@ -360,8 +358,8 @@ while tools that target workflow portability (Serverless Workflow, Temporal, Tri
 execute the workflow on their own runtime instead of a provider-native service. Second,
 deployment-time binding is not new in itself: the IaC tools already write a function's endpoint into
 the workflow when both are deployed. What no surveyed work combines is that binding with a workflow
-definition deployable to more than one provider-native service and with functions written against a
-provider-agnostic model.
+definition deployable to more than one provider-native service, with functions written against a
+provider-agnostic model and, when a function is missing, with its deployment on demand.
 
 \begin{table}[htbp]
   \centering
@@ -411,8 +409,3 @@ provider-agnostic model.
   portability) and OmniFlow (workflow portability); this work adds the deployment-time binding on
   both providers.}
 \end{table}
-
-The OmniFlow--QuickFaaS integration combines these capabilities, including the on-demand
-deployment of a referenced function that is missing, while remaining aligned with provider-native
-execution surfaces (managed workflows and managed FaaS), avoiding the need to introduce and operate
-an entirely new workflow runtime layer.

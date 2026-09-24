@@ -89,3 +89,15 @@ este ficheiro.)
   contagem de chamadas à API (já está na lista das seis partes); a abertura de §6.6 encurtada.
 - **Cap. 7 Conclusions (`chapter8.tex`):** §7.1 Summary of Contributions reduzida a um parágrafo
   (repetia os objetivos 1 e 3 de §7.2 e a lista do trabalho do deployer AWS).
+
+### Sexta revisão de informação repetida (grupo A)
+
+- **Cap. 2 (`chapter2.tex`):**
+  - §2.1.4.1: a frase de abertura deixa de enumerar "three major responsibilities", que a lista
+    seguinte voltava a apresentar como quatro componentes; passa só a introduzir a lista;
+  - §2.1.4.3: retirado o parágrafo sobre o call step ser indiferente à geração da função, que
+    repetia a antecipação de §2.1.3.3;
+  - §2.2: retirado o parágrafo final, que repetia a conclusão da tabela comparativa; a ideia nova
+    que tinha (a implantação, a pedido, de uma função em falta) passa para essa conclusão.
+- **Cap. 4 Implementation (`chapter5.tex`, §4.2):** retirada a frase que repetia o fim de §4.1.5
+  sobre os passos operacionais que o diagrama AWS mostra.
