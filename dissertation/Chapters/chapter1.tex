@@ -102,9 +102,8 @@ directions.
 Each of the challenges above can be worked around by hand, and for a single deployment the cost of
 doing so is small. What makes them worth addressing is that the work is repeated. Every function
 added to a workflow, every move between regions, accounts or providers and every additional
-deployment target sends the developer back through the same sequence: deploy the function, read the
-endpoint it was given, write that endpoint into the workflow definition and check by hand that the
-two agree. The effort therefore grows with the number of functions a workflow calls and with the
+deployment target sends the developer back through the manual pre-deployment described above. The
+effort therefore grows with the number of functions a workflow calls and with the
 number of targets it is deployed to, and it grows in the one part of the process (copying a
 value from one tool into another) that contributes nothing to the application being built.
 
@@ -140,7 +139,7 @@ Two research questions guide the work:
 To answer them, this work aims to:
 
 \begin{enumerate}
-	\item \textbf{Design a unified integration architecture:} define the components and interfaces required for OmniFlow to coordinate workflow deployment with function availability. This includes the introduction of logical function identifiers (\texttt{functionRef}), a registry to store non-secret invocation metadata and an explicit mechanism (the \texttt{internalFunction} construct on the call step) that allows the developer to have QuickFaaS deploy a function that does not exist yet.
+	\item \textbf{Design a unified integration architecture:} define the components and interfaces required for OmniFlow to coordinate workflow deployment with function availability. This includes the introduction of logical function identifiers (\texttt{functionRef}), a registry of invocation metadata and an explicit mechanism (the \texttt{internalFunction} construct on the call step) that allows the developer to have QuickFaaS deploy a function that does not exist yet.
 
 	\item \textbf{Implement an orchestration prototype:} develop a working prototype that integrates the libraries so that a serverless application, comprising both the workflow definition and its function dependencies, can be deployed predictably to a single provider without manually copying endpoints into the workflow definition.
 
@@ -174,16 +173,15 @@ The contributions of this dissertation are the following:
 	two forms are mutually exclusive, so the origin of every invoked function is unambiguous.
 
 	\item \textbf{A function registry and a deployment-time resolution cascade.} A per-provider
-	registry stores the non-secret invocation metadata of each internal function, and a three-level
+	registry stores the invocation metadata of each internal function, and a three-level
 	cascade binds each logical name to a concrete endpoint before the workflow is rendered: a
 	registry entry validated against the live function, provider discovery across regions, and, only
 	when the function is confirmed to be absent and a descriptor was supplied, deployment through
 	QuickFaaS. The cascade fails fast: an inconclusive lookup aborts the deployment instead of
 	deploying a function that may already exist.
 
-	\item \textbf{AWS Lambda support in QuickFaaS.} QuickFaaS, which deployed to GCP and Azure,
-	gains an AWS provider, and OmniFlow gains the matching function deployer, which extends the
-	unification to AWS.
+	\item \textbf{AWS Lambda support in QuickFaaS.} QuickFaaS gains an AWS provider, and OmniFlow
+	the matching function deployer, which extends the unification to AWS.
 
 	\item \textbf{A prototype and a case study.} The two tools are integrated into a working
 	prototype in which a single workflow definition deploys, with its internal functions, to AWS or

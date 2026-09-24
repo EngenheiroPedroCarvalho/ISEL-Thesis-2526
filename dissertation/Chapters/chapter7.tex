@@ -118,9 +118,6 @@ two tests of the registry bootstrap.
   \end{tabular}
 \end{table}
 
-The tests check the decisions of the cascade, not the behaviour of the providers
-(Section~\ref{sec:eval-threats}).
-
 \section{Methodology}
 \label{sec:eval-methodology}
 
@@ -144,10 +141,8 @@ Measurements were taken on an Apple Silicon laptop running macOS, otherwise idle
 dedicated benchmarking machine. With three forks the run-to-run spread is small: the 99.9\%
 confidence interval is under 1\% of the score for half the measurements and under 6\% for nine out
 of ten. The tables omit those intervals for readability; the few points where the interval is a
-large fraction of the score are identified in the text and should be read as noise. What the
-figures do not capture is hardware sensitivity: file I/O dominates several of these experiments, so
-on a machine with slower storage every registry read and write would cost more, while the
-relationships between experiments would hold.
+large fraction of the score are identified in the text and should be read as noise. How far the
+values carry over to other hardware is discussed in Section~\ref{sec:eval-threats}.
 
 \paragraph{Experiment identifiers.}
 Experiments keep the identifiers they carry in the benchmark suite, and this chapter reports
@@ -467,10 +462,8 @@ column is the cost of one read plus 50 lookups, and tracks the per-read cost mea
 Experiments T6 and T7 measure the resolvers that actually run during deployment, one per
 provider: \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-t6} and Figure~\ref{fig:eval-t6}) and
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-t7} and Figure~\ref{fig:eval-t7}), with the
-registry always hitting ($R{=}F$). Both now carry the single-read optimization demonstrated in
-T3--T5 (\S\ref{sec:eval-resolution}): each resolver reads the registry once into a snapshot per
-\texttt{resolve()} call and looks up every internal call against it
-(\texttt{Function\allowbreak Registry\allowbreak Store.\allowbreak try\allowbreak Resolve\allowbreak Entry\allowbreak In}) instead of re-reading the file per call.
+registry always hitting ($R{=}F$). Both use the single-read snapshot described in
+\S\ref{subsec:store-internals}, whose effect T3--T5 demonstrated on the reference resolver.
 Neither experiment reaches a provider: on AWS the inspector is a local fake that confirms every
 registered function, and on GCP the registry holds first-generation \texttt{cloudfunctions.net}
 URLs, so the resolver short-circuits before any Cloud Run call
@@ -585,9 +578,7 @@ the write rewrites it. The production resolvers do not pay this surcharge: they 
 in the snapshot with \texttt{tryResolveEntryIn}, so their writes cost what T8 measures. The surcharge grows with $R_0$ (about 30\% on an empty registry, about
 60\% at $R_0{=}1000$), which is what an extra full read of a growing file predicts. One point
 disagrees, $K{=}10$ at $R_0{=}10$, and its confidence interval ($\pm732\,\mu$s on a mean of
-$874\,\mu$s) says it is noise rather than an effect. In absolute terms both tables stay in
-microseconds per write and reach tens of milliseconds only for $K{=}100$ successive writes into a
-thousand-entry registry.
+$874\,\mu$s) says it is noise rather than an effect.
 
 \begin{figure}[htbp]
   \centering
@@ -1061,10 +1052,8 @@ optimization eliminates that
 call-times-registry-size product, reducing resolution to one read of the registry plus about
 $0.22\,\mu$s per internal call, a speedup of $200\times$ in the worst corner measured
 (T3, T4, T5), a full \emph{identify (T2) $\rightarrow$ fix $\rightarrow$ quantify (T3)} loop.
-Third, this optimization has since been propagated to the production resolvers (T6, T7), which
-now show the same one-read-plus-a-constant shape as the optimized reference path rather than the
-per-call reads they used to pay for: $29\,\mu$s (AWS) and $81\,\mu$s (GCP) for a
-200-call workflow.
+Third, the production resolvers (T6, T7) show the same one-read-plus-a-constant shape as the
+optimized reference path: $29\,\mu$s (AWS) and $81\,\mu$s (GCP) for a 200-call workflow.
 Fourth, the AWS agnostic packaging layer adds negligible size (S1). Fifth, resolution cost tracks
 the number of internal calls rather than the workflow's total call count: external calls add only
 the shared tree-traversal cost, never a registry lookup (T11, T12). Sixth, neither nesting depth
@@ -1084,16 +1073,18 @@ round-trips that validation and discovery add are counted in \S\ref{sec:eval-api
 \section{Threats to Validity}
 \label{sec:eval-threats}
 
-The absolute numbers characterise the machine they were measured on rather than serverless
-deployment hardware in general, and the factor they are most sensitive to is storage rather than
-processor speed (\S\ref{sec:eval-methodology}). What they support is therefore the shape of each
+The absolute numbers characterise the machine they were measured on
+(\S\ref{sec:eval-methodology}) rather than serverless deployment hardware in general. File I/O
+dominates several of the experiments, so the factor they are most sensitive to is storage rather
+than processor speed: on slower storage every registry read and write would cost more, while the
+relationships between experiments would hold. What they support is therefore the shape of each
 cost and the relationships between the experiments, which the shared measurement conditions make
 comparable, rather than the values themselves; the individual points whose confidence intervals
 are wide are identified where they appear and are not used to support any claim.
 
-A second limit is one of provenance: T6 and T7 come from a second measurement session while every
-other experiment comes from the first (\S\ref{sec:eval-methodology}), so the comparison between T6, T7 and the reference path of T4 crosses
-that boundary and should be read as an order-of-magnitude comparison rather than an exact one.
+A second limit is one of provenance: because T6 and T7 come from a second measurement session
+(\S\ref{sec:eval-methodology}), their comparison with the reference path of T4 should be read as
+an order-of-magnitude comparison rather than an exact one.
 
 The correctness evidence for RQ1 is local as well. The resolver tests replace the provider with
 test doubles, so they establish that each resolver takes the right decision given what the provider

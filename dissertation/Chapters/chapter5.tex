@@ -29,30 +29,21 @@ Figure~\ref{fig:omniflow-integration-classes} details the classes that realise t
   \label{fig:omniflow-integration-classes}
 \end{figure}
 
-
-\subsection{Motivation}
-A literal \texttt{host}/\texttt{path} ties the workflow definition to one deployment of each
-function (Section~\ref{sec:int_cha_int_uni_multi}). The Function Registry removes that tie:
-workflows reference internal functions through stable logical identifiers, and the endpoint is
-bound to the identifier only at deployment time. Beyond endpoint indirection, the registry also serves as the persistence layer of the
-resolution cascade, which creates and refreshes its entries (\S\ref{subsec:registry-updates}).
-
-
-
-\subsection{Concept and Conventions}
-The DSL-level contract (the \texttt{functionRef} identifier, the
-\texttt{internalFunction(name, \allowbreak deployment\allowbreak Descriptor\allowbreak Path)} construct and the rule that
-forbids combining it with a literal \texttt{host}/\texttt{path}) is defined in
-\S\ref{sec:dsl-extensions}, with an example call step in Listing~\ref{lst:call-step-internal}.
-What matters for the implementation is where that rule is enforced: the DSL builder rejects
-the illegal combination when the workflow is constructed, and each resolver checks it again before
-rendering, so an ambiguous call can never reach a provider artifact.
+The registry realises the indirection defined in \S\ref{sec:dsl-extensions}, through which a
+workflow names an internal function by its \texttt{functionRef}, and is also the persistence layer
+of the resolution cascade, which creates and refreshes its entries (\S\ref{subsec:registry-updates}).
 
 \subsection{Registry File Format}
 The file format is the one described in \S\ref{sec:dsl-extensions} and shown in
 Listing~\ref{lst:registry-structure}: one JSON file per provider
-(\texttt{function-registry.gcp.json} or \texttt{function-registry.aws.json} by default), holding
-only non-secret invocation metadata. Two conventions become visible only in a registry that has been in use. A function deployed by QuickFaaS on GCP is stored under its plain \texttt{functionRef}, with a first-generation \texttt{cloudfunctions.net} URL; a Cloud Run service found by discovery is stored under a region-qualified key such as \texttt{"europe-west1/risk-score"}, whose \texttt{serviceName} is the full resource name \texttt{projects/proj/locations/europe-west1/services/risk-score} rather than the bare service id. The file is kept in a writable location (the working directory by default, or a path given to the deployer), never inside packaged resources, which are typically read-only in production.
+(\texttt{function-registry.gcp.json} or \texttt{function-registry.aws.json} by default). Two conventions become visible only in a registry that has been in use. On GCP, a function
+deployed by QuickFaaS carries a first-generation \texttt{cloudfunctions.net} URL, whereas a Cloud
+Run service found by discovery or by the bootstrap carries, as its \texttt{serviceName}, the full
+resource name \texttt{projects/\allowbreak proj/\allowbreak locations/\allowbreak europe-west1/\allowbreak services/\allowbreak risk-score}
+rather than the bare service id. The key follows the rule of \S\ref{sec:dsl-extensions} in both
+cases: the bare \texttt{functionRef}, or a region-qualified key such as
+\texttt{"europe-west1/\allowbreak risk-score"} when the call used that form or the bootstrap found
+the same name in more than one region. The file is kept in a writable location (the working directory by default, or a path given to the deployer), never inside packaged resources, which are typically read-only in production.
 
 \subsection{Creation, Bootstrap and Updates}
 \label{subsec:registry-updates}
@@ -72,11 +63,9 @@ The registry management layer provides the following behavior:
     \item \textbf{Post-deployment updates:} after a successful QuickFaaS deployment, the
     resulting invocation metadata is written to the registry, so subsequent deployments
     resolve the function without redeploying it.
-    \item \textbf{Drift handling:} on every registry hit, the stored endpoint is validated
-    against the live resource (Cloud Run service on GCP, Lambda function on AWS) and the entry is
-    refreshed if it changed; a resource that no longer exists is treated as a stale entry
-    (\S\ref{sec:walkthrough}), except for first-generation Cloud Functions on GCP
-    (\S\ref{subsec:store-internals}).
+    \item \textbf{Drift handling:} a registry hit whose endpoint has changed is refreshed, and an
+    entry whose function no longer exists is replaced or removed, as Level~1 of the cascade
+    prescribes (\S\ref{sec:resolution-cascade}).
 \end{itemize}
 
 Every write refreshes the top-level \texttt{updatedAt} timestamp.
@@ -111,13 +100,10 @@ that lookup against an already-loaded map with no I/O of its own (the same split
 performance consequences of this choice are analysed in Chapter~\ref{cha:evaluation}.
 
 The two provider resolvers sit on top of this store. \\
-\texttt{WorkflowInternalFunctionResolver} (GCP) treats a registry hit as provisional: it
-validates the stored URL against the live Cloud Run service and, if the URL has drifted, refreshes
-the entry; if the service has disappeared, it attempts rediscovery across the project's regions
-and, failing that, removes the stale entry and aborts. It also short-circuits validation for
-first-generation Cloud Functions (identified by a \texttt{cloudfunctions.net} URL), which are not
-Cloud Run services. When a function is absent from the registry, it is looked up across regions,
-and a match in more than one region is reported as ambiguous.\\
+\texttt{WorkflowInternalFunctionResolver} (GCP) realises the three levels of
+\S\ref{sec:resolution-cascade} on the Cloud Run API, with one exception: a hit on a
+first-generation Cloud Function (identified by a \texttt{cloudfunctions.\allowbreak net} URL), which is not a
+Cloud Run service, is returned without validation.\\
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} follows the same shape on the Lambda API: it
 reads the region to validate from the stored ARN and consults the Lambda API through a
 \texttt{Lambda\allowbreak Function\allowbreak Inspector} seam, and a permissions failure aborts rather than
@@ -127,9 +113,7 @@ locations API, whereas AWS has no equivalent for Lambda, so a dedicated
 \texttt{Ec2Aws\allowbreak Regions\allowbreak Lister}, backed by the EC2 \texttt{DescribeRegions} call, was added to
 play that role; an optional preferred region, when supplied, is tried first in both the
 rediscovery and the miss-path scan. \\
-On a registry miss, the caller can skip the AWS scan by supplying the fully-qualified
-\texttt{"region/\allowbreak functionRef"} form, which resolves a single region directly; regions where the
-lookup is refused are handled as on the GCP path (\S\ref{subsec:validation-error-semantics}). What
+On AWS, regions where the lookup is refused are handled as on the GCP path (\S\ref{subsec:validation-error-semantics}). What
 distinguishes the two resolvers is only the provider API each one calls (the region discovery
 above, and a Cloud Run lookup versus \texttt{GetFunction} for the per-region check) and the
 GCP-only short-circuit noted above.
@@ -156,9 +140,7 @@ first-generation functions, so a binding missing from the registry (for example,
 registry file was deleted or the deployment runs on another machine) cannot be rediscovered. With a
 descriptor, the cascade reaches Level~3 and invokes QuickFaaS again for a function that already
 exists; without one, deployment fails and reports the function as absent. The AWS path is not
-affected. Closing the gap requires QuickFaaS to deploy through the Cloud Functions~v2 API, so that
-the functions it creates are Cloud Run services and fall under the validation, discovery and
-bootstrap already implemented; this is listed as future work (Section~\ref{sec:concl-future}).
+affected. How the gap could be closed is listed as future work (Section~\ref{sec:concl-future}).
 
 \subsection{Resolution Cascade Sequences}
 \label{subsec:cascade-sequences}
@@ -204,17 +186,13 @@ everywhere.
 
 The registry did not arrive at its current form in a single step; the source tree still exposes
 the intermediate stages, which makes the design decisions worth recounting. Its starting point was
-the indirection motivated above; four threads describe how it evolved from there.
+the indirection of \S\ref{sec:dsl-extensions}; four threads describe how it evolved from there.
 
 \paragraph{A metadata record per function.}
 Each function is represented in the registry by a single structured record,
 \texttt{FunctionInvocationMetadata}, which the two
 production resolvers, \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
-\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly (\S\ref{subsec:store-internals}), at the cost
-measured in Section~\ref{sec:eval-real-resolvers}. The same single-read strategy is also implemented by a benchmark fixture,
-\texttt{OptimizedEndpointResolver}, which the local-resolution benchmark suite uses as a pure,
-provider-agnostic reference implementation, without the live validation the real resolvers
-perform against a cloud API.
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly (\S\ref{subsec:store-internals}).
 
 \paragraph{From provider-specific fields to a uniform endpoint.}
 Collapsing the endpoint into one \texttt{url} field was the change that made the AWS extension
@@ -228,9 +206,10 @@ The registry also evolved from something the developer would maintain by hand in
 integration maintains automatically, through the bootstrap, registration, refresh and pruning
 listed in \S\ref{subsec:registry-updates}. In parallel, the resolution path itself was refined from
 re-reading the whole file on every lookup (\texttt{resolveUrl}) toward reading it once into a
-snapshot and resolving in memory (\texttt{readAll} + \texttt{resolveUrlIn}); the performance effect
-of that refinement, and its propagation into the two production resolvers, are quantified in
-Chapter~\ref{cha:evaluation}.
+snapshot and resolving in memory (\texttt{readAll} + \texttt{resolveUrlIn}), first in a benchmark
+fixture, \texttt{OptimizedEndpointResolver}, which the local-resolution benchmarks still use as a
+provider-agnostic reference without live validation, and then in the two production resolvers
+(\S\ref{subsec:store-internals}); Chapter~\ref{cha:evaluation} quantifies the effect on both.
 
 \paragraph{From a trusted cache to a verified indirection.}
 The two production resolvers did not always treat a registry hit the same way.
@@ -240,8 +219,7 @@ triple that only the registry supplies. \texttt{Aws\allowbreak Internal\allowbre
 trusted a hit outright, returning the cached ARN with no live check, since a Lambda name is
 already unique within a region and validating brought no discovery benefit on its own. This
 asymmetry was closed by introducing \texttt{Lambda\allowbreak Function\allowbreak Inspector}, the AWS counterpart to
-the Cloud Run inspector: a hit is now confirmed live on both providers, through
-\texttt{GetFunction} on AWS, and a drifted or deleted function is handled the same way on each
+the Cloud Run inspector: a hit is now confirmed live on both providers
 (\S\ref{subsec:store-internals}). The change did not make the registry
 redundant, only its trust model stricter: the live check answers whether a binding the registry
 already named is still accurate, not what to look up or whether a deployment is owed. Indirection
@@ -280,7 +258,7 @@ and \texttt{java17}. Because \texttt{GetBucketLocation} must be issued against t
 the provider resolves the bucket's region from \texttt{us-east-1} and then pins the Lambda client
 to that same region, ensuring the function and its code bucket are co-located. Finally, the
 provider creates (or reuses) a Lambda \emph{Function URL} with \texttt{AuthType = AWS\_IAM},
-QuickFaaS's own notion of an invocation endpoint, which the OmniFlow integration does not use.
+QuickFaaS's own notion of an invocation endpoint.
 
 \subsection{The OmniFlow-Side Deployer}
 \label{subsec:omniflow-aws-deployer}

@@ -245,7 +245,7 @@ endpoints copied into the definition. This is the manual synchronisation describ
 
 The proposed integration between \textit{OmniFlow} (workflow definition/deployment) and \textit{QuickFaaS} (function definition/deployment)
 sits at the intersection of two problem areas: (i) composing and deploying workflows without being forced to embed provider-specific workflow specifications and (ii) deploying cloud functions with reduced provider coupling.
-Although each deployment target in this dissertation is a \emph{single provider at a time} (e.g., a workflow deployed on GCP should invoke only functions deployed on GCP), portability concerns remain relevant because developers still want to avoid hard-coding endpoints and to preserve the ability to migrate or re-deploy the same application in another provider with minimal changes.
+Although each deployment target in this dissertation is a \emph{single provider at a time} (\S\ref{sec:int_cha_int_uni_multi}), portability concerns remain relevant because developers still want to avoid hard-coding endpoints and to preserve the ability to migrate or re-deploy the same application in another provider with minimal changes.
 
 This section reviews the tools, frameworks and methods surveyed in the QuickFaaS
 publication~\cite{rodrigues2022quickfaas} and in the OmniFlow
@@ -322,9 +322,7 @@ bind a workflow only to functions declared or explicitly referenced in the same 
 configuration, whereas the resolution cascade also discovers a function deployed by other means.
 What none of them offers is a workflow definition independent of the provider: the state machine is
 written in the Amazon States Language, and a GCP workflow would be a separate definition in another
-language, with its own references to its own functions. This category therefore addresses
-\textit{deployment automation}, binding a workflow to its functions within one template, but not
-for a workflow definition that can be deployed to more than one provider.
+language, with its own references to its own functions.
 
 \subsection{Portable Execution Layers and Code Transformation to FaaS}
 

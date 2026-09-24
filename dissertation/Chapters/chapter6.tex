@@ -189,19 +189,13 @@ the workflow definition.
 \section{Runtime Invocation}
 \label{sec:case-runtime}
 
-Once deployed, a transaction flows through \texttt{PaymentAuthorization} differently depending on
-which deployment served it, even though the DSL is identical. On the AWS deployment, Step
-Functions invokes \texttt{fraud-check} and \texttt{risk-score} through the native
-\texttt{arn:aws:states:::lambda:invoke} integration described in Section~\ref{sec:runtime-invocation}
-and shown in Figure~\ref{fig:aws-runtime-invocation}, with the ARN fixed at deployment time; the
-\texttt{decision} step is rendered as a native \texttt{Choice} state evaluating
-\texttt{fraudResult}/\texttt{riskResult}, and \texttt{approve-transaction} is rendered as the
-\texttt{apigateway:invoke}-style HTTP task of an external call. On the GCP deployment, the
-same two scoring calls are rendered as HTTP calls to the resolved Cloud Functions URLs, since GCP has no
-Lambda-style native invoke equivalent in this integration. In both cases, the decision logic and
-the settlement call are unaffected by which provider deployed the scoring functions: only the
-\texttt{Resource}/\texttt{call} shape the renderer emits for the two internal steps differs, which
-is exactly the boundary Section~\ref{sec:runtime-invocation} identified as provider-specific.
+Once deployed, the two deployments of \texttt{PaymentAuthorization} differ only in how the two
+scoring calls are invoked. On AWS, Step Functions invokes \texttt{fraud-check} and
+\texttt{risk-score} through the native \texttt{lambda:invoke} integration of
+Section~\ref{sec:runtime-invocation}; on GCP, they are HTTP calls to the resolved Cloud Functions
+URLs. The rest of the workflow is the same on both: the \texttt{decision} step becomes a native
+conditional (a \texttt{Choice} state on AWS), and \texttt{approve-transaction} an ordinary
+external call.
 
 \section{Discussion}
 \label{sec:case-discussion}
@@ -211,17 +205,14 @@ a bank can promote the same workflow definition across its accounts and, as part
 strategy, deploy it on a second cloud provider, changing deployment descriptors rather than the
 workflow itself. In each new target the missing functions are deployed and their endpoints bound
 without anyone copying an ARN or URL by hand. The fraud team's frequent model updates are a
-different matter: retraining \texttt{fraud-check} and redeploying it in place with QuickFaaS keeps
-its ARN or URL (\S\ref{sec:resolution-cascade}), so the deployed workflow calls the new model without any change, with or without
-the registry. Conversely, a workflow deployment never deploys the new model itself, because the
+different matter: a retrained \texttt{fraud-check} redeployed in place keeps its endpoint
+(\S\ref{sec:resolution-cascade}), so the deployed workflow calls the new model unchanged. Conversely, a workflow deployment never deploys the new model itself, because the
 cascade only deploys missing functions (Section~\ref{sec:concl-critical}).
 
-The scenario equally exposes why this remains illustrative rather than production-ready. The
-gaps assessed in Section~\ref{sec:concl-critical} are not hypothetical here: a registry
-holding the live endpoint of a bank's fraud-screening function, writable by any deployment process
-with filesystem access and carrying no integrity guarantee, is not a control a bank's
-change-management or security function would accept as-is, and the AWS path's broad, automatically
-granted IAM role is similarly at odds with a least-privilege environment handling payment data.
+The scenario equally exposes why this remains illustrative rather than production-ready: the
+unguarded registry and the broad, automatically granted IAM role assessed in
+Section~\ref{sec:concl-critical} are not controls a bank's change-management or security function
+would accept for a function that screens payment data.
 The hardening required before the workflow in Listing~\ref{lst:case-payment-workflow} could
 authorize real transactions is set out in Section~\ref{sec:concl-future}.
 
