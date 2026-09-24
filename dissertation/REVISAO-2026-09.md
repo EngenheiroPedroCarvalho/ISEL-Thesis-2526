@@ -1,6 +1,6 @@
 # Alterações feitas após a revisão de setembro de 2026
 
-Nota de acompanhamento do PDF novo (`template.pdf`, 93 páginas, compilado a 23/09/2026).
+Nota de acompanhamento do PDF novo (`template.pdf`, 92 páginas, compilado a 24/09/2026).
 
 Responde às **14 anotações** do PDF revisto `pedro-mst 1.pdf`: as 7 da primeira leitura (17/09) e
 as 7 acrescentadas na segunda (20/09). Estão todas aplicadas.
@@ -25,20 +25,31 @@ nota, é preciso traduzir:
 As etiquetas internas (`cha:background`, `ch:related-works`) não foram renomeadas, para não partir
 referências cruzadas.
 
-### Depois de 21/09: duas subsecções a menos em §4.1
+### Depois de 21/09: secções retiradas em §4.1 e no cap. 7
 
-A 23/09 a dissertação foi revista três vezes à procura de informação repetida, e cada assunto
-passou a ser explicado num só sítio, com remissões nos outros. Os capítulos mantêm a numeração, mas §4.1 perdeu
-duas subsecções, que não traziam nada que não estivesse noutro lado:
+A 23 e 24/09 a dissertação foi revista quatro vezes à procura de informação repetida, e cada assunto
+passou a ser explicado num só sítio, com remissões nos outros. Os capítulos mantêm a numeração, mas
+§4.1 perdeu quatro subsecções e o cap. 7 uma secção, porque não traziam nada que não estivesse
+noutro lado:
 
-| PDF de 21/09 | PDF de 23/09 |
+| PDF de 21/09 | PDF de 24/09 |
 |---|---|
-| §4.1.9 Registry Location | integrada em §4.1.3 Registry File Format |
-| §4.1.10 Evolution of the Registry Design | **§4.1.9** |
-| §4.1.11 Summary | retirada (repetia §3.1.1 e §4.1.5) |
+| §4.1.1 Motivation | retirada (repetia §3.3); fica uma frase na abertura de §4.1 |
+| §4.1.2 Concept and Conventions | retirada (repetia o walkthrough de §3.4.1) |
+| §4.1.3 Registry File Format | **§4.1.1** (inclui a antiga Registry Location) |
+| §4.1.4 Creation, Bootstrap and Updates | **§4.1.2** |
+| §4.1.5 Deployment-Time Endpoint Resolution | **§4.1.3** |
+| §4.1.6 Registry Store and Resolver Internals | **§4.1.4** |
+| §4.1.7 Resolution Cascade Sequences | **§4.1.5** |
+| §4.1.8 Validation and Error Semantics | **§4.1.6** |
+| §4.1.9 Registry Location | integrada em §4.1.1 Registry File Format |
+| §4.1.10 Evolution of the Registry Design | **§4.1.7** |
+| §4.1.11 Summary | retirada (repetia §3.1.1 e §4.1.3) |
+| §7.4 Applicability | retirada (repetia o estudo de caso); a PSD2 passou para as Final Remarks |
+| §7.5 Future Work, §7.6 Final Remarks | **§7.4**, **§7.5** |
 
-Com estes cortes o PDF passou de 98 para 93 páginas, por isso as páginas indicadas abaixo são as do
-PDF de 23/09.
+Com estes cortes o PDF passou de 98 para 92 páginas, por isso as páginas indicadas abaixo são as do
+PDF de 24/09.
 
 ---
 
@@ -61,8 +72,8 @@ PDF de 23/09.
 | 8 | p. 41 — "Dizer também como está organizado o capítulo" | Acrescentado um parágrafo de roteiro no fim da introdução, no mesmo formato do que o capítulo seguinte já tinha. Nomeia as quatro secções e as duas subsecções. | Cap. 3, introdução, **p. 20** |
 | 9 | p. 41 — "Todas as figuras têm de ter texto que as descreve, no código o mesmo, não pode ser apenas como se vê na listing 2.1" | Ver a secção seguinte: a nota estava marcada no cap. 3, mas foi aplicada a **todos** os capítulos. | Ver abaixo |
 | 10 | p. 42 — "Step 3 in section xxx, em vez de above" | "Step (3) above" passou a "Step (3) of the end-to-end flow listed in Section 3.1", que nomeia a lista em vez de depender da posição na página. | §3.1.1 "The Resolution Cascade", **p. 22** |
-| 11 | p. 48 — "Explica com algum detalhe" | A listagem dos ficheiros de registry era introduzida por uma só frase. Tem hoje dois parágrafos que a leem: os dois campos de topo, a chave (e quando é promovida a `"region/functionRef"`), os dois campos de cada valor, e o contraste entre os dois exemplos (URL HTTPS no GCP, ARN na AWS). Fica dito também o que *não* está no ficheiro. | Listing 3.1, **p. 26–27** |
-| 12 | p. 49 — "Tens de explicar o código" | O parágrafo do descritor QuickFaaS remetia para a Listing 2.1 sem dizer o que lá está. Descreve hoje os campos em três grupos (onde, o quê, e o código), seguidos dos dois que importam à integração: `function.name` tem de ser igual ao `functionRef`, e `function.location` fixa a região. Acrescentada a ressalva de que na AWS o `accessToken` fica vazio, porque o *provider* lê as credenciais do ambiente. | Parágrafo "QuickFaaS Deployment Descriptor and Code File", **p. 28** |
+| 11 | p. 48 — "Explica com algum detalhe" | A listagem dos ficheiros de registry era introduzida por uma só frase. Tem hoje dois parágrafos que a leem: os dois campos de topo, a chave (e quando é promovida a `"region/functionRef"`), os dois campos de cada valor, e o contraste entre os dois exemplos (URL HTTPS no GCP, ARN na AWS). Fica dito também o que *não* está no ficheiro. | Listing 3.1, **p. 26** |
+| 12 | p. 49 — "Tens de explicar o código" | O parágrafo do descritor QuickFaaS remetia para a Listing 2.1 sem dizer o que lá está. Descreve hoje os campos em três grupos (onde, o quê, e o código), seguidos dos dois que importam à integração: `function.name` tem de ser igual ao `functionRef`, e `function.location` fixa a região. Acrescentada a ressalva de que na AWS o `accessToken` fica vazio, porque o *provider* lê as credenciais do ambiente. | Parágrafo "QuickFaaS Deployment Descriptor and Code File", **p. 27–28** |
 | 13, 14 | p. 52 — "Rever" (×2) | Eram dois defeitos de composição na mesma frase: o nome de uma classe impresso partido com hífen entre linhas (como se a classe se chamasse `Google-CloudDeployer`) e outro identificador a entrar pela margem. Ambos corrigidos, e a frase — que acumulava dois parêntesis encaixados — foi dividida em duas. Sem alteração de conteúdo. | §4.1, abertura, **p. 31** |
 
 ---
@@ -76,11 +87,11 @@ Quase todas já eram lidas pelo texto. Havia cinco lacunas, todas fechadas:
 
 | Onde | O que faltava |
 |---|---|
-| Listing 2.1 (`func-deployment.json`), **p. 11** | Quatro campos visíveis na listagem ficavam por explicar. Novo parágrafo sobre `function.location`, `function.bucket`, e os dois opcionais `dependenciesFile` e `configurationsFile`. |
-| Listing 3.1 (ficheiros de registry), **p. 26–27** | Nota 11, acima. |
+| Listing 2.1 (`func-deployment.json`), **p. 10–11** | Quatro campos visíveis na listagem ficavam por explicar. Novo parágrafo sobre `function.location`, `function.bucket`, e os dois opcionais `dependenciesFile` e `configurationsFile`. |
+| Listing 3.1 (ficheiros de registry), **p. 26** | Nota 11, acima. |
 | Listing 3.2 (call step com `internalFunction`), **p. 27** | Só tinha a frase "Listing 3.2 shows a call step". Novo parágrafo a explicar o código: o vocabulário comum a qualquer step, e sobretudo a ausência de `host`/`path`, substituídos pelo `functionRef` e pelo caminho do descritor. |
-| Parágrafo do descritor QuickFaaS, **p. 28** | Nota 12, acima. |
-| Listing 4.2 (estado Step Functions gerado), **p. 40** | O texto explicava quatro campos, mas a listagem mostra também `InputPath` e `Next`. Acrescentada a frase que os cobre. |
+| Parágrafo do descritor QuickFaaS, **p. 27–28** | Nota 12, acima. |
+| Listing 4.2 (estado Step Functions gerado), **p. 38–39** | O texto explicava quatro campos, mas a listagem mostra também `InputPath` e `Next`. Acrescentada a frase que os cobre. |
 
 As restantes já tinham texto descritivo: o encadeamento da Listing 2.3 tem três parágrafos; o
 modelo de classes, a sequência de *deployment* e a invocação em execução do cap. 4 têm um parágrafo
@@ -113,7 +124,7 @@ Trabalho de consistência que saiu da revisão, mas que não estava assinalado:
 - **Referência do artigo do CISTI** (bibliografia). Reduzida ao que já se sabe — autores, título e
   ano — enquanto não houver local, páginas e DOI.
 
-- **Cap. 5, parágrafo da Listing 5.1** (p. 42). Uma frase contrastava as chamadas internas com "the
+- **Cap. 5, parágrafo da Listing 5.1** (p. 41). Uma frase contrastava as chamadas internas com "the
   external `risk-score` variant" da Listing 3.4, que não mostra variante nenhuma com esse nome:
   mostra o passo `external-risk-api`, uma API de um parceiro. Reescrita.
 
@@ -121,7 +132,7 @@ Trabalho de consistência que saiu da revisão, mas que não estava assinalado:
 
 ## Estado da compilação
 
-93 páginas, sem referências por resolver, 48 entradas na bibliografia para 48 citadas, e os 8
+92 páginas, sem referências por resolver, 48 entradas na bibliografia para 48 citadas, e os 8
 avisos de *overfull hbox* do template referidos acima.
 
 ## Limitação conhecida, documentada e não fechada
