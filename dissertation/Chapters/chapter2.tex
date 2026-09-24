@@ -25,10 +25,9 @@ is the \emph{programming model}: each provider defines its own function signatur
 types, so the same logic must be rewritten per provider unless an abstraction hides those
 differences, which is the problem QuickFaaS addresses with its uniform hook/template model. The
 second is
-the \emph{packaging and deployment} axis: providers accept code through different mechanisms
-(inline editing, container images, source archives), with different naming, permission and trigger
-conventions, and QuickFaaS standardises on the one AWS, GCP and Azure all accept
-(\S\ref{sec:background_quickfaas}). Beyond portability, the statelessness and
+the \emph{packaging and deployment} axis: providers accept code through different packaging
+mechanisms, with different naming, permission and trigger conventions, which QuickFaaS addresses
+as described in \S\ref{sec:background_quickfaas}. Beyond portability, the statelessness and
 event-driven nature of FaaS also shape how functions are \emph{composed}: because a function holds
 no state between invocations and cannot directly call another, non-trivial applications must lift
 control-flow and data-flow into an external orchestrator (the workflow layer discussed next)

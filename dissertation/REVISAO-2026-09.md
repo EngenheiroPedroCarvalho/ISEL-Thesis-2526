@@ -1,6 +1,6 @@
 # Alterações feitas após a revisão de setembro de 2026
 
-Nota de acompanhamento do PDF novo (`template.pdf`, 91 páginas, compilado a 24/09/2026).
+Nota de acompanhamento do PDF novo (`template.pdf`, 90 páginas, compilado a 24/09/2026).
 
 Responde às **14 anotações** do PDF revisto `pedro-mst 1.pdf`: as 7 da primeira leitura (17/09) e
 as 7 acrescentadas na segunda (20/09). Estão todas aplicadas.
@@ -27,7 +27,7 @@ referências cruzadas.
 
 ### Depois de 21/09: secções retiradas nos cap. 4 e 7
 
-A 23 e 24/09 a dissertação foi revista cinco vezes à procura de informação repetida, e cada assunto
+A 23 e 24/09 a dissertação foi revista seis vezes à procura de informação repetida, e cada assunto
 passou a ser explicado num só sítio, com remissões nos outros. Os capítulos mantêm a numeração, mas
 §4.1 perdeu quatro subsecções e o cap. 7 uma secção, porque não traziam nada que não estivesse
 noutro lado:
@@ -49,7 +49,7 @@ noutro lado:
 | §7.4 Applicability | retirada (repetia o estudo de caso); a PSD2 passou para as Final Remarks |
 | §7.5 Future Work, §7.6 Final Remarks | **§7.4**, **§7.5** |
 
-Com estes cortes o PDF passou de 98 para 91 páginas, por isso as páginas indicadas abaixo são as do
+Com estes cortes o PDF passou de 98 para 90 páginas, por isso as páginas indicadas abaixo são as do
 PDF de 24/09.
 
 ---
@@ -75,7 +75,7 @@ PDF de 24/09.
 | 10 | p. 42 — "Step 3 in section xxx, em vez de above" | "Step (3) above" passou a "Step (3) of the end-to-end flow listed in Section 3.1", que nomeia a lista em vez de depender da posição na página. | §3.1.1 "The Resolution Cascade", **p. 21** |
 | 11 | p. 48 — "Explica com algum detalhe" | A listagem dos ficheiros de registry era introduzida por uma só frase. Tem hoje dois parágrafos que a leem: os dois campos de topo, a chave (e quando é promovida a `"region/functionRef"`), os dois campos de cada valor, e o contraste entre os dois exemplos (URL HTTPS no GCP, ARN na AWS). Fica dito também o que *não* está no ficheiro. | Listing 3.1, **p. 25** |
 | 12 | p. 49 — "Tens de explicar o código" | O parágrafo do descritor QuickFaaS remetia para a Listing 2.1 sem dizer o que lá está. Descreve hoje os campos em três grupos (onde, o quê, e o código), seguidos dos dois que importam à integração: `function.name` tem de ser igual ao `functionRef`, e `function.location` fixa a região. Acrescentada a ressalva de que na AWS o `accessToken` fica vazio, porque o *provider* lê as credenciais do ambiente. | Parágrafo "QuickFaaS Deployment Descriptor and Code File", **p. 26** |
-| 13, 14 | p. 52 — "Rever" (×2) | Eram dois defeitos de composição na mesma frase: o nome de uma classe impresso partido com hífen entre linhas (como se a classe se chamasse `Google-CloudDeployer`) e outro identificador a entrar pela margem. Ambos corrigidos, e a frase — que acumulava dois parêntesis encaixados — foi dividida em duas. Sem alteração de conteúdo. | §4.1, abertura, **p. 30** |
+| 13, 14 | p. 52 — "Rever" (×2) | Eram dois defeitos de composição na mesma frase: o nome de uma classe impresso partido com hífen entre linhas (como se a classe se chamasse `Google-CloudDeployer`) e outro identificador a entrar pela margem. Ambos corrigidos, e a frase — que acumulava dois parêntesis encaixados — foi dividida em duas. Sem alteração de conteúdo. | §4.1, abertura, **p. 29** |
 
 ---
 
@@ -92,7 +92,7 @@ Quase todas já eram lidas pelo texto. Havia cinco lacunas, todas fechadas:
 | Listing 3.1 (ficheiros de registry), **p. 25** | Nota 11, acima. |
 | Listing 3.2 (call step com `internalFunction`), **p. 26** | Só tinha a frase "Listing 3.2 shows a call step". Novo parágrafo a explicar o código: o vocabulário comum a qualquer step, e sobretudo a ausência de `host`/`path`, substituídos pelo `functionRef` e pelo caminho do descritor. |
 | Parágrafo do descritor QuickFaaS, **p. 26** | Nota 12, acima. |
-| Listing 4.2 (estado Step Functions gerado), **p. 38** | O texto explicava quatro campos, mas a listagem mostra também `InputPath` e `Next`. Acrescentada a frase que os cobre. |
+| Listing 4.2 (estado Step Functions gerado), **p. 37** | O texto explicava quatro campos, mas a listagem mostra também `InputPath` e `Next`. Acrescentada a frase que os cobre. |
 
 As restantes já tinham texto descritivo: o encadeamento da Listing 2.3 tem três parágrafos; o
 modelo de classes, a sequência de *deployment* e a invocação em execução do cap. 4 têm um parágrafo
@@ -125,7 +125,7 @@ Trabalho de consistência que saiu da revisão, mas que não estava assinalado:
 - **Referência do artigo do CISTI** (bibliografia). Reduzida ao que já se sabe — autores, título e
   ano — enquanto não houver local, páginas e DOI.
 
-- **Cap. 5, parágrafo da Listing 5.1** (p. 40). Uma frase contrastava as chamadas internas com "the
+- **Cap. 5, parágrafo da Listing 5.1** (p. 39). Uma frase contrastava as chamadas internas com "the
   external `risk-score` variant" da Listing 3.4, que não mostra variante nenhuma com esse nome:
   mostra o passo `external-risk-api`, uma API de um parceiro. Reescrita.
 
@@ -133,7 +133,7 @@ Trabalho de consistência que saiu da revisão, mas que não estava assinalado:
 
 ## Estado da compilação
 
-91 páginas, sem referências por resolver, 48 entradas na bibliografia para 48 citadas, e os 8
+90 páginas, sem referências por resolver, 48 entradas na bibliografia para 48 citadas, e os 8
 avisos de *overfull hbox* do template referidos acima.
 
 ## Limitação conhecida, documentada e não fechada

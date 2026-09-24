@@ -78,8 +78,7 @@ registry-managed. Their results are captured in \texttt{fraudResult} and \texttt
 \texttt{decline-transaction} if the fraud check flagged the transaction or the risk score exceeds
 a threshold, and otherwise falls through to the \texttt{default}, \texttt{approve-transaction}.
 The approve path issues an external call to the bank's own settlement endpoint, declared with a
-literal \texttt{host}/\texttt{path}, exactly like \texttt{external-risk-api} in
-Listing~\ref{lst:wf-external-part}.
+literal \texttt{host}/\texttt{path}.
 
 \begin{lstlisting}[language=Kotlin,caption={PaymentAuthorization workflow: two internal scoring calls feeding a decision.},label={lst:case-payment-workflow},basicstyle=\ttfamily\small,breaklines=false]
 val PaymentAuthorization = workflow {
@@ -180,8 +179,8 @@ Level~3 deploys them as first-generation Cloud Functions instead, following the 
 deployment path described in \S\ref{sec:background_quickfaas}. The two registries stay
 independent, one per provider (\texttt{function-registry.aws.json} and
 \texttt{function-registry.gcp.json} by default), so the same \texttt{functionRef} resolves to a
-Lambda ARN under one deployment and to a Cloud Functions URL under the other. On GCP, however, those
-bindings are not validated on later deployments (\S\ref{subsec:store-internals}). The uniform
+Lambda ARN under one deployment and to a Cloud Functions URL under the other, subject on GCP to the
+limitation of \S\ref{subsec:store-internals}. The uniform
 \texttt{url} field discussed in
 Section~\ref{subsec:registry-evolution} is precisely what makes this substitution transparent to
 the workflow definition.

@@ -101,3 +101,18 @@ este ficheiro.)
     que tinha (a implantação, a pedido, de uma função em falta) passa para essa conclusão.
 - **Cap. 4 Implementation (`chapter5.tex`, §4.2):** retirada a frase que repetia o fim de §4.1.5
   sobre os passos operacionais que o diagrama AWS mostra.
+
+### Sexta revisão de informação repetida (grupo B)
+
+- **Cap. 1 Introduction (`chapter1.tex`):** o item "Manual pre-deployment" deixa de detalhar os
+  passos do procedimento QuickFaaS (remete para §2.1.3.4); o item "The endpoint depends on the
+  deployment target" deixa de dizer o que a Motivation diz sobre implantar noutro alvo; o segundo
+  item da Motivation deixa de repetir as falhas em execução do item "No shared record".
+- **Cap. 2 (`chapter2.tex`, §2.1.1):** o eixo "packaging and deployment" deixa de antecipar a
+  estratégia ZIP de §2.1.3.3 e remete para lá.
+- **Cap. 3 Proposed Solution (`chapter3.tex`):** "QuickFaaS só suportava GCP e Azure" passa a uma
+  remissão para §1.4; retirada a frase que dizia que o `function.name` e o `functionRef` não são
+  verificados (fica no fim de §3.4.1); a justificação de não haver descritor para a chamada
+  externa encurtada (a posse já está explicada em §3.3).
+- **Cap. 5 Case Study (`chapter6.tex`):** retirada a segunda remissão à Listing 3.4 no mesmo
+  parágrafo; a limitação da 1.ª geração em §5.3 passa a ser só uma remissão.

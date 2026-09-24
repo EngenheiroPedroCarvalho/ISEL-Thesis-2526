@@ -26,7 +26,7 @@ The proposed integration keeps the original OmniFlow workflow model but extends 
 
 Figures~\ref{fig:architecture-before} and~\ref{fig:architecture-after} contrast the developer workflow before and after the integration proposed in this dissertation.
 
-In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaaS are used independently. The developer first deploys each function with QuickFaaS in a separate manual step, retrieves the resulting invocation endpoint, and copies it by hand into the workflow definition before deploying the workflow: the manual synchronisation described in \S\ref{sec:int_cha_int_uni_multi}, with the ordering it imposes and the errors it invites. Moreover, QuickFaaS targeted only GCP and Azure, so along the AWS path OmniFlow had no function-deployment capability at all. The two lifecycle concerns, function deployment and workflow deployment, are therefore completely disconnected.
+In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaaS are used independently. The developer first deploys each function with QuickFaaS in a separate manual step, retrieves the resulting invocation endpoint, and copies it by hand into the workflow definition before deploying the workflow: the manual synchronisation described in \S\ref{sec:int_cha_int_uni_multi}, with the ordering it imposes and the errors it invites. Moreover, QuickFaaS offered no AWS path at all (\S\ref{sec:int_objectives}). The two lifecycle concerns, function deployment and workflow deployment, are therefore completely disconnected.
 
 \begin{figure}[htbp]
   \centering
@@ -308,8 +308,8 @@ the \texttt{functionFile} that QuickFaaS packages and uploads.
 
 Two of these fields matter to the integration beyond deployment. The \texttt{function.name} must
 equal the \texttt{functionRef} used on the call step, because the resolver looks the deployed
-function up under the reference it was given; the two names are not checked against each other, and
-the consequence of letting them diverge is described at the end of
+function up under the reference it was given; the consequence of letting them diverge is
+described at the end of
 \S\ref{sec:walkthrough}. And \texttt{function.location} fixes the region the
 resulting registry entry will point at, which is what a later resolution validates against. The
 descriptor is otherwise the same artifact QuickFaaS has always taken, read now by OmniFlow instead
@@ -320,7 +320,7 @@ Listing~\ref{lst:aws-descriptor}.
 \section{Developer Procedure for Deploying a Workflow}
 \label{sec:developer-workflow}
 
-To deploy a workflow that introduces one new function to be resolved through the registry and calls one function invoked through a literal endpoint, the developer prepares a QuickFaaS deployment descriptor file (JSON) for the former and the corresponding code file referenced by \texttt{functionFile}. No QuickFaaS descriptor is created for the latter, since the developer is not its owner and the integrated tool must not deploy or update it.
+To deploy a workflow that introduces one new function to be resolved through the registry and calls one function invoked through a literal endpoint, the developer prepares a QuickFaaS deployment descriptor file (JSON) for the former and the corresponding code file referenced by \texttt{functionFile}. No QuickFaaS descriptor is created for the latter, which the developer does not own.
 
 Because such calls are declared with \texttt{internalFunction("fraud-check", ...)} rather than a concrete endpoint, the developer only needs to choose a stable \texttt{functionRef}. Read access to the Function Registry is useful to discover which functions are already registered and which \texttt{functionRef} identifiers are already in use, but it is not required for a brand-new function: after the first integrated deployment, OmniFlow records the binding so the same \texttt{functionRef} can be reused reliably in future workflows.
 

@@ -38,10 +38,9 @@ Currently, the function deployment lifecycle managed by QuickFaaS is disconnecte
 	already deployed and reachable. The developer must therefore deploy every required function
 	first (e.g., using QuickFaaS), obtain its provider-assigned invocation identifier (typically an
 	HTTP URL or a resource identifier) and copy it into the workflow definition. The QuickFaaS
-	procedure in \S\ref{subsec:quickfaas-example} shows what this involves: after deploying, the
-	developer grants public access, retrieves the generated HTTP trigger URL and verifies it by
-	hand, and that URL must then be written into the \texttt{host} and \texttt{path} of every
-	OmniFlow call step that invokes the function.
+	procedure in \S\ref{subsec:quickfaas-example} shows what this involves, and the URL it produces
+	must then be written into the \texttt{host} and \texttt{path} of every OmniFlow call step that
+	invokes the function.
 
 	\item \textbf{No shared record:} the two tools keep no common record of which functions a
 	workflow depends on or where those functions were deployed. Nothing checks, before the workflow
@@ -65,9 +64,7 @@ the provider assigns and whose form it defines.
 	(\texttt{arn:\allowbreak aws:\allowbreak lambda:\allowbreak <region>:\allowbreak%
 	<account-id>:\allowbreak function:\allowbreak <name>}); on GCP, a Cloud Function's URL
 	contains the region and the project (\S\ref{sec:background_quickfaas}). The same function
-	deployed to another account, project or provider therefore has a different endpoint, and a
-	workflow that embeds concrete endpoints is tied to a single deployment target: deploying it
-	elsewhere means finding and replacing every endpoint by hand.
+	deployed to another account, project or provider therefore has a different endpoint.
 
 	\item \textbf{Need for logical references:} the integration therefore requires a mapping
 	mechanism: the workflow should name a function by a stable logical identifier, and the concrete
@@ -115,8 +112,7 @@ OmniFlow into a workflow-first development experience. Such an integration is in
 	steps or check that the first finished before starting the second.
 
 	\item \textbf{Take endpoints out of the developer's hands:} the values the provider assigns
-	should be read and recorded by the tooling, which removes the copying step and the run-time
-	failures it produces.
+	should be read and recorded by the tooling, which removes the copying step.
 
 	\item \textbf{Keep a definition independent of its target:} with no concrete endpoint in the
 	workflow definition, the same definition should deploy to another account, project or provider
