@@ -3,7 +3,7 @@
 
 This chapter introduces the core idea of the proposed OmniFlow-QuickFaaS integration. The objective is to reduce the manual work required to deploy workflows that depend on serverless functions, while keeping the workflow definition readable and stable.
 
-In the reference OmniFlow usage, a \texttt{Call} step is expressed as an HTTP request: the developer supplies concrete invocation details such as \texttt{method}, \texttt{host} and \texttt{path}. The proposed solution removes the need to know the endpoint of a function the developer owns by letting the developer declare, directly on the call step, an endpoint that is resolved automatically: a dedicated \texttt{internalFunction(name, deploymentDescriptorPath)} construct replaces the plain \texttt{host}/\texttt{path} fields used to provide a literal endpoint, the two being mutually exclusive. This enables a single, workflow-first deployment that resolves (or, if needed, provisions) the required functions and then deploys the workflow to the chosen cloud provider.
+In the reference OmniFlow usage, a \texttt{Call} step is expressed as an HTTP request: the developer supplies concrete invocation details such as \texttt{method}, \texttt{host} and \texttt{path}. The proposed solution removes the need to know the endpoint of a function the developer owns by letting the developer declare, directly on the call step, an endpoint that is resolved automatically: a dedicated \texttt{internalFunction(name, deploymentDescriptorPath)} construct replaces the plain \texttt{host}/\texttt{path} fields used to provide a literal endpoint. This enables a single, workflow-first deployment that resolves (or, if needed, provisions) the required functions and then deploys the workflow to the chosen cloud provider.
 
 The chapter is organised in four sections. Section~\ref{sec:components-architecture} presents the
 components that the integration adds to the toolchain, how they cooperate at deployment time, and
@@ -35,7 +35,7 @@ In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaa
   \label{fig:architecture-before}
 \end{figure}
 
-In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver, backed by a registry file of its own that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. Once resolved, the rendered Step Functions state machine invokes the Lambda natively by ARN. The two halves of the contribution are visible in a single view: the AWS provider inside QuickFaaS and the resolver–registry layer that unifies function and workflow deployment.
+In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver, backed by a registry file of its own that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. The two halves of the contribution are visible in a single view: the AWS provider inside QuickFaaS and the resolver–registry layer that unifies function and workflow deployment.
 
 \begin{figure}[htbp]
   \centering
@@ -92,7 +92,7 @@ actual deployment is a last resort rather than a default.
 
 This ordering gives the integration three desirable properties. It is \emph{idempotent} at the
 level that matters: re-deploying the same workflow re-resolves from the registry (or the
-provider) and does not redeploy an unchanged function. It is \emph{safe by default}: validation
+provider) and does not redeploy a function that already exists. It is \emph{safe by default}: validation
 and discovery never mutate the provider, and a deployment happens only on an explicit descriptor
 and only after the function's absence is confirmed. A deployment does change more than the
 function itself, since it also grants the permissions needed to invoke it (and, on AWS, sets up
@@ -189,7 +189,7 @@ from the two-service design rejected above.
 \section{DSL Extensions}
 \label{sec:dsl-extensions}
 
-The OmniFlow background chapter described how a workflow is modelled as a tree of \texttt{Step} nodes, each with a single \texttt{context} that determines its behaviour (Call, Assign, Switch, Iteration, Parallel). Within this hierarchy, \emph{execution steps} correspond to nodes that actually perform work (such as HTTP calls or variable assignments). This section focuses on one particular execution step, the \texttt{call} step, and on how it is extended in this dissertation.
+Of the step categories introduced in \S\ref{sec:background_omniflow}, this section focuses on one execution step, the \texttt{call} step, and on how it is extended in this dissertation.
 
 Figure~\ref{fig:call-step-model} shows how the \texttt{call} step is extended to express calls whose endpoint is resolved automatically. In the original design, a \texttt{CallContext} carries the literal HTTP fields \texttt{host} and \texttt{path}. This work adds an optional association to an \texttt{InternalFunction}, which holds a logical \texttt{name} (the \texttt{functionRef}) and an optional \texttt{deploymentDescriptorPath}. The two construction paths are \emph{mutually exclusive}: a call with a literal endpoint provides \texttt{host}/\texttt{path} and no \texttt{internalFunction}; a call resolved through the mechanism described in this chapter provides an \texttt{internalFunction} and \emph{must not} set \texttt{host} or \texttt{path}, since those are injected automatically at deployment time by the resolution mechanism. Keeping this form as an alternative on the existing step, rather than introducing a new step type, means developers continue to describe calls with the familiar HTTP vocabulary.
 
@@ -202,14 +202,7 @@ Figure~\ref{fig:call-step-model} shows how the \texttt{call} step is extended to
   \label{fig:call-step-model}
 \end{figure}
 
-With this extension, the call step can be used in two distinct ways:
-
-\begin{itemize}
-  \item With a \textbf{literal endpoint}, the call step is used exactly as in the original OmniFlow design, and the integration triggers no function deployment.
-  \item With an \textbf{automatically resolved endpoint}, the endpoint is resolved at deployment time, and the function is first deployed from its descriptor if it does not exist.
-\end{itemize}
-
-The concepts this second form relies on, and through which it connects to the QuickFaaS-based
+The concepts the resolved form relies on, and through which it connects to the QuickFaaS-based
 deployment and registry mechanisms described in the following sections, can be summarised as
 follows:
 

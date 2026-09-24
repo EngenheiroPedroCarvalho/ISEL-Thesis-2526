@@ -24,10 +24,6 @@ correctness checks replace them with test doubles. For RQ2, the evaluation there
 focused question: \emph{how much does the unification layer add to a deployment, and how does that
 overhead scale with the number of calls and the size of the registry?}
 
-The one exception is analytical rather than measured: \S\ref{sec:eval-api-calls} counts, from the
-code, how many provider requests each path through the cascade issues, which is the part of the
-cost the local measurements cannot see.
-
 The evaluation has six parts:
 \begin{itemize}
   \item \textbf{Correctness of the resolution cascade} (RQ1): the decision each production
@@ -856,9 +852,8 @@ count of internal calls matters.
 \section{Provider API Calls per Resolution}
 \label{sec:eval-api-calls}
 
-The experiments above replace the provider with a local double, so they measure none of the network
-traffic the cascade generates. This section counts that traffic rather than measuring it: the
-figures are read from the code of the two resolvers and of the clients they use, and they are
+This section counts the network traffic the cascade generates, which the experiments above do not
+see: the figures are read from the code of the two resolvers and of the clients they use, and they are
 numbers of provider API requests, not latencies. Let $G$ be the number of candidate regions: the
 regions enabled for the AWS account, or the Cloud Run locations visible to the GCP project.
 

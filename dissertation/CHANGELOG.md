@@ -65,3 +65,27 @@ este ficheiro.)
 - **Cap. 5 Case Study (`chapter6.tex`):** frase sobre o redeploy de `fraud-check` encurtada.
 - **Cap. 6 Evaluation (`chapter7.tex`):** retirada a frase das "dezenas de milissegundos" em T8/T9
   (fica no Global framing).
+
+### Quinta revisão de informação repetida (grupo A)
+
+- **Cap. 2 (`chapter2.tex`):** a §2.1.4.3 "Workflow Development Cycle" perde o parágrafo que
+  recontava as três fases (definir, renderizar, implantar) já descritas em §2.1.4 e §2.1.4.1, e
+  passa a chamar-se "Example: Function Chaining", que é o que resta nela.
+- **Cap. 3 Proposed Solution (`chapter3.tex`):**
+  - a abertura de §3.3 deixa de recapitular o modelo de steps do cap. 2 e remete para §2.1.4;
+  - retirada a lista de dois itens ("literal endpoint" / "automatically resolved endpoint"), que
+    repetia o parágrafo anterior, e a menção à exclusão mútua na introdução do capítulo;
+  - retirada da descrição da Fig. 3.2 a frase sobre a invocação nativa pelo ARN (fica no static
+    binding e no registry);
+  - corrigida a propriedade "idempotent": dizia que o cascade não volta a implantar uma função
+    *inalterada*, o que dava a entender que implantaria uma alterada; passa a dizer que não volta a
+    implantar uma função que já existe.
+- **Cap. 4 Implementation (`chapter5.tex`, §4.1.4):** o tratamento de permissões recusadas deixa de
+  ser descrito no parágrafo do resolver AWS e na frase seguinte; fica em §4.1.6, com uma remissão.
+  Retirada a frase que resumia o que distingue os dois resolvers.
+- **Cap. 5 Case Study (`chapter6.tex`, Discussion):** o primeiro parágrafo deixa de resumir §5.3 e
+  remete para lá.
+- **Cap. 6 Evaluation (`chapter7.tex`):** retirado da Scope and Goals o parágrafo que anunciava a
+  contagem de chamadas à API (já está na lista das seis partes); a abertura de §6.6 encurtada.
+- **Cap. 7 Conclusions (`chapter8.tex`):** §7.1 Summary of Contributions reduzida a um parágrafo
+  (repetia os objetivos 1 e 3 de §7.2 e a lista do trabalho do deployer AWS).

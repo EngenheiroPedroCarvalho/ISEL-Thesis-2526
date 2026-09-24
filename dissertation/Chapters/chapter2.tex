@@ -189,12 +189,7 @@ A step cannot be, for example, both an execution and a conditional step. In the 
 The underlying implementation still associates each step with metadata such as a \texttt{name} and, internally, a context object that captures the details of the chosen step kind. For execution steps, this context includes parameters such as HTTP method, host and path or variable assignments; for the other categories, it describes the nested branches or bodies to be executed. This abstraction allows the rest of the dissertation to reason about workflows in terms of a small set of step categories while remaining compatible with the richer, concrete model implemented by OmniFlow and used for rendering provider-specific workflow definitions.
 
 
-\subsubsection{Workflow Development Cycle}
-The typical OmniFlow lifecycle runs the components above as a synchronous three-phase process:
-the developer \emph{defines} the workflow with the DSL, OmniFlow \emph{renders} the resulting tree
-into the provider's format, and then \emph{deploys} it, at which point the workflow becomes a
-managed resource that the provider executes~\cite{costa2023omniflow,silva2025advanced}.
-
+\subsubsection{Example: Function Chaining}
 Listing~\ref{lst:omniflow_chain} illustrates a simple function-chaining pattern expressed in the OmniFlow DSL, where the output of one step becomes the input to the next step through workflow variables. The workflow is named \texttt{FunctionChain}, declares \texttt{args} as its input and defines two sequential steps inside \texttt{steps(\ldots)}.
 
 The first step, \texttt{first-call}, uses the \texttt{call} context to perform an HTTP request. In this example, the request is a \texttt{POST} to the endpoint identified by \texttt{host("example-api.com")} and \texttt{path("/v1/process")}. The request body is constructed from the input data using \texttt{body(variable(\allowbreak "args.data"))}, showing how OmniFlow allows payloads to be derived from previously defined variables. The response is stored in the workflow variable \texttt{firstResult} through \texttt{result(\allowbreak "firstResult")}, which makes the response accessible to subsequent steps.

@@ -106,17 +106,13 @@ first-generation Cloud Function (identified by a \texttt{cloudfunctions.\allowbr
 Cloud Run service, is returned without validation.\\
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} follows the same shape on the Lambda API: it
 reads the region to validate from the stored ARN and consults the Lambda API through a
-\texttt{Lambda\allowbreak Function\allowbreak Inspector} seam, and a permissions failure aborts rather than
-being mistaken for an absence. \\
+\texttt{Lambda\allowbreak Function\allowbreak Inspector} seam. \\
 Region discovery is itself provider-specific: GCP already exposed a project-scoped
 locations API, whereas AWS has no equivalent for Lambda, so a dedicated
 \texttt{Ec2Aws\allowbreak Regions\allowbreak Lister}, backed by the EC2 \texttt{DescribeRegions} call, was added to
 play that role; an optional preferred region, when supplied, is tried first in both the
-rediscovery and the miss-path scan. \\
-On AWS, regions where the lookup is refused are handled as on the GCP path (\S\ref{subsec:validation-error-semantics}). What
-distinguishes the two resolvers is only the provider API each one calls (the region discovery
-above, and a Cloud Run lookup versus \texttt{GetFunction} for the per-region check) and the
-GCP-only short-circuit noted above.
+rediscovery and the miss-path scan. How both resolvers treat a lookup the provider refuses is
+described in \S\ref{subsec:validation-error-semantics}.
 In both resolvers, the writes listed in \S\ref{subsec:registry-updates} go through
 \texttt{put()} before the endpoint is injected into the call, and a hit that validates unchanged
 writes nothing, so the registry converges toward a complete set of bindings as workflows

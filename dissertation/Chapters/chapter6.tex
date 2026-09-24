@@ -200,12 +200,8 @@ external call.
 \section{Discussion}
 \label{sec:case-discussion}
 
-This scenario exercises the integration's central claim in a setting where it plausibly matters:
-a bank can promote the same workflow definition across its accounts and, as part of an exit
-strategy, deploy it on a second cloud provider, changing deployment descriptors rather than the
-workflow itself. In each new target the missing functions are deployed and their endpoints bound
-without anyone copying an ARN or URL by hand. The fraud team's frequent model updates are a
-different matter: a retrained \texttt{fraud-check} redeployed in place keeps its endpoint
+Section~\ref{sec:case-deployment} shows the integration's central claim in a setting where it
+plausibly matters. The fraud team's frequent model updates are a different matter: a retrained \texttt{fraud-check} redeployed in place keeps its endpoint
 (\S\ref{sec:resolution-cascade}), so the deployed workflow calls the new model unchanged. Conversely, a workflow deployment never deploys the new model itself, because the
 cascade only deploys missing functions (Section~\ref{sec:concl-critical}).
 

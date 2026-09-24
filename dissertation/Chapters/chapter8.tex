@@ -16,23 +16,11 @@ assesses the work critically, and outlines future directions.
 \section{Summary of Contributions}
 \label{sec:concl-contributions}
 
-The work delivered two complementary halves.
-
-\paragraph{Unification (core).}
-OmniFlow was extended with a \emph{Function Registry} and a deployment-time \emph{resolution
-cascade}. Internal workflow calls declare a stable logical identifier through the
-\texttt{internalFunction(name, \allowbreak deployment\allowbreak Descriptor\allowbreak Path)} construct added to the \texttt{call}
-step, mutually exclusive with the literal \texttt{host}/\texttt{path} of external calls. At
-deployment time OmniFlow traverses the workflow tree, and for each internal call resolves the
-endpoint from the registry, discovers it directly on the provider, or, as a last resort,
-deploys it through QuickFaaS, writing the resulting metadata back to the registry.
-
-\paragraph{AWS support (complement).}
-QuickFaaS, previously limited to GCP and Azure, was extended with an AWS provider, and OmniFlow
-gained an \texttt{AwsLambdaDeployer} that performs the AWS-specific work (IAM execution role,
-region resolution from the S3 bucket, readiness polling, and granting Step Functions permission to
-invoke the Lambda). Internal AWS calls are rendered with the native
-\texttt{arn:aws:states:::lambda:invoke} integration rather than an HTTP task.
+The work delivered two complementary halves: the unification of function and workflow deployment,
+through the Function Registry and the deployment-time resolution cascade
+(Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}), and the AWS Lambda provider added to
+QuickFaaS, with the matching deployer in OmniFlow (Section~\ref{subsec:quickfaas-aws-provider}).
+How far each meets the objectives set out in Chapter~\ref{cha:introduction} is assessed next.
 
 \section{Objectives Revisited}
 \label{sec:concl-objectives}
