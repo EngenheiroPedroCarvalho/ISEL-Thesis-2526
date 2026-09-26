@@ -75,7 +75,9 @@ The implementation is that of a prototype, and several limitations should be sta
   endpoints at run time.
   \item \textbf{No update path.} The cascade deploys a function only when it is missing and never
   updates one that exists: a change to a function's code is not deployed by a workflow deployment,
-  and has to be deployed separately (for example, with QuickFaaS directly).
+  and has to be deployed separately (for example, with QuickFaaS directly). The exception is a
+  first-generation Cloud Function on GCP whose binding is missing from the registry, which the
+  cascade cannot find and so redeploys over the existing function (\S\ref{subsec:store-internals}).
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
   or authenticity guarantee, and no cross-process locking; concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
