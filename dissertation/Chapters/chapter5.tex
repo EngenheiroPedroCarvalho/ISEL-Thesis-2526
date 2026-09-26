@@ -53,7 +53,11 @@ The registry management layer provides the following behavior:
     \item \textbf{Bootstrap by discovery:} if the registry file does not exist when a workflow with
     internal calls is deployed, it is created automatically by listing the functions already
     deployed on the target provider (Cloud Run services on GCP, Lambda functions on AWS) and
-    writing one entry per discovered function; on
+    writing one entry per discovered function. The
+    \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} obtains that listing through
+    the \texttt{Cloud\allowbreak Functions\allowbreak Catalog} interface, implemented by
+    \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Rest\allowbreak Catalog} (GCP) and
+    \texttt{Lambda\allowbreak Functions\allowbreak Catalog} (AWS); on
     AWS this scans every region enabled for the account and, mirroring the GCP catalog, promotes a
     function name seen in more than one region from a bare key to a \texttt{"region/name"} key for
     each occurrence.
@@ -102,16 +106,21 @@ performance consequences of this choice are analysed in Chapter~\ref{cha:evaluat
 
 The two provider resolvers sit on top of this store. \\
 \texttt{WorkflowInternalFunctionResolver} (GCP) realises the three levels of
-\S\ref{sec:resolution-cascade} on the Cloud Run API, with one exception: a hit on a
+\S\ref{sec:resolution-cascade} on the Cloud Run API, through
+\texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Service\allowbreak Inspector}, which looks
+a service up by its full name to validate a hit and by project, region and name during
+discovery. There is one exception: a hit on a
 first-generation Cloud Function (identified by a \texttt{cloudfunctions.\allowbreak net} URL), which is not a
 Cloud Run service, is returned without validation.\\
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} follows the same shape on the Lambda API: it
 reads the region to validate from the stored ARN and consults the Lambda API through a
 \texttt{Lambda\allowbreak Function\allowbreak Inspector} seam. \\
 Region discovery is itself provider-specific: GCP already exposed a project-scoped
-locations API, whereas AWS has no equivalent for Lambda, so a dedicated
-\texttt{Ec2Aws\allowbreak Regions\allowbreak Lister}, backed by the EC2 \texttt{DescribeRegions} call, was added to
-play that role; an optional preferred region, when supplied, is tried first in both the
+locations API, queried through
+\texttt{Cloud\allowbreak Run\allowbreak Locations\allowbreak V1\allowbreak Rest\allowbreak Client},
+whereas AWS has no equivalent for Lambda, so a dedicated
+\texttt{Aws\allowbreak Regions\allowbreak Lister} interface was added to play that role, implemented
+by \texttt{Ec2Aws\allowbreak Regions\allowbreak Lister} on the EC2 \texttt{DescribeRegions} call; an optional preferred region, when supplied, is tried first in both the
 rediscovery and the miss-path scan. How both resolvers treat a lookup the provider refuses is
 described in \S\ref{subsec:validation-error-semantics}.
 In both resolvers, the writes listed in \S\ref{subsec:registry-updates} go through
