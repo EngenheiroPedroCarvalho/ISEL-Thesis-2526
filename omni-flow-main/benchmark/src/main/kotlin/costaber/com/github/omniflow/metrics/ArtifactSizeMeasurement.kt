@@ -17,7 +17,7 @@ import java.io.File
  * Measures the SIZE in bytes of the workflow definition generated locally for
  * each target (Amazon States Language JSON vs GCP Workflows YAML) as the number
  * of steps N grows. This is the size of the produced artifact, complementing the
- * rendering-TIME benchmarks (P1). Purely local; no cloud.
+ * rendering-TIME benchmarks (T15). Purely local; no cloud.
  *
  * Usage: writes a CSV `n,aws_bytes,gcp_bytes` to args[0] (default artifact-size.csv).
  */

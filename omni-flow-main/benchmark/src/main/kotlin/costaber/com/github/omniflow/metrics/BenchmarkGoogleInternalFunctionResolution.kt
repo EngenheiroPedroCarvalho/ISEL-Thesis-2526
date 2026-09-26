@@ -29,9 +29,9 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P11 - GCP twin of P10: cost of the REAL auto-deploy resolver,
+ * T7 - GCP twin of T6: cost of the REAL auto-deploy resolver,
  * [WorkflowInternalFunctionResolver.resolve], vs the number of internal calls (N) and registry
- * size (R=F), same grid as P8/P10.
+ * size (R=F), same grid as T4/T6.
  *
  * Registry entries use `.cloudfunctions.net` URLs (1st-gen Cloud Function) so that
  * `resolveOrDiscoverInternal`'s `isFirstGenCloudFunction` check short-circuits BEFORE any Cloud
@@ -70,7 +70,7 @@ open class BenchmarkGoogleInternalFunctionResolution {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p11-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t7-registry", ".json")
         val store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the F functions the workflow references (R = F), with 1st-gen

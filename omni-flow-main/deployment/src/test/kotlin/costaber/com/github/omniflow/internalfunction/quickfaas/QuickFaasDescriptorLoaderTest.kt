@@ -114,21 +114,29 @@ internal class QuickFaasDescriptorLoaderTest {
     }
 
     @Test
-    fun `validate passes for java21`() {
+    fun `validate throws for java21 on gcp`() {
         val descriptor = QuickFaasDescriptor(
             cloudProvider = "gcp",
             function = FunctionDescriptor(name = "test-fn", runtime = "java21")
         )
-        QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "gcp")
+
+        assertThrows<IllegalArgumentException> {
+            QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "gcp")
+        }
     }
 
     @Test
-    fun `validate passes for nodejs20`() {
-        val descriptor = QuickFaasDescriptor(
-            cloudProvider = "gcp",
-            function = FunctionDescriptor(name = "test-fn", runtime = "nodejs20")
-        )
-        QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "gcp")
+    fun `validate throws for decommissioned gcp runtimes`() {
+        listOf("java11", "nodejs14", "nodejs20", "nodejs22").forEach { runtime ->
+            val descriptor = QuickFaasDescriptor(
+                cloudProvider = "gcp",
+                function = FunctionDescriptor(name = "test-fn", runtime = runtime)
+            )
+
+            assertThrows<IllegalArgumentException> {
+                QuickFaasDescriptorLoader.validate(descriptor, expectedCloudProvider = "gcp")
+            }
+        }
     }
 
     @Test

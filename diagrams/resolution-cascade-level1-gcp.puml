@@ -1,0 +1,56 @@
+@startuml resolution-cascade-level1-gcp
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution cascade -- Level 1: Registry lookup and live validation (GCP)
+
+participant "Resolver\n(WorkflowInternalFunctionResolver)" as R
+participant "FunctionRegistryStore" as REG
+participant "CloudRunV2ServiceInspector" as GI
+
+note over R, REG
+  resolve() reads the registry once (readAll) into a snapshot;
+  lookups run against it, and every put/remove updates both
+end note
+R -> R : tryResolveEntryIn(functionRef, snapshot)\n[exact match, then "<region>/<functionRef>" suffix]
+alt registry miss
+  note over R
+    continues at Level 2 - Provider discovery
+    (see resolution-cascade-level2-gcp.puml)
+  end note
+else registry hit
+  R -> R : entry = (key, metadata)
+
+  alt metadata.url is a 1st-gen Cloud Function (*.cloudfunctions.net)
+    R --> R : return metadata.url\n(no validation - Cloud Run cannot see it)
+  else Cloud Run service
+    R -> GI : lookupByServiceName(metadata.serviceName)
+    alt Found - same URL
+      GI --> R : Found(serviceName, url == metadata.url)
+      R --> R : return metadata.url
+    else Found - drifted URL
+      GI --> R : Found(serviceName, url != metadata.url)
+      R -> REG : put(key, metadata.copy(url = newUrl))
+      R --> R : return newUrl
+    else NotFound
+      GI --> R : NotFound
+      R -> R : discoverServiceForRef(functionRef)\n[one more attempt across regions]
+      alt rediscovered elsewhere (exactly one match)
+        opt key != functionRef
+          R -> REG : remove(key)
+        end
+        R -> REG : put(functionRef, newMetadata)
+        R --> R : return newUrl
+      else ambiguous, or some regions not accessible
+        R --> R : throw IllegalStateException
+      else still not found
+        R -> REG : remove(key)
+        R --> R : throw IllegalStateException\n(stale entry removed - deleted service)
+      end
+    else Forbidden
+      GI --> R : Forbidden(message)
+      R --> R : throw IllegalStateException\n(cannot validate via Cloud Run APIs)
+    end
+  end
+end
+@enduml

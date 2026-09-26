@@ -1,0 +1,232 @@
+%\chapter*{Glossary}
+%================GLOSSARY =================%
+% Terms that are not acronyms. The list is sorted alphabetically by name (or by the sort key).
+
+\newglossaryentry{blackhole}{
+	name={Blackhole},
+	description={JMH object that consumes the value a benchmark produces, so that the JIT compiler
+	cannot remove the measured code as dead code.}
+}
+
+\newglossaryentry{bootstrap}{
+	name={Bootstrap (registry)},
+	sort={bootstrap},
+	description={Creation of a missing Function Registry file by listing the functions already
+	deployed on the target provider (Cloud Run services on GCP, Lambda functions on AWS) and writing
+	one entry per function found. It runs only when the deployed workflow has internal calls.}
+}
+
+\newglossaryentry{bucket}{
+	name={Bucket},
+	description={Storage container in Google Cloud Storage or Amazon S3. QuickFaaS uploads the
+	deployment package to a bucket, from which the provider loads the function code; on AWS, the
+	Lambda function must reside in the same region as its bucket.}
+}
+
+\newglossaryentry{cloudrun}{
+	name={Cloud Run},
+	description={Container-based serverless product of Google Cloud, also marketed as
+	second-generation Cloud Functions. The Function Registry validates and discovers GCP
+	functions through the Cloud Run API.}
+}
+
+\newglossaryentry{descriptor}{
+	name={Deployment descriptor},
+	description={JSON file read by QuickFaaS that holds a function's deployment parameters
+	(provider, project, region, bucket, runtime, trigger) and the path of its code file. An internal
+	call points to it through \texttt{deploymentDescriptorPath}; it is used only at Level~3 of the
+	resolution cascade.}
+}
+
+\newglossaryentry{package}{
+	name={Deployment package},
+	description={Compressed source archive (ZIP) containing a function's code, its QuickFaaS
+	template and the required libraries. It is the deployment format common to AWS, GCP and Azure,
+	and the one QuickFaaS standardises on.}
+}
+
+\newglossaryentry{drift}{
+	name={Drift},
+	description={Difference between the endpoint stored in a registry entry and the current endpoint
+	of the live function. Level~1 validation detects it and refreshes the entry.}
+}
+
+\newglossaryentry{endpoint}{
+	name={Endpoint},
+	description={Concrete address used to invoke a function: an HTTPS URL on GCP, or the function's
+	ARN on AWS.}
+}
+
+\newglossaryentry{executionrole}{
+	name={Execution role},
+	description={IAM role that an AWS Lambda function assumes when it runs. When the deployment
+	descriptor supplies none, OmniFlow creates one named
+	\texttt{OmniFlow\allowbreak Lambda\allowbreak Execution\allowbreak Role}.}
+}
+
+\newglossaryentry{executionstep}{
+	name={Execution step},
+	description={Workflow step that performs concrete work, such as an HTTP call or a variable
+	assignment (the Call and Assign constructs of the OmniFlow DSL).}
+}
+
+\newglossaryentry{externalcall}{
+	name={External call},
+	description={Call step that carries a literal \texttt{host}/\texttt{path}. It targets a function
+	or API the developer does not own, bypasses the Function Registry and is never deployed through
+	QuickFaaS.}
+}
+
+\newglossaryentry{firstgen}{
+	name={First-generation Cloud Function},
+	description={GCP function created through the first-generation Cloud Functions API, with a URL
+	under \texttt{cloudfunctions.net}. It is what QuickFaaS deploys on GCP; its registry
+	bindings are neither validated nor rediscovered, since both query only Cloud Run.}
+}
+
+\newglossaryentry{registry}{
+	name={Function Registry},
+	description={JSON file, one per provider, that maps each \texttt{functionRef} to the invocation
+	metadata of an internal function. It is the persistence layer of the resolution cascade.}
+}
+
+\newglossaryentry{functionref}{
+	name={Function reference},
+	description={Stable logical identifier, written \texttt{functionRef}, that names an internal
+	function in the workflow, the registry and the deployment descriptor. It is a name, not an
+	endpoint; the form \texttt{"region/functionRef"} pins the lookup to a single region.}
+}
+
+\newglossaryentry{functionurl}{
+	name={Function URL},
+	description={HTTPS endpoint of an AWS Lambda function. The QuickFaaS AWS provider creates one,
+	but OmniFlow stores and invokes the function's ARN instead.}
+}
+
+\newglossaryentry{hook}{
+	name={Hook function},
+	description={Cloud-agnostic function in which the developer writes the business logic, using
+	the generic QuickFaaS request and response types instead of a provider SDK.}
+}
+
+\newglossaryentry{internalcall}{
+	name={Internal call},
+	description={Call step that declares its target with \texttt{internalFunction} instead of a
+	literal endpoint. It targets a function the developer owns, whose endpoint is resolved at
+	deployment time.}
+}
+
+\newglossaryentry{metadata}{
+	name={Invocation metadata},
+	description={Values stored in the Function Registry for each function: its
+	\texttt{serviceName} and its \texttt{url} (an HTTPS URL on GCP, an ARN on AWS).}
+}
+
+\newglossaryentry{lockin}{
+	name={Vendor lock-in},
+	description={Dependence on one provider's SDKs, formats and services that makes moving to
+	another provider costly. It appears at the function code level and at the workflow definition
+	level.}
+}
+
+\newglossaryentry{warmup}{
+	name={Warm-up},
+	description={Benchmark iterations that run before the measured ones and whose results are
+	discarded, so that the JIT compiler has already compiled the code when measurement starts. The
+	evaluation uses three warm-up iterations of one second each.}
+}
+
+\newglossaryentry{orchestration}{
+	name={Orchestration},
+	description={Coordination of several functions by an external service that holds the control
+	flow, the data flow and the error handling, instead of the functions themselves.}
+}
+
+\newglossaryentry{region}{
+	name={Region},
+	description={Geographic location where a provider runs its infrastructure (e.g.,
+	\texttt{eu-west-1} or \texttt{europe-west1}). Every resource lives in a region, which is part of
+	its identity.}
+}
+
+\newglossaryentry{rendering}{
+	name={Rendering},
+	description={Translation of OmniFlow's provider-agnostic workflow model into the
+	provider-specific workflow definition, such as a Google Cloud Workflows YAML file or an AWS Step
+	Functions state machine.}
+}
+
+\newglossaryentry{cascade}{
+	name={Resolution cascade},
+	description={Three-level procedure that binds each internal call to an endpoint at deployment
+	time, stopping at the first level that succeeds: Level~1, a registry hit validated against the
+	live function; Level~2, discovery on the provider; Level~3, deployment through QuickFaaS, only
+	when the function is absent and a deployment descriptor is supplied.}
+}
+
+\newglossaryentry{roundrobin}{
+	name={Round-robin},
+	description={Distribution of items over a set of targets in turn, cycling back to the first
+	after the last. In the benchmarks, the internal calls of a generated workflow reference the $F$
+	distinct functions in turn.}
+}
+
+\newglossaryentry{serverless}{
+	name={Serverless computing},
+	description={Cloud execution model in which the provider allocates resources, patches the
+	operating system and scales the infrastructure, and the user pays only for the time the code
+	runs.}
+}
+
+\newglossaryentry{snapshot}{
+	name={Snapshot (registry)},
+	sort={snapshot},
+	description={In-memory copy of the Function Registry that a resolver reads once per
+	\texttt{resolve()} call and keeps in sync with every write, so that calls are resolved without
+	re-reading the file.}
+}
+
+\newglossaryentry{stale}{
+	name={Stale entry},
+	description={Registry entry whose function no longer exists on the provider. It is removed and
+	the deployment aborts, even when a deployment descriptor is present.}
+}
+
+\newglossaryentry{statemachine}{
+	name={State machine},
+	description={Workflow model in which each state performs work, makes a decision or controls the
+	execution flow, passing data between states. AWS Step Functions represents workflows this
+	way.}
+}
+
+\newglossaryentry{staticbinding}{
+	name={Static binding},
+	description={Embedding of the resolved endpoint in the rendered workflow at deployment time. The
+	deployed workflow never consults the registry at run time, so an endpoint change takes effect
+	only after the workflow is deployed again.}
+}
+
+\newglossaryentry{template}{
+	name={Template function},
+	description={Provider-specific wrapper maintained by QuickFaaS that is the entry point invoked
+	by the provider. It adapts the provider's request to the generic format and calls the hook
+	function.}
+}
+
+\newglossaryentry{workflow}{
+	name={Workflow},
+	description={Description of a process as a sequence of steps, with control flow and data flow,
+	executed by a workflow service such as AWS Step Functions or Google Cloud Workflows.}
+}
+
+\newglossaryentry{workflowfirst}{
+	name={Workflow-first deployment},
+	description={Deployment approach in which the developer starts from a single workflow
+	definition, and deploying it resolves, or if needed deploys, the functions it calls before
+	deploying the workflow.}
+}
+
+% The text writes these terms as plain text, not with \gls, so add every entry to the list
+% explicitly; glsignore drops the page number the list would otherwise show. As in acronyms.tex,
+% this runs at the end of the document to avoid a blank page before the cover.
+\AtEndDocument{\glsaddall[types={main},format=glsignore]}

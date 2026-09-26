@@ -24,7 +24,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P6 - Registry-size scaling of local endpoint resolution.
+ * T2 - Registry-size scaling of local endpoint resolution.
  *
  * [FunctionRegistryStore.resolveUrl] has no in-memory cache: every call
  * re-reads and re-parses the WHOLE registry file from disk (see
@@ -34,9 +34,9 @@ import java.util.concurrent.TimeUnit
  * So resolution cost is O(N*R): N = number of internal calls in the workflow,
  * R = number of functions already in the registry file.
  *
- * P3 ([BenchmarkInternalCallResolution]) already varies N but pins the
+ * T1 ([BenchmarkInternalCallResolution]) already varies N but pins the
  * registry at a single entry (R=1), so the R-dependent half of that cost is
- * never exercised there. P6 varies R independently of N to isolate and
+ * never exercised there. T2 varies R independently of N to isolate and
  * quantify it. Pure local file I/O only - no AWS/GCP SDK, no network.
  */
 @BenchmarkMode(Mode.AverageTime)

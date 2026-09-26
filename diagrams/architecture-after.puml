@@ -1,0 +1,122 @@
+@startuml architecture-after
+skinparam monochrome false
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam titleFontSize 16
+skinparam titleFontStyle bold
+skinparam nodesep 20
+skinparam ranksep 40
+
+skinparam ArrowColor #4D4D4D
+skinparam ArrowFontSize 11
+skinparam ArrowFontColor #333333
+
+skinparam actor {
+  BackgroundColor #F2F2F2
+  BorderColor #595959
+}
+
+skinparam component {
+  BackgroundColor #F7F7F7
+  BorderColor #595959
+  FontColor #1A1A1A
+}
+skinparam component<<new>> {
+  BackgroundColor #E7EFFB
+  BorderColor #3B6FA0
+  FontColor #1A1A1A
+}
+skinparam component<<extended>> {
+  BackgroundColor #FBEEE0
+  BorderColor #B4622A
+  FontColor #1A1A1A
+}
+
+skinparam database {
+  BackgroundColor #ECECEC
+  BorderColor #595959
+}
+skinparam database<<new>> {
+  BackgroundColor #E7EFFB
+  BorderColor #3B6FA0
+}
+
+skinparam cloud {
+  BackgroundColor #FCFCFC
+  BorderColor #8C8C8C
+  FontColor #333333
+}
+
+skinparam rectangle {
+  BackgroundColor transparent
+  BorderColor #999999
+  FontColor #4D4D4D
+  FontStyle bold
+  FontSize 12
+}
+
+skinparam legend {
+  BackgroundColor #FDFDFD
+  BorderColor #999999
+  FontSize 11
+}
+
+title Unified Deployment from a Single Workflow Definition
+
+actor "Developer" as D2
+component "OmniFlow DSL\n(+ ""internalFunction"" construct)" as DSL2 <<extended>>
+
+rectangle "GCP Deployment Path" {
+  component "GoogleCloudDeployer" as GCD2 <<extended>>
+  component "WorkflowInternalFunctionResolver" as WIFR <<new>>
+  component "QuickFaasDeployer" as QFD <<new>>
+  cloud "Google Cloud\nWorkflows" as GCW2
+  cloud "GCP Cloud\nFunctions" as GFN
+  database "function-registry.gcp.json" as REGG <<new>>
+}
+
+rectangle "AWS Deployment Path" {
+  component "AmazonCloudDeployer" as ACD2 <<extended>>
+  component "AwsInternalFunctionResolver" as AIFR <<new>>
+  component "AwsLambdaDeployer" as ALD <<new>>
+  cloud "AWS Step\nFunctions" as SF2
+  cloud "AWS Lambda" as LAM
+  database "function-registry.aws.json" as REGA <<new>>
+}
+
+component "QuickFaaS JAR\n(+ AwsProvider)" as JAR <<extended>>
+
+D2 --> DSL2
+DSL2 --> GCD2
+DSL2 --> ACD2
+
+GCD2 --> WIFR
+ACD2 --> AIFR
+WIFR <--> REGG : read / write
+AIFR <--> REGA : read / write
+
+WIFR --> QFD
+AIFR --> ALD
+QFD ..> JAR : subprocess
+ALD ..> JAR : subprocess
+
+JAR --> GFN
+JAR --> LAM
+
+GCD2 --> GCW2 : YAML
+ACD2 --> SF2 : ASL JSON
+SF2 --> LAM : lambda:invoke (ARN)
+
+legend right
+  |= Marker |= Meaning |
+  |<#E7EFFB>        | new component (this work) |
+  |<#FBEEE0>        | extended component (this work) |
+  |  --> | direct call / render target |
+  |  ..> | subprocess invocation |
+  | <--> | registry read / write |
+  Unmarked elements are the cloud services the tools target.
+endlegend
+
+@enduml

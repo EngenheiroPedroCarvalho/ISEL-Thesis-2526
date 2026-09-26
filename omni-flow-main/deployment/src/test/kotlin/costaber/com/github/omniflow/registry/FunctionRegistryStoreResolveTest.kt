@@ -9,7 +9,7 @@ import java.nio.file.Path
 
 /**
  * Parity + branch coverage for [FunctionRegistryStore.resolveUrl] and the pure
- * [FunctionRegistryStore.resolveUrlIn] extracted for the P7 optimization.
+ * [FunctionRegistryStore.resolveUrlIn] extracted for the T3 optimization.
  *
  * Purely local: a real store backed by a @TempDir JSON file. No AWS/GCP.
  * Guarantees the read-once path (`resolveUrlIn(name, readAll())`) is behaviourally

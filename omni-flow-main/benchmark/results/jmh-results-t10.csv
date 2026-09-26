@@ -1,0 +1,13 @@
+Benchmark,Mode,Threads,Samples,Score,Score Error (99.9%),Unit,Param: r
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch,avgt,1,15,22.546525,0.095802,us/op,10
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch,avgt,1,15,24.221691,0.260221,us/op,20
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch,avgt,1,15,29.194471,0.069860,us/op,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch,avgt,1,15,38.203933,0.242059,us/op,100
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch,avgt,1,15,55.021314,0.187698,us/op,200
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveExactMatch,avgt,1,15,200.582449,3.392453,us/op,1000
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch,avgt,1,15,28.753529,0.314210,us/op,10
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch,avgt,1,15,32.640847,0.255664,us/op,20
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch,avgt,1,15,40.181322,0.223186,us/op,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch,avgt,1,15,58.946850,0.387171,us/op,100
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch,avgt,1,15,92.556665,0.282754,us/op,200
+costaber.com.github.omniflow.metrics.BenchmarkResolutionKeyMatchStrategy.resolveSuffixMatch,avgt,1,15,391.066903,5.713027,us/op,1000

@@ -1,0 +1,298 @@
+% 
+%  chapter6.tex
+%  ISELthesis
+%  
+%  Created by Matilde Pós-de-Mina Pato on 2012/10/09.
+%
+\chapter{Case Study: Real-Time Fraud Detection for Card Payments}
+\label{cha:case-study}
+
+The previous chapters described the Function Registry and resolution cascade in isolation from
+any particular domain (Chapter~\ref{ch:proposed_solution}) and traced their implementation
+(Chapter~\ref{cha:impl}); Chapter~\ref{cha:evaluation} then measures what they cost. This
+chapter grounds those mechanisms in a single, illustrative scenario drawn from retail banking:
+a card-payment authorization workflow that screens every transaction for fraud before it is
+settled. The scenario is not a validated production deployment; it is a realistic composition of
+the \texttt{FraudPipeline} example already introduced in Section~\ref{sec:developer-workflow},
+extended to make an authorization decision, used here
+to walk through the integration end to end and to discuss where it fits an actual banking
+environment, and where it does not yet fit one.
+
+The chapter is organised as follows. Section~\ref{sec:case-scenario} sets out the business
+requirements a payment-authorization workflow imposes and why they line up with the problem this
+work addresses. Section~\ref{sec:case-design} defines the workflow in the OmniFlow DSL.
+Section~\ref{sec:case-deployment} walks the resolution cascade through three deployments of that
+same workflow (to a test and a production AWS account, then to GCP) to show how the bindings
+follow the deployment target.
+Section~\ref{sec:case-runtime} follows a transaction through the deployed workflow at runtime, and
+Section~\ref{sec:case-discussion} discusses the scenario's relevance and its limits, connecting
+them to the gaps assessed in Chapter~\ref{cha:conclusions}.
+
+\section{Scenario and Requirements}
+\label{sec:case-scenario}
+
+Consider a bank that authorizes card payments through a workflow rather than a monolithic
+service: each transaction is screened by two independent scoring functions before the bank
+decides whether to settle it. \texttt{fraud-check} is a rules/ML-based service that flags
+transactions matching known fraud patterns; \texttt{risk-score} computes a numeric risk score from
+transaction and account features. Both are internal functions owned by the bank's fraud team,
+deployed and iterated on independently of the orchestration logic. A third, external call settles
+approved transactions against the bank's core banking system, which is a distinct system with its
+own release cycle and is not managed through the registry.
+
+Three requirements are characteristic of this setting and motivate the integration described in
+this dissertation:
+
+\begin{itemize}
+    \item \textbf{One workflow, several accounts.} Suppose the bank keeps development, testing and
+    production in separate cloud accounts (or projects), a common way to isolate environments, and
+    promotes the workflow from one to the next. A function deployed in each account has a different
+    endpoint there: its ARN contains the account ID. If the workflow definition embedded those
+    endpoints, every promotion would require editing them by hand, and the functions would have to
+    be deployed in the new account before the workflow could even be completed: the two problems
+    that motivate the Function Registry (Section~\ref{sec:int_cha_int_uni_multi}).
+    \item \textbf{An exit strategy.} The Digital Operational Resilience Act (DORA) requires EU
+    financial entities to put in place exit strategies for ICT services supporting critical or
+    important functions, and to assess ICT concentration risk before contracting such
+    services~\cite[Arts.~28(8) and~29]{dora2022}. A fraud-screening workflow is a plausible
+    candidate for such a function. Exiting a provider is easier if the orchestration and the
+    functions it calls can be deployed elsewhere, not just the infrastructure underneath them.
+    \item \textbf{Auditability of bindings.} A bank's change-management process typically requires
+    a record of which endpoint each deployment was bound to, which the
+    registry's \texttt{updatedAt}-stamped entries provide in embryonic form
+    (Section~\ref{subsec:registry-evolution}), even though a production deployment would need the
+    stronger guarantees discussed in Section~\ref{sec:case-discussion}.
+\end{itemize}
+
+\section{Workflow Design}
+\label{sec:case-design}
+
+Listing~\ref{lst:case-payment-workflow} defines \texttt{PaymentAuthorization}. The first two
+steps call \texttt{fraud-check} and \texttt{risk-score} through \texttt{internalFunction}, so
+their endpoints are resolved through the registry at deployment time rather than hard-coded, as
+described in Section~\ref{subsec:endpoint-resolution}. Unlike the partner-owned risk-scoring API
+of Listing~\ref{lst:wf-external-part}, which the workflow reaches through a literal endpoint, both
+scoring calls here run on functions the bank owns, and are therefore internal and
+registry-managed. Their results are captured in \texttt{fraudResult} and \texttt{riskResult}. A third step,
+\texttt{decision}, is a conditional (\texttt{switch}) step: it jumps to
+\texttt{decline-transaction} if the fraud check flagged the transaction or the risk score exceeds
+a threshold, and otherwise falls through to the \texttt{default}, \texttt{approve-transaction}.
+The approve path issues an external call to the bank's own settlement endpoint, declared with a
+literal \texttt{host}/\texttt{path}.
+
+\begin{lstlisting}[language=Kotlin,caption={PaymentAuthorization workflow: two internal scoring calls feeding a decision.},label={lst:case-payment-workflow},basicstyle=\ttfamily\small,breaklines=false]
+val PaymentAuthorization = workflow {
+  name("PaymentAuthorization")
+  description(
+    "Real-time fraud screening for card payment authorization")
+  input("transaction")
+  steps(
+    step {
+      name("fraud-check")
+      context(call {
+        method(POST)
+        internalFunction("fraud-check", "./deploy/fraud-check.json")
+        body(variable("transaction"))
+        result("fraudResult")
+      })
+    },
+    step {
+      name("risk-score")
+      context(call {
+        method(POST)
+        internalFunction("risk-score", "./deploy/risk-score.json")
+        body(variable("transaction"))
+        result("riskResult")
+      })
+    },
+    step {
+      name("decision")
+      context(switch {
+        conditions(
+          condition {
+            match(variable("fraudResult.body.flagged")
+              equalTo value(true))
+            jump("decline-transaction")
+          },
+          condition {
+            match(variable("riskResult.body.score")
+              greaterThan value(75))
+            jump("decline-transaction")
+          }
+        )
+        default("approve-transaction")
+      })
+    },
+    step {
+      name("approve-transaction")
+      context(call {
+        method(POST)
+        host("core-banking.internal.example")
+        path("/v1/settlements")
+        body(variable("transaction"))
+        result("settlementResult")
+      })
+    },
+    step {
+      name("decline-transaction")
+      context(assign {
+        variables(variable("decision") equalTo value("declined"))
+      })
+    }
+  )
+  result("decision")
+}
+\end{lstlisting}
+
+Nothing in Listing~\ref{lst:case-payment-workflow} names a cloud provider, a region or a concrete
+endpoint for either scoring function: that information is supplied once, at deployment time,
+through the QuickFaaS descriptors referenced by \texttt{internalFunction} and the choice of
+provider deployer. This is what makes the same definition deployable to either provider, as
+Section~\ref{sec:case-deployment} shows next.
+
+\section{Deploying Across Accounts and Providers}
+\label{sec:case-deployment}
+
+Suppose neither \texttt{fraud-check} nor \texttt{risk-score} has been deployed yet, and the bank
+deploys \texttt{PaymentAuthorization} to its AWS test account first. The cascade runs as in the
+walkthrough of \S\ref{sec:walkthrough}, and reaches Level~3 for both calls: QuickFaaS deploys \texttt{fraud-check} and \texttt{risk-score}
+as Lambda functions from the descriptors referenced in the workflow, following the AWS deployment
+sequence of Figure~\ref{fig:aws-deploy-sequence}. Both ARNs are
+written to the registry, and \texttt{PaymentAuthorization} is deployed as a state machine.
+
+The bank then promotes \texttt{PaymentAuthorization} to its production account. The workflow
+definition does not change; only the descriptors do, since they name the production account's
+deployment bucket (and, optionally, its execution role). The production deployment uses its own
+registry file (the deployers accept a registry path, so one per account is a configuration
+choice): OmniFlow bootstraps it from the production account, finds neither scoring function, and
+Level~3 deploys both there, recording ARNs that carry the production account ID. No endpoint is
+copied between accounts. The registry file must not be shared between the two accounts: an entry
+written for the test account names a function the production account does not have, so its
+validation fails, the entry is treated as stale, and the production deployment aborts
+(\S\ref{sec:walkthrough}).
+
+Now suppose the bank's exit strategy calls for the same fraud-screening workflow to run on a
+second provider (Section~\ref{sec:case-scenario}). Deploying it to GCP takes GCP descriptors (targeting Cloud Functions instead of Lambda) and the
+GCP deployer. On this first GCP deployment, the GCP registry is
+bootstrapped separately from the AWS one, both scoring functions miss at Level~1 and Level~2, and
+Level~3 deploys them as first-generation Cloud Functions instead, following the ZIP-based
+deployment path described in \S\ref{sec:background_quickfaas}. The two registries stay
+independent, one per provider (\texttt{function-registry.aws.json} and
+\texttt{function-registry.gcp.json} by default), so the same \texttt{functionRef} resolves to a
+Lambda ARN under one deployment and to a Cloud Functions URL under the other, subject on GCP to the
+limitation of \S\ref{subsec:store-internals}. The uniform
+\texttt{url} field discussed in
+Section~\ref{subsec:registry-evolution} is precisely what makes this substitution transparent to
+the workflow definition.
+
+\section{Runtime Invocation}
+\label{sec:case-runtime}
+
+Once deployed, the two deployments of \texttt{PaymentAuthorization} differ only in how the two
+scoring calls are invoked. On AWS, Step Functions invokes \texttt{fraud-check} and
+\texttt{risk-score} through the native \texttt{lambda:invoke} integration of
+Section~\ref{sec:runtime-invocation}; on GCP, they are HTTP calls to the resolved Cloud Functions
+URLs. The rest of the workflow is the same on both: the \texttt{decision} step becomes a native
+conditional (a \texttt{Choice} state on AWS), and \texttt{approve-transaction} an ordinary
+external call.
+
+\section{Discussion}
+\label{sec:case-discussion}
+
+Section~\ref{sec:case-deployment} shows the integration's central claim in a setting where it
+plausibly matters. The fraud team's frequent model updates are a different matter: a retrained \texttt{fraud-check} redeployed in place keeps its endpoint
+(\S\ref{sec:resolution-cascade}), so the deployed workflow calls the new model unchanged. Conversely, a workflow deployment never deploys the new model itself, because the
+cascade only deploys missing functions (Section~\ref{sec:concl-critical}).
+
+The scenario equally exposes why this remains illustrative rather than production-ready: the
+unguarded registry and the broad, automatically granted IAM role assessed in
+Section~\ref{sec:concl-critical} are not controls a bank's change-management or security function
+would accept for a function that screens payment data.
+The hardening required before the workflow in Listing~\ref{lst:case-payment-workflow} could
+authorize real transactions is set out in Section~\ref{sec:concl-future}.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

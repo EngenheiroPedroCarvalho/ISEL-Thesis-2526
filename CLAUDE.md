@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repository.
+Guidance for Claude Code when working in this repository. Open work (thesis and code) is tracked
+in `TODO.md`.
 
 ## Behavioral guidelines (Karpathy-inspired)
 
@@ -51,7 +52,11 @@ ISEL-Thesis-2526/
 │   ├── quickfaas-essentials/QuickFaaS-Deployment/   # QuickFaaS deployer (Gradle, Kotlin 1.6.20)
 │   │   └── src/{main,test}/kotlin/model/    # cloud providers: AwsProvider, GcpProvider, ...
 │   └── TESTING.md                           # full testing documentation (read this)
-└── quickfaas-essentials/                    # reference clone of the original QuickFaaS (do not edit)
+├── dissertation/                            # MSc dissertation LaTeX sources (canonical; see its CLAUDE.md)
+├── diagrams/                                # PlantUML sources and PNGs for the thesis figures
+├── thesis/                                  # older split copy of the chapters (superseded; do not edit)
+├── quickfaas-essentials/                    # reference clone of the original QuickFaaS (do not edit)
+└── TODO.md                                  # open work on the thesis and the code
 ```
 
 Two build systems: `deployment/` and `benchmark/` are **Maven**; `QuickFaaS-Deployment/` is
@@ -59,12 +64,50 @@ Two build systems: `deployment/` and `benchmark/` are **Maven**; `QuickFaaS-Depl
 
 ## Key packages (the contribution's code)
 
-- `deployment/.../registry/` — function registry + endpoint resolution
-  (`WorkflowInternalCallEndpointResolver`, `FunctionRegistryStore`, `FunctionEndpointKeys`).
-- `deployment/.../internalfunction/` — auto-deploy glue (`AwsLambdaDeployer`,
-  `AwsInternalFunctionResolver`, `QuickFaasDescriptorLoader`).
-- `deployment/.../cloud/provider/{amazon,google}/` — provider renderers/deployers.
-- `QuickFaaS-Deployment/.../model/Aws*` — the AWS provider added to QuickFaaS.
+Under `omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
+
+- `registry/` — the Function Registry: `FunctionRegistryStore` (JSON file I/O and lookups),
+  `FunctionRegistryBootstrapper` and `CloudFunctionsCatalog` (populate a missing registry from the
+  provider), `FunctionInvocationMetadata`.
+- `internalfunction/` — `WorkflowInternalFunctionResolver` (GCP cascade) and the
+  `InternalFunctionDeployer` strategy (with `NoopInternalFunctionDeployer`).
+- `internalfunction/quickfaas/` — `AwsInternalFunctionResolver` (AWS cascade), the Level 3
+  deployers `QuickFaasDeployer` (GCP) and `AwsLambdaDeployer` (AWS), `QuickFaasDescriptor` /
+  `QuickFaasDescriptorLoader`, and `QuickFaasProcessInvoker` (runs the QuickFaaS jar as a
+  subprocess).
+- `cloud/provider/{amazon,google}/` — renderers; the entry-point deployers `AmazonCloudDeployer`
+  and `GoogleCloudDeployer` (only when the workflow has internal calls: bootstrap the registry and
+  run the resolver; then deploy the workflow); and
+  provider lookups (`LambdaFunctionInspector`, `LambdaFunctionsCatalog`, `AwsRegionsLister`;
+  `CloudRunV2ServiceInspector`, `CloudRunV2RestCatalog`, `CloudRunLocationsV1RestClient`).
+
+Under `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/src/main/kotlin/model/`: the AWS
+provider added to QuickFaaS (`AwsProvider`, `AwsLambdaFunction`, `AwsRequests`, `AwsS3Bucket`, …).
+
+## How the resolution cascade behaves (verified 2026-09-11)
+
+The dissertation describes this behaviour, so keep the code and `dissertation/` consistent.
+
+- **Levels:** 1 = registry hit, validated against the live function; 2 = provider discovery
+  across regions (or one region with the `"region/name"` form); 3 = QuickFaaS deployment, only
+  when the call supplies a `deploymentDescriptorPath`.
+- **Registries are per provider:** `function-registry.gcp.json` and `function-registry.aws.json`
+  in the working directory (override with the deployer builders' `registryPath(...)`).
+- **Single read:** both resolvers read the registry once per `resolve()` into a snapshot, look
+  calls up with `tryResolveEntryIn`, and keep the snapshot in sync with `put`/`remove`.
+- **No deployment without confirmed absence:** a discovery error (for example, inaccessible
+  regions) aborts; it never falls through to Level 3. A stale registry entry also aborts, even when
+  a descriptor is present.
+- **No updates:** Level 3 runs only when the function is absent; the cascade never updates an
+  existing function. The exception is a first-gen GCP function missing from the registry: the
+  cascade can't find it, so QuickFaaS (which updates a function that already exists) redeploys
+  over it (see the GCP limitation below).
+- **Static binding:** the resolved endpoint is embedded in the rendered workflow at deployment
+  time.
+- **GCP limitation:** `QuickFaasDeployer` creates first-generation Cloud Functions
+  (`cloudfunctions.net` URLs), but validation, discovery and bootstrap query only Cloud Run. Bindings
+  to first-gen functions skip validation and can't be rediscovered. This is documented in the
+  thesis; the fix idea is in `TODO.md`.
 
 ## Build, test, coverage
 
@@ -80,6 +123,27 @@ cd omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment
 ./gradlew jacocoTestReport                    # + coverage -> build/reports/jacoco/test/html/index.html
 ```
 
+The code targets Java 17. On this Mac, IntelliJ runs the tests with its bundled JDK 25, but in a
+terminal `/usr/bin/java` is only the macOS placeholder: Maven then hangs silently. Set `JAVA_HOME`
+first, and add `-o` to run offline:
+
+```bash
+JAVA_HOME=/opt/homebrew/opt/openjdk@26/libexec/openjdk.jdk/Contents/Home ./mvnw -o -pl deployment test
+```
+
+**Gradle needs a different JDK from Maven.** QuickFaaS is on Kotlin 1.6.20, whose compiler cannot
+parse JDK 26's version string: `./gradlew test` fails at `:compileKotlin` with
+`exception: java.lang.IllegalArgumentException: 26.0.2.1`. Point it at the JDK 17 that is also
+installed — only `openjdk@17` and `openjdk@26` are on this Mac:
+
+```bash
+cd omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment
+JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew test
+```
+
+Gradle writes no test summary to stdout; the counts are in `build/test-results/test/*.xml`
+(`tests=` / `failures=` on each `<testsuite>`).
+
 ## Performance benchmarks (JMH)
 
 The benchmark jar's Main-Class is a custom launcher; to use JMH CLI flags, invoke the JMH runner
@@ -91,10 +155,10 @@ cd omni-flow-main
 java -cp benchmark/target/benchmarks.jar org.openjdk.jmh.Main \
   "costaber\.com\.github\.omniflow\.metrics\.Benchmark(Rendering|InternalCall).*" \
   -f 1 -wi 3 -i 5 -w 1 -r 1 -rf csv -rff benchmark/results/jmh-results.csv
-python3 benchmark/results/plot_benchmarks.py           # regenerate the P1-P5 graphs
+python3 benchmark/results/plot_benchmarks.py           # regenerate the T1-T18 graphs
 ```
 
-Results and graphs live in `benchmark/results/` (`RESULTS.md`, `P1_*.png … P5_*.png`).
+Results and graphs live in `benchmark/results/` (`RESULTS.md`, `T1_*.png … T18_*.png`).
 For thesis-grade numbers use `-f 3` on a dedicated machine.
 
 ## Testing conventions
@@ -112,21 +176,20 @@ For thesis-grade numbers use `-f 3` on a dedicated machine.
 
 - **`junit-vintage-engine`** must stay in `deployment/pom.xml`: many existing tests use
   `kotlin-test-junit` (JUnit 4) and won't run under Surefire (JUnit 5) without it.
-- **JDK 21 runtime.** `System.setSecurityManager` is unavailable, so code paths that call
-  `kotlin.system.exitProcess` (e.g. `logPropertyMissing` via `setProjectData("")`) are **not
-  unit-testable in-process** — leave them untested and documented.
-- **`FunctionRegistryStore.resolveUrl`/`tryResolveEntry`/`resolveEntry` re-read and re-parse the
-  whole registry file on every call** (no in-memory cache). Fine for small registries; O(N·M) if
-  the registry grows. `resolveUrl` is exercised by benchmarks P3/P6/P7; `tryResolveEntry` is the
-  same anti-pattern reached from the real auto-deploy resolvers
-  (`AwsInternalFunctionResolver`/`WorkflowInternalFunctionResolver`), quantified by P10/P11 — a
-  known optimization opportunity, not yet applied to those two classes.
+- **Tests run on JDK 21 or newer** (bytecode targets 17). `System.setSecurityManager` is
+  unavailable, so code paths that call `kotlin.system.exitProcess` (e.g. `logPropertyMissing` via
+  `setProjectData("")`) are **not unit-testable in-process** — leave them untested and documented.
+- **`FunctionRegistryStore` has no cache.** `readAll`, `tryResolveEntry`, `resolveEntry` and
+  `resolveUrl` re-read and re-parse the whole file on every call, and every `put`/`remove` rewrites
+  it. The production resolvers avoid the read cost by reading once per `resolve()` and using the
+  pure `tryResolveEntryIn`/`resolveUrlIn`. Benchmarks T2/T3 measure the per-call read path, T6/T7
+  the resolvers, and T8/T9 the write path.
 - **`GoogleAccessTokenProvider`'s default constructor arg calls `GoogleCredentials.getApplicationDefault()`
   eagerly** — and so do `CloudRunV2ServiceInspector()`/`CloudRunLocationsV1RestClient()`, which
   default-construct a `GoogleAccessTokenProvider` themselves. Just *instantiating* either class
   with no-arg defaults tries to resolve real Application Default Credentials and fails/hangs
   without `gcloud auth application-default login` configured — even if no method that actually
-  needs a token is ever called. Local-only tests/benchmarks that construct these classes (e.g. P11)
+  needs a token is ever called. Local-only tests/benchmarks that construct these classes (e.g. T7)
   must pass an explicit `GoogleAccessTokenProvider(credentials = GoogleCredentials.create(AccessToken(...)))`
   to avoid touching ADC.
 - `.gradle/` is (unfortunately) tracked in the repo; avoid committing its churn — `git checkout --`
@@ -135,7 +198,11 @@ For thesis-grade numbers use `-f 3` on a dedicated machine.
 ## Conventions
 
 - Never push to `main`. Development happens on feature branches
-  (current: `OmniFlow-QuickFaaS-Test`).
+  (current: `claude/progress-report-compliance-e4damf`).
+- Commit only when the user asks, and treat a commit as published: commits on this branch have been
+  pushed to GitHub automatically (probably by IntelliJ).
+- Record every change to the dissertation chapters in `dissertation/CHANGELOG.md` (unpushed
+  changes only; the procedure is in `dissertation/CLAUDE.md`).
 - Don't edit `quickfaas-essentials/` at the repo root — it's a read-only reference clone; the
   active QuickFaaS code is under `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/`.
 - Prefer minimal production changes; confirm before altering behaviour of colleagues' code.
