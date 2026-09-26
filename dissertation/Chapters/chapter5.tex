@@ -63,9 +63,10 @@ The registry management layer provides the following behavior:
     \item \textbf{Post-deployment updates:} after a successful QuickFaaS deployment, the
     resulting invocation metadata is written to the registry, so subsequent deployments
     resolve the function without redeploying it.
-    \item \textbf{Drift handling:} a registry hit whose endpoint has changed is refreshed, and an
-    entry whose function no longer exists is replaced or removed, as Level~1 of the cascade
-    prescribes (\S\ref{sec:resolution-cascade}).
+    \item \textbf{Drift handling:} a registry hit whose endpoint has changed is refreshed. An
+    entry whose function is no longer where the entry places it is replaced if the function is
+    found in another region; otherwise the entry is removed and the deployment aborts, as Level~1
+    of the cascade prescribes (\S\ref{sec:resolution-cascade}).
 \end{itemize}
 
 Every write refreshes the top-level \texttt{updatedAt} timestamp.
