@@ -66,6 +66,7 @@ resolvers in \S\ref{subsec:store-internals}, one per level of the resolution cas
   \end{minipage}
   \caption{Level~3 (QuickFaaS deployment): \texttt{QuickFaasDeployer} invokes QuickFaaS and polls
   the Cloud Functions API until the function is active on GCP (a); \texttt{AwsLambdaDeployer}
-  invokes QuickFaaS and polls \texttt{GetFunction} until the Lambda is active on AWS (b).}
+  invokes QuickFaaS and polls \texttt{GetFunction} until the Lambda is active on AWS (b).
+  The operational steps of the AWS branch are traced in Figure~\ref{fig:aws-deploy-sequence}.}
   \label{fig:resolution-cascade-level3}
 \end{figure}

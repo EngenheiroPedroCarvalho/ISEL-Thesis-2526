@@ -126,7 +126,10 @@ described in \S\ref{subsec:validation-error-semantics}.
 In both resolvers, the writes listed in \S\ref{subsec:registry-updates} go through
 \texttt{put()} before the endpoint is injected into the call, and a hit that validates unchanged
 writes nothing, so the registry converges toward a complete set of bindings as workflows
-are deployed.
+are deployed. The messages each resolver exchanges with the registry and with its provider's
+inspection API are shown, level by level and with GCP and AWS side by side, in the sequence
+diagrams of Appendix~\ref{app:cascade-sequences}
+(Figures~\ref{fig:resolution-cascade-level1}--\ref{fig:resolution-cascade-level3}).
 
 To keep resolution cheap when a workflow contains many internal calls, both provider resolvers
 read the registry once into a snapshot at the start of \texttt{resolve()} and resolve every call
@@ -149,22 +152,6 @@ exists; QuickFaaS then finds the function through the Cloud Functions API and up
 with the descriptor's code, so in this case the cascade does overwrite an existing function.
 Without a descriptor, deployment fails and reports the function as absent. The AWS path is not
 affected. How the gap could be closed is listed as future work (Section~\ref{sec:concl-future}).
-
-\subsection{Resolution Cascade Sequences}
-\label{subsec:cascade-sequences}
-
-The description of the two resolvers above is expanded into six sequence diagrams, one per
-cascade level and provider, making explicit the messages exchanged with the registry and with
-each provider's inspection API; to keep this chapter's flow uninterrupted, the diagrams themselves
-are collected in Appendix~\ref{app:cascade-sequences} rather than placed inline:
-Figure~\ref{fig:resolution-cascade-level1} for Level~1,
-Figure~\ref{fig:resolution-cascade-level2} for Level~2 and
-Figure~\ref{fig:resolution-cascade-level3} for Level~3, each contrasting the GCP panel (a) with
-the AWS panel (b) and captioned with the behaviour it shows.
-
-The Level~3 panels stay at the cascade's conceptual level; the operational steps of the AWS
-branch are traced for the worst-case path in Figure~\ref{fig:aws-deploy-sequence}, introduced in
-the AWS Lambda Support section that follows.
 
 \subsection{Validation and Error Semantics}
 \label{subsec:validation-error-semantics}
