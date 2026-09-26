@@ -104,7 +104,7 @@ that lookup against an already-loaded map with no I/O of its own (the same split
 \texttt{readAll()}/\texttt{tryResolveEntry()} re-read and re-parse the file on every call; the
 performance consequences of this choice are analysed in Chapter~\ref{cha:evaluation}.
 
-The two provider resolvers sit on top of this store. \\
+The two provider resolvers sit on top of this store.
 \texttt{WorkflowInternalFunctionResolver} (GCP) realises the three levels of
 \S\ref{sec:resolution-cascade} on the Cloud Run API, through
 \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Service\allowbreak Inspector}, which looks
