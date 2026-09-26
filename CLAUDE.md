@@ -99,7 +99,9 @@ The dissertation describes this behaviour, so keep the code and `dissertation/` 
   regions) aborts; it never falls through to Level 3. A stale registry entry also aborts, even when
   a descriptor is present.
 - **No updates:** Level 3 runs only when the function is absent; the cascade never updates an
-  existing function.
+  existing function. The exception is a first-gen GCP function missing from the registry: the
+  cascade can't find it, so QuickFaaS (which updates a function that already exists) redeploys
+  over it (see the GCP limitation below).
 - **Static binding:** the resolved endpoint is embedded in the rendered workflow at deployment
   time.
 - **GCP limitation:** `QuickFaasDeployer` creates first-generation Cloud Functions
