@@ -20,20 +20,21 @@ implanta funções \emph{serverless} portáveis, e o OmniFlow, uma DSL em Kotlin
 \emph{workflows} no AWS Step Functions e no Google Cloud Workflows. Uma chamada identifica a função
 que invoca por um identificador lógico estável, em vez de um \emph{endpoint}, e o OmniFlow liga
 esse identificador no momento em que implanta o \emph{workflow}. A ligação é uma cascata de três
-níveis, cada um usado apenas quando o anterior falha: um registo de funções, cuja entrada é
-validada contra a função existente; uma procura nas regiões do fornecedor por uma função com esse
-nome; e, só com a ausência confirmada, uma implantação através do QuickFaaS a partir de um
-descritor. O QuickFaaS, até aqui limitado ao Google Cloud e ao Azure, foi também estendido com um
+níveis, cada um usado apenas quando o anterior falha. O primeiro é um registo de funções, cuja
+entrada é validada contra a função existente; o segundo, uma procura nas regiões do fornecedor por
+uma função com esse nome. O terceiro, só com a ausência confirmada, é uma implantação através do
+QuickFaaS a partir de um descritor. O QuickFaaS, até aqui limitado ao Google Cloud e ao Azure, foi também estendido com um
 fornecedor para o AWS Lambda, para que a unificação cubra as duas \emph{clouds} que o OmniFlow
 suporta.
 
 O protótipo foi avaliado quanto à correção e ao custo. Quarenta e cinco testes unitários cobrem
-todos os caminhos que a cascata pode seguir nos dois fornecedores, e os testes de desempenho
-mostram que resolver um \emph{workflow} com duzentas chamadas internas custa dezenas de
-microssegundos, crescendo linearmente com o número de chamadas internas e não com a dimensão do
-registo. Implantar uma aplicação \emph{serverless} a partir de uma única definição é, assim,
-exequível, e a resolução acrescentada é desprezável face à implantação na \emph{cloud} que se
-lhe segue.
+todos os caminhos que a cascata pode seguir nos dois fornecedores. Os testes de desempenho
+mostram que o trabalho local de resolver um \emph{workflow} com duzentas chamadas internas custa
+dezenas de microssegundos, crescendo linearmente com o número de chamadas internas, enquanto o
+registo é lido uma só vez. Os pedidos que a resolução envia ao fornecedor são limitados a partir
+da implementação: um por chamada interna quando o registo está atualizado. Implantar uma
+aplicação \emph{serverless} a partir de uma única definição é, assim, exequível, e a resolução
+acrescentada é desprezável face a uma implantação na \emph{cloud} que se mede em minutos.
 
 % Palavras-chave do resumo em Português
 \begin{keywords}

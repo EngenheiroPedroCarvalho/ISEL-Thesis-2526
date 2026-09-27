@@ -18,11 +18,17 @@ Both the correctness checks and the measurements exercise only \emph{local} oper
 constructing a workflow model, traversing it, resolving internal calls against the registry,
 reading and writing the registry file, and packaging a Lambda bundle. Operations that call the
 cloud provider (Lambda/IAM/S3 requests, Cloud Run/Cloud Functions APIs, the QuickFaaS subprocess)
-are deliberately excluded, for two reasons: they are dominated by network and provider-side latency
-measured in seconds, and they are non-deterministic and out of the unit-test scope by design. The
-correctness checks replace them with test doubles. For RQ2, the evaluation therefore answers a
-focused question: \emph{how much does the unification layer add to a deployment, and how does that
-overhead scale with the number of calls and the size of the registry?}
+are deliberately excluded, for two reasons. First, they are dominated by network and
+provider-side latency, and that cost is already known: deploying a workflow and the functions it
+calls, whether with the two tools used separately or through this integration, takes minutes,
+most of it spent by the provider building and activating each function. Timing it again would
+measure the provider rather than the integration. Second, these operations are non-deterministic
+and out of the unit-test scope by design. The correctness checks replace them with test doubles.
+For RQ2, the evaluation therefore isolates what the integration adds: \emph{how much local work
+does the unification layer add to a deployment, how does it scale with the number of calls and
+the size of the registry, and how many requests does it send to the provider?} The first two
+parts are measured; the third is counted from the implementation
+(Section~\ref{sec:eval-api-calls}).
 
 The evaluation has six parts:
 \begin{itemize}
@@ -30,7 +36,7 @@ The evaluation has six parts:
   resolver takes in every situation the cascade can meet, checked by unit tests on both providers.
   \item \textbf{Resolution overhead and scalability} (RQ2): the cost of resolving internal calls as a
   function of the number of calls ($N$) and the size of the registry ($R$), and the effect of the
-  single-read optimization.
+  single-read optimisation.
   \item \textbf{Real auto-deploy resolvers} (RQ2): the cost of the production resolvers
   (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}, \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) and of the
   registry write path.
@@ -57,7 +63,7 @@ written into the call, the registry contents afterwards and, where relevant, whe
 was called or the resolution aborted.
 
 Table~\ref{tab:eval-correctness} lists the situations with the behaviour that the cascade
-semantics prescribe (\S\ref{sec:walkthrough} and \S\ref{subsec:validation-error-semantics}). The observed behaviour matches the
+semantics prescribe (Section~\ref{sec:walkthrough} and Section~\ref{subsec:validation-error-semantics}). The observed behaviour matches the
 expected behaviour in every case: all 45 resolver tests (22 for AWS, 23 for GCP) pass, as do the
 two tests of the registry bootstrap.
 
@@ -107,9 +113,9 @@ two tests of the registry bootstrap.
     Several internal calls in one workflow & registry read once \\
     \hline
     Registry entry holding a \texttt{cloudfunctions.net} URL (GCP only) & validated against
-    Cloud Run like any other hit; the live URL is bound (\S\ref{subsec:gcp-cloud-run-functions}) \\
+    Cloud Run like any other hit; the live URL is bound (Section~\ref{subsec:gcp-cloud-run-functions}) \\
     \hline
-    Registry file missing (provider-independent) & registry rebuilt from the provider's catalog \\
+    Registry file missing (provider-independent) & registry rebuilt from the provider's catalogue \\
     \hline
   \end{tabular}
 \end{table}
@@ -126,13 +132,13 @@ warm-up iterations and five measurement iterations of one second each
 across three JVMs, of already-JIT-compiled code. All experiments but two come from one run of the
 whole suite. The exceptions are T6 and T7, the two experiments on the production resolvers. T6
 was re-measured later the same evening, on the same idle machine, after the change to the
-production resolvers that \S\ref{sec:eval-real-resolvers} describes; the rest of the suite does not
+production resolvers that Section~\ref{sec:eval-real-resolvers} describes; the rest of the suite does not
 exercise those classes and was left as measured. T7 was re-measured in a third session, with the
 same settings on the same machine, after the GCP resolver began to validate every registry hit
-(\S\ref{subsec:gcp-cloud-run-functions}). The sessions agree where they can be compared. The
+(Section~\ref{subsec:gcp-cloud-run-functions}). The sessions agree where they can be compared. The
 $N{=}1$ column of T6, which is one registry read and almost nothing else, reproduces the per-read
 cost that T2 measured in the first session ($9.9\,\mu$s at $R{=}1$ against T2's $10.5\,\mu$s;
-$20.0\,\mu$s at $R{=}50$ against T2's $18.3\,\mu$s), and six points of T6 measured again in the
+$20.0\,\mu$s at $R{=}50$ against T2's $18.3\,\mu$s). Six points of T6 measured again in the
 third session came out between 1\% and 7\% above their second-session values.
 
 \paragraph{Caveat on absolute values.}
@@ -292,11 +298,11 @@ change worth making.
   \label{fig:eval-t2}}
 \end{figure}
 
-\paragraph{The single-read optimization (T3).}
+\paragraph{The single-read optimisation (T3).}
 Reading the registry once per workflow into an in-memory snapshot and resolving against it
 removes that product: the cost becomes one read proportional to the registry size plus a cheap
 constant-time lookup per call. Table~\ref{tab:eval-t3} compares resolving the registry per call (naive) against a
-single read per resolution (optimized), and Figure~\ref{fig:eval-t3} plots the two on a shared
+single read per resolution (optimised), and Figure~\ref{fig:eval-t3} plots the two on a shared
 logarithmic axis. With the snapshot, the cost becomes almost independent of
 $N$ (each row is flat to within a few tenths of a microsecond across a two-hundred-fold increase
 in the number of calls) and reduces to the cost of one read of an $R$-entry file. The speedup
@@ -305,7 +311,7 @@ therefore grows with the product $N \cdot R$, reaching $200\times$ in the larges
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T3: total resolution time ($\mu$s), naive (per-call read) vs.\ optimized (single
+  {\captionsetup{textfont=sf}\captionof{table}{T3: total resolution time ($\mu$s), naive (per-call read) vs.\ optimised (single
   read).}
   \label{tab:eval-t3}}
   \small
@@ -315,15 +321,15 @@ therefore grows with the product $N \cdot R$, reaching $200\times$ in the larges
      \hline
     naive, $R{=}1$        & 9.8  & 98.0     & 492      & 1\,999    \\
     \hline
-    optimized, $R{=}1$    & 10.0 & 10.0     & 10.1     & 10.3      \\
+    optimised, $R{=}1$    & 10.0 & 10.0     & 10.1     & 10.3      \\
     \hline
     naive, $R{=}50$       & 17.9 & 180      & 901      & 3\,630    \\
     \hline
-    optimized, $R{=}50$   & 18.4 & 18.3     & 18.5     & 18.5      \\
+    optimised, $R{=}50$   & 18.4 & 18.3     & 18.5     & 18.5      \\
     \hline
     naive, $R{=}1000$     & 183  & 1\,839   & 9\,239   & 36\,670   \\
     \hline
-    optimized, $R{=}1000$ & 182  & 183      & 182      & 184       \\
+    optimised, $R{=}1000$ & 182  & 183      & 182      & 184       \\
     \hline
   \end{tabular}
 
@@ -336,16 +342,16 @@ therefore grows with the product $N \cdot R$, reaching $200\times$ in the larges
   \label{fig:eval-t3}}
 \end{figure}
 
-\paragraph{Confirming the optimization on real workflows (T4).}
+\paragraph{Confirming the optimisation on real workflows (T4).}
 T4 exercises the resolution of a real \texttt{Workflow} object, not the isolated store primitive,
 across a grid of $1$ to $50$ distinct functions and $1$ to $200$ calls, with the registry always
 hitting ($R{=}F$). The naive path is dominated by the number of calls, at roughly $10\,\mu$s per
 call (one whole registry read each) and grows only mildly with $F$, since a larger $F$ means
-a larger file to re-read (Table~\ref{tab:eval-t4-naive}). The optimized path pays that read once
+a larger file to re-read (Table~\ref{tab:eval-t4-naive}). The optimised path pays that read once
 and then about $0.22\,\mu$s per call, so $N$ still weighs more than $F$, but far less than on the
 naive path (Table~\ref{tab:eval-t4-optimized}; both paths are plotted in
-Figure~\ref{fig:eval-t4}): at $F{=}1$ it goes from $10.2$ to $54.7\,\mu$s as $N$ goes from 1 to
-200, where the naive path goes from $10.4$ to $2\,069\,\mu$s, while at $N{=}1$ it goes only from
+Figure~\ref{fig:eval-t4}). At $F{=}1$ it goes from $10.2$ to $54.7\,\mu$s as $N$ goes from 1 to
+200, where the naive path goes from $10.4$ to $2\,069\,\mu$s. At $N{=}1$ it goes only from
 $10.2$ to $18.5\,\mu$s as $F$ goes from 1 to 50.
 The speedup is therefore $1\times$ at $N{=}1$, where both paths read the file exactly once, and
 climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
@@ -378,7 +384,7 @@ climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
   \end{minipage}\hfill
   \begin{minipage}[t]{0.48\textwidth}
     \centering
-    {\captionsetup{textfont=sf}\captionof{table}{T4: optimized (single-read) resolution time ($\mu$s) of a real workflow, same grid
+    {\captionsetup{textfont=sf}\captionof{table}{T4: optimised (single-read) resolution time ($\mu$s) of a real workflow, same grid
     as Table~\ref{tab:eval-t4-naive}.}
     \label{tab:eval-t4-optimized}}
     \small
@@ -404,18 +410,18 @@ climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
   \vspace{4mm}
   \includegraphics[width=0.62\textwidth]{images/benchmarks/T4a_resolution_sem_cache.png}\\[2mm]
   \includegraphics[width=0.62\textwidth]{images/benchmarks/T4b_resolution_com_cache.png}
-  {\captionof{figure}{T4: resolution of a real \texttt{Workflow} object, naive (top) against optimized
+  {\captionof{figure}{T4: resolution of a real \texttt{Workflow} object, naive (top) against optimised
   (bottom), on a shared logarithmic axis, one curve per number of distinct functions $F$ and
   $R{=}F$. On both paths the curves are ordered by $F$ and climb with $N$, steeply on the naive
-  path and gently on the optimized one.}
+  path and gently on the optimised one.}
   \label{fig:eval-t4}}
 \end{figure}
 
 \paragraph{Registry size on a realistic workflow (T5).}
 On a realistic workflow ($F{=}10$, $N{=}50$ fixed), T5 isolates the effect of the registry size.
 Both paths grow with $R$, but for different reasons: the naive path re-reads the file on each of
-the 50 calls, the optimized path reads it once, so the gap widens from $26\times$ at $R{=}10$ to
-$46\times$ at $R{=}1000$ (Table~\ref{tab:eval-t5} and Figure~\ref{fig:eval-t5}). The optimized
+the 50 calls, the optimised path reads it once, so the gap widens from $26\times$ at $R{=}10$ to
+$46\times$ at $R{=}1000$ (Table~\ref{tab:eval-t5} and Figure~\ref{fig:eval-t5}). The optimised
 column is the cost of one read plus 50 lookups, and tracks the per-read cost measured in T2.
 
 \begin{figure}[htbp]
@@ -462,14 +468,14 @@ Experiments T6 and T7 measure the resolvers that actually run during deployment,
 provider: \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-t6} and Figure~\ref{fig:eval-t6}) and
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-t7} and Figure~\ref{fig:eval-t7}), with the
 registry always hitting ($R{=}F$). Both use the single-read snapshot described in
-\S\ref{subsec:store-internals}, whose effect T3--T5 demonstrated on the reference resolver.
+Section~\ref{subsec:store-internals}, whose effect T3--T5 demonstrated on the reference resolver.
 Neither experiment reaches a provider, but each stands in for it differently. On AWS the
 inspector is a local fake that confirms every registered function. On GCP the real
 \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Service\allowbreak Inspector} validates every
 hit, and only its HTTP client is replaced by one that answers each \texttt{services.get} locally
 with the registered URL, so building the request, obtaining the token and parsing the JSON
 response are measured, and only the network round-trip is not. What both measure is therefore the
-local part of the cascade. The result has the same shape as the already-optimized reference
+local part of the cascade. The result has the same shape as the already-optimised reference
 implementation: a cost that is one registry read plus a constant per call. Reading down the
 $N{=}1$ column gives the read (plus, on GCP, one validation), which grows with $F$ because
 $R{=}F$; reading along a row gives the per-call work, $0.07$--$0.14\,\mu$s on AWS and about
@@ -478,10 +484,10 @@ $29.1\,\mu$s on AWS and $199.1\,\mu$s on GCP.
 
 An earlier version of these two experiments measured something else. Until this evaluation was
 repeated, both resolvers printed two or three progress lines to the console for every call they
-resolved, inside the method being measured, and that console output was about 95\% of the reported
+resolved, inside the method being measured. That console output was about 95\% of the reported
 time: the same points cost $1\,006\,\mu$s (AWS) and $1\,344\,\mu$s (GCP), against $29.1$ and
 $81.3\,\mu$s once those per-call messages were moved to \texttt{logger.debug}, which the default
-logging configuration does not print, without changing what the resolvers do (the GCP value
+logging configuration does not print. The move did not change what the resolvers do (the GCP value
 predates the validation of every hit). The measurement is reported here because
 the mistake is easy to repeat: an instrumented method measures its instrumentation, and a
 per-call console write costs an order of magnitude more than the resolution it announces.
@@ -495,13 +501,13 @@ call. The rest of the GCP figure, about $0.6\,\mu$s per call, is the Cloud Run c
 request and parsing a response, work that T6's fake skips entirely, so the two experiments do not
 stand in for the provider on equal terms. Either way, the local work of a validation is well under
 a microsecond per call, whereas the request it prepares is a network round-trip to the provider
-(\S\ref{sec:eval-api-calls}).
+(Section~\ref{sec:eval-api-calls}).
 
 \begin{figure}[htbp]
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T6: AWS provider: resolution time ($\mu$s) of the real resolver
   (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with the
-  single-read optimization and without per-call console output.}
+  single-read optimisation and without per-call console output.}
   \label{tab:eval-t6}}
   \small
   \begin{tabular}{|l|r|r|r|r|r|}
@@ -535,7 +541,7 @@ a microsecond per call, whereas the request it prepares is a network round-trip 
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T7: GCP provider: resolution time ($\mu$s) of the real resolver
   (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with
-  the single-read optimization, without per-call console output, and with every hit validated
+  the single-read optimisation, without per-call console output, and with every hit validated
   through a Cloud Run client answered locally.}
   \label{tab:eval-t7}}
   \small
@@ -872,12 +878,12 @@ regions enabled for the AWS account, or the Cloud Run locations visible to the G
 
 \paragraph{What the count grows with.}
 Both resolvers validate a registry hit on every internal \texttt{call} step, not once per distinct
-function. The snapshot introduced in \S\ref{sec:eval-real-resolvers} removes the repeated
-\emph{file} reads, but it does not cache the live lookup that follows them, so a workflow with
-$I$ internal calls that all hit the registry issues $I$ validation requests even when every call
-names the same function ($F{=}1$), each a network round-trip that T6 and T7 do not include. The list of candidate regions, by contrast, is
-fetched at most once per deployment and cached in the resolver, and a region scan is paid only by
-the calls that miss.
+function. The snapshot introduced in Section~\ref{sec:eval-real-resolvers} removes the repeated
+\emph{file} reads, but it does not cache the live lookup that follows them. A workflow with
+$I$ internal calls that all hit the registry therefore issues $I$ validation requests, even when
+every call names the same function ($F{=}1$). Each is a network round-trip that T6 and T7 do not
+include. The list of candidate regions, by contrast, is fetched at most once per deployment and
+cached in the resolver, and a region scan is paid only by the calls that miss.
 
 Table~\ref{tab:eval-api-calls} gives the count for each path through the cascade.
 
@@ -911,30 +917,41 @@ Two requests fall outside the per-call count. The candidate-region list costs on
 \texttt{Describe\allowbreak Regions} on AWS, and one Cloud Run \texttt{locations.list} request per response
 page on GCP; it is fetched lazily, so a deployment whose calls all resolve at Level~1 never pays
 it. The registry bootstrap, which runs only when the registry file is absent and the workflow has
-internal calls, costs that same region list plus one catalog request per region and per response
+internal calls, costs that same region list plus one catalogue request per region and per response
 page: \texttt{ListFunctions} on AWS, \texttt{services.list} on GCP.
 
 \paragraph{The deployment itself (Level~3).}
 A Level~3 deployment is the only path that writes to the provider, and it is dominated not by the
-lookups above but by the deployment sequence. On AWS the deployer resolves the execution role
-(\texttt{GetRole}, plus \texttt{CreateRole} and \texttt{AttachRolePolicy} the first time, plus
-\texttt{UpdateAssumeRolePolicy} when the trust policy has to be repaired), reads the bucket's
-region (\texttt{GetBucketLocation}), runs the QuickFaaS subprocess (which uploads the artifact to
-S3 and calls \texttt{CreateFunction}), then polls \texttt{GetFunction} until the function reports
-\texttt{Active}, reads the ARN with one further \texttt{GetFunction}, and grants Step Functions
-permission to invoke it (\texttt{AddPermission}). On GCP it runs the QuickFaaS subprocess (which uploads the
-artifact to Cloud Storage, creates the function through the Cloud Functions~v2 API, polls it until
-it is \texttt{ACTIVE} and opens its Cloud Run service to invocation), polls the Cloud Functions~v2
-\texttt{get} endpoint until the function reports \texttt{ACTIVE}, and then calls
-\texttt{getIamPolicy} and \texttt{setIamPolicy} on the Cloud Run service to let the workflow's
-service account invoke it. The polls make the total
+lookups above but by the deployment sequence. On AWS the deployer:
+\begin{enumerate}
+  \item resolves the execution role (\texttt{GetRole}, plus \texttt{CreateRole} and
+  \texttt{AttachRolePolicy} the first time, plus \texttt{UpdateAssumeRolePolicy} when the trust
+  policy has to be repaired);
+  \item reads the bucket's region (\texttt{GetBucketLocation});
+  \item runs the QuickFaaS subprocess, which uploads the artifact to S3 and calls
+  \texttt{CreateFunction};
+  \item polls \texttt{GetFunction} until the function reports \texttt{Active}, and reads the ARN
+  with one further \texttt{GetFunction};
+  \item grants Step Functions permission to invoke the function (\texttt{AddPermission}).
+\end{enumerate}
+On GCP the deployer:
+\begin{enumerate}
+  \item runs the QuickFaaS subprocess, which uploads the artifact to Cloud Storage, creates the
+  function through the Cloud Functions~v2 API, polls it until it is \texttt{ACTIVE} and opens its
+  Cloud Run service to invocation;
+  \item polls the Cloud Functions~v2 \texttt{get} endpoint until the function reports
+  \texttt{ACTIVE};
+  \item calls \texttt{getIamPolicy} and \texttt{setIamPolicy} on the Cloud Run service, to let the
+  workflow's service account invoke it.
+\end{enumerate}
+The polls make the total
 depend on how long the provider takes to make the function active, which is why this path is
 reported as a sequence rather than as a fixed count.
 
 \paragraph{Consequence.}
 For a deployment of $I$ internal calls, the traffic ranges from $I$ requests, when every call hits
 a valid registry entry, to $1 + I \cdot G$ when the registry is empty and the references are bare
-names. The registry is therefore not only a latency optimization but the mechanism that keeps the
+names. The registry is therefore not only a latency optimisation but the mechanism that keeps the
 request count linear in $I$ instead of proportional to $I \cdot G$; a region-qualified reference
 buys the same bound for a call that has to miss.
 
@@ -942,18 +959,18 @@ buys the same bound for a call that has to miss.
 \label{sec:eval-manual-effort}
 
 The unification is meant to remove manual steps, so it is worth stating which ones, and counting
-them. The comparison below is procedural, not a user study: it follows the QuickFaaS procedure
-documented in \S\ref{subsec:quickfaas-example} and the integrated procedure of
-\S\ref{sec:developer-workflow} for the same task (making one internal function available to one
-workflow on GCP) and counts the developer actions each requires, and the values the developer
-has to carry by hand from one step to the next.
+them. The comparison below is procedural, not a user study. It takes one task, making one
+internal function available to one workflow on GCP, and follows it through the QuickFaaS
+procedure of Section~\ref{subsec:quickfaas-example} and through the integrated procedure of
+Section~\ref{sec:developer-workflow}. For each, it counts the developer actions required and the
+values the developer has to carry by hand from one step to the next.
 
 Table~\ref{tab:eval-manual-effort} lists the two sequences. What distinguishes them is not the
-total amount of configuration (the deployment descriptor is written either way) but the
-hand-carried values: in the separate procedure four values produced by one step are read by a
-human and typed into the next (the OAuth client ID and secret into the authentication module, the
+total amount of configuration, since the deployment descriptor is written either way, but the
+hand-carried values. In the separate procedure, four values produced by one step are read by a
+human and typed into the next: the OAuth client ID and secret into the authentication module, the
 resulting \texttt{access\_token} into the descriptor, and the generated trigger URL into the
-workflow definition). A typo in any of the first three stops the function from being deployed; a
+workflow definition. A typo in any of the first three stops the function from being deployed; a
 typo in the URL is the costlier one, because it produces a workflow that deploys successfully and
 fails only at run time. In the integrated procedure that number is zero: the access
 token is taken from Application Default Credentials by the deployer, the invoker permission is
@@ -1005,8 +1022,8 @@ configuration, it relocates it: the descriptor is still written by hand, and the
 have to exist (Application Default Credentials on GCP, environment credentials on AWS), so
 what is saved is the copying, not the setup. Second, the saving is per function and per endpoint
 change, so it grows with the number of internal functions a workflow calls and with how often they
-are redeployed, and it is largest exactly where the manual procedure is most error-prone: a
-workflow that calls several internal functions in several accounts (\S\ref{cha:case-study}).
+are redeployed. It is largest exactly where the manual procedure is most error-prone: a workflow
+that calls several internal functions in several accounts (Chapter~\ref{cha:case-study}).
 
 \section{Packaging Overhead (S1)}
 \label{sec:eval-bundle}
@@ -1053,13 +1070,13 @@ For RQ2, the benchmarks support six conclusions.
 
 First, in the naive form the cost of the unification grows in direct proportion to both the
 number of calls and the registry size, and is dominated by the fixed cost of reopening the
-registry file up to $R \approx 60$ (\S\ref{sec:eval-resolution}). Second, the single-read
-optimization eliminates that
+registry file up to $R \approx 60$ (Section~\ref{sec:eval-resolution}). Second, the single-read
+optimisation eliminates that
 call-times-registry-size product, reducing resolution to one read of the registry plus about
 $0.22\,\mu$s per internal call, a speedup of $200\times$ in the largest configuration measured
 (T3, T4, T5).
 Third, the production resolvers (T6, T7) show the same one-read-plus-a-constant shape as the
-optimized reference path: $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a 200-call workflow.
+optimised reference path: $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a 200-call workflow.
 Fourth, the provider-agnostic packaging layer adds negligible size to a Lambda bundle (S1). Fifth, resolution cost tracks
 the number of internal calls rather than the workflow's total call count: external calls add only
 the shared tree-traversal cost, never a registry lookup (T11, T12). Sixth, neither nesting depth
@@ -1067,20 +1084,25 @@ nor parallel width changes the cost beyond what the total count of internal call
 predicts: the resolver's explicit recursion into \texttt{Iteration} and \texttt{Parallel} contexts
 is free in practice (T13, T14).
 
+On the provider side, the request count of Section~\ref{sec:eval-api-calls} completes the answer:
+resolution sends one request per internal call when every call hits a valid registry entry, and
+up to one request per candidate region for each call that has to be discovered. The registry is
+what keeps the common case at the lower bound.
+
 \paragraph{Global framing.}
 All measured values lie between microseconds and, in the worst write case, tens of milliseconds:
 a hundred successive miss-and-register pairs against a thousand-entry registry (the most
-expensive operation measured) cost $59$\,ms (T9). Endpoint
-resolution is therefore not the bottleneck of an integrated deployment: the dominant cost is the
-actual cloud deployment (seconds). These figures are also a lower bound: the network
-round-trips that validation and discovery add are counted in \S\ref{sec:eval-api-calls}, not timed
-(\S\ref{sec:eval-scope}).
+expensive operation measured) cost $59$\,ms (T9). These figures are the local part of resolution
+only, and a lower bound on its total cost: the network round-trips that validation and discovery
+add are counted in Section~\ref{sec:eval-api-calls}, not timed (Section~\ref{sec:eval-scope}).
+Endpoint resolution is nevertheless not the bottleneck of an integrated deployment: the dominant
+cost is the cloud deployment itself, which takes minutes.
 
 \section{Threats to Validity}
 \label{sec:eval-threats}
 
 The absolute numbers characterise the machine they were measured on
-(\S\ref{sec:eval-methodology}) rather than serverless deployment hardware in general. File I/O
+(Section~\ref{sec:eval-methodology}) rather than serverless deployment hardware in general. File I/O
 dominates several of the experiments, so the factor they are most sensitive to is storage rather
 than processor speed: on slower storage every registry read and write would cost more, while the
 relationships between experiments would hold. What they support is therefore the shape of each
@@ -1089,15 +1111,16 @@ comparable, rather than the values themselves; the individual points whose confi
 are wide are identified where they appear and are not used to support any claim.
 
 A second limit is one of provenance: because T6 and T7 come from later measurement sessions
-(\S\ref{sec:eval-methodology}), their comparison with the reference path of T4 should be read as
+(Section~\ref{sec:eval-methodology}), their comparison with the reference path of T4 should be read as
 an order-of-magnitude comparison rather than an exact one.
 
 The correctness evidence for RQ1 is local as well. The resolver tests replace the provider with
 test doubles, so they establish that each resolver takes the right decision given what the provider
 reports, not that the real AWS and GCP APIs report what the doubles assume. Evidence against the
-live providers therefore remains to be produced, and the two full-deployment tests the code base
-carries would not supply it: besides needing cloud credentials, which is why they are excluded from
-the automated suite, the workflow they deploy gives every call a literal host, so they exercise
+live providers was left out of this evaluation by design (Section~\ref{sec:eval-scope}), and its
+absence is a limit of the evidence presented here. The two full-deployment tests the code base
+carries would not supply it. They need cloud credentials, which is why they are excluded from the
+automated suite, and the workflow they deploy gives every call a literal host, so they exercise
 workflow deployment and never enter the resolution cascade. Obtaining that evidence means deploying
 workflows that contain internal calls against real accounts on both providers, at each level of the
 cascade; this is listed as future work (Section~\ref{sec:concl-future}).

@@ -22,7 +22,7 @@ through the Function Registry and the deployment-time resolution cascade
 QuickFaaS, with the matching deployer in OmniFlow (Section~\ref{subsec:quickfaas-aws-provider}).
 To let the cascade cover the functions it deploys on GCP, QuickFaaS's GCP provider was also moved
 to second-generation functions, which are Cloud Run services
-(\S\ref{subsec:gcp-cloud-run-functions}).
+(Section~\ref{subsec:gcp-cloud-run-functions}).
 How far each meets the objectives set out in Chapter~\ref{cha:introduction} is assessed next.
 
 \section{Objectives Revisited}
@@ -37,7 +37,8 @@ The two research questions of Section~\ref{sec:int_objectives} are answered as f
   \item \textbf{RQ2 (overhead)}: small. In the production resolvers, resolving a workflow of 200
   internal calls against a registry of ten functions takes $29\,\mu$s on AWS and $199\,\mu$s on GCP,
   growing linearly with the number of internal calls, while the registry is read once per
-  deployment (Section~\ref{sec:eval-discussion}).
+  deployment (Section~\ref{sec:eval-discussion}). On the provider side, resolution sends one
+  request per internal call when the registry is current (Section~\ref{sec:eval-api-calls}).
 \end{itemize}
 
 Against the four objectives stated in Section~\ref{sec:int_objectives}, the work stands as
@@ -47,7 +48,7 @@ follows:
   \texttt{functionRef} indirection, the \texttt{internalFunction} construct and the resolver
   strategy (Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}) let a single workflow
   definition drive both function and workflow deployment, binding endpoints when the workflow is
-  deployed (\S\ref{sec:resolution-cascade}).
+  deployed (Section~\ref{sec:resolution-cascade}).
   \item \textbf{Implement an orchestration prototype}: \emph{met.}
   The prototype resolves the internal functions of a workflow on both providers, and deploys the
   missing ones, without endpoints being copied by hand.
@@ -59,8 +60,10 @@ follows:
   \item \textbf{Evaluate feasibility and overhead}: \emph{partially met.}
   Chapter~\ref{cha:evaluation} checks the decisions of the resolution cascade on both providers
   and measures the resolution overhead, the registry write path and the packaging size. The
-  evidence is local only: the correctness checks simulate the provider, the benchmarks ran on a
-  laptop rather than dedicated hardware, and end-to-end deployment times were not measured. The
+  evidence is local only: the correctness checks simulate the provider, and the benchmarks ran on
+  a laptop rather than dedicated hardware. End-to-end deployment times were deliberately not
+  measured, since they are known to take minutes and are dominated by the provider
+  (Section~\ref{sec:eval-scope}). The
   provider calls that validation and discovery make are counted from the code
   (Section~\ref{sec:eval-api-calls}) rather than timed.
 \end{enumerate}
@@ -72,7 +75,7 @@ The implementation is that of a prototype, and several limitations should be sta
 
 \begin{itemize}
   \item \textbf{Static binding.} Endpoints are resolved when the workflow is deployed and embedded
-  in the rendered artifact (\S\ref{sec:resolution-cascade}). An endpoint that changes afterwards
+  in the rendered artifact (Section~\ref{sec:resolution-cascade}). An endpoint that changes afterwards
   reaches a deployed workflow only when that workflow is deployed again; nothing resolves
   endpoints at run time.
   \item \textbf{No update path.} The cascade deploys a function only when it is missing and never
@@ -81,12 +84,19 @@ The implementation is that of a prototype, and several limitations should be sta
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
   or authenticity guarantee, and no cross-process locking; concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
+  \item \textbf{A per-machine index, not a shared store.} The registry lives in the working
+  directory of whoever deploys. The shared record of the deployed functions is the provider itself:
+  every registry hit is validated against it, and a missing registry is rebuilt from it. Two
+  developers deploying the same workflow therefore converge on the same bindings, but each through
+  their own requests to the provider; they do not share a registry.
   \item \textbf{Cloud Run services only on GCP.} Validation, discovery and the bootstrap see
   only Cloud Run services, so first-generation Cloud Functions created outside the integration
-  cannot be bound (\S\ref{subsec:gcp-cloud-run-functions}).
+  cannot be bound (Section~\ref{subsec:gcp-cloud-run-functions}).
   \item \textbf{Broad, automatic IAM.} The AWS path auto-creates and mutates a shared execution
   role and grants invoke permissions as a deployment side effect: convenient for a demo, but at
-  odds with a least-privilege, change-controlled environment.
+  odds with a least-privilege, change-controlled environment. On GCP, QuickFaaS opens every
+  function it deploys to all users, which makes the invoker role granted to the workflow's service
+  account redundant (Section~\ref{sec:runtime-invocation}).
   \item \textbf{Brittle integration boundary.} QuickFaaS is invoked as a subprocess, coupling two
   build systems across a process boundary and detecting errors from the subprocess output; the
   rationale for this boundary, and the in-process alternative, is discussed in
@@ -129,7 +139,7 @@ structural ones.
 The integration shows that function deployment and workflow orchestration can be driven from a
 single, provider-agnostic definition, with concrete endpoint binding deferred to deployment time
 through an explicit resolution cascade. In local measurements the overhead of this unification is
-small and, with the single-read optimization applied in both production resolvers, grows linearly.
+small and, with the single-read optimisation applied in both production resolvers, grows linearly.
 The solution fits an organisation that deploys one orchestration to several accounts or providers,
 as the case study of Chapter~\ref{cha:case-study} illustrates, or that exposes open-banking
 functions under PSD2. What remains is evidence against the real providers and engineering maturity (registry

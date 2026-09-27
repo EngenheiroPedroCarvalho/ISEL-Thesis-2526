@@ -125,7 +125,8 @@ Key classes, under `../omni-flow-main/deployment/src/main/kotlin/costaber/com/gi
 ## Writing conventions
 
 - English, mostly British spelling (*realise*, *organise*, *behaviour*). Match the surrounding text.
-- Cross-references use `Chapter~\ref{}`, `Section~\ref{}` and `\S\ref{}`. Label prefixes are
+- Cross-references use `Chapter~\ref{}` and `Section~\ref{}`; `\S\ref{}` was replaced by
+  `Section~\ref{}` on 2026-09-27, so don't reintroduce it. Label prefixes are
   `sec:`, `subsec:`, `fig:`, `tab:`, `lst:`, `app:`. Chapter labels mix `cha:` and `ch:`: reuse the
   existing labels and never rename them.
 - Put class and method names in `\texttt{}`, and break long ones with `\allowbreak`

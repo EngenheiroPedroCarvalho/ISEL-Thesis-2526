@@ -2,14 +2,14 @@
 \label{cha:background}
 
 This chapter has two parts. Section~\ref{sec:background} establishes the technical foundation for
-the proposed integration: first the two layers the work builds on, Serverless Computing and
-Function-as-a-Service (FaaS), and then the workflow layer that orchestrates the resulting
-functions, highlighting in each the form of vendor lock-in that motivates this work; and then the
-two base technologies this dissertation extends, \textbf{QuickFaaS}, which handles the portable
+the proposed integration. It first presents the two layers the work builds on, Serverless Computing
+and Function-as-a-Service (FaaS), and the workflow layer that orchestrates the resulting functions,
+highlighting in each the form of vendor lock-in that motivates this work. It then presents the two
+base technologies this dissertation extends: \textbf{QuickFaaS}, which handles the portable
 deployment of compute units, and \textbf{OmniFlow}, which manages the portable definition of
-orchestration logic. Section~\ref{ch:related-works} turns to the state of the art, reviewing related research and
-existing industry tools and identifying the gap in unified workflow orchestration that this work
-aims to close.
+orchestration logic. Section~\ref{ch:related-works} turns to the state of the art. It reviews
+related research and existing industry tools, and identifies the gap in unified workflow
+orchestration that this work aims to close.
 
 \section{Background}
 \label{sec:background}
@@ -18,7 +18,7 @@ aims to close.
 \label{sec:serverless_computing_faas}
 Serverless computing represents a shift in cloud execution models where the cloud provider assumes full responsibility for allocating resources, patching operating systems and auto-scaling infrastructure. The defining characteristic of this model is its granular billing, where users are charged only for the actual execution time of their code, eliminating costs for idle provisioned capacity~\cite{serverlessComputing}.
 
-Function-as-a-Service (FaaS) is the main form of the serverless model. It enables developers to deploy single-purpose, stateless functions that are triggered by specific events (e.g., HTTP requests, database changes). The lack of standardization across providers (e.g., AWS Lambda, Google Cloud Functions, Azure Functions) exposes FaaS applications to vendor lock-in, as function code often becomes tightly coupled to provider-specific SDKs and deployment artifacts~\cite{rodrigues2022quickfaas}.
+Function-as-a-Service (FaaS) is the main form of the serverless model. It enables developers to deploy single-purpose, stateless functions that are triggered by specific events (e.g., HTTP requests, database changes). The lack of standardisation across providers (e.g., AWS Lambda, Google Cloud Functions, Azure Functions) exposes FaaS applications to vendor lock-in, as function code often becomes tightly coupled to provider-specific SDKs and deployment artifacts~\cite{rodrigues2022quickfaas}.
 
 This coupling manifests along two independent axes, both relevant to this dissertation. The first
 is the \emph{programming model}: each provider defines its own function signature and request/response
@@ -27,16 +27,16 @@ differences, which is the problem QuickFaaS addresses with its uniform hook/temp
 second is
 the \emph{packaging and deployment} axis: providers accept code through different packaging
 mechanisms, with different naming, permission and trigger conventions, which QuickFaaS addresses
-as described in \S\ref{sec:background_quickfaas}. Beyond portability, the statelessness and
-event-driven nature of FaaS also shape how functions are \emph{composed}: because a function holds
-no state between invocations and cannot directly call another, non-trivial applications must lift
-control-flow and data-flow into an external orchestrator (the workflow layer discussed next)
-rather than encoding them inside the functions themselves~\cite{serverlessComputing}.
+as described in Section~\ref{sec:background_quickfaas}. Beyond portability, the statelessness and
+event-driven nature of FaaS also shape how functions are \emph{composed}. A function holds no state
+between invocations and cannot directly call another, so non-trivial applications must lift
+control-flow and data-flow into an external orchestrator, the workflow layer discussed next,
+rather than encode them inside the functions themselves~\cite{serverlessComputing}.
 
 \subsection{Workflows and Orchestration}
 \label{sec:workflows}
 
-A \textit{workflow} describes how a process is executed as a sequence of steps, typically representing a business or operational procedure. In cloud environments, workflows are commonly modeled as \textit{state machines}, where each state performs a unit of work, makes a decision or controls execution flow, while passing data between states~\cite{aws_stepfunctions_concepts}. This is the layer the previous section pointed to, where the control flow, data flow and error handling of a multi-function application live~\cite{sebsflow_arxiv}.
+A \textit{workflow} describes how a process is executed as a sequence of steps, typically representing a business or operational procedure. In cloud environments, workflows are commonly modelled as \textit{state machines}, where each state performs a unit of work, makes a decision or controls execution flow, while passing data between states~\cite{aws_stepfunctions_concepts}. This is the layer the previous section pointed to, where the control flow, data flow and error handling of a multi-function application live~\cite{sebsflow_arxiv}.
 
 Workflow systems typically provide support for:
 \begin{itemize}
@@ -56,7 +56,7 @@ QuickFaaS is architected as a self-contained desktop application built using Kot
 
 The internal software architecture follows the Model-View-Controller (MVC) pattern to separate concerns:
 \begin{itemize}
-	\item \textbf{Controller:} Manages the application flow, particularly the initialization of the local HTTP server used for OAuth callbacks and the coordination between the UI and the logic layer.
+	\item \textbf{Controller:} Manages the application flow, particularly the initialisation of the local HTTP server used for OAuth callbacks and the coordination between the UI and the logic layer.
 	\item \textbf{Model:} Encapsulates the application domain, managing the state of cloud credentials, function definitions and deployment configurations.
 	\item \textbf{View:} Defines the User Interface (UI) with the Compose framework, which presents the deployment status and configurations to the user.
 \end{itemize}
@@ -70,12 +70,12 @@ To achieve portability, QuickFaaS introduces a Uniform Programming Model that ab
 \end{itemize}
 
 \subsubsection{FaaS Deployment Model: The ZIP Strategy}
-While different cloud providers offer various methods for deploying code (such as inline editing, container images, or git syncing), the upload of a compressed source archive (ZIP) remains the most common denominator supported across AWS, Google Cloud and Azure. By standardizing on this format, QuickFaaS does not have to build or manage containers on the user's machine, which keeps the tool light.
+While different cloud providers offer various methods for deploying code (such as inline editing, container images, or git syncing), the upload of a compressed source archive (ZIP) remains the most common denominator supported across AWS, Google Cloud and Azure. By standardising on this format, QuickFaaS does not have to build or manage containers on the user's machine, which keeps the tool light.
 
 The deployment of a cloud-agnostic function in QuickFaaS follows a structured pipeline that converts source code into a cloud-ready artifact.
-For a Java-based deployment to Google Cloud Platform (GCP), the flow is initiated by the \texttt{buildAndZip} operation, which creates the hook function file by integrating the developer's logic, such as \texttt{MyFunctionClass.java}, into a temporary project structure. This is followed by the Maven packaging stage, where the source code is compiled into an executable JAR file like \texttt{gcp-http-faas.jar}. All necessary libraries, templates and compiled code are subsequently bundled into a \texttt{function-source.zip} archive during the zip sources phase. The process continues with the upload of this archive to a storage bucket, which, as shown in the configuration context, corresponds to a predefined location. A bucket in Google Cloud is a globally unique container within Google Cloud Storage (GCS), used to store any type of data as an object~\cite{GCP_bucket}. In this case it is going to store the zip file. Finally, the GCP platform loads the source code from this bucket during deployment to provision the serverless function.
+For a Java-based deployment to Google Cloud Platform (GCP), the flow is initiated by the \texttt{buildAndZip} operation, which creates the hook function file by integrating the developer's logic, such as \texttt{MyFunctionClass.java}, into a temporary project structure. This is followed by the Maven packaging stage, where the source code is compiled into an executable JAR file like \texttt{gcp-http-faas.jar}. All necessary libraries, templates and compiled code are subsequently bundled into a \texttt{function-source.zip} archive during the zip sources phase. The process continues with the upload of this archive to the storage bucket named in the deployment descriptor (the \texttt{bucket} field of Listing~\ref{lst:quickfaas_json_config}). A bucket in Google Cloud is a globally unique container within Google Cloud Storage (GCS), used to store any type of data as an object~\cite{GCP_bucket}; here it holds the ZIP archive. Finally, the GCP platform loads the source code from this bucket during deployment to provision the serverless function.
 
-The generated ZIP archive serves as a container for all artifacts required for the function's execution in the cloud. It includes a \texttt{pom.xml} file that contains project metadata and Maven configurations, such as dependencies and build directories. The core logic resides in the \texttt{MyFunctionClass.java} hook function, while the \texttt{GcpHttpTemplate.java} serves as the predefined entry point for HTTP events, adhering to a naming convention based on the provider and trigger type. Execution-time properties are managed through the \texttt{function-configs.json} file, which is accessed via QuickFaaS libraries. The archive also incorporates several specialized JAR files: \texttt{quickfaas-triggers.jar} and \texttt{quickfaas-gcp-trigger-http.jar} establish and implement event trigger contracts, whereas \texttt{quickfaas-resources.jar} and \texttt{quickfaas-gcp-resources.jar} handle the contracts and implementation for interacting with cloud services. To conclude the deployment setup, developers must ensure that the Cloud Resource Manager API is enabled on GCP to allow for the programmatic management of resource metadata.
+The generated ZIP archive serves as a container for all artifacts required for the function's execution in the cloud. It includes a \texttt{pom.xml} file that contains project metadata and Maven configurations, such as dependencies and build directories. The core logic resides in the \texttt{MyFunctionClass.java} hook function, while the \texttt{GcpHttpTemplate.java} serves as the predefined entry point for HTTP events, adhering to a naming convention based on the provider and trigger type. Execution-time properties are managed through the \texttt{function-configs.json} file, which is accessed via QuickFaaS libraries. The archive also incorporates several specialised JAR files: \texttt{quickfaas-triggers.jar} and \texttt{quickfaas-gcp-trigger-http.jar} establish and implement event trigger contracts, whereas \texttt{quickfaas-resources.jar} and \texttt{quickfaas-gcp-resources.jar} handle the contracts and implementation for interacting with cloud services. To conclude the deployment setup, developers must ensure that the Cloud Resource Manager API is enabled on GCP to allow for the programmatic management of resource metadata.
 
 On GCP specifically, the original QuickFaaS pipeline provisions a first-generation Cloud Function
 through the \texttt{cloudfunctions.googleapis.com/v1} API. Google has since renamed both
@@ -89,7 +89,7 @@ and it is managed through the Cloud Functions API rather than the Cloud Run Admi
 API: it is not a Cloud Run service~\cite{gcpFunctionsVersionComparison}. The distinction matters to the proposed
 Function Registry, which validates and discovers GCP functions through the Cloud Run API; for that
 reason, this work moves QuickFaaS's GCP provider to the Cloud Functions~v2 API
-(\S\ref{subsec:gcp-cloud-run-functions}), so that every function it deploys is a Cloud Run
+(Section~\ref{subsec:gcp-cloud-run-functions}), so that every function it deploys is a Cloud Run
 service.
 
 
@@ -103,13 +103,14 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 	\item \textbf{Authentication Configuration:} The retrieved Client ID and Secret are injected into the authentication module. The developer runs the auxiliary Node.js server to initiate the OAuth protocol, successfully retrieving the \texttt{access\_token} required for deployment.
 	
 	\item \textbf{Deployment Definition:} Once the token is obtained, the developer populates the deployment file, \texttt{func-deployment.json} (Listing \ref{lst:quickfaas_json_config}). This JSON object defines the target infrastructure, including the  \texttt{cloudProvider}, \texttt{project} name and the \texttt{accessToken} the developer acquired from the authentication mechanism. It also specifies function metadata such as the \texttt{runtime} (e.g., \texttt{java17}) and trigger type.
-	Lastly, the location of the cloud-agnostic function file the developer wishes to deploy. 
+	Lastly, \texttt{functionFile} gives the location of the cloud-agnostic function file the
+	developer wishes to deploy.
 	The remaining fields complete the description. Inside \texttt{function}, \texttt{location} is the
 	region the function is created in, and \texttt{bucket} names the Cloud Storage bucket used to
 	stage the packaged source before the function is provisioned. The two trailing fields are
-	optional, and are left empty in this example: \texttt{dependenciesFile} points at a file whose
+	optional, and are left empty in this example. \texttt{dependenciesFile} points at a file whose
 	contents are injected into the dependency block of the generated \texttt{pom.xml}, so a function
-	that uses no third-party library needs none, and \texttt{configurationsFile} supplies the
+	that uses no third-party library needs none. \texttt{configurationsFile} supplies the
 	\texttt{function-configs.json} packaged with the function. Both fall back to an empty default when omitted.
  
 	
@@ -133,7 +134,7 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 		}
 	\end{lstlisting}
 	
-	\item \textbf{Hook Function Implementation:} The developer implements the business logic by creating a cloud-agnostic class (e.g., \texttt{MyFunctionClass.java}), as shown in Listing \ref{lst:hook_function}. This class utilizes the generic QuickFaaS interfaces, such as \texttt{HttpRequestQf} and \texttt{HttpResponseQf}, effectively decoupling the code from provider-specific SDKs.
+	\item \textbf{Hook Function Implementation:} The developer implements the business logic by creating a cloud-agnostic class (e.g., \texttt{MyFunctionClass.java}), as shown in Listing \ref{lst:hook_function}. This class uses the generic QuickFaaS interfaces, such as \texttt{HttpRequestQf} and \texttt{HttpResponseQf}, effectively decoupling the code from provider-specific SDKs.
 	
 	\begin{lstlisting}[language=Java, caption={Cloud-agnostic hook function implementation.}, label={lst:hook_function}]
 	import quickfaas.triggers.http.HttpRequestQf;
@@ -147,10 +148,10 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 	}
 	\end{lstlisting}
 	
-	\item \textbf{Deployment and Verification:} Finally, the system packages the artifacts and utilizes the Google Cloud APIs to provision the function. A successful deployment is confirmed via the terminal output and the Google Cloud Console.
+	\item \textbf{Deployment and Verification:} Finally, the system packages the artifacts and uses the Google Cloud APIs to provision the function. A successful deployment is confirmed via the terminal output and the Google Cloud Console.
 	
 	
-	To finalize the process, the developer grants public access permissions, retrieves the generated HTTP Trigger URL and verifies the execution.
+	To finalise the process, the developer grants public access permissions, retrieves the generated HTTP Trigger URL and verifies the execution.
 
 \end{enumerate}
 \subsection{OmniFlow: Portable Workflow Orchestration}
@@ -231,14 +232,14 @@ A practical limitation follows from this design: OmniFlow call steps require con
 targets (e.g., \texttt{host} and \texttt{path}) to be known at definition or deployment
 time~\cite{silva2025advanced}, so the functions they call must be deployed first and their
 endpoints copied into the definition. This is the manual synchronisation described in
-\S\ref{sec:int_cha_int_uni_multi}, which the proposed solution removes.
+Section~\ref{sec:int_cha_int_uni_multi}, which the proposed solution removes.
 
 \section{Related Work}
 \label{ch:related-works}
 
 The proposed integration between \textit{OmniFlow} (workflow definition/deployment) and \textit{QuickFaaS} (function definition/deployment)
 sits at the intersection of two problem areas: (i) composing and deploying workflows without being forced to embed provider-specific workflow specifications and (ii) deploying cloud functions with reduced provider coupling.
-Although each deployment target in this dissertation is a \emph{single provider at a time} (\S\ref{sec:int_cha_int_uni_multi}), portability concerns remain relevant because developers still want to avoid hard-coding endpoints and to preserve the ability to migrate or re-deploy the same application in another provider with minimal changes.
+Although each deployment target in this dissertation is a \emph{single provider at a time} (Section~\ref{sec:int_cha_int_uni_multi}), portability concerns remain relevant because developers still want to avoid hard-coding endpoints and to preserve the ability to migrate or re-deploy the same application in another provider with minimal changes.
 
 This section reviews the tools, frameworks and methods surveyed in the QuickFaaS
 publication~\cite{rodrigues2022quickfaas} and in the OmniFlow
@@ -265,14 +266,14 @@ A first family of approaches focuses on automating resource deployment and confi
 \textbf{CODE}~\cite{ristov2024code} is a more recent framework in this family, addressing
 \emph{federated FaaS}: running the same function across several regions of several providers.
 Following a ``code once, deploy everywhere'' principle, its DSL places the function at the top of a
-three-level hierarchy (function, then providers, then regions) so that one declaration covers
-every target instead of being repeated per provider and per region, which the authors report as up
-to 9.23$\times$ fewer lines of code than Terraform or the Serverless Framework. A unified storage
+three-level hierarchy (function, then providers, then regions). One declaration therefore covers
+every target instead of being repeated per provider and per region; the authors report up to
+9.23$\times$ fewer lines of code than Terraform or the Serverless Framework. A unified storage
 library backs this DSL: one command uploads a deployment package to, or copies it between, the
 storage services of AWS and GCP, so a function can be deployed directly from whichever provider's
 storage already holds it, with no provider-specific upload code. CODE therefore shares this
-thesis's ambition for the \textit{function} half of the problem, on the same two providers, but it
-deploys the functions a workflow invokes rather than the workflow itself: the authors list the
+thesis's ambition for the \textit{function} half of the problem, on the same two providers. It
+deploys the functions a workflow invokes, however, not the workflow itself: the authors list the
 automatic deployment of workflows written in their own choreography language, on top of CODE, as
 future work. That remaining step is what this dissertation addresses: a portable workflow
 definition whose function references are turned into concrete endpoints as the workflow is
@@ -286,7 +287,7 @@ placeholders in its Amazon States Language definition to values such as
 \texttt{!GetAtt MyFunction.Arn}, a CloudFormation expression that reads the \texttt{Arn} attribute
 of the function resource \texttt{MyFunction} declared in the same template~\cite{awsSamStateMachine}.
 The value that expression yields is the function's Amazon Resource Name (ARN) introduced in
-\S\ref{sec:int_cha_int_uni_multi}. Only its first fields are known when the template is written:
+Section~\ref{sec:int_cha_int_uni_multi}. Only its first fields are known when the template is written:
 the account and the deployed name are not, and \texttt{MyFunction} is the resource's logical identifier inside
 the template rather than the name the function ends up carrying. That is why the workflow names
 it through an expression instead of a literal string. The reference also fixes the order of the
@@ -309,7 +310,7 @@ it~\cite{terraformReferences}. Pulumi likewise records a dependency when one res
 passed as another's input, and orders their creation accordingly~\cite{pulumiInputsOutputs}. In each
 case the function is declared alongside the workflow and deployed with it, and its endpoint is
 written into the workflow at deployment time, the same static binding performed by the resolution
-cascade proposed in this dissertation and described in \S\ref{sec:resolution-cascade}.
+cascade proposed in this dissertation and described in Section~\ref{sec:resolution-cascade}.
 They also update a function whose code changed, which this work does not; conversely, they
 bind a workflow only to functions declared or explicitly referenced in the same template or
 configuration, whereas the resolution cascade also discovers a function deployed by other means.
