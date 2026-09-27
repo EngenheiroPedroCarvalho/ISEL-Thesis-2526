@@ -84,7 +84,7 @@ Under `omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
 Under `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/src/main/kotlin/model/`: the AWS
 provider added to QuickFaaS (`AwsProvider`, `AwsLambdaFunction`, `AwsRequests`, `AwsS3Bucket`, …).
 
-## How the resolution cascade behaves (verified 2026-09-11)
+## How the resolution cascade behaves (verified 2026-09-11; GCP 2nd gen on 2026-09-27)
 
 The dissertation describes this behaviour, so keep the code and `dissertation/` consistent.
 
@@ -99,15 +99,17 @@ The dissertation describes this behaviour, so keep the code and `dissertation/` 
   regions) aborts; it never falls through to Level 3. A stale registry entry also aborts, even when
   a descriptor is present.
 - **No updates:** Level 3 runs only when the function is absent; the cascade never updates an
-  existing function. The exception is a first-gen GCP function missing from the registry: the
-  cascade can't find it, so QuickFaaS (which updates a function that already exists) redeploys
-  over it (see the GCP limitation below).
+  existing function.
 - **Static binding:** the resolved endpoint is embedded in the rendered workflow at deployment
   time.
-- **GCP limitation:** `QuickFaasDeployer` creates first-generation Cloud Functions
-  (`cloudfunctions.net` URLs), but validation, discovery and bootstrap query only Cloud Run. Bindings
-  to first-gen functions skip validation and can't be rediscovered. This is documented in the
-  thesis; the fix idea is in `TODO.md`.
+- **GCP functions are 2nd gen:** QuickFaaS deploys through the Cloud Functions v2 API, so every
+  function it creates is a Cloud Run service. `QuickFaasDeployer` registers the full resource name
+  (`projects/.../services/<name>`) and the `run.app` URL from `serviceConfig`, and grants
+  `roles/run.invoker` on the service. Every registry hit is validated against Cloud Run (there is
+  no `cloudfunctions.net` short-circuit). First-gen functions created outside the integration are
+  invisible to validation, discovery and bootstrap. Merged from `experiment/gcf-gen2` on
+  2026-09-27, after the cascade (all three levels and bootstrap) was run against a live GCP
+  project; thesis: Ch. 4 "Cloud Run Functions on GCP".
 
 ## Build, test, coverage
 

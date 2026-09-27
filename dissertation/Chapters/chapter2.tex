@@ -77,19 +77,20 @@ For a Java-based deployment to Google Cloud Platform (GCP), the flow is initiate
 
 The generated ZIP archive serves as a container for all artifacts required for the function's execution in the cloud. It includes a \texttt{pom.xml} file that contains project metadata and Maven configurations, such as dependencies and build directories. The core logic resides in the \texttt{MyFunctionClass.java} hook function, while the \texttt{GcpHttpTemplate.java} serves as the predefined entry point for HTTP events, adhering to a naming convention based on the provider and trigger type. Execution-time properties are managed through the \texttt{function-configs.json} file, which is accessed via QuickFaaS libraries. The archive also incorporates several specialized JAR files: \texttt{quickfaas-triggers.jar} and \texttt{quickfaas-gcp-trigger-http.jar} establish and implement event trigger contracts, whereas \texttt{quickfaas-resources.jar} and \texttt{quickfaas-gcp-resources.jar} handle the contracts and implementation for interacting with cloud services. To conclude the deployment setup, developers must ensure that the Cloud Resource Manager API is enabled on GCP to allow for the programmatic management of resource metadata.
 
-On GCP specifically, this pipeline provisions a first-generation Cloud Function through the
-\texttt{cloudfunctions.googleapis.com/v1} API, rather than through the Cloud Run Admin API that
-serves the newer generation. Google has since renamed both: the first generation is now documented
-as a \emph{Cloud Run function (1st gen)}, and what used to be called a ``second-generation'' Cloud
-Function is simply a \emph{Cloud Run function}, that is, a Cloud Run service deployed from source
-code~\cite{gcpFunctionsVersionComparison}. This dissertation keeps the generation names, because
-they are what distinguishes the two APIs the code calls. The resulting function is reachable at a
-URL of the form \texttt{https://\allowbreak <region>-\allowbreak <project-id>.\allowbreak cloudfunctions.\allowbreak net/\allowbreak <name>}, and its
-invocation permissions and deployment status are managed through that same first-generation API.
-The distinction matters to the proposed Function Registry, which recognises a first-generation
-function by its \texttt{cloudfunctions.net} URL; its consequences are assessed in
-\S\ref{subsec:store-internals}. That domain is a heuristic rather than a guarantee: a function created through the Cloud Functions v2 API is served on \texttt{run.app} but
-keeps a \texttt{cloudfunctions.net} endpoint as well~\cite{gcpFunctionsVersionComparison}.
+On GCP specifically, the original QuickFaaS pipeline provisions a first-generation Cloud Function
+through the \texttt{cloudfunctions.googleapis.com/v1} API. Google has since renamed both
+generations: the first is now documented as a \emph{Cloud Run function (1st gen)}, and what used
+to be called a ``second-generation'' Cloud Function is simply a \emph{Cloud Run function}, that
+is, a Cloud Run service deployed from source code~\cite{gcpFunctionsVersionComparison}. This
+dissertation keeps the generation names, because they are what distinguishes the two APIs the code
+calls. A first-generation function is reachable at a URL of the form
+\texttt{https://\allowbreak <region>-\allowbreak <project-id>.\allowbreak cloudfunctions.\allowbreak net/\allowbreak <name>},
+and it is managed through the Cloud Functions API rather than the Cloud Run Admin
+API: it is not a Cloud Run service~\cite{gcpFunctionsVersionComparison}. The distinction matters to the proposed
+Function Registry, which validates and discovers GCP functions through the Cloud Run API; for that
+reason, this work moves QuickFaaS's GCP provider to the Cloud Functions~v2 API
+(\S\ref{subsec:gcp-cloud-run-functions}), so that every function it deploys is a Cloud Run
+service.
 
 
 \subsubsection{QuickFaaS function deployment example}

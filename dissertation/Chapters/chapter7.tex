@@ -106,8 +106,8 @@ two tests of the registry bootstrap.
     \hline
     Several internal calls in one workflow & registry read once \\
     \hline
-    First-generation Cloud Function in the registry (GCP only) & call bound without live
-    validation (the limitation of \S\ref{subsec:store-internals}) \\
+    Registry entry holding a \texttt{cloudfunctions.net} URL (GCP only) & validated against
+    Cloud Run like any other hit; the live URL is bound (\S\ref{subsec:gcp-cloud-run-functions}) \\
     \hline
     Registry file missing (provider-independent) & registry rebuilt from the provider's catalog \\
     \hline
@@ -124,13 +124,16 @@ JIT compiler. Every figure reported in this chapter was measured with three JVM 
 warm-up iterations and five measurement iterations of one second each
 (\texttt{-f 3 -wi 3 -i 5 -w 1 -r 1}), so each value is the mean of fifteen measured iterations
 across three JVMs, of already-JIT-compiled code. All experiments but two come from one run of the
-whole suite. The exceptions are T6 and T7, which were re-measured later the same evening, on the
-same idle machine, after the change to the production resolvers that \S\ref{sec:eval-real-resolvers}
-describes; the rest of the suite does not exercise those classes and was left as measured. The two
-sessions agree where they can be compared: the $N{=}1$ column of T6 and T7, which is one registry
-read and almost nothing else, reproduces the per-read cost that T2 measured in the first session
-($9.9$ and $10.4\,\mu$s at $R{=}1$ against T2's $10.5\,\mu$s; $20.0$ and $19.9\,\mu$s at $R{=}50$
-against T2's $18.3\,\mu$s).
+whole suite. The exceptions are T6 and T7, the two experiments on the production resolvers. T6
+was re-measured later the same evening, on the same idle machine, after the change to the
+production resolvers that \S\ref{sec:eval-real-resolvers} describes; the rest of the suite does not
+exercise those classes and was left as measured. T7 was re-measured in a third session, with the
+same settings on the same machine, after the GCP resolver began to validate every registry hit
+(\S\ref{subsec:gcp-cloud-run-functions}). The sessions agree where they can be compared. The
+$N{=}1$ column of T6, which is one registry read and almost nothing else, reproduces the per-read
+cost that T2 measured in the first session ($9.9\,\mu$s at $R{=}1$ against T2's $10.5\,\mu$s;
+$20.0\,\mu$s at $R{=}50$ against T2's $18.3\,\mu$s), and six points of T6 measured again in the
+third session came out between 1\% and 7\% above their second-session values.
 
 \paragraph{Caveat on absolute values.}
 Measurements were taken on an Apple Silicon laptop running macOS, otherwise idle but not a
@@ -460,30 +463,39 @@ provider: \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolve
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-t7} and Figure~\ref{fig:eval-t7}), with the
 registry always hitting ($R{=}F$). Both use the single-read snapshot described in
 \S\ref{subsec:store-internals}, whose effect T3--T5 demonstrated on the reference resolver.
-Neither experiment reaches a provider: on AWS the inspector is a local fake that confirms every
-registered function, and on GCP the registry holds first-generation \texttt{cloudfunctions.net}
-URLs, so the resolver short-circuits before any Cloud Run call
-(\S\ref{subsec:store-internals}). What both measure is therefore the local part of the cascade.
-The result has the same shape as the already-optimized reference implementation: a cost that is one
-registry read plus a small constant per call. Reading down the $N{=}1$ column gives the read, which
-grows with $F$ because $R{=}F$; reading along a row gives the per-call work, $0.07$--$0.14\,\mu$s on
-AWS and about $0.35\,\mu$s on GCP. Resolving a 200-call workflow against a registry of 10 functions
-costs $29.1\,\mu$s on AWS and $81.3\,\mu$s on GCP.
+Neither experiment reaches a provider, but each stands in for it differently. On AWS the
+inspector is a local fake that confirms every registered function. On GCP the real
+\texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Service\allowbreak Inspector} validates every
+hit, and only its HTTP client is replaced by one that answers each \texttt{services.get} locally
+with the registered URL, so building the request, obtaining the token and parsing the JSON
+response are measured, and only the network round-trip is not. What both measure is therefore the
+local part of the cascade. The result has the same shape as the already-optimized reference
+implementation: a cost that is one registry read plus a constant per call. Reading down the
+$N{=}1$ column gives the read (plus, on GCP, one validation), which grows with $F$ because
+$R{=}F$; reading along a row gives the per-call work, $0.07$--$0.14\,\mu$s on AWS and about
+$0.95\,\mu$s on GCP. Resolving a 200-call workflow against a registry of 10 functions costs
+$29.1\,\mu$s on AWS and $199.1\,\mu$s on GCP.
 
 An earlier version of these two experiments measured something else. Until this evaluation was
 repeated, both resolvers printed two or three progress lines to the console for every call they
 resolved, inside the method being measured, and that console output was about 95\% of the reported
-time: the same points cost $1\,006\,\mu$s (AWS) and $1\,344\,\mu$s (GCP). Moving those per-call
-messages to \texttt{logger.debug}, which the default logging configuration does not print, produced
-the figures above without changing what the resolvers do. The measurement is reported here because
+time: the same points cost $1\,006\,\mu$s (AWS) and $1\,344\,\mu$s (GCP), against $29.1$ and
+$81.3\,\mu$s once those per-call messages were moved to \texttt{logger.debug}, which the default
+logging configuration does not print, without changing what the resolvers do (the GCP value
+predates the validation of every hit). The measurement is reported here because
 the mistake is easy to repeat: an instrumented method measures its instrumentation, and a
 per-call console write costs an order of magnitude more than the resolution it announces.
 
-What remains is a real difference between the providers, not a logging artifact. The AWS resolver
-binds a call by concatenating a prefix onto the ARN it already holds; the GCP resolver parses the
-resolved URL with \texttt{java.net.URI} and rebuilds host and path from it, once per call. The
-reference resolver of T1 and T4 does that same parsing and sits between the two, at
-$0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
+What remains is a difference between the providers, not a logging artifact, and only part of it
+is intrinsic. The AWS resolver binds a call by concatenating a prefix onto the ARN it already
+holds; the GCP resolver parses the resolved URL with \texttt{java.net.URI} and rebuilds host and
+path from it, once per call, which on its own cost about $0.35\,\mu$s per call before every hit
+was validated. The reference resolver of T1 and T4 does that same parsing, at $0.22\,\mu$s per
+call. The rest of the GCP figure, about $0.6\,\mu$s per call, is the Cloud Run client building a
+request and parsing a response, work that T6's fake skips entirely, so the two experiments do not
+stand in for the provider on equal terms. Either way, the local work of a validation is well under
+a microsecond per call, whereas the request it prepares is a network round-trip to the provider
+(\S\ref{sec:eval-api-calls}).
 
 \begin{figure}[htbp]
   \centering
@@ -523,24 +535,25 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T7: GCP provider: resolution time ($\mu$s) of the real resolver
   (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with
-  the single-read optimization and without per-call console output.}
+  the single-read optimization, without per-call console output, and with every hit validated
+  through a Cloud Run client answered locally.}
   \label{tab:eval-t7}}
   \small
   \begin{tabular}{|l|r|r|r|r|r|}
     \hline
     $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
     \hline
-    1  & 10.4 & 12.1 & 13.9 & 27.9 & 83.3 \\
+    1  & 11.8 & 15.8 & 21.3 & 59.3 & 207.1 \\
     \hline
-    2  & 10.6 & 11.9 & 13.8 & 27.5 & 78.8 \\
+    2  & 12.1 & 16.4 & 21.3 & 61.3 & 209.1 \\
     \hline
-    5  & 11.3 & 12.7 & 14.1 & 28.4 & 79.8 \\
+    5  & 13.0 & 17.5 & 21.9 & 62.4 & 211.5 \\
     \hline
-    10 & 12.1 & 13.4 & 15.1 & 28.8 & 81.3 \\
+    10 & 15.1 & 18.4 & 23.1 & 60.2 & 199.1 \\
     \hline
-    20 & 14.4 & 15.5 & 16.8 & 31.6 & 84.4 \\
+    20 & 15.4 & 19.2 & 24.0 & 61.5 & 205.9 \\
     \hline
-    50 & 19.9 & 20.9 & 22.8 & 36.8 & 91.3 \\
+    50 & 21.9 & 25.6 & 30.6 & 67.5 & 209.0 \\
     \hline
   \end{tabular}
 
@@ -549,8 +562,8 @@ $0.22\,\mu$s per call, which is what places AWS below it and GCP above it.
   {\captionof{figure}{T7: GCP provider: resolution time of
   \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} against the number
   of internal calls $N$, one curve per number of distinct functions $F$, with $R{=}F$ (logarithmic
-  vertical axis). The curves rise more steeply in $N$ than T6's because this resolver parses the
-  resolved URL once per call.}
+  vertical axis). The curves rise more steeply in $N$ than T6's because every call goes through
+  the Cloud Run client and the resolved URL is parsed once per call.}
   \label{fig:eval-t7}}
 \end{figure}
 
@@ -880,9 +893,6 @@ Table~\ref{tab:eval-api-calls} gives the count for each path through the cascade
     Level~1, registry hit validated & 1 (\texttt{GetFunction} in the region taken from the stored
     ARN) & 1 (Cloud Run \texttt{services.get}) \\
     \hline
-    Level~1, first-generation Cloud Function in the registry & n/a & 0 (validation skipped,
-    \S\ref{subsec:store-internals}) \\
-    \hline
     Level~1, entry stale & 1 validation $+$ up to $G$ lookups (rediscovery) & 1 validation $+$ up
     to $G$ lookups \\
     \hline
@@ -912,9 +922,12 @@ lookups above but by the deployment sequence. On AWS the deployer resolves the e
 region (\texttt{GetBucketLocation}), runs the QuickFaaS subprocess (which uploads the artifact to
 S3 and calls \texttt{CreateFunction}), then polls \texttt{GetFunction} until the function reports
 \texttt{Active}, reads the ARN with one further \texttt{GetFunction}, and grants Step Functions
-permission to invoke it (\texttt{AddPermission}). On GCP it runs the QuickFaaS subprocess, polls
-the Cloud Functions v1 \texttt{get} endpoint until the function is ready, and then calls
-\texttt{getIamPolicy} and \texttt{setIamPolicy} to make it invocable. The polls make the total
+permission to invoke it (\texttt{AddPermission}). On GCP it runs the QuickFaaS subprocess (which uploads the
+artifact to Cloud Storage, creates the function through the Cloud Functions~v2 API, polls it until
+it is \texttt{ACTIVE} and opens its Cloud Run service to invocation), polls the Cloud Functions~v2
+\texttt{get} endpoint until the function reports \texttt{ACTIVE}, and then calls
+\texttt{getIamPolicy} and \texttt{setIamPolicy} on the Cloud Run service to let the workflow's
+service account invoke it. The polls make the total
 depend on how long the provider takes to make the function active, which is why this path is
 reported as a sequence rather than as a fixed count.
 
@@ -1032,9 +1045,8 @@ each internal call is bound to the registered, current or discovered endpoint, a
 deployed only when it is in neither the registry nor any region and every region could be checked.
 Stale entries that cannot be rediscovered, ambiguous names and inaccessible regions abort the
 resolution instead of binding a call to a guess or deploying a duplicate. The answer to RQ1 is
-therefore positive for the resolution logic on both providers, with two qualifications: the
-evidence comes from tests that simulate the provider, and on GCP a binding to a first-generation
-Cloud Function is trusted without a live check.
+therefore positive for the resolution logic on both providers, with one qualification: the
+evidence comes from tests that simulate the provider.
 
 \paragraph{Answer to RQ2.}
 For RQ2, the benchmarks support six conclusions.
@@ -1048,7 +1060,7 @@ call-times-registry-size product, reducing resolution to one read of the registr
 $0.22\,\mu$s per internal call, a speedup of $200\times$ in the worst corner measured
 (T3, T4, T5), a full \emph{identify (T2) $\rightarrow$ fix $\rightarrow$ quantify (T3)} loop.
 Third, the production resolvers (T6, T7) show the same one-read-plus-a-constant shape as the
-optimized reference path: $29\,\mu$s (AWS) and $81\,\mu$s (GCP) for a 200-call workflow.
+optimized reference path: $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a 200-call workflow.
 Fourth, the AWS agnostic packaging layer adds negligible size (S1). Fifth, resolution cost tracks
 the number of internal calls rather than the workflow's total call count: external calls add only
 the shared tree-traversal cost, never a registry lookup (T11, T12). Sixth, neither nesting depth
@@ -1077,7 +1089,7 @@ cost and the relationships between the experiments, which the shared measurement
 comparable, rather than the values themselves; the individual points whose confidence intervals
 are wide are identified where they appear and are not used to support any claim.
 
-A second limit is one of provenance: because T6 and T7 come from a second measurement session
+A second limit is one of provenance: because T6 and T7 come from later measurement sessions
 (\S\ref{sec:eval-methodology}), their comparison with the reference path of T4 should be read as
 an order-of-magnitude comparison rather than an exact one.
 

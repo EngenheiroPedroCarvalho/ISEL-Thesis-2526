@@ -239,28 +239,19 @@ drift as text is edited, so search for the quoted phrases.
 
 ## 6. Code ideas (ISEL-Thesis-2526)
 
-- [ ] Move QuickFaaS's GCP provider to the Cloud Functions v2 API, so that the functions it
-      deploys are Cloud Run services and the existing `CloudRunV2ServiceInspector` /
-      `CloudRunV2RestCatalog` validate, discover and bootstrap them with no new client. Preferred
-      over the Cloud Functions v1 client this item used to propose: v1 closes the same gap without
-      touching QuickFaaS, but leaves the two generations to be told apart at resolution time — the
-      very thing the item below shows cannot be done from the URL. The cost is all inside
-      QuickFaaS: `buildConfig`/`serviceConfig` request body, `?functionId=` on create, the
-      `run.app` URL read from `serviceConfig.uri` instead of composed, `roles/run.invoker` on the
-      Cloud Run service, and the storage trigger's template moved to `CloudEventsFunction`
-      (`GcpStorageTemplate.java` still implements the 1st-gen `BackgroundFunction`).
-      **Already implemented on the `experiment/gcf-gen2` branch** (commit `16ac650`, worktree
-      `../ISEL-Thesis-gen2`): compiles and passes locally (19 + 177 tests), but never validated
-      against GCP, because the project's billing accounts are closed. That is why it stays future
-      work, as Ch. 7 "Future Work" and the Ch. 4 limitation paragraph now describe.
-- [ ] Identify first-generation Cloud Functions by something stronger than the URL domain.
-      `WorkflowInternalFunctionResolver.isFirstGenCloudFunction` (line 272) tests
-      `url.contains(".cloudfunctions.net")`, but a function created through the Cloud Functions v2
-      API is served on `run.app` and *also* keeps a `cloudfunctions.net` endpoint, so a registry
-      entry holding that endpoint would silently skip live validation. Not reachable today, since
-      QuickFaaS only creates v1 functions, and it goes away with the v2 move above, which deletes
-      the check rather than hardening it.
-      The caveat is documented in the thesis (Ch. 2, "FaaS Deployment Model: The ZIP Strategy").
+- [x] Move QuickFaaS's GCP provider to the Cloud Functions v2 API — feito 2026-09-27. Validated
+      against a live GCP project (`tfm26-509910`: all three levels and the bootstrap, workflow run
+      to SUCCEEDED) and merged from `experiment/gcf-gen2` into the thesis branch (`cfe73c6`). The
+      live run found and fixed one bug: Level 3 stored the short service name, so the first Level 1
+      lookup 404'd and fell back to rediscovery (`bcfbe32`). The thesis now describes 2nd gen
+      (Ch2, Ch4 "Cloud Run Functions on GCP", Ch5, Ch6, Ch7, appendix, glossary), and T7 was
+      re-measured with a local Cloud Run `HttpClient`, since the 1st-gen short-circuit it relied on
+      is gone. Still open: `GcpStorageTemplate.java` implements the 1st-gen `BackgroundFunction`,
+      so storage-triggered functions would need a `CloudEventsFunction` template (not used by
+      internal calls, which are HTTP).
+- [x] Identify first-generation Cloud Functions by something stronger than the URL domain — no
+      longer needed: the v2 move deleted `isFirstGenCloudFunction`, and every registry hit is now
+      validated against Cloud Run.
 - [x] Drop the decommissioned GCP runtimes — feito 2026-09-20. `GcpFunction.runtimes` is now
       `arrayOf(JAVA17)` and `QuickFaasDescriptorLoader.GCP_VALID_RUNTIMES` is `setOf("java17")`:
       the only runtime Google still accepts (java11 was decommissioned on 2025-10-31, nodejs14 on

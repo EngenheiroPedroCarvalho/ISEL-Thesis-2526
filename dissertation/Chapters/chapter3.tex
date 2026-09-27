@@ -76,8 +76,7 @@ actual deployment is a last resort rather than a default.
   otherwise, in which case the deployment aborts. Validation contacts the provider, but the registry keeps it
   cheap: an entry records where the function lives (the region inside the Lambda ARN, the full
   resource name of the Cloud Run service), so validation is one lookup in a known place rather than
-  the search across every region that Level~2 performs. On GCP, bindings to the first-generation
-  Cloud Functions that QuickFaaS deploys skip this check (\S\ref{subsec:store-internals}).
+  the search across every region that Level~2 performs.
   \item \textbf{Level~2 (Provider discovery).} On a registry miss, the target provider is queried
   directly (a Cloud Run lookup across regions on GCP; on AWS, a \texttt{GetFunction} lookup across
   every region enabled for the account, or a single call when the caller supplies the
@@ -229,8 +228,9 @@ order to invoke it.
 
 The two example files differ only in that last field, and this is where the provider shows through.
 On GCP, \texttt{url} is the HTTPS endpoint of the function
-(\texttt{https://\allowbreak europe-west1-\allowbreak proj.\allowbreak cloudfunctions.\allowbreak net/\allowbreak fraud-check}), which the resolver
-splits into the \texttt{host} and \texttt{path} of an ordinary HTTP call. On AWS, \texttt{url} is
+(\texttt{https://\allowbreak fraud-check-\allowbreak a1b2c3d4e5-\allowbreak ue.\allowbreak a.\allowbreak run.\allowbreak app}), which the resolver
+splits into the \texttt{host} and \texttt{path} of an ordinary HTTP call, and \texttt{serviceName}
+is the full resource name of the Cloud Run service behind it. On AWS, \texttt{url} is
 the function's ARN
 (\texttt{arn:aws:\allowbreak lambda:\allowbreak eu-west-1:\allowbreak 123456789012:\allowbreak function:\allowbreak hello-lambda-fn}),
 which the rendered state machine uses as the resource of a native Lambda invocation rather than as
@@ -243,8 +243,8 @@ function-registry.gcp.json:
   "updatedAt": "2026-02-12T18:40:00Z",
   "functions": {
     "fraud-check": {
-      "serviceName": "fraud-check",
-      "url": "https://europe-west1-proj.cloudfunctions.net/fraud-check"
+      "serviceName": "projects/proj/locations/us-east1/services/fraud-check",
+      "url": "https://fraud-check-a1b2c3d4e5-ue.a.run.app"
     }
   }
 }

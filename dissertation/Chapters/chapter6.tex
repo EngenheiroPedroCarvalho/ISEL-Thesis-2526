@@ -175,12 +175,11 @@ Now suppose the bank's exit strategy calls for the same fraud-screening workflow
 second provider (Section~\ref{sec:case-scenario}). Deploying it to GCP takes GCP descriptors (targeting Cloud Functions instead of Lambda) and the
 GCP deployer. On this first GCP deployment, the GCP registry is
 bootstrapped separately from the AWS one, both scoring functions miss at Level~1 and Level~2, and
-Level~3 deploys them as first-generation Cloud Functions instead, following the ZIP-based
-deployment path described in \S\ref{sec:background_quickfaas}. The two registries stay
+Level~3 deploys them as Cloud Run functions instead, from the same ZIP-based artifact described in
+\S\ref{sec:background_quickfaas} (\S\ref{subsec:gcp-cloud-run-functions}). The two registries stay
 independent, one per provider (\texttt{function-registry.aws.json} and
 \texttt{function-registry.gcp.json} by default), so the same \texttt{functionRef} resolves to a
-Lambda ARN under one deployment and to a Cloud Functions URL under the other, subject on GCP to the
-limitation of \S\ref{subsec:store-internals}. The uniform
+Lambda ARN under one deployment and to a \texttt{run.app} URL under the other. The uniform
 \texttt{url} field discussed in
 Section~\ref{subsec:registry-evolution} is precisely what makes this substitution transparent to
 the workflow definition.
@@ -191,7 +190,7 @@ the workflow definition.
 Once deployed, the two deployments of \texttt{PaymentAuthorization} differ only in how the two
 scoring calls are invoked. On AWS, Step Functions invokes \texttt{fraud-check} and
 \texttt{risk-score} through the native \texttt{lambda:invoke} integration of
-Section~\ref{sec:runtime-invocation}; on GCP, they are HTTP calls to the resolved Cloud Functions
+Section~\ref{sec:runtime-invocation}; on GCP, they are HTTP calls to the resolved \texttt{run.app}
 URLs. The rest of the workflow is the same on both: the \texttt{decision} step becomes a native
 conditional (a \texttt{Choice} state on AWS), and \texttt{approve-transaction} an ordinary
 external call.

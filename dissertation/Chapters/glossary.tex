@@ -25,9 +25,9 @@
 
 \newglossaryentry{cloudrun}{
 	name={Cloud Run},
-	description={Container-based serverless product of Google Cloud, also marketed as
-	second-generation Cloud Functions. The Function Registry validates and discovers GCP
-	functions through the Cloud Run API.}
+	description={Container-based serverless product of Google Cloud. A second-generation Cloud
+	Function, which is what QuickFaaS deploys on GCP, is a Cloud Run service built from source.
+	The Function Registry validates and discovers GCP functions through the Cloud Run API.}
 }
 
 \newglossaryentry{descriptor}{
@@ -80,8 +80,8 @@
 \newglossaryentry{firstgen}{
 	name={First-generation Cloud Function},
 	description={GCP function created through the first-generation Cloud Functions API, with a URL
-	under \texttt{cloudfunctions.net}. It is what QuickFaaS deploys on GCP; its registry
-	bindings are neither validated nor rediscovered, since both query only Cloud Run.}
+	under \texttt{cloudfunctions.net}. It is not a Cloud Run service, so the Function Registry
+	can neither validate nor discover it; the original QuickFaaS deployed functions of this kind.}
 }
 
 \newglossaryentry{registry}{

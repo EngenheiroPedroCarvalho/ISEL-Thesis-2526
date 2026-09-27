@@ -20,6 +20,9 @@ The work delivered two complementary halves: the unification of function and wor
 through the Function Registry and the deployment-time resolution cascade
 (Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}), and the AWS Lambda provider added to
 QuickFaaS, with the matching deployer in OmniFlow (Section~\ref{subsec:quickfaas-aws-provider}).
+To let the cascade cover the functions it deploys on GCP, QuickFaaS's GCP provider was also moved
+to second-generation functions, which are Cloud Run services
+(\S\ref{subsec:gcp-cloud-run-functions}).
 How far each meets the objectives set out in Chapter~\ref{cha:introduction} is assessed next.
 
 \section{Objectives Revisited}
@@ -30,9 +33,9 @@ The two research questions of Section~\ref{sec:int_objectives} are answered as f
   \item \textbf{RQ1 (feasibility and correctness)}: yes, for the resolution logic. On both AWS
   and GCP the cascade binds each internal call to the right endpoint and deploys a function only
   when its absence is confirmed, and it aborts on stale entries, ambiguous names and inaccessible
-  regions (Section~\ref{sec:eval-correctness}), within the limits stated below for objectives 2 and 4.
+  regions (Section~\ref{sec:eval-correctness}), within the limits stated below for objective 4.
   \item \textbf{RQ2 (overhead)}: small. In the production resolvers, resolving a workflow of 200
-  internal calls against a registry of ten functions takes $29\,\mu$s on AWS and $81\,\mu$s on GCP,
+  internal calls against a registry of ten functions takes $29\,\mu$s on AWS and $199\,\mu$s on GCP,
   growing linearly with the number of internal calls, while the registry is read once per
   deployment (Section~\ref{sec:eval-discussion}).
 \end{itemize}
@@ -45,10 +48,11 @@ follows:
   strategy (Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}) let a single workflow
   definition drive both function and workflow deployment, binding endpoints when the workflow is
   deployed (\S\ref{sec:resolution-cascade}).
-  \item \textbf{Implement an orchestration prototype}: \emph{met on AWS, partially met on GCP.}
+  \item \textbf{Implement an orchestration prototype}: \emph{met.}
   The prototype resolves the internal functions of a workflow on both providers, and deploys the
-  missing ones, without endpoints being copied by hand. On GCP, however, the cascade covers the
-  functions QuickFaaS deploys only in part (Section~\ref{sec:concl-critical}).
+  missing ones, without endpoints being copied by hand. On GCP, the functions QuickFaaS deploys are
+  second-generation, so validation, discovery and the bootstrap cover them as they cover any Cloud
+  Run service (\S\ref{subsec:gcp-cloud-run-functions}).
   \item \textbf{Extend QuickFaaS to AWS Lambda}: \emph{met.} QuickFaaS gained an AWS provider
   and OmniFlow an \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
   and~\ref{subsec:omniflow-aws-deployer}). The provider-agnostic packaging layer adds about
@@ -75,15 +79,14 @@ The implementation is that of a prototype, and several limitations should be sta
   endpoints at run time.
   \item \textbf{No update path.} The cascade deploys a function only when it is missing and never
   updates one that exists: a change to a function's code is not deployed by a workflow deployment,
-  and has to be deployed separately (for example, with QuickFaaS directly). The exception is a
-  first-generation Cloud Function on GCP whose binding is missing from the registry, which the
-  cascade cannot find and so redeploys over the existing function (\S\ref{subsec:store-internals}).
+  and has to be deployed separately (for example, with QuickFaaS directly).
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
   or authenticity guarantee, and no cross-process locking; concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
-  \item \textbf{Partial GCP coverage.} On GCP, validation and discovery cover Cloud Run services
-  only, not the first-generation Cloud Functions that QuickFaaS deploys
-  (\S\ref{subsec:store-internals}); the AWS path has no such gap.
+  \item \textbf{Cloud Run services only on GCP.} Validation, discovery and the bootstrap see
+  only Cloud Run services, so first-generation Cloud Functions created outside the integration
+  cannot be bound; the functions the integration deploys are second-generation and are covered
+  (\S\ref{subsec:gcp-cloud-run-functions}).
   \item \textbf{Broad, automatic IAM.} The AWS path auto-creates and mutates a shared execution
   role and grants invoke permissions as a deployment side effect: convenient for a demo, but at
   odds with a least-privilege, change-controlled environment.
@@ -103,17 +106,6 @@ The following directions are ordered from smallest change with the clearest payo
 structural ones.
 
 \begin{enumerate}
-  \item \textbf{Cover the functions QuickFaaS deploys on GCP} by moving its GCP provider to the
-  Cloud Functions~v2 API. A second-generation function \emph{is} a Cloud Run service, so the
-  validation, discovery and bootstrap already built on the Cloud Run API would cover it unchanged,
-  giving the GCP path the same drift detection and rediscovery guarantees as the AWS path. It would
-  also retire the URL heuristic that recognises first-generation functions
-  (\S\ref{sec:background_quickfaas}). The cost falls on QuickFaaS: the request body is
-  restructured, the generated \texttt{run.app} URL has to be read from the deployed function
-  instead of composed from the project and region, invoker permissions move to the Cloud Run Admin
-  API, and the storage trigger's template has to adopt the CloudEvents interface. A Cloud
-  Functions~v1 client alongside the Cloud Run one would close the same gap without touching
-  QuickFaaS, but would leave the two generations to be told apart at resolution time.
   \item \textbf{Add an update path:} record a hash of each function's source in its registry entry
   and redeploy the function through QuickFaaS when the source its descriptor points to changes, so
   that a workflow deployment also brings its functions up to date.

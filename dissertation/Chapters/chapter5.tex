@@ -12,9 +12,10 @@ Chapter~\ref{ch:proposed_solution} are realised in code.
 
 The chapter is organised in three sections. Section~\ref{sec:function-registry} presents the
 Function Registry itself: its file format, how entries are created and kept up to date, and the
-internal behaviour of the two provider resolvers that consult it at deployment time. The
-following section, AWS Lambda Support in QuickFaaS, traces the concrete deployment steps that
-Level~3 of the cascade triggers on AWS, work that has no equivalent on the GCP path.
+internal behaviour of the two provider resolvers that consult it at deployment time, and the
+change to QuickFaaS's GCP provider that lets them cover the functions it deploys. The following
+section, AWS Lambda Support in QuickFaaS, traces the concrete deployment steps that Level~3 of the
+cascade triggers on AWS.
 Section~\ref{sec:runtime-invocation} closes the chapter by following a resolved internal call
 through to its actual invocation once the workflow has been deployed.
 
@@ -36,12 +37,12 @@ of the resolution cascade, which creates and refreshes its entries (\S\ref{subse
 \subsection{Registry File Format}
 The file format is the one described in \S\ref{sec:dsl-extensions} and shown in
 Listing~\ref{lst:registry-structure}: one JSON file per provider
-(\texttt{function-registry.gcp.json} or \texttt{function-registry.aws.json} by default). Two conventions become visible only in a registry that has been in use. On GCP, a function
-deployed by QuickFaaS carries a first-generation \texttt{cloudfunctions.net} URL, whereas a Cloud
-Run service found by discovery or by the bootstrap carries, as its \texttt{serviceName}, the full
-resource name \texttt{projects/\allowbreak proj/\allowbreak locations/\allowbreak europe-west1/\allowbreak services/\allowbreak risk-score}
-rather than the bare service id. The key follows the rule of \S\ref{sec:dsl-extensions} in both
-cases: the bare \texttt{functionRef}, or a region-qualified key such as
+(\texttt{function-registry.gcp.json} or \texttt{function-registry.aws.json} by default). Two conventions become visible only in a registry that has been in use. On GCP, every entry
+carries, as its \texttt{serviceName}, the full resource name of the Cloud Run service
+(\texttt{projects/\allowbreak proj/\allowbreak locations/\allowbreak europe-west1/\allowbreak services/\allowbreak risk-score})
+rather than the bare service id, and a \texttt{run.app} URL, whether the function was deployed by
+QuickFaaS (\S\ref{subsec:gcp-cloud-run-functions}) or found by discovery or by the bootstrap. The
+key follows the rule of \S\ref{sec:dsl-extensions}: the bare \texttt{functionRef}, or a region-qualified key such as
 \texttt{"europe-west1/\allowbreak risk-score"} when the call used that form or the bootstrap found
 the same name in more than one region. The file is kept in a writable location (the working directory by default, or a path given to the deployer), never inside packaged resources, which are typically read-only in production.
 
@@ -109,9 +110,7 @@ The two provider resolvers sit on top of this store.
 \S\ref{sec:resolution-cascade} on the Cloud Run API, through
 \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Service\allowbreak Inspector}, which looks
 a service up by its full name to validate a hit and by project, region and name during
-discovery. There is one exception: a hit on a
-first-generation Cloud Function (identified by a \texttt{cloudfunctions.\allowbreak net} URL), which is not a
-Cloud Run service, is returned without validation.\\
+discovery.\\
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} follows the same shape on the Lambda API: it
 reads the region to validate from the stored ARN and consults the Lambda API through a
 \texttt{Lambda\allowbreak Function\allowbreak Inspector} seam. \\
@@ -137,21 +136,42 @@ against that in-memory map, keeping it in sync with every subsequent \texttt{put
 so that two calls to the same function within one workflow still observe each other's writes,
 rather than re-reading the file per call.
 
-\paragraph{Limitation: first-generation Cloud Functions on GCP.}
-On GCP, QuickFaaS deploys first-generation Cloud Functions (\S\ref{sec:background_quickfaas}),
-but the GCP resolver's live validation, its provider discovery and the registry bootstrap all query
-the Cloud Run API. The functions that the integration itself deploys on GCP are therefore only
-partly covered by the cascade. First, a registry hit on a \texttt{cloudfunctions.net} URL is
-returned without a live check, so a function that was deleted or moved is not detected at
-deployment time: the workflow is deployed against the stored URL, and the failure only surfaces
-when the workflow invokes the function. Second, neither the bootstrap nor discovery lists
-first-generation functions, so a binding missing from the registry (for example, because the
-registry file was deleted or the deployment runs on another machine) cannot be rediscovered. With a
-descriptor, the cascade reaches Level~3 and invokes QuickFaaS again for a function that already
-exists; QuickFaaS then finds the function through the Cloud Functions API and updates it in place
-with the descriptor's code, so in this case the cascade does overwrite an existing function.
-Without a descriptor, deployment fails and reports the function as absent. The AWS path is not
-affected. How the gap could be closed is listed as future work (Section~\ref{sec:concl-future}).
+\subsection{Cloud Run Functions on GCP}
+\label{subsec:gcp-cloud-run-functions}
+The GCP resolver validates and discovers functions only through the Cloud Run API, so the functions
+the integration deploys on GCP must be Cloud Run services. The original QuickFaaS deploys
+first-generation Cloud Functions (\S\ref{sec:background_quickfaas}), which are not; its GCP
+provider was therefore moved to the Cloud Functions~v2 API, which creates \emph{Cloud Run
+functions}: functions backed by a Cloud Run service~\cite{gcpFunctionsVersionComparison}. The
+request body is restructured into a \texttt{buildConfig} (runtime, entry point and the source
+archive in Cloud Storage) and a \texttt{serviceConfig} (memory, timeout, instance limits), the
+function name is passed as the \texttt{functionId} of the create request, and storage events are
+filtered by bucket through Eventarc, with CloudEvents event types. Only the HTTP trigger, the one
+internal calls use, was exercised on GCP; the storage-trigger template still implements the
+first-generation \texttt{BackgroundFunction} interface.
+
+The v2 deployment is a long-running operation, and the backing service exists only once the build
+has finished. QuickFaaS therefore waits until the function reports the \texttt{ACTIVE} state and
+only then reads its URL and opens it to invocation. The URL cannot be composed from the project,
+region and name, as a first-generation \texttt{cloudfunctions.net} URL could: the
+\texttt{run.app} host carries a hash generated by Google, and the API returns it as
+\texttt{serviceConfig.uri}. Invocation permission is granted on the backing Cloud Run service,
+named in \texttt{serviceConfig.service}, since that is where Cloud Run enforces it: QuickFaaS grants
+\texttt{roles/\allowbreak run.invoker} to all users, as its first-generation provider did with
+the Cloud Functions invoker role. On the OmniFlow side, \texttt{QuickFaasDeployer} waits
+for the same state, grants \texttt{roles/\allowbreak run.invoker} on that service to the service
+account the workflow runs as, and returns the two fields as the registry entry: the URL, and the
+full resource name of the service as its \texttt{serviceName}, which is the form the inspector
+looks up at Level~1.
+
+Every function the integration deploys on GCP is thus a Cloud Run service, and all three levels of
+the cascade and the registry bootstrap cover it with the Cloud Run clients described above; the
+Cloud Functions API is called only by the Level~3 deployment itself. The resolver validates every registry hit: the URL does not
+identify the generation of the function behind it, since a second-generation function keeps a
+\texttt{cloudfunctions.net} endpoint besides its \texttt{run.app}
+one~\cite{gcpFunctionsVersionComparison}. First-generation functions created outside the
+integration are not supported: neither discovery nor the bootstrap lists them, and a registry entry
+that points to one fails validation like a deleted service.
 
 \subsection{Validation and Error Semantics}
 \label{subsec:validation-error-semantics}
@@ -210,7 +230,9 @@ provider-agnostic reference without live validation, and then in the two product
 The two production resolvers did not always treat a registry hit the same way.
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (GCP) validated every hit against the live
 Cloud Run service from the start, because a Cloud Run lookup needs the project/region/service
-triple that only the registry supplies. \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} initially
+triple that only the registry supplies; the one exception, first-generation Cloud Functions, which
+it returned unchecked, disappeared when QuickFaaS moved to second-generation functions
+(\S\ref{subsec:gcp-cloud-run-functions}). \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} initially
 trusted a hit outright, returning the cached ARN with no live check, since a Lambda name is
 already unique within a region and validating brought no discovery benefit on its own. This
 asymmetry was closed by introducing \texttt{Lambda\allowbreak Function\allowbreak Inspector}, the AWS counterpart to
