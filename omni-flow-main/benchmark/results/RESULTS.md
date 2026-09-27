@@ -12,9 +12,12 @@ chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
 > não da renderização.
 
 > **Proveniência dos números (2026-09-12).** Todos os valores abaixo vêm da execução de
-> `jmh-results-f3.csv` — toda a suite numa só sessão, com `-f 3` — exceto T6 e T7, re-medidos na
-> mesma noite e na mesma máquina depois de os resolvers de produção deixarem de escrever na consola
-> por chamada (ver a secção do T6). Substituem as execuções de agosto de 2026, feitas em várias
+> `jmh-results-f3.csv` — toda a suite numa só sessão, com `-f 3` — exceto T6 e T7. O T6 foi
+> re-medido na mesma noite e na mesma máquina, depois de os resolvers de produção deixarem de
+> escrever na consola por chamada (ver a secção do T6). O T7 foi re-medido a 2026-09-27, com as
+> mesmas opções e na mesma máquina, depois de o resolver GCP passar a validar todas as entradas
+> (funções de 2.ª geração): seis pontos do T6 medidos de novo nessa sessão ficaram 1–7% acima dos
+> valores de 09-12. Substituem as execuções de agosto de 2026, feitas em várias
 > sessões com `-f 1`, que estavam contaminadas por carga da máquina: davam valores uma a duas ordens
 > de grandeza maiores e chegavam a ser incoerentes entre si (o T9, que é o T8 mais uma pesquisa
 > falhada, saía mais barato que o T8). A mesma análise, em inglês, está no Capítulo 7 da
@@ -296,22 +299,24 @@ chamada, ~0,09 µs. Resolver 200 chamadas contra um registo de 10 funções cust
 
 | F \ N | 1 | 5 | 10 | 50 | 200 |
 |---:|---:|---:|---:|---:|---:|
-| 1 | 10,4 | 12,1 | 13,9 | 27,9 | 83,3 |
-| 2 | 10,6 | 11,9 | 13,8 | 27,5 | 78,8 |
-| 5 | 11,3 | 12,7 | 14,1 | 28,4 | 79,8 |
-| 10 | 12,1 | 13,4 | 15,1 | 28,8 | 81,3 |
-| 20 | 14,4 | 15,5 | 16,8 | 31,6 | 84,4 |
-| 50 | 19,9 | 20,9 | 22,8 | 36,8 | 91,3 |
+| 1 | 11,8 | 15,8 | 21,3 | 59,3 | 207,1 |
+| 2 | 12,1 | 16,4 | 21,3 | 61,3 | 209,1 |
+| 5 | 13,0 | 17,5 | 21,9 | 62,4 | 211,5 |
+| 10 | 15,1 | 18,4 | 23,1 | 60,2 | 199,1 |
+| 20 | 15,4 | 19,2 | 24,0 | 61,5 | 205,9 |
+| 50 | 21,9 | 25,6 | 30,6 | 67,5 | 209,0 |
 
 ![T7 — Resolução real GCP](T7_google_internal_resolution.png)
 
-**Resumo.** Gémeo GCP do T6, com URLs de 1ª geração no registo para nunca tocar na API do Cloud
-Run. Mesma forma (uma leitura — 10,4 µs em F=1, 19,9 µs em F=50 — mais uma constante por chamada),
-mas ~4× mais caro por chamada que o AWS: ~0,35 µs contra ~0,09 µs, ou 81,3 µs contra 29,1 µs em
-F=10/N=200. **A diferença é real e não é logging** (ver a nota do T6): o resolver AWS liga uma
-chamada concatenando um prefixo ao ARN que já tem, enquanto o GCP faz `URI(url)` e reconstrói
-host/path a cada chamada. O resolver de referência do T1/T4 faz esse mesmo parsing e fica entre os
-dois, a ~0,22 µs por chamada — o que fecha a explicação.
+**Resumo.** Gémeo GCP do T6. Cada *hit* é validado pelo `CloudRunV2ServiceInspector` real; só o
+`HttpClient` é substituído por um que responde localmente a cada `services.get` com o URL
+registado, por isso o pedido, o token e o parsing do JSON entram na medição e só a ida à rede fica
+de fora. Mesma forma (uma leitura mais uma validação — 11,8 µs em F=1, 21,9 µs em F=50 — mais uma
+constante por chamada), mas ~10× mais caro por chamada que o AWS: ~0,95 µs contra ~0,09 µs, ou
+199,1 µs contra 29,1 µs em F=10/N=200. Cerca de 0,35 µs por chamada é o `URI(url)` que o resolver
+GCP faz para reconstruir host/path (o resolver de referência do T1/T4 faz o mesmo parsing, a
+~0,22 µs); os ~0,6 µs restantes são o cliente Cloud Run, que o *fake* do T6 dispensa por completo.
+A comparação entre fornecedores não é, por isso, feita em pé de igualdade.
 
 ---
 
@@ -539,8 +544,9 @@ re-execução.)
    **Θ(N+R)**, com *speedup* de 200× no pior canto medido (36,7 ms → 0,18 ms) — identificar
    (T1/T2) → corrigir → quantificar (T3).
 4. Os resolvers reais de auto-deploy (T6 AWS, T7 GCP) têm essa otimização e mostram a mesma forma:
-   29,1 µs e 81,3 µs para 200 chamadas com um registo de 10 funções. A diferença entre os dois
-   fornecedores é o parsing de `URI` que o resolver GCP faz por chamada e o AWS não.
+   29,1 µs e 199,1 µs para 200 chamadas com um registo de 10 funções. A diferença entre os dois
+   fornecedores é o parsing de `URI` que o resolver GCP faz por chamada e o AWS não, mais o cliente
+   Cloud Run que o T7 mantém na validação e que o *fake* do T6 dispensa.
 5. Escrita (T8/T9): o custo por escrita é quase constante em K, logo o total é linear em K, mas
    cresce com o tamanho do registo, porque cada `put` reescreve o ficheiro inteiro. O par
    miss+escrita que precede qualquer deployment acrescenta 26–62%, a crescer com R0.
