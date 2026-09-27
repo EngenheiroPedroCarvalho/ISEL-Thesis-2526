@@ -64,7 +64,7 @@ was called or the resolution aborted.
 
 Table~\ref{tab:eval-correctness} lists the situations with the behaviour that the cascade
 semantics prescribe (Section~\ref{sec:walkthrough} and Section~\ref{subsec:validation-error-semantics}). The observed behaviour matches the
-expected behaviour in every case: all 45 resolver tests (22 for AWS, 23 for GCP) pass, as do the
+expected behaviour in every case: all 46 resolver tests (23 for AWS, 23 for GCP) pass, as do the
 two tests of the registry bootstrap.
 
 \begin{table}[htbp]
@@ -109,6 +109,9 @@ two tests of the registry bootstrap.
     \hline
     Call setting both \texttt{internalFunction} and a literal \texttt{host}/\texttt{path} & rejected
     before the cascade starts \\
+    \hline
+    Internal call that declares a body (AWS only) & rejected before the cascade starts; nothing
+    deployed (Section~\ref{sec:runtime-invocation}) \\
     \hline
     Several internal calls in one workflow & registry read once \\
     \hline

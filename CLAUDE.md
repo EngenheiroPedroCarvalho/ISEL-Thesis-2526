@@ -102,6 +102,11 @@ The dissertation describes this behaviour, so keep the code and `dissertation/` 
   existing function.
 - **Static binding:** the resolved endpoint is embedded in the rendered workflow at deployment
   time.
+- **AWS internal calls take query parameters only:** the QuickFaaS Lambda template reads only
+  `queryStringParameters`, so `AwsInternalFunctionResolver` rejects an internal call that declares a
+  body before the cascade runs. `body(variable("x"))` is kept as `CallContext.bodyTerm` (whole-body
+  term) on both renderers. Known open issue: the AWS renderer's `Pass` states replace the whole
+  state (Ch. 5 discussion). Merged from `experiment/gcf-gen2` on 2026-09-27.
 - **GCP functions are 2nd gen:** QuickFaaS deploys through the Cloud Functions v2 API, so every
   function it creates is a Cloud Run service. `QuickFaasDeployer` registers the full resource name
   (`projects/.../services/<name>`) and the `run.app` URL from `serviceConfig`, and grants

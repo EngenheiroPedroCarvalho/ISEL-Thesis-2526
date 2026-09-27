@@ -327,7 +327,7 @@ placeholder to request automatic role creation.
 
 \section{Runtime Invocation}
 \label{sec:runtime-invocation}
-Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Step Functions invokes the Lambda directly, through the native \texttt{arn:aws:states:::lambda:invoke} integration and with the ARN fixed at deployment time, and passes it the step's payload. The QuickFaaS template entry point adapts the request and delegates to the developer's hook function, and the response is returned under \texttt{\$.Payload}. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane.
+Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Step Functions invokes the Lambda directly, through the native \texttt{arn:aws:states:::lambda:invoke} integration and with the ARN fixed at deployment time. The QuickFaaS template entry point, \texttt{AwsHttpTemplate}, reads only the \texttt{queryStringParameters} of the event it receives, and passes them to the developer's hook function as a map; the response is returned under \texttt{\$.Payload}. An internal call on AWS therefore passes its inputs with \texttt{query(\ldots)}. A call that declares a body is rejected by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} before the cascade runs, rather than rendered into a state machine that would silently drop it. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane.
 
 \begin{figure}[htbp]
   \centering

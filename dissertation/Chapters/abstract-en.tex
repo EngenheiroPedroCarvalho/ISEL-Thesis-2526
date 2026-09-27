@@ -26,7 +26,7 @@ descriptor. QuickFaaS, previously limited to Google
 Cloud and Azure, was also extended with an AWS Lambda provider, so that the unification covers both
 clouds OmniFlow targets.
 
-The prototype was evaluated for correctness and for cost. Forty-five unit tests cover every path
+The prototype was evaluated for correctness and for cost. Forty-six unit tests cover every path
 the cascade can take on both providers. Benchmarks show that the local work of resolving a
 workflow of two hundred internal calls costs tens of microseconds, growing linearly with the
 number of internal calls while the registry is read only once. The requests that resolution sends

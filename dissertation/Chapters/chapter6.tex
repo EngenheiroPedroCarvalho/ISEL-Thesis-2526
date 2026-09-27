@@ -22,7 +22,8 @@ requirements a payment-authorisation workflow imposes and why they line up with 
 work addresses. Section~\ref{sec:case-design} defines the workflow in the OmniFlow DSL.
 Section~\ref{sec:case-deployment} walks the resolution cascade through three deployments of that
 same workflow (to a test and a production AWS account, then to GCP) to show how the bindings
-follow the deployment target.
+follow the deployment target, and Section~\ref{sec:case-artifacts} shows the registries and the
+bindings those deployments produce.
 Section~\ref{sec:case-runtime} follows a transaction through the deployed workflow at runtime, and
 Section~\ref{sec:case-discussion} discusses the scenario's relevance and its limits, connecting
 them to the gaps assessed in Chapter~\ref{cha:conclusions}.
@@ -35,9 +36,9 @@ service: each transaction is screened by two independent scoring functions befor
 decides whether to settle it. \texttt{fraud-check} is a rules/ML-based service that flags
 transactions matching known fraud patterns; \texttt{risk-score} computes a numeric risk score from
 transaction and account features. Both are internal functions owned by the bank's fraud team,
-deployed and iterated on independently of the orchestration logic. A third, external call settles
-approved transactions against the bank's core banking system, which is a distinct system with its
-own release cycle and is not managed through the registry.
+deployed and iterated on independently of the orchestration logic. A third, external call reports
+each decision to the bank's core banking system, which settles approved transactions. Core banking
+is a distinct system with its own release cycle, and is not managed through the registry.
 
 Three requirements are characteristic of this setting and motivate the integration described in
 this dissertation:
@@ -76,45 +77,60 @@ registry-managed. Their results are captured in \texttt{fraudResult} and \texttt
 \texttt{decision}, is a conditional (\texttt{switch}) step: it jumps to
 \texttt{decline-transaction} if the fraud check flagged the transaction or the risk score exceeds
 a threshold, and otherwise falls through to the \texttt{default}, \texttt{approve-transaction}.
-The approve path issues an external call to the bank's own settlement endpoint, declared with a
-literal \texttt{host}/\texttt{path}.
+Each of the two branches records the outcome in \texttt{decision}. The approve branch then jumps,
+through \texttt{next}, over the decline branch, so that both reach \texttt{report-decision}: an
+external call to the bank's core banking endpoint, declared with a literal
+\texttt{host}/\texttt{path}, which passes the transaction as the body and the decision as a query
+parameter. Every step carries a \texttt{description}, which the DSL requires, and the workflow
+declares its input through \texttt{params}.
+
+Two choices in the listing keep the same definition valid on both providers. The scoring calls pass
+the transaction as a query parameter, because on AWS the QuickFaaS entry point receives only query
+parameters and an internal call with a body is rejected (Section~\ref{sec:runtime-invocation}). The
+conditions name a field of a call result with \texttt{withKey}, which each renderer turns into the
+path its provider needs: \texttt{fraudResult.body.flagged} in Cloud Workflows, where the result is
+the whole HTTP response, and \texttt{\$.fraud-check.fraudResult.flagged} in Step Functions, where
+it is the function's payload stored under the step's name.
 
 \begin{lstlisting}[language=Kotlin,caption={PaymentAuthorization workflow: two internal scoring calls feeding a decision.},label={lst:case-payment-workflow},basicstyle=\ttfamily\small,breaklines=false]
 val PaymentAuthorization = workflow {
   name("PaymentAuthorization")
   description(
     "Real-time fraud screening for card payment authorization")
-  input("transaction")
+  params("transaction")
   steps(
     step {
       name("fraud-check")
+      description("Flag transactions that match known fraud patterns")
       context(call {
         method(POST)
         internalFunction("fraud-check", "./deploy/fraud-check.json")
-        body(variable("transaction"))
+        query("transaction" to variable("transaction"))
         result("fraudResult")
       })
     },
     step {
       name("risk-score")
+      description("Score the transaction from its features")
       context(call {
         method(POST)
         internalFunction("risk-score", "./deploy/risk-score.json")
-        body(variable("transaction"))
+        query("transaction" to variable("transaction"))
         result("riskResult")
       })
     },
     step {
       name("decision")
+      description("Decline flagged or high-risk transactions")
       context(switch {
         conditions(
           condition {
-            match(variable("fraudResult.body.flagged")
+            match(variable("fraudResult").withKey("flagged")
               equalTo value(true))
             jump("decline-transaction")
           },
           condition {
-            match(variable("riskResult.body.score")
+            match(variable("riskResult").withKey("score")
               greaterThan value(75))
             jump("decline-transaction")
           }
@@ -124,18 +140,29 @@ val PaymentAuthorization = workflow {
     },
     step {
       name("approve-transaction")
-      context(call {
-        method(POST)
-        host("core-banking.internal.example")
-        path("/v1/settlements")
-        body(variable("transaction"))
-        result("settlementResult")
+      description("Record the approval")
+      context(assign {
+        variables(variable("decision") equalTo value("approved"))
       })
+      next("report-decision")
     },
     step {
       name("decline-transaction")
+      description("Record the decline")
       context(assign {
         variables(variable("decision") equalTo value("declined"))
+      })
+    },
+    step {
+      name("report-decision")
+      description("Report the decision to core banking")
+      context(call {
+        method(POST)
+        host("core-banking.internal.example")
+        path("/v1/authorisations")
+        body(variable("transaction"))
+        query("decision" to variable("decision"))
+        result("coreBankingResult")
       })
     }
   )
@@ -181,6 +208,72 @@ Lambda ARN under one deployment and to a \texttt{run.app} URL under the other. B
 stored in the same \texttt{url} field (Section~\ref{subsec:registry-evolution}), the workflow
 definition does not change between the two.
 
+\section{What the Deployments Produce}
+\label{sec:case-artifacts}
+
+The listings in this section were not written by hand. They are the output of the two production
+resolvers and of OmniFlow's renderers, run on Listing~\ref{lst:case-payment-workflow} with the
+provider replaced by the same kind of test doubles used in Section~\ref{sec:eval-correctness}: a
+lookup that reports each function as absent until it has been deployed, and a deployer that returns
+fixed endpoints. The account ID, the project and the \texttt{run.app} host are therefore
+placeholders; everything else, including the keys and the shape of each file, is what the
+integration writes.
+
+The first deployment to the AWS test account starts from an empty registry. Both scoring calls
+miss at Level~1 and Level~2 and reach Level~3, so the deployer is asked for exactly two
+deployments, \texttt{fraud-check} and \texttt{risk-score}, each from the descriptor named on its
+call. The external \texttt{report-decision} call never reaches the resolver. The registry that
+results is Listing~\ref{lst:case-registry-aws}: one entry per internal function, keyed by its
+\texttt{functionRef}, holding the ARN that the rendered state machine uses.
+
+\begin{lstlisting}[language=json,caption={AWS registry after the first deployment of \texttt{PaymentAuthorization}.},label={lst:case-registry-aws},basicstyle=\ttfamily\footnotesize,breaklines=false]
+{
+  "updatedAt" : "2026-09-27T22:31:50.404890Z",
+  "functions" : {
+    "fraud-check" : {
+      "serviceName" : "fraud-check",
+      "url" : "arn:aws:lambda:eu-west-1:111111111111:function:fraud-check"
+    },
+    "risk-score" : {
+      "serviceName" : "risk-score",
+      "url" : "arn:aws:lambda:eu-west-1:111111111111:function:risk-score"
+    }
+  }
+}
+\end{lstlisting}
+
+Deploying the same workflow to the test account a second time, with both functions now reported
+as live, shows the
+other half of the cascade. Both calls are Level~1 hits that validate unchanged, the deployer is not
+called at all, and the registry file is left untouched: its \texttt{updatedAt} is the same
+timestamp as in Listing~\ref{lst:case-registry-aws}, because a hit that validates unchanged writes
+nothing. The rendered state machine is identical to the one produced by the first deployment. In
+it, each scoring step is a \texttt{lambda:invoke} task whose \texttt{FunctionName} is the ARN of
+Listing~\ref{lst:case-registry-aws}, in the form shown in Listing~\ref{lst:rendered-lambda}.
+
+The deployment to GCP produces Listing~\ref{lst:case-registry-gcp}. It has the same keys, but each
+\texttt{serviceName} is the full resource name of a Cloud Run service and each \texttt{url} its
+\texttt{run.app} address, which the rendered Cloud Workflows definition uses as the \texttt{url}
+of an \texttt{http.post} call. Set side by side, the two registries are the concrete form of the
+claim of Section~\ref{sec:case-deployment}: the workflow definition is the same, and only the
+per-provider registry differs.
+
+\begin{lstlisting}[language=json,caption={GCP registry after the first deployment of \texttt{PaymentAuthorization}.},label={lst:case-registry-gcp},basicstyle=\ttfamily\scriptsize,breaklines=false]
+{
+  "updatedAt" : "2026-09-27T22:31:50.978677Z",
+  "functions" : {
+    "fraud-check" : {
+      "serviceName" : "projects/tfm-proj/locations/europe-west1/services/fraud-check",
+      "url" : "https://fraud-check-a1b2c3d4e5-ew.a.run.app"
+    },
+    "risk-score" : {
+      "serviceName" : "projects/tfm-proj/locations/europe-west1/services/risk-score",
+      "url" : "https://risk-score-a1b2c3d4e5-ew.a.run.app"
+    }
+  }
+}
+\end{lstlisting}
+
 \section{Runtime Invocation}
 \label{sec:case-runtime}
 
@@ -189,7 +282,7 @@ scoring calls are invoked. On AWS, Step Functions invokes \texttt{fraud-check} a
 \texttt{risk-score} through the native \texttt{lambda:invoke} integration of
 Section~\ref{sec:runtime-invocation}; on GCP, they are HTTP calls to the resolved \texttt{run.app}
 URLs. The rest of the workflow is the same on both: the \texttt{decision} step becomes a native
-conditional (a \texttt{Choice} state on AWS), and \texttt{approve-transaction} an ordinary
+conditional (a \texttt{Choice} state on AWS), and \texttt{report-decision} an ordinary
 external call.
 
 \section{Discussion}
@@ -199,6 +292,15 @@ Section~\ref{sec:case-deployment} shows the integration's central claim in a set
 plausibly matters. The fraud team's frequent model updates are a different matter: a retrained \texttt{fraud-check} redeployed in place keeps its endpoint
 (Section~\ref{sec:resolution-cascade}), so the deployed workflow calls the new model unchanged. Conversely, a workflow deployment never deploys the new model itself, because the
 cascade only deploys missing functions (Section~\ref{sec:concl-critical}).
+
+Rendering the workflow for Section~\ref{sec:case-artifacts} also exposed a limitation of OmniFlow's
+AWS renderer, which this work did not change. An \texttt{assign} step becomes a \texttt{Pass}
+state whose \texttt{Result} replaces the whole state document, so after
+\texttt{approve-transaction} or \texttt{decline-transaction} the transaction the workflow received
+is no longer in the state, and \texttt{report-decision} cannot send it. The Cloud Workflows
+definition does not have this problem, since \texttt{assign} there only adds a variable. On AWS,
+the \texttt{PaymentAuthorization} workflow therefore needs the renderer to keep the rest of the state
+when a variable is assigned before it can run end to end.
 
 The scenario equally exposes why this remains illustrative rather than production-ready: the
 unguarded registry and the broad, automatically granted IAM role assessed in

@@ -312,10 +312,12 @@ The workflow is written as shown in Listing~\ref{lst:wf-internal-part} and Listi
 \begin{lstlisting}[language=Kotlin,caption={FraudPipeline workflow (part 1/2): call resolved through the registry.},label={lst:wf-internal-part},basicstyle=\ttfamily\small,breaklines=false]
 val wf = workflow {
   name("FraudPipeline")
-  input("args")
+  description("Fraud check followed by a partner risk score")
+  params("args")
   steps(
     step {
       name("fraud-check")
+      description("Call the fraud-check function")
       context(call {
         method(GET)
         internalFunction("fraud-check", "./deploy/fraud-check.json")
@@ -330,6 +332,7 @@ val wf = workflow {
 // FraudPipeline workflow (continuation)
     step {
       name("external-risk-api")
+      description("Call the partner risk-scoring API")
       context(call {
         method(POST)
         host("api.partner.example")
