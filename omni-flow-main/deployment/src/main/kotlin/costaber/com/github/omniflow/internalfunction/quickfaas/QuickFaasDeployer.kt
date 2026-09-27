@@ -82,16 +82,15 @@ class QuickFaasDeployer(
 
         logger.info { "QuickFaaS deployment completed for '$functionName'. Registered URL: ${deployed.uri}" }
 
-        return FunctionInvocationMetadata(serviceName = deployed.serviceName, url = deployed.uri)
+        // The full resource name, which is what CloudRunV2ServiceInspector looks up on Level 1.
+        return FunctionInvocationMetadata(serviceName = deployed.service, url = deployed.uri)
     }
 
     /**
      * A deployed 2nd gen function: its generated 'run.app' [uri] and the resource name of the
      * Cloud Run [service] backing it, both output-only fields of the Cloud Functions v2 API.
      */
-    private data class DeployedFunction(val uri: String, val service: String) {
-        val serviceName: String get() = service.substringAfterLast('/')
-    }
+    private data class DeployedFunction(val uri: String, val service: String)
 
     private fun waitForFunctionReady(projectId: String, region: String, functionName: String): DeployedFunction {
         val apiUrl = cloudFunctionsApiUrl(projectId, region, functionName)
