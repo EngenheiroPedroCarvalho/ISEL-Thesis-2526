@@ -71,7 +71,8 @@ class QuickFaasDeployer(
         val resolvedRegion = descriptor.function?.location ?: region
 
         println("$BLUE  →$RESET Polling Cloud Functions API — waiting for '$functionName' to become ACTIVE...")
-        val deployed = waitForFunctionReady(resolvedProject, resolvedRegion, functionName)
+        // A 'region/name' reference names the function by what follows the slash.
+        val deployed = waitForFunctionReady(resolvedProject, resolvedRegion, functionName.substringAfterLast('/'))
         println("$GREEN  ✓$RESET Function '$functionName' is ACTIVE")
 
         if (invokerServiceAccount != null) {

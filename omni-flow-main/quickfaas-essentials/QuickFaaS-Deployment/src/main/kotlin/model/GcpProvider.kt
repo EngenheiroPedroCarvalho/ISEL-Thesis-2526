@@ -5,6 +5,7 @@
 package model
 
 import model.projects.GcpProject
+import model.projects.GcpProjectData
 import model.projects.ProjectData
 import model.requests.GcpRequests
 
@@ -26,6 +27,15 @@ class GcpProvider : CloudProvider {
         project.projectData.name = ""
         projects = GcpRequests.getProjects().projects
         return projects
+    }
+
+    /**
+     * Also accepts the project ID, which is what OmniFlow and the GCP APIs use; a project's
+     * display name need not match it.
+     */
+    override fun setProjectData(projectName: String) {
+        val byId = projects.find { proj -> (proj as GcpProjectData).projectId == projectName }
+        super.setProjectData(byId?.name ?: projectName)
     }
 
 }
