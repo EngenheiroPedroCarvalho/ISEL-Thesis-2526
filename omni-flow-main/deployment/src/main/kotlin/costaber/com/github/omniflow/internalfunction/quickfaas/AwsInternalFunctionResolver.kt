@@ -91,6 +91,12 @@ class AwsInternalFunctionResolver(
                 "Invalid workflow: internalFunction('${internal.name}') cannot be combined with host/path."
             )
         }
+        if (call.body.isNotEmpty() || call.bodyRaw.isNotEmpty() || call.bodyTerm != null) {
+            throw IllegalStateException(
+                "Invalid workflow: internalFunction('${internal.name}') declares a body, but on AWS the " +
+                    "QuickFaaS Lambda template receives only query parameters. Pass the inputs with query(...)."
+            )
+        }
         val arn = resolveOrDeploy(internal.name, internal, snapshot)
         return call.copy(host = "lambda://$arn", path = "", internalFunction = null)
     }

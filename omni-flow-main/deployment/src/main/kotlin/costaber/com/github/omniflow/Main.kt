@@ -938,7 +938,8 @@ private val Example7Workflow = workflow {
                 call {
                     method(GET)
                     internalFunction(
-                        "hello-lambda-fn",
+                        // aws-region-ref-test.sh passes a "region/name" reference here.
+                        System.getenv("EXAMPLE7_FUNCTION_REF") ?: "hello-lambda-fn",
                         deploymentDescriptorPath = "./functions/hello-lambda-fn/func-deployment.json"
                     )
                     query("lang" to value("pt"))

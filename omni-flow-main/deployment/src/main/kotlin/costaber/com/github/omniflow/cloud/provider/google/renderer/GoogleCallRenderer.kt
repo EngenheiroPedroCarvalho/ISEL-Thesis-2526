@@ -5,6 +5,8 @@ import costaber.com.github.omniflow.cloud.provider.google.jackson.GoogleObjectMa
 import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Node
 import costaber.com.github.omniflow.model.Term
+import costaber.com.github.omniflow.model.Value
+import costaber.com.github.omniflow.model.Variable
 import costaber.com.github.omniflow.renderer.IndentedRenderingContext
 import costaber.com.github.omniflow.resource.util.render
 
@@ -38,7 +40,7 @@ class GoogleCallRenderer(
             renderMap("headers", callContext.header, googleTermContext)
             renderMap("query", callContext.query, googleTermContext)
             renderAuth()
-            renderBody()
+            renderBody(googleTermContext)
             renderTimeout()
         }
 
@@ -70,24 +72,44 @@ class GoogleCallRenderer(
         }
     }
 
-    private fun IndentedRenderingContext.renderBody() {
+    private fun IndentedRenderingContext.renderBody(googleTermContext: GoogleTermContext) {
+        val bodyTerm = callContext.bodyTerm
         if (callContext.bodyRaw.isNotEmpty()) {
             tab {
                 addEmptyLine()
                 add("body: \"${callContext.bodyRaw}\"")
             }
-        } else if (callContext.body.isNotEmpty()) {
-            val yamlString = objectMapper.writeValueAsString(callContext.body)
-                .split("\n")
-                .filterNot(String::isEmpty)
+        } else if (bodyTerm is Variable) {
             tab {
                 addEmptyLine()
-                add("body:")
-                tab {
-                    yamlString.forEach { line ->
-                        addEmptyLine()
-                        add(line)
-                    }
+                add("body: ${googleTermResolver.resolve(bodyTerm, googleTermContext)}")
+            }
+        } else if (bodyTerm is Value<*>) {
+            renderBodyYaml(bodyTerm.value)
+        } else if (callContext.body.isNotEmpty()) {
+            renderBodyYaml(callContext.body.mapValues { (_, value) -> resolveBodyValue(value, googleTermContext) })
+        }
+    }
+
+    // Terms inside a body map become workflow expressions (${...}) or their plain value, so that the
+    // YAML mapper never has to serialise a Variable object.
+    private fun resolveBodyValue(value: Any, googleTermContext: GoogleTermContext): Any = when (value) {
+        is Variable -> googleTermResolver.resolve(value, googleTermContext)
+        is Value<*> -> value.value
+        else -> value
+    }
+
+    private fun IndentedRenderingContext.renderBodyYaml(body: Any) {
+        val yamlString = objectMapper.writeValueAsString(body)
+            .split("\n")
+            .filterNot(String::isEmpty)
+        tab {
+            addEmptyLine()
+            add("body:")
+            tab {
+                yamlString.forEach { line ->
+                    addEmptyLine()
+                    add(line)
                 }
             }
         }

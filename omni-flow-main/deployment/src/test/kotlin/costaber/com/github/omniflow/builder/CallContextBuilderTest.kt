@@ -2,6 +2,7 @@ package costaber.com.github.omniflow.builder
 
 import costaber.com.github.omniflow.dsl.call
 import costaber.com.github.omniflow.dsl.value
+import costaber.com.github.omniflow.dsl.variable
 import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.HttpMethod
 import costaber.com.github.omniflow.util.*
@@ -9,6 +10,7 @@ import strikt.api.expectThat
 import strikt.assertions.containsKey
 import strikt.assertions.containsKeys
 import strikt.assertions.isA
+import strikt.assertions.isEmpty
 import strikt.assertions.isEqualTo
 import kotlin.test.Test
 
@@ -50,5 +52,19 @@ internal class CallContextBuilderTest {
                 get { timeoutInSeconds }.isEqualTo(TIMEOUT)
                 get { result }.isEqualTo(CALL_CONTEXT_RESULT_1)
             }
+    }
+
+    @Test
+    fun `body with a variable uses the variable as the whole body`() {
+        val actualResult = call {
+            method(HttpMethod.POST)
+            host(HOST)
+            body(variable("transaction"))
+            result(CALL_CONTEXT_RESULT_1)
+        }.build()
+
+        expectThat(actualResult.bodyTerm).isEqualTo(variable("transaction"))
+        expectThat(actualResult.body).isEmpty()
+        expectThat(actualResult.bodyRaw).isEqualTo("")
     }
 }

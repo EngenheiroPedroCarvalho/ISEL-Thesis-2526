@@ -68,18 +68,21 @@ class AwsLambdaDeployer(
             invokeWithRoleRetry(invoker, patchedDescriptorPath)
             println("$GREEN  ✓$RESET QuickFaaS subprocess completed for '$functionName'")
 
+            // A 'region/name' reference names the function by what follows the slash.
+            val lambdaName = functionName.substringAfterLast('/')
+
             println("$BLUE  →$RESET Waiting for Lambda '$functionName' to become Active...")
-            waitForLambdaActive(functionName, effectiveRegion)
+            waitForLambdaActive(lambdaName, effectiveRegion)
             println("$GREEN  ✓$RESET Lambda '$functionName' is Active")
 
             println("$BLUE  →$RESET Retrieving Lambda ARN for '$functionName'...")
-            val functionArn = getLambdaFunctionArn(functionName, effectiveRegion)
+            val functionArn = getLambdaFunctionArn(lambdaName, effectiveRegion)
             println("$GREEN  ✓$RESET Lambda ARN: $BOLD$functionArn$RESET")
 
-            iamHelper.grantStepFunctionsInvoke(functionName, effectiveRegion, roleArn)
+            iamHelper.grantStepFunctionsInvoke(lambdaName, effectiveRegion, roleArn)
 
             logger.info { "AwsLambdaDeployer completed for '$functionName'. ARN: $functionArn" }
-            return FunctionInvocationMetadata(serviceName = functionName, url = functionArn)
+            return FunctionInvocationMetadata(serviceName = lambdaName, url = functionArn)
         } finally {
             Files.deleteIfExists(patchedDescriptorPath)
         }

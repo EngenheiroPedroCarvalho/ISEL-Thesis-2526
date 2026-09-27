@@ -32,6 +32,7 @@ import strikt.api.expectThrows
 import strikt.assertions.containsExactly
 import strikt.assertions.hasSize
 import strikt.assertions.isA
+import strikt.assertions.isEmpty
 import strikt.assertions.isEqualTo
 import strikt.assertions.isNull
 import java.nio.file.Path
@@ -126,8 +127,7 @@ internal class AwsInternalFunctionResolverTest {
         path = "",
         header = mapOf("Accept" to Value("application/json")),
         query = mapOf("q" to Value("1")),
-        body = mapOf("k" to "v"),
-        bodyRaw = "{\"k\":\"v\"}",
+        // No body: on AWS an internal call passes its inputs as query parameters only.
         timeoutInSeconds = 15L,
         result = result,
         resultType = ResultType.BODY,
@@ -326,6 +326,29 @@ internal class AwsInternalFunctionResolverTest {
             "Invalid workflow: internalFunction('fn') cannot be combined with host/path."
         )
         // The call is rejected before the cascade starts, so nothing is registered.
+        expectThat(store.readAll()).isEqualTo(emptyMap())
+    }
+
+    @Test
+    fun `internal call with a body is rejected before anything is deployed`() {
+        val store = storeWith()
+        val deployer = FakeDeployer()
+        val resolver = AwsInternalFunctionResolver(
+            preferredRegion = "eu-west-1",
+            registry = store,
+            internalFunctionDeployer = deployer,
+            inspector = FakeInspector(),
+            regionsLister = FakeRegionsLister(listOf("eu-west-1"))
+        )
+        val withBody = internalCall("fn", descriptor = "./fn.json").copy(body = mapOf("k" to "v"))
+        val original = workflow(step("callStep", withBody))
+
+        val thrown = expectThrows<IllegalStateException> { resolver.resolve(original) }
+        thrown.get { message }.isEqualTo(
+            "Invalid workflow: internalFunction('fn') declares a body, but on AWS the QuickFaaS Lambda " +
+                "template receives only query parameters. Pass the inputs with query(...)."
+        )
+        expectThat(deployer.calls).isEmpty()
         expectThat(store.readAll()).isEqualTo(emptyMap())
     }
 

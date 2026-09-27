@@ -6,6 +6,7 @@ import costaber.com.github.omniflow.cloud.provider.google.renderer.GoogleRenderi
 import costaber.com.github.omniflow.cloud.provider.google.renderer.GoogleTermContext
 import costaber.com.github.omniflow.dsl.*
 import costaber.com.github.omniflow.model.HttpMethod.GET
+import costaber.com.github.omniflow.model.HttpMethod.POST
 import costaber.com.github.omniflow.resource.util.joinToStringNewLines
 import costaber.com.github.omniflow.traversor.DepthFirstNodeVisitorTraversor
 import costaber.com.github.omniflow.visitor.NodeContextVisitor
@@ -417,5 +418,85 @@ internal class GoogleRendererTest {
             .isEqualTo(expected)
     }
 
+    @Test
+    fun `test call step with a variable as the body`() {
+        val w = createWorkflow(
+            step {
+                name("Report")
+                description("Send the transaction")
+                context(
+                    call {
+                        method(POST)
+                        host("example.com")
+                        path("/report")
+                        body(variable("transaction"))
+                        result("reportResult")
+                    }
+                )
+            }
+        )
 
+        val content = nodeTraversor.traverse(contextVisitor, w, renderingContext)
+            .filterNot(String::isEmpty)
+            .joinToStringNewLines()
+        val expected = """
+            main:
+                steps:
+                    - Report:
+                        call: http.post
+                        args:
+                            url: example.com/report
+                            body: ${"$"}{transaction}
+                        result: reportResult
+                    - return_output:
+                        return: ${"$"}{result}
+        """.trimIndent()
+
+        expectThat(content)
+            .isEqualTo(expected)
+    }
+
+    @Test
+    fun `test call step with variables inside the body`() {
+        val w = createWorkflow(
+            step {
+                name("Report")
+                description("Send the decision")
+                context(
+                    call {
+                        method(POST)
+                        host("example.com")
+                        path("/report")
+                        body(
+                            "decision" to variable("decision"),
+                            "source" to value("omniflow")
+                        )
+                        result("reportResult")
+                    }
+                )
+            }
+        )
+
+        val content = nodeTraversor.traverse(contextVisitor, w, renderingContext)
+            .filterNot(String::isEmpty)
+            .joinToStringNewLines()
+
+        val expected = """
+            main:
+                steps:
+                    - Report:
+                        call: http.post
+                        args:
+                            url: example.com/report
+                            body:
+                                decision: "${"$"}{decision}"
+                                source: omniflow
+                        result: reportResult
+                    - return_output:
+                        return: ${"$"}{result}
+        """.trimIndent()
+
+        expectThat(content)
+            .isEqualTo(expected)
+    }
 }

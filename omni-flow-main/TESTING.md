@@ -57,12 +57,14 @@ Stack: **JUnit 5 + Strikt** (e `@TempDir` para I/O local). Localização:
 | Ficheiro | O que valida |
 |---|---|
 | `registry/WorkflowInternalCallEndpointResolverTest.kt` | Núcleo da unificação. Uma chamada **interna** tem `host`/`path` substituídos pelo endpoint do registo (URL dividido em `scheme://authority` + `path`, com `/` quando vazio); uma chamada **externa** (extractor devolve `null`) fica **byte-a-byte intacta**; resolução recursiva dentro de `BranchContext`, `IterationRangeContext`, `IterationForEachContext`, `ParallelBranchContext`, `ParallelIterationContext`; chave inexistente no registo → exceção clara; restantes campos da `CallContext` (método, headers, query, body, timeout, result, authentication) preservados. |
-| `internalfunction/quickfaas/AwsInternalFunctionResolverTest.kt` | Mesma natureza de transformação de árvore para o resolver AWS: sem funções internas → workflow inalterado; com funções internas → endpoints resolvidos em todos os tipos de contexto e aninhamentos. |
+| `internalfunction/quickfaas/AwsInternalFunctionResolverTest.kt` | Mesma natureza de transformação de árvore para o resolver AWS: sem funções internas → workflow inalterado; com funções internas → endpoints resolvidos em todos os tipos de contexto e aninhamentos; chamada interna com corpo → recusada antes de qualquer consulta ou implantação (na AWS o template Lambda do QuickFaaS só recebe parâmetros de query). |
 | `registry/FunctionRegistryStoreTest.kt` | Persistência local do registo: round-trip `writeNew()` → `readAll()` com `@TempDir`; registo inexistente → mapa vazio (sem exceção); `serviceName`/`url` corretos; JSON inválido/sem o nó `functions` tolerado. |
 | `registry/FunctionRegistryKeysAndMetadataTest.kt` | Geração das chaves de endpoint (`<ref>.host` / `<ref>.path`) e mapeamento de `FunctionInvocationMetadata`. |
 | `internalfunction/quickfaas/QuickFaasDescriptorLoaderTest.kt` (casos AWS acrescentados) | Parsing/validação de `func-deployment.json` para AWS: runtimes válidos (`java17`, `java21`, `nodejs20.x`) passam; runtime inválido → `IllegalArgumentException`; provider `aws` com `expected=gcp` → `IllegalStateException`; round-trip com `iamRoleArn` presente e vazio. |
 | `internalfunction/quickfaas/AwsLambdaDeployerTest.kt` | Lógica **local** do deployer: `patchIamRoleArn` (substitui/preenche o `iamRoleArn`, preserva os restantes campos, tolera espaços à volta do `:`, e o ficheiro temporário escrito é relido corretamente via `QuickFaasDescriptorLoader`). O deploy real para AWS está num teste `@Disabled` (requer credenciais). |
-| `renderer/AmazonRendererTest.kt` (casos Lambda acrescentados) | Renderização **local** específica da invocação de Lambda: chamada interna → `arn:aws:states:::lambda:invoke` com `ResultSelector` a usar `$.Payload`; chamada externa (API Gateway) mantém `$.ResponseBody`. |
+| `renderer/AmazonRendererTest.kt` (casos Lambda acrescentados) | Renderização **local** específica da invocação de Lambda: chamada interna → `arn:aws:states:::lambda:invoke` com `ResultSelector` a usar `$.Payload`; chamada externa (API Gateway) mantém `$.ResponseBody`; corpo tomado de uma variável (`body(variable("x"))`) → `"RequestBody.$": "$.x"`. |
+| `builder/CallContextBuilderTest.kt` (caso acrescentado) | `body(variable("x"))` guarda a variável como corpo inteiro (`bodyTerm`), em vez de serializar o objeto `Variable` com o Jackson; o mapa `body` e o `bodyRaw` ficam vazios. |
+| `renderer/GoogleRendererTest.kt` (casos acrescentados) | Corpo tomado de uma variável → `body: ${x}`; mapa de corpo com variáveis → cada uma renderizada como expressão (`decision: "${decision}"`), sem a exceção do Jackson que havia antes. |
 
 ## 3. Testes unitários — Parte A (provider AWS do QuickFaaS, `QuickFaaS-Deployment/`)
 
@@ -193,7 +195,7 @@ distintas**. O `RESULTS.md` traz a mesma leitura, por secção, numa linha de ca
 
 | Pilar | Módulo | Resultado |
 |---|---|---|
-| Testes unitários | `deployment/` (Parte B, Maven) | **148 testes**, 0 falhas (5 `@Ignore`/`@Disabled` por exigirem cloud) |
+| Testes unitários | `deployment/` (Parte B, Maven) | **182 testes**, 0 falhas (5 `@Ignore`/`@Disabled` por exigirem cloud) |
 | Testes unitários | `QuickFaaS-Deployment/` (Parte A, Gradle) | **18 testes**, 0 falhas |
 | Cobertura | ambos | JaCoCo, focada na lógica local (ver secção 4) |
 | Desempenho | `benchmark/` (JMH) | T1–T18 compilam e correm localmente |

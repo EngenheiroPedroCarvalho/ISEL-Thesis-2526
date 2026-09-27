@@ -14,6 +14,8 @@ data class CallContext(
     val authentication: Authentication? = null,
     val body: Map<String, Any> = emptyMap(),
     val bodyRaw: String = "",
+    /** The whole request body taken from a single term, e.g. body(variable("transaction")). */
+    val bodyTerm: Term<*>? = null,
     val header: Map<String, Term<*>> = emptyMap(),
     val query: Map<String, Term<*>> = emptyMap(),
     val timeoutInSeconds: Long? = null,

@@ -144,7 +144,17 @@ class AmazonCallRenderer(
     }
 
     private fun IndentedRenderingContext.renderBody() {
-        if (callContext.bodyRaw.isNotEmpty()) {
+        val bodyTerm = callContext.bodyTerm
+        if (bodyTerm != null && callContext.bodyRaw.isEmpty()) {
+            append(",")
+            addEmptyLine()
+            when (bodyTerm) {
+                is Variable -> add(
+                    "\"RequestBody.\$\": \"\$.${amazonTermResolver.resolveVariable(bodyTerm, Notation.DOT_NOTATION)}\""
+                )
+                is Value<*> -> add("$AMAZON_REQUEST_BODY${objectMapper.writeValueAsString(bodyTerm.value)}")
+            }
+        } else if (callContext.bodyRaw.isNotEmpty()) {
             append(",")
             addEmptyLine()
             add(AMAZON_REQUEST_BODY)
