@@ -13,7 +13,7 @@ participant "FunctionRegistryStore" as REG
 note over R
   reached only after a Level 2 miss with a
   deploymentDescriptorPath supplied
-  (see resolution-cascade-level2-aws.puml)
+  (see the Level 2 diagram)
 end note
 
 R -> D : deployOrUpdate(functionName, deploymentDescriptorPath)
@@ -22,7 +22,7 @@ note right of ALD
   full breakdown (IAM role, S3 bucket region,
   subprocess retries, GetFunction polling,
   Step Functions permission grant) is in
-  aws-deploy-sequence.puml
+  the AWS deployment sequence diagram (Chapter 4)
 end note
 ALD -> ALD : resolve/create Lambda execution IAM role
 ALD -> ALD : patch role ARN into descriptor copy

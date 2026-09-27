@@ -28,7 +28,7 @@ opt workflow has internal calls
       R -> AWS : GetFunction(region from ARN, serviceName)
       note right of R
         drift, rediscovery and stale-entry removal
-        as in resolution-cascade-level1-aws.puml
+        as in the Level 1 sequence diagram (Appendix A)
       end note
       AWS --> R : FunctionArn
     else Level 2 - registry miss, function found by discovery
@@ -62,7 +62,7 @@ opt workflow has internal calls
     else absent, no descriptor / ambiguous / regions inaccessible
       R --> ACD : IllegalStateException (fail fast)
     end
-    R -> R : call.copy(host = "lambda://" + ARN,\npath = e)
+    R -> R : call.copy(host = "lambda://" + ARN,\npath = "")
   end
   R --> ACD : resolved workflow
 end

@@ -13,7 +13,7 @@ participant "FunctionRegistryStore" as REG
 note over R
   reached only after a Level 2 miss with a
   deploymentDescriptorPath supplied
-  (see resolution-cascade-level2-gcp.puml)
+  (see the Level 2 diagram)
 end note
 
 R -> D : deployOrUpdate(functionName, deploymentDescriptorPath)

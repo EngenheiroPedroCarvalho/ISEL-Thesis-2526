@@ -16,7 +16,7 @@ R -> R : tryResolveEntryIn(functionRef, snapshot)\n[exact match, then "<region>/
 alt registry miss
   note over R
     continues at Level 2 - Provider discovery
-    (see resolution-cascade-level2-aws.puml)
+    (see the Level 2 diagram)
   end note
 else registry hit
   R -> R : entry = (key, metadata)

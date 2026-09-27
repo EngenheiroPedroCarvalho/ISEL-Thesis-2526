@@ -11,7 +11,7 @@ participant "CloudRunLocationsV1RestClient\n(region list)" as GL
 
 note over R
   reached only on a Level 1 registry miss
-  (see resolution-cascade-level1-gcp.puml)
+  (see the Level 1 diagram)
 end note
 
 alt functionRef is "<region>/<service>"
@@ -42,7 +42,7 @@ end
 alt no match found and deploymentDescriptorPath supplied
   note over R
     continues at Level 3 - QuickFaaS deployment
-    (see resolution-cascade-level3-gcp.puml)
+    (see the Level 3 diagram)
   end note
 else no match found and no descriptor supplied
   R --> R : throw IllegalStateException\n(fail fast - deploy it first or provide deploymentDescriptorPath)

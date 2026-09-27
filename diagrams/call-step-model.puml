@@ -34,7 +34,7 @@ note bottom of CallContext
   Mutually exclusive (enforced at DSL build time,
   re-checked by the resolvers):
   - external call: host set AND internalFunction = null
-  - internal call: internalFunction != null AND host = path = e
+  - internal call: internalFunction != null AND host = path = ""
     (host/path injected by the resolver before rendering)
 end note
 @enduml
