@@ -20,6 +20,11 @@ R -> D : deployOrUpdate(functionName, deploymentDescriptorPath)
 D -> QFD : deployOrUpdate(functionName, descriptorPath)
 QFD -> QFD : load + validate descriptor\n(expectedCloudProvider = "gcp")
 QFD -> QF : invoke(descriptorPath, accessToken)\n[java -jar QuickFaaS.jar]
+note over QF
+  Cloud Functions v2 create;
+  waits until ACTIVE, then grants
+  roles/run.invoker to allUsers
+end note
 QF --> QFD : subprocess completed
 QFD -> QFD : poll Cloud Functions v2 API\nuntil state = ACTIVE\n(readinessTimeoutSeconds / pollIntervalSeconds);\nread serviceConfig.uri and serviceConfig.service
 opt invokerServiceAccount configured

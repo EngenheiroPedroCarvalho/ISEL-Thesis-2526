@@ -70,9 +70,9 @@ actual deployment is a last resort rather than a default.
   resource name of the Cloud Run service), so validation is one lookup in a known place rather than
   the search across every region that Level~2 performs.
   \item \textbf{Level~2 (Provider discovery).} On a registry miss, the target provider is queried
-  directly (a Cloud Run lookup across regions on GCP; on AWS, a \texttt{GetFunction} lookup across
-  every region enabled for the account, or a single call when the caller supplies the
-  fully-qualified \texttt{"region/functionRef"} form). If the
+  directly: a Cloud Run lookup across the project's regions on GCP, a \texttt{GetFunction} lookup
+  across every region enabled for the account on AWS, or, on either provider, a single lookup when
+  the caller supplies the fully-qualified \texttt{"region/functionRef"} form. If the
   function already exists (for instance, because it was deployed outside the integration), its
   metadata is recorded in the registry and used, again \emph{without} triggering a deployment.
   \item \textbf{Level~3 (QuickFaaS deployment).} Only when the function is absent from both the

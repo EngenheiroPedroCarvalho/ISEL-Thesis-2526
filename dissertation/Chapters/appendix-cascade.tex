@@ -44,9 +44,9 @@ resolvers in \S\ref{subsec:store-internals}, one per level of the resolution cas
     \par (b) AWS
   \end{minipage}
   \caption{Level~2 (Provider discovery): the target Cloud Run service is searched for across the
-  project's regions on GCP (a); the target Lambda is searched for across every region enabled for
-  the account on AWS (b), or resolved with a single \texttt{GetFunction} call when the
-  fully-qualified \texttt{"region/functionRef"} form is used.}
+  project's regions on GCP (a) and the target Lambda across every region enabled for the account on
+  AWS (b); on both providers, the fully-qualified \texttt{"region/functionRef"} form is resolved
+  with a single lookup in that region.}
   \label{fig:resolution-cascade-level2}
 \end{figure}
 

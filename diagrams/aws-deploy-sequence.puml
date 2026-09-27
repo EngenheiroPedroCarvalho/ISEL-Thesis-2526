@@ -5,6 +5,7 @@ skinparam defaultFontSize 11
 title AWS deployment sequence
 
 participant "AmazonCloudDeployer" as ACD
+participant "FunctionRegistryBootstrapper\n(LambdaFunctionsCatalog)" as BOOT
 participant "AwsInternalFunctionResolver" as R
 participant "FunctionRegistryStore" as REG
 participant "AwsLambdaDeployer" as ALD
@@ -16,8 +17,9 @@ participant "AWS Step Functions" as SFN
 
 opt workflow has internal calls
   opt registry file missing
-    ACD -> AWS : DescribeRegions + ListFunctions\n(every enabled region)
-    ACD -> REG : writeNew(functions)
+    ACD -> BOOT : bootstrapIfMissing(region)
+    BOOT -> AWS : DescribeRegions + ListFunctions\n(every enabled region)
+    BOOT -> REG : writeNew(functions)
   end
   ACD -> R : resolve(workflow)
   R -> REG : readAll()
@@ -41,7 +43,7 @@ opt workflow has internal calls
     else Level 3 - absent in every region, descriptor provided
       R -> ALD : deployOrUpdate(name, descriptorPath)
       ALD -> IAM : resolveOrCreateLambdaExecutionRole(iamRoleArn)
-      IAM -> AWS : GetRole / CreateRole + AttachRolePolicy
+      IAM -> AWS : GetRole / CreateRole + AttachRolePolicy\n(UpdateAssumeRolePolicy if the trust\npolicy does not allow Lambda)
       AWS --> IAM : execution role ARN
       ALD -> ALD : patchIamRoleArn(descriptor)\n-> temp descriptor
       ALD -> ALD : load + validate(descriptor, "aws")
@@ -49,8 +51,9 @@ opt workflow has internal calls
       ALD -> PI : invoke(descriptor)\n[<=3 attempts, 20 s backoff\non IAM propagation]
       PI -> QF : java -jar QuickFaaS.jar
       QF -> QF : build hook + template,\nzip sources
-      QF -> AWS : PutObject (S3 bucket)
-      QF -> AWS : CreateFunction /\nUpdateFunctionCode
+      QF -> AWS : GetBucketLocation -> region;\nPutObject (S3 bucket)
+      QF -> AWS : GetFunction (exists?)
+      QF -> AWS : CreateFunction / UpdateFunctionCode\n(SDK waiter until active / updated)
       QF -> AWS : GetFunctionUrlConfig /\nCreateFunctionUrlConfig
       QF --> PI : deployment finished
       ALD -> AWS : GetFunction - poll until\nState = Active (<=180 s, 5 s interval)

@@ -107,6 +107,7 @@ JAR --> LAM
 
 GCD2 --> GCW2 : YAML
 ACD2 --> SF2 : ASL JSON
+GCW2 --> GFN : HTTP call (run.app URL)
 SF2 --> LAM : lambda:invoke (ARN)
 
 legend right

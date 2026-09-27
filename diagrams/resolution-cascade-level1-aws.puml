@@ -18,6 +18,8 @@ alt registry miss
     continues at Level 2 - Provider discovery
     (see the Level 2 diagram)
   end note
+else suffix matches several keys
+  R --> R : throw IllegalStateException\n(ambiguous in the registry - use "<region>/<functionRef>")
 else registry hit
   R -> R : entry = (key, metadata)
   R -> R : region = regionFromArn(metadata.url)
@@ -32,7 +34,7 @@ else registry hit
     R --> R : return newArn
   else NotFound (or region unparseable)
     AI --> R : NotFound
-    R -> R : discoverFunctionForRef(functionRef)\n[scan every region enabled for the account]
+    R -> R : discoverFunctionForRef(functionRef)\n[as in Level 2: every region, or only the\nregion named by "<region>/<functionRef>"]
     alt rediscovered elsewhere (exactly one match)
       opt key != functionRef
         R -> REG : remove(key)
