@@ -350,7 +350,7 @@ private val Example2Workflow = workflow {
                 call {
                     method(GET)
                     internalFunction(
-                        "quickfaas-test-fn",
+                        "europe-west1/quickfaas-test-fn",
                         deploymentDescriptorPath = "./functions/quickfaas-test-fn/func-deployment.json"
                     )
                     result("result")

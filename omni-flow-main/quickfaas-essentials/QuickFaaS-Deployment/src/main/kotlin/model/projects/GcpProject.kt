@@ -25,7 +25,7 @@ class GcpProject : CloudProject {
 
     override suspend fun requestBuckets(): List<BucketData> {
         function.bucket.bucketData.name = ""
-        buckets = GcpRequests.getBuckets(projectData.name).items
+        buckets = GcpRequests.getBuckets((projectData as GcpProjectData).projectId).items
         return buckets
     }
 

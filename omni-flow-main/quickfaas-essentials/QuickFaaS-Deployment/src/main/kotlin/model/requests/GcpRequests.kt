@@ -16,6 +16,12 @@ import java.io.File
 // @formatter:off
 object GcpRequests : CloudRequests {
 
+    // Cloud Run functions (2nd gen). Functions are backed by Cloud Run services, so
+    // invoker permissions are granted through the Cloud Run Admin API, not through
+    // the Cloud Functions one.
+    private const val FUNCTIONS_API = "https://cloudfunctions.googleapis.com/v2"
+    private const val CLOUD_RUN_API = "https://run.googleapis.com/v2"
+
     private lateinit var token: String
     override fun setBearerToken(token: String) {
         this.token = token
@@ -30,8 +36,8 @@ object GcpRequests : CloudRequests {
     }
 
     // TODO: Pagination
-    suspend fun getBuckets(projectName: String): GcpBucketsData =
-        httpClient.get("https://storage.googleapis.com/storage/v1/b?project=$projectName")
+    suspend fun getBuckets(projectId: String): GcpBucketsData =
+        httpClient.get("https://storage.googleapis.com/storage/v1/b?project=$projectId")
         { bearerAuth(token) }.body()
 
     suspend fun getSessionUri(bucketName: String, functionName: String, zipFile: String): String =
@@ -45,29 +51,37 @@ object GcpRequests : CloudRequests {
     }
 
     suspend fun getCloudFunction(projectId: String, location: String, functionName: String) =
-        httpClient.get("https://cloudfunctions.googleapis.com/v1/projects/$projectId/locations/$location/functions/$functionName")
+        httpClient.get("$FUNCTIONS_API/projects/$projectId/locations/$location/functions/$functionName")
         { bearerAuth(token) }
 
     suspend fun checkCloudFunctionExistence(projectId: String, location: String, functionName: String) =
         getCloudFunction(projectId, location, functionName).status == HttpStatusCode.OK
 
-    suspend fun deployCloudFunction(projectId: String, location: String, faasJson: String) =
-        httpClient.post("https://cloudfunctions.googleapis.com/v1/projects/$projectId/locations/$location/functions") {
+    // The v2 API takes the function name as a query parameter instead of in the body.
+    suspend fun deployCloudFunction(projectId: String, location: String, functionName: String, faasJson: String) =
+        httpClient.post("$FUNCTIONS_API/projects/$projectId/locations/$location/functions?functionId=$functionName") {
             bearerAuth(token)
-            setBody(faasJson)
+            contentType(ContentType.Application.Json)
+            setBody(Json.parseToJsonElement(faasJson))
         }
 
     suspend fun updateCloudFunction(projectId: String, location: String, functionName: String, faasJson: String) =
-        httpClient.patch("https://cloudfunctions.googleapis.com/v1/projects/$projectId/locations/$location/functions/$functionName") {
-            bearerAuth(token)
-            setBody(faasJson)
-        }
-
-    suspend fun setCloudFunctionInvokePolicy(projectId: String, location: String, functionName: String) =
-        httpClient.post("https://cloudfunctions.googleapis.com/v1/projects/$projectId/locations/$location/functions/$functionName:setIamPolicy") {
+        httpClient.patch("$FUNCTIONS_API/projects/$projectId/locations/$location/functions/$functionName") {
             bearerAuth(token)
             contentType(ContentType.Application.Json)
-            setBody(Json.parseToJsonElement("{\"policy\": {\"bindings\":[{\"role\":\"roles/cloudfunctions.invoker\", \"members\":[\"allUsers\"]}]}}"))
+            setBody(Json.parseToJsonElement(faasJson))
+        }
+
+    /**
+     * Opens a 2nd gen function to unauthenticated invocations. The policy is set on the
+     * Cloud Run service that backs the function ([serviceResourceName], as returned in
+     * 'serviceConfig.service'), since that is where invocation is enforced.
+     */
+    suspend fun setCloudFunctionInvokePolicy(serviceResourceName: String) =
+        httpClient.post("$CLOUD_RUN_API/$serviceResourceName:setIamPolicy") {
+            bearerAuth(token)
+            contentType(ContentType.Application.Json)
+            setBody(Json.parseToJsonElement("{\"policy\": {\"bindings\":[{\"role\":\"roles/run.invoker\", \"members\":[\"allUsers\"]}]}}"))
         }
 }
 
