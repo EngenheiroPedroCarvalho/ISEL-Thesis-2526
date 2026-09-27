@@ -6,10 +6,12 @@ import costaber.com.github.omniflow.cloud.provider.amazon.renderer.AmazonRenderi
 import costaber.com.github.omniflow.cloud.provider.amazon.traversor.AmazonTraversor
 import costaber.com.github.omniflow.dsl.*
 import costaber.com.github.omniflow.model.HttpMethod.GET
+import costaber.com.github.omniflow.model.HttpMethod.POST
 import costaber.com.github.omniflow.resource.util.joinToStringNewLines
 import costaber.com.github.omniflow.traversor.VisitorObserver
 import costaber.com.github.omniflow.visitor.NodeContextVisitor
 import strikt.api.expectThat
+import strikt.assertions.contains
 import strikt.assertions.isEqualTo
 import kotlin.test.Test
 
@@ -838,4 +840,29 @@ internal class AmazonRendererTest {
             .isEqualTo(expected)
     }
 
+    @Test
+    fun `test call step with a variable as the body`() {
+        val w = createWorkflow(
+            step {
+                name("Report")
+                description("Send the transaction")
+                context(
+                    call {
+                        method(POST)
+                        host("example.com")
+                        path("/report")
+                        body(variable("transaction"))
+                        result("reportResult")
+                    }
+                )
+            }
+        )
+
+        val content = nodeTraversor.traverse(contextVisitor, w, renderingContext)
+            .filterNot(String::isEmpty)
+            .joinToStringNewLines()
+
+        expectThat(content)
+            .contains("\"RequestBody.$\": \"$.transaction\"")
+    }
 }
