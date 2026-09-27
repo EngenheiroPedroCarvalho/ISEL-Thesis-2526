@@ -3,16 +3,16 @@
 
 \hyphenation{QuickFaaS OmniFlow}
 
-Cloud computing has fundamentally reshaped the landscape of modern technology, enabling organizations to provision computational resources on demand, scale dynamically and reduce operational burdens associated with physical hardware. Instead of relying on traditional on-premises infrastructures, organizations increasingly turn to cloud providers for compute, storage, networking and application services, benefiting from economies of scale, rapid deployment and global availability.
+Cloud computing lets organizations provision computational resources on demand, scale dynamically and avoid the operational burden of maintaining physical hardware. Instead of relying on traditional on-premises infrastructures, organizations increasingly turn to cloud providers for compute, storage, networking and application services, benefiting from economies of scale, rapid deployment and global availability.
 
-IBM defines cloud computing as a model for delivering computing services over the internet with flexible consumption, rapid elasticity and centralized management~\cite{ibmCloudComputing}. This shift has accelerated digital transformation across industries, enabling new business models, automated workflows and data-driven operations.
+IBM defines cloud computing as a model for delivering computing services over the internet with flexible consumption, rapid elasticity and centralized management~\cite{ibmCloudComputing}.
 
 Long before the term became common, Parkhill framed the idea of a \emph{computer utility}: computing delivered as a shared service, accessed remotely and operated in a way comparable to other public utilities~\cite{parkhill1966challenge}. The term itself was only formalized in the late 2000s, when Vaquero et al.\ surveyed the recurring characteristics of elasticity, abstraction and resource sharing~\cite{vaquero2008breaks}, Armbrust et al.\ popularized the view of the cloud as a practical realization of utility-style computing~\cite{armbrust2010view} and Buyya et al.\ cast it as a ``fifth utility''~\cite{buyya2009cloud}. Virtualization, large-scale data centers and automated orchestration made that vision feasible, and with the introduction of Amazon EC2 in 2006, followed by Google and Microsoft, it became the dominant commercial model. Cloud platforms are consumed today through service models of decreasing operational responsibility (infrastructure, platform and software as a service), of which the paradigm this dissertation addresses, serverless computing, is the furthest step.
 
 \section{The Emergence of Serverless and Event-Driven Architectures}
 \label{sec:int_eme_ser_eve_dri_arc}
 
-Serverless computing has recently emerged as a transformative paradigm within the cloud ecosystem. Serverless platforms allow developers to deploy fine-grained units of execution, typically called \textit{functions}, that run on demand without requiring explicit management of servers or runtime environments. This model simplifies development, reduces operational costs and provides automatic scaling based on workload frequency.
+Serverless computing is a more recent model within the cloud ecosystem. Serverless platforms allow developers to deploy fine-grained units of execution, typically called \textit{functions}, that run on demand without requiring explicit management of servers or runtime environments. This model simplifies development, reduces operational costs and provides automatic scaling based on workload frequency.
 
 Shafiei et al.\ present an extensive survey that highlights key challenges in serverless computing, including state management, cold starts and performance unpredictability~\cite{serverlessComputing}. These concerns remain active research areas, particularly in latency-sensitive applications. Additional research highlights the importance of serverless computing for microservices, data-processing pipelines and edge-cloud integration~\cite{jonas2019cloudProgramming}.
 
@@ -54,9 +54,8 @@ Even when targeting a single provider, serverless functions are invoked through 
 the provider assigns and whose form it defines.
 \begin{itemize}
 	\item \textbf{The endpoint exists only after deployment:} the provider assigns a function's
-	invocation identifier when the function is first deployed. Its form may be predictable (an AWS
-	ARN is built from the region, the account ID and the function name), but it refers to nothing
-	until the function exists.
+	invocation identifier when the function is first deployed. Even when its form can be predicted,
+	it refers to nothing until the function exists.
 
 	\item \textbf{The endpoint depends on the deployment target:} the identifier records where the
 	function was deployed. On AWS, a Lambda function is invoked through an Amazon Resource Name
@@ -148,7 +147,8 @@ To answer them, this work aims to:
 	the evaluation check the design on two providers rather than one.
 
 	\item \textbf{Evaluate feasibility and overhead:} answer RQ1 by checking the decision the
-	resolution takes in each situation it can meet (a valid, drifted or stale registry entry; a
+	resolution takes in each situation it can meet (a registry entry that is valid, whose endpoint
+	changed, or whose function no longer exists; a
 	function found in one region, in several or in none; inaccessible regions) on both providers,
 	and answer RQ2 by measuring the cost that resolution adds to a deployment and how that cost
 	scales. The evaluation also discusses the practical limitations of the prototype.
@@ -187,7 +187,7 @@ The contributions of this dissertation are the following:
 	\item \textbf{An evaluation of the cascade's decisions and of its cost.} The behaviour of the
 	resolution is checked in each situation it can meet on both providers, and its overhead, its
 	scalability with the number of calls and the size of the registry, the registry write path and
-	the packaging overhead of the AWS agnostic layer are measured.
+	the packaging overhead of the provider-agnostic layer on AWS are measured.
 \end{enumerate}
 
 Part of this work was published, with the supervisors of this dissertation, at the Iberian
@@ -203,7 +203,7 @@ and the quantitative evaluation.
 \section{Structure of the Work}
 \label{sec:int_structure}
 
-The remainder of this dissertation is organized as follows:
+The remainder of this dissertation is organised as follows:
 
 \begin{itemize}
   \item \textbf{Chapter 1} introduces the problem, motivation, objectives, and scope of the work.

@@ -10,11 +10,11 @@
 The previous chapters described the Function Registry and resolution cascade in isolation from
 any particular domain (Chapter~\ref{ch:proposed_solution}) and traced their implementation
 (Chapter~\ref{cha:impl}); Chapter~\ref{cha:evaluation} then measures what they cost. This
-chapter grounds those mechanisms in a single, illustrative scenario drawn from retail banking:
+chapter applies those mechanisms to one scenario drawn from retail banking:
 a card-payment authorization workflow that screens every transaction for fraud before it is
-settled. The scenario is not a validated production deployment; it is a realistic composition of
-the \texttt{FraudPipeline} example already introduced in Section~\ref{sec:developer-workflow},
-extended to make an authorization decision, used here
+settled. The scenario is not a validated production deployment: it extends
+the \texttt{FraudPipeline} example of Section~\ref{sec:developer-workflow} to make an
+authorization decision, and is used here
 to walk through the integration end to end and to discuss where it fits an actual banking
 environment, and where it does not yet fit one.
 
@@ -59,7 +59,7 @@ this dissertation:
     functions it calls can be deployed elsewhere, not just the infrastructure underneath them.
     \item \textbf{Auditability of bindings.} A bank's change-management process typically requires
     a record of which endpoint each deployment was bound to, which the
-    registry's \texttt{updatedAt}-stamped entries provide in embryonic form
+    registry's \texttt{updatedAt}-stamped entries provide in a basic form
     (Section~\ref{subsec:registry-evolution}), even though a production deployment would need the
     stronger guarantees discussed in Section~\ref{sec:case-discussion}.
 \end{itemize}
@@ -172,17 +172,15 @@ validation fails, the entry is treated as stale, and the production deployment a
 (\S\ref{sec:walkthrough}).
 
 Now suppose the bank's exit strategy calls for the same fraud-screening workflow to run on a
-second provider (Section~\ref{sec:case-scenario}). Deploying it to GCP takes GCP descriptors (targeting Cloud Functions instead of Lambda) and the
+second provider (Section~\ref{sec:case-scenario}). Deploying it to GCP takes GCP descriptors (targeting Cloud Run functions instead of Lambda) and the
 GCP deployer. On this first GCP deployment, the GCP registry is
 bootstrapped separately from the AWS one, both scoring functions miss at Level~1 and Level~2, and
 Level~3 deploys them as Cloud Run functions instead, from the same ZIP-based artifact described in
 \S\ref{sec:background_quickfaas} (\S\ref{subsec:gcp-cloud-run-functions}). The two registries stay
-independent, one per provider (\texttt{function-registry.aws.json} and
-\texttt{function-registry.gcp.json} by default), so the same \texttt{functionRef} resolves to a
-Lambda ARN under one deployment and to a \texttt{run.app} URL under the other. The uniform
-\texttt{url} field discussed in
-Section~\ref{subsec:registry-evolution} is precisely what makes this substitution transparent to
-the workflow definition.
+independent, one per provider, so the same \texttt{functionRef} resolves to a
+Lambda ARN under one deployment and to a \texttt{run.app} URL under the other. Because both are
+stored in the same \texttt{url} field (Section~\ref{subsec:registry-evolution}), the workflow
+definition does not change between the two.
 
 \section{Runtime Invocation}
 \label{sec:case-runtime}

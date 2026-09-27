@@ -11,9 +11,9 @@ This chapter describes how the architecture and resolution cascade introduced in
 Chapter~\ref{ch:proposed_solution} are realised in code.
 
 The chapter is organised in three sections. Section~\ref{sec:function-registry} presents the
-Function Registry itself: its file format, how entries are created and kept up to date, and the
-internal behaviour of the two provider resolvers that consult it at deployment time, and the
-change to QuickFaaS's GCP provider that lets them cover the functions it deploys. The following
+Function Registry itself: its file format, how entries are created and kept up to date, the
+two provider resolvers that consult it at deployment time, and the change to QuickFaaS's GCP
+provider that lets them cover the functions it deploys. The following
 section, AWS Lambda Support in QuickFaaS, traces the concrete deployment steps that Level~3 of the
 cascade triggers on AWS.
 Section~\ref{sec:runtime-invocation} closes the chapter by following a resolved internal call
@@ -22,7 +22,7 @@ through to its actual invocation once the workflow has been deployed.
 \section{Function Registry}
 \label{sec:function-registry}
 
-Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS). Each provider deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer}, \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{Function\allowbreak Registry\allowbreak Store} and the deployer strategy. The store persists each binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, in the file format described below. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer a clean extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
+Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS). Each provider deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer}, \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{Function\allowbreak Registry\allowbreak Store} and the deployer strategy. The store persists each binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, in the file format described below. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer the extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
@@ -48,7 +48,7 @@ the same name in more than one region. The file is kept in a writable location (
 
 \subsection{Creation, Bootstrap and Updates}
 \label{subsec:registry-updates}
-The registry management layer provides the following behavior:
+The registry management layer provides the following behaviour:
 
 \begin{itemize}
     \item \textbf{Bootstrap by discovery:} if the registry file does not exist when a workflow with
@@ -59,19 +59,16 @@ The registry management layer provides the following behavior:
     the \texttt{Cloud\allowbreak Functions\allowbreak Catalog} interface, implemented by
     \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Rest\allowbreak Catalog} (GCP) and
     \texttt{Lambda\allowbreak Functions\allowbreak Catalog} (AWS); on
-    AWS this scans every region enabled for the account and, mirroring the GCP catalog, promotes a
-    function name seen in more than one region from a bare key to a \texttt{"region/name"} key for
-    each occurrence.
+    AWS this scans every region enabled for the account.
     \item \textbf{Automatic registration:} when an internal function is not present in the
     registry but is found on the target provider (Cloud Run service on GCP, Lambda function
     on AWS), a new entry is written immediately with the discovered metadata.
     \item \textbf{Post-deployment updates:} after a successful QuickFaaS deployment, the
     resulting invocation metadata is written to the registry, so subsequent deployments
     resolve the function without redeploying it.
-    \item \textbf{Drift handling:} a registry hit whose endpoint has changed is refreshed. An
-    entry whose function is no longer where the entry places it is replaced if the function is
-    found in another region; otherwise the entry is removed and the deployment aborts, as Level~1
-    of the cascade prescribes (\S\ref{sec:resolution-cascade}).
+    \item \textbf{Drift handling:} a registry hit whose endpoint has changed is refreshed, and a
+    stale entry is replaced or removed as Level~1 of the cascade prescribes
+    (\S\ref{sec:resolution-cascade}).
 \end{itemize}
 
 Every write refreshes the top-level \texttt{updatedAt} timestamp.
@@ -94,7 +91,7 @@ before the provider-specific workflow artifact is rendered.
 \label{subsec:store-internals}
 
 The registry file is manipulated exclusively through \texttt{FunctionRegistryStore}, which
-exposes a small, deliberately narrow interface: \texttt{readAll()} parses the whole file into an
+exposes a small interface: \texttt{readAll()} parses the whole file into an
 ordered map of \texttt{functionRef} to \texttt{FunctionInvocationMetadata}; \texttt{tryResolveEntry()}
 re-reads the file via \texttt{readAll()} and delegates the two-step lookup (exact match on
 \texttt{functionRef}, then suffix match on \texttt{"region/\allowbreak functionRef"}, raising if the suffix
@@ -112,8 +109,8 @@ The two provider resolvers sit on top of this store.
 a service up by its full name to validate a hit and by project, region and name during
 discovery.\\
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} follows the same shape on the Lambda API: it
-reads the region to validate from the stored ARN and consults the Lambda API through a
-\texttt{Lambda\allowbreak Function\allowbreak Inspector} seam. \\
+reads the region to validate from the stored ARN and consults the Lambda API through the
+\texttt{Lambda\allowbreak Function\allowbreak Inspector} interface. \\
 Region discovery is itself provider-specific: GCP already exposed a project-scoped
 locations API, queried through
 \texttt{Cloud\allowbreak Run\allowbreak Locations\allowbreak V1\allowbreak Rest\allowbreak Client},
@@ -164,9 +161,9 @@ account the workflow runs as, and returns the two fields as the registry entry: 
 full resource name of the service as its \texttt{serviceName}, which is the form the inspector
 looks up at Level~1.
 
-Every function the integration deploys on GCP is thus a Cloud Run service, and all three levels of
-the cascade and the registry bootstrap cover it with the Cloud Run clients described above; the
-Cloud Functions API is called only by the Level~3 deployment itself. The resolver validates every registry hit: the URL does not
+All three levels of the cascade and the registry bootstrap therefore cover these functions through
+the Cloud Run clients described above; only the Level~3 deployment itself calls the Cloud Functions
+API. The resolver validates every registry hit: the URL does not
 identify the generation of the function behind it, since a second-generation function keeps a
 \texttt{cloudfunctions.net} endpoint besides its \texttt{run.app}
 one~\cite{gcpFunctionsVersionComparison}. First-generation functions created outside the
@@ -178,9 +175,9 @@ that points to one fails validation like a deleted service.
 Several correctness constraints are enforced to avoid silent misconfiguration. Three of them, an
 unresolvable function, an ambiguous reference and a stale registry entry, are stated with the rest
 of the cascade's failure modes in \S\ref{sec:walkthrough}, and all abort the deployment before any provider artifact is
-rendered. One consequence of the second belongs here: an ambiguous reference is not rescued by
-supplying a \texttt{deploymentDescriptorPath}, because ambiguity is a data-consistency problem
-rather than an absence one, so QuickFaaS is never invoked to paper over it. The remaining
+rendered. One consequence of the second belongs here: supplying a \texttt{deploymentDescriptorPath} does
+not resolve an ambiguous reference, because ambiguity is a data-consistency problem rather than an
+absence, so QuickFaaS is never invoked to hide it. The remaining
 constraint is implementation-level.
 
 \paragraph{Insufficient permissions.}
@@ -192,7 +189,7 @@ likewise distinguished from a genuine absence. The distinction is drawn more coa
 miss-path region scan, on both providers: while the scan is running, a region where the lookup is
 refused is simply excluded from the candidate set, the same as a region where the function is
 absent, so a permissions gap in one region does not by itself stop a match found elsewhere; but if
-the scan ends with no match anywhere and at least one region could not be checked, it surfaces a
+the scan ends with no match anywhere and at least one region could not be checked, it reports a
 diagnostic naming the inaccessible regions instead of silently concluding the function is absent
 everywhere.
 
@@ -214,17 +211,16 @@ Collapsing the endpoint into one \texttt{url} field was the change that made the
 cheap. Because \texttt{url} is treated as an opaque, provider-interpreted string (an HTTPS
 endpoint on GCP, a Lambda ARN on AWS), the registry schema did not have to change when the AWS
 provider was added; only the resolver that reads the field and the renderer that consumes it are
-provider-aware. The registry thus stayed a single, symmetric abstraction across the two clouds.
+provider-aware. The registry format is thus the same on both providers.
 
 \paragraph{From a manually edited file to an auto-managed source of truth.}
 The registry also evolved from something the developer would maintain by hand into something the
 integration maintains automatically, through the bootstrap, registration, refresh and pruning
-listed in \S\ref{subsec:registry-updates}. In parallel, the resolution path itself was refined from
-re-reading the whole file on every lookup (\texttt{resolveUrl}) toward reading it once into a
-snapshot and resolving in memory (\texttt{readAll} + \texttt{resolveUrlIn}), first in a benchmark
-fixture, \texttt{OptimizedEndpointResolver}, which the local-resolution benchmarks still use as a
-provider-agnostic reference without live validation, and then in the two production resolvers
-(\S\ref{subsec:store-internals}); Chapter~\ref{cha:evaluation} quantifies the effect on both.
+listed in \S\ref{subsec:registry-updates}. In parallel, the single-read snapshot of \S\ref{subsec:store-internals}
+replaced re-reading the file on every lookup (\texttt{resolveUrl}), first in a benchmark fixture,
+\texttt{OptimizedEndpointResolver}, which the local-resolution benchmarks still use as a
+provider-agnostic reference without live validation, and then in the two production resolvers;
+Chapter~\ref{cha:evaluation} quantifies the effect on both.
 
 \paragraph{From a trusted cache to a verified indirection.}
 The two production resolvers did not always treat a registry hit the same way.
@@ -239,12 +235,12 @@ asymmetry was closed by introducing \texttt{Lambda\allowbreak Function\allowbrea
 the Cloud Run inspector: a hit is now confirmed live on both providers
 (\S\ref{subsec:store-internals}). The change did not make the registry
 redundant, only its trust model stricter: the live check answers whether a binding the registry
-already named is still accurate, not what to look up or whether a deployment is owed. Indirection
+already named is still accurate, not what to look up or whether a deployment is needed. Indirection
 and idempotency, the two properties that motivated the registry in the first place
 (\S\ref{sec:resolution-cascade}), are unaffected by whether the hit is trusted or verified.
 
 \section{AWS Lambda Support in QuickFaaS}
-Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{Create\allowbreak State\allowbreak Machine}, and expands the most demanding path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment has one branch for each of the three levels of the resolution cascade described in Section~\ref{subsec:endpoint-resolution}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work described step by step in Section~\ref{subsec:omniflow-aws-deployer}. The ARN it returns is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{Create\allowbreak State\allowbreak Machine}. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
+Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{Create\allowbreak State\allowbreak Machine}, and expands the longest path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment (UML notation for alternative branches) has one branch for each of the three levels of the resolution cascade described in Section~\ref{subsec:endpoint-resolution}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work described step by step in Section~\ref{subsec:omniflow-aws-deployer}. The ARN it returns is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{Create\allowbreak State\allowbreak Machine}. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
 
 \begin{figure}[htbp]
   \centering
@@ -271,9 +267,9 @@ creates it (\texttt{CreateFunction}, with the code referenced as an S3 object) o
 (\texttt{UpdateFunctionCode}), in both cases blocking on the AWS SDK waiter until the function is
 active. The handler is fixed to the provider-agnostic entry point \texttt{AwsHttpTemplate}, which
 adapts the Lambda request to the developer's hook, and the supported runtimes are \texttt{java11}
-and \texttt{java17}. Because \texttt{GetBucketLocation} must be issued against the global endpoint,
-the provider resolves the bucket's region from \texttt{us-east-1} and then pins the Lambda client
-to that same region, ensuring the function and its code bucket are co-located. Finally, the
+and \texttt{java17}. To place the function in its code bucket's region
+(\S\ref{sec:resolution-cascade}), the provider reads that region with \texttt{GetBucketLocation},
+issued against the global endpoint in \texttt{us-east-1}, and pins the Lambda client to it. Finally, the
 provider creates (or reuses) a Lambda \emph{Function URL} with \texttt{AuthType = AWS\_IAM},
 QuickFaaS's own notion of an invocation endpoint.
 
@@ -293,15 +289,15 @@ eventual consistency. After the subprocess returns, the deployer polls \texttt{G
 the function reports the \texttt{Active} state (bounded by a 180-second timeout), retrieves the ARN,
 and grants the Step Functions service principal permission to invoke the function.
 
-A deliberate design choice is visible here: although the QuickFaaS provider produces a Function URL,
+Although the QuickFaaS provider produces a Function URL,
 the OmniFlow deployer discards it and stores the \emph{ARN} in the registry, because internal calls
 are rendered with the native \texttt{lambda:invoke} integration (Section~\ref{sec:runtime-invocation})
 rather than as HTTP calls to a Function URL. Listing~\ref{lst:aws-descriptor} shows a minimal AWS
 deployment descriptor. It has the fields of the GCP descriptor of
 Listing~\ref{lst:quickfaas_json_config}, with AWS values: \texttt{cloudProvider} is
 \texttt{"aws"}, \texttt{project} the account number, \texttt{location} an AWS region and
-\texttt{bucket} an S3 bucket, while \texttt{accessToken} is left empty
-(\S\ref{sec:dsl-extensions}). It adds one field, \texttt{iamRoleArn}, which may be left as a
+\texttt{bucket} an S3 bucket, while \texttt{accessToken} is left empty, because the AWS provider
+takes its credentials from the environment. It adds one field, \texttt{iamRoleArn}, which may be left as a
 placeholder to request automatic role creation.
 
 \begin{lstlisting}[language=json,caption={Minimal AWS deployment descriptor for an internal function.},label={lst:aws-descriptor}]

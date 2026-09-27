@@ -38,7 +38,7 @@ The evaluation has six parts:
   provider, counted from the implementation rather than measured.
   \item \textbf{Manual effort} (RQ1): the developer actions the integration removes, counted
   against the procedure the two tools required separately.
-  \item \textbf{Packaging overhead}: the size the AWS provider-agnostic layer adds to a Lambda
+  \item \textbf{Packaging overhead}: the size the provider-agnostic layer adds to a Lambda
   deployment bundle.
 \end{itemize}
 
@@ -255,7 +255,7 @@ are equal when $0.17\,R = 10.3$, that is at $R \approx 60$: below that size the 
 opening and parsing the file dominates, and only
 above it does the number of entries become the larger term. A registry holding the few dozen
 functions of a realistic system therefore sits around or below that crossover, where the fixed cost
-rules, which is what makes reading it once per workflow (rather than once per call) the
+dominates, which is what makes reading it once per workflow (rather than once per call) the
 change worth making.
 
 \begin{figure}[htbp]
@@ -300,7 +300,7 @@ single read per resolution (optimized), and Figure~\ref{fig:eval-t3} plots the t
 logarithmic axis. With the snapshot, the cost becomes almost independent of
 $N$ (each row is flat to within a few tenths of a microsecond across a two-hundred-fold increase
 in the number of calls) and reduces to the cost of one read of an $R$-entry file. The speedup
-therefore grows with the product $N \cdot R$, reaching $200\times$ in the worst corner
+therefore grows with the product $N \cdot R$, reaching $200\times$ in the largest configuration measured
 ($N{=}200$, $R{=}1000$: $36.7$\,ms down to $0.18$\,ms).
 
 \begin{figure}[htbp]
@@ -873,7 +873,7 @@ regions enabled for the AWS account, or the Cloud Run locations visible to the G
 \paragraph{What the count grows with.}
 Both resolvers validate a registry hit on every internal \texttt{call} step, not once per distinct
 function. The snapshot introduced in \S\ref{sec:eval-real-resolvers} removes the repeated
-\emph{file} reads, but it does not memoise the live lookup that follows them, so a workflow with
+\emph{file} reads, but it does not cache the live lookup that follows them, so a workflow with
 $I$ internal calls that all hit the registry issues $I$ validation requests even when every call
 names the same function ($F{=}1$), each a network round-trip that T6 and T7 do not include. The list of candidate regions, by contrast, is
 fetched at most once per deployment and cached in the resolver, and a region scan is paid only by
@@ -933,7 +933,7 @@ reported as a sequence rather than as a fixed count.
 
 \paragraph{Consequence.}
 For a deployment of $I$ internal calls, the traffic ranges from $I$ requests, when every call hits
-a valid registry entry, to $1 + I \cdot G$ when the registry is cold and the references are bare
+a valid registry entry, to $1 + I \cdot G$ when the registry is empty and the references are bare
 names. The registry is therefore not only a latency optimization but the mechanism that keeps the
 request count linear in $I$ instead of proportional to $I \cdot G$; a region-qualified reference
 buys the same bound for a call that has to miss.
@@ -1011,27 +1011,27 @@ workflow that calls several internal functions in several accounts (\S\ref{cha:c
 \section{Packaging Overhead (S1)}
 \label{sec:eval-bundle}
 
-The AWS provider added in this work packages a Lambda through the QuickFaaS agnostic layer (the
+The AWS provider added in this work packages a Lambda through the QuickFaaS provider-agnostic layer (the
 developer hook plus the \texttt{AwsHttpTemplate} adapter and \texttt{aws-lambda-java-core}). Table
 \ref{tab:eval-s1} compares the resulting bundle against an equivalent native \texttt{RequestHandler}
-implementation of the same logic. The agnostic layer adds about $0.9$\,KB (6.6\% of a trivial
+implementation of the same logic. The provider-agnostic layer adds about $0.9$\,KB (6.6\% of a trivial
 bundle, and well under 0.1\% of a real function), consistent with the original QuickFaaS
 evaluation for GCP and Azure.
 
 \begin{table}[htbp]
   \centering
   \small
-  \caption{S1: Lambda bundle size, AWS agnostic layer vs.\ native implementation.}
+  \caption{S1: Lambda bundle size, provider-agnostic layer vs.\ native implementation.}
   \label{tab:eval-s1}
   \begin{tabular}{|l|r|}
     \hline
     \textbf{Bundle} & \textbf{Size} \\
     \hline
-    AWS agnostic (QuickFaaS hook + \texttt{AwsHttpTemplate} + \texttt{aws-lambda-java-core}) & 14\,552 bytes \\
+    Provider-agnostic (QuickFaaS hook + \texttt{AwsHttpTemplate} + \texttt{aws-lambda-java-core}) & 14\,552 bytes \\
     \hline
     AWS native (single \texttt{RequestHandler}, same logic) & 13\,647 bytes \\
     \hline
-    \textbf{Delta (agnostic-layer overhead)} & \textbf{905 bytes} \\
+    \textbf{Delta (provider-agnostic layer overhead)} & \textbf{905 bytes} \\
     \hline
   \end{tabular}
 \end{table}
@@ -1051,17 +1051,16 @@ evidence comes from tests that simulate the provider.
 \paragraph{Answer to RQ2.}
 For RQ2, the benchmarks support six conclusions.
 
-First, the cost of the unification is small per call and linear, and its scaling is well
-characterised: a cost that grows in direct proportion to both the number of calls and the
-registry size in the naive form, dominated by the fixed cost of reopening the
+First, in the naive form the cost of the unification grows in direct proportion to both the
+number of calls and the registry size, and is dominated by the fixed cost of reopening the
 registry file up to $R \approx 60$ (\S\ref{sec:eval-resolution}). Second, the single-read
 optimization eliminates that
 call-times-registry-size product, reducing resolution to one read of the registry plus about
-$0.22\,\mu$s per internal call, a speedup of $200\times$ in the worst corner measured
-(T3, T4, T5), a full \emph{identify (T2) $\rightarrow$ fix $\rightarrow$ quantify (T3)} loop.
+$0.22\,\mu$s per internal call, a speedup of $200\times$ in the largest configuration measured
+(T3, T4, T5).
 Third, the production resolvers (T6, T7) show the same one-read-plus-a-constant shape as the
 optimized reference path: $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a 200-call workflow.
-Fourth, the AWS agnostic packaging layer adds negligible size (S1). Fifth, resolution cost tracks
+Fourth, the provider-agnostic packaging layer adds negligible size to a Lambda bundle (S1). Fifth, resolution cost tracks
 the number of internal calls rather than the workflow's total call count: external calls add only
 the shared tree-traversal cost, never a registry lookup (T11, T12). Sixth, neither nesting depth
 nor parallel width changes the cost beyond what the total count of internal calls already

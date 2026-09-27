@@ -50,9 +50,7 @@ follows:
   deployed (\S\ref{sec:resolution-cascade}).
   \item \textbf{Implement an orchestration prototype}: \emph{met.}
   The prototype resolves the internal functions of a workflow on both providers, and deploys the
-  missing ones, without endpoints being copied by hand. On GCP, the functions QuickFaaS deploys are
-  second-generation, so validation, discovery and the bootstrap cover them as they cover any Cloud
-  Run service (\S\ref{subsec:gcp-cloud-run-functions}).
+  missing ones, without endpoints being copied by hand.
   \item \textbf{Extend QuickFaaS to AWS Lambda}: \emph{met.} QuickFaaS gained an AWS provider
   and OmniFlow an \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
   and~\ref{subsec:omniflow-aws-deployer}). The provider-agnostic packaging layer adds about
@@ -85,13 +83,12 @@ The implementation is that of a prototype, and several limitations should be sta
   \texttt{url}/ARN would be trusted blindly.
   \item \textbf{Cloud Run services only on GCP.} Validation, discovery and the bootstrap see
   only Cloud Run services, so first-generation Cloud Functions created outside the integration
-  cannot be bound; the functions the integration deploys are second-generation and are covered
-  (\S\ref{subsec:gcp-cloud-run-functions}).
+  cannot be bound (\S\ref{subsec:gcp-cloud-run-functions}).
   \item \textbf{Broad, automatic IAM.} The AWS path auto-creates and mutates a shared execution
   role and grants invoke permissions as a deployment side effect: convenient for a demo, but at
   odds with a least-privilege, change-controlled environment.
   \item \textbf{Brittle integration boundary.} QuickFaaS is invoked as a subprocess, coupling two
-  build systems across a process boundary and keying error handling off child-process text; the
+  build systems across a process boundary and detecting errors from the subprocess output; the
   rationale for this boundary, and the in-process alternative, is discussed in
   Section~\ref{sec:design-rationale}.
   \item \textbf{Testability of cloud paths.} By design, the classes that call the cloud SDKs have
@@ -116,7 +113,7 @@ structural ones.
   (Section~\ref{sec:design-rationale}).
   \item \textbf{Move to least-privilege, change-controlled IAM,} with pre-provisioned roles and a
   dry-run mode that reports the IAM changes it would make instead of applying them silently.
-  \item \textbf{Introduce test seams} for the cloud-calling code, extracting the SDK interactions
+  \item \textbf{Make the cloud-calling code testable,} extracting the SDK interactions
   behind narrow interfaces so the deploy/IAM/readiness logic can be unit-tested against fakes.
   \item \textbf{Validate the cascade against live providers,} deploying workflows that contain
   internal calls to real AWS and GCP accounts at each level of the cascade, so that the correctness
