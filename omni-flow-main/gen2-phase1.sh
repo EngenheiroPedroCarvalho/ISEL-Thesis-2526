@@ -9,6 +9,7 @@ set -euo pipefail
 
 JAVA_HOME_17=${JAVA_HOME_17:-/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home}
 BUCKET=${BUCKET:-omniflow-quickfaas-deploy}
+PROJECT=${PROJECT:-}
 
 OMNIFLOW_DIR=$(cd "$(dirname "$0")" && pwd)
 QUICKFAAS_DIR="$OMNIFLOW_DIR/quickfaas-essentials/QuickFaaS-Deployment"
@@ -31,14 +32,16 @@ echo "==> Building the QuickFaaS fat JAR"
 (cd "$QUICKFAAS_DIR" && JAVA_HOME="$JAVA_HOME_17" ./gradlew --quiet fatJar)
 cp "$QUICKFAAS_DIR/build/libs/$JAR_NAME" "$OMNIFLOW_DIR/$JAR_NAME"
 
-echo "==> Staging the descriptor (bucket=$BUCKET) and the function source"
+echo "==> Staging the descriptor (bucket=$BUCKET, project=${PROJECT:-from descriptor}) and the function source"
 cp "$FUNCTION_DIR/MyFunctionClass.java" "$OMNIFLOW_DIR/"
-python3 - "$FUNCTION_DIR/func-deployment.json" "$OMNIFLOW_DIR/func-deployment.json" "$TOKEN" "$BUCKET" <<'PY'
+python3 - "$FUNCTION_DIR/func-deployment.json" "$OMNIFLOW_DIR/func-deployment.json" "$TOKEN" "$BUCKET" "$PROJECT" <<'PY'
 import json, sys
-src, dst, token, bucket = sys.argv[1:5]
+src, dst, token, bucket, project = sys.argv[1:6]
 descriptor = json.load(open(src))
 descriptor["accessToken"] = token
 descriptor["function"]["bucket"] = bucket
+if project:
+    descriptor["project"] = project
 json.dump(descriptor, open(dst, "w"), indent=2)
 PY
 

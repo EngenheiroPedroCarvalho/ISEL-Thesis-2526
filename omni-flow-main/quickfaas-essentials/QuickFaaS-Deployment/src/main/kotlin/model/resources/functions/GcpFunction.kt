@@ -7,6 +7,7 @@ package model.resources.functions
 import controller.General
 import controller.General.logMessage
 import io.ktor.client.call.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
@@ -62,11 +63,14 @@ class GcpFunction : CloudFunction {
         val projectId = (projData as GcpProjectData).projectId
         val faasJson = getJsonConfigs(projectId, zipFilePath.substringAfterLast('/'))
         logMessage("Deploying function '$name'...", 2)
-        if (!GcpRequests.checkCloudFunctionExistence(projectId, location, name)) {
-            deploymentInfo.deploymentStartDate =
-                GcpRequests.deployCloudFunction(projectId, location, name, faasJson).requestTime
+        val response = if (!GcpRequests.checkCloudFunctionExistence(projectId, location, name)) {
+            GcpRequests.deployCloudFunction(projectId, location, name, faasJson)
+                .also { deploymentInfo.deploymentStartDate = it.requestTime }
         } else {
             GcpRequests.updateCloudFunction(projectId, location, name, faasJson)
+        }
+        if (!response.status.isSuccess()) {
+            logMessage("Deployment of function '$name' was rejected: ${response.bodyAsText()}", 1)
         }
         // The v2 deployment is a long-running operation: the backing Cloud Run service only
         // exists once the build finishes, so both the URL and the IAM policy have to wait.

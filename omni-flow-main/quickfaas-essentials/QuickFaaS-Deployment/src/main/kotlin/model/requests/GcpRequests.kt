@@ -36,8 +36,8 @@ object GcpRequests : CloudRequests {
     }
 
     // TODO: Pagination
-    suspend fun getBuckets(projectName: String): GcpBucketsData =
-        httpClient.get("https://storage.googleapis.com/storage/v1/b?project=$projectName")
+    suspend fun getBuckets(projectId: String): GcpBucketsData =
+        httpClient.get("https://storage.googleapis.com/storage/v1/b?project=$projectId")
         { bearerAuth(token) }.body()
 
     suspend fun getSessionUri(bucketName: String, functionName: String, zipFile: String): String =
@@ -62,14 +62,14 @@ object GcpRequests : CloudRequests {
         httpClient.post("$FUNCTIONS_API/projects/$projectId/locations/$location/functions?functionId=$functionName") {
             bearerAuth(token)
             contentType(ContentType.Application.Json)
-            setBody(faasJson)
+            setBody(Json.parseToJsonElement(faasJson))
         }
 
     suspend fun updateCloudFunction(projectId: String, location: String, functionName: String, faasJson: String) =
         httpClient.patch("$FUNCTIONS_API/projects/$projectId/locations/$location/functions/$functionName") {
             bearerAuth(token)
             contentType(ContentType.Application.Json)
-            setBody(faasJson)
+            setBody(Json.parseToJsonElement(faasJson))
         }
 
     /**

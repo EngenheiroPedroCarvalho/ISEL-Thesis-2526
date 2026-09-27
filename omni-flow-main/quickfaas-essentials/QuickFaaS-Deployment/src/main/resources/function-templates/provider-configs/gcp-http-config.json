@@ -1,4 +1,5 @@
 {
+  "name": "projects/<project_id>/locations/<location>/functions/<name>",
   "description": "QuickFaaS cloud-agnostic function",
   "buildConfig": {
     "runtime": "<runtime>",
