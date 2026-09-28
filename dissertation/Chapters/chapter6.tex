@@ -88,9 +88,7 @@ Two choices in the listing keep the same definition valid on both providers. The
 the transaction as a query parameter, because on AWS the QuickFaaS entry point receives only query
 parameters and an internal call with a body is rejected (Section~\ref{sec:runtime-invocation}). The
 conditions name a field of a call result with \texttt{withKey}, which each renderer turns into the
-path its provider needs: \texttt{fraudResult.body.flagged} in Cloud Workflows, where the result is
-the whole HTTP response, and \texttt{\$.fraud-check.fraudResult.flagged} in Step Functions, where
-it is the function's payload stored under the step's name.
+path its provider needs.
 
 \begin{lstlisting}[language=Kotlin,caption={PaymentAuthorization workflow: two internal scoring calls feeding a decision.},label={lst:case-payment-workflow},basicstyle=\ttfamily\small,breaklines=false]
 val PaymentAuthorization = workflow {

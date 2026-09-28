@@ -11,7 +11,7 @@ This chapter describes how the architecture and resolution ladder introduced in
 Chapter~\ref{ch:proposed_solution} are realised in code.
 
 The chapter is organised in three sections. Section~\ref{sec:function-registry} presents the
-Function Registry itself: its file format, how entries are created and kept up to date, the
+Function Registry itself: how entries are created and kept up to date, the
 two provider resolvers that consult it at deployment time, and the change to QuickFaaS's GCP
 provider that lets them cover the functions it deploys. The following
 section, AWS Lambda Support in QuickFaaS, traces the concrete deployment steps that Level~3 of the
@@ -22,7 +22,7 @@ through to its actual invocation once the workflow has been deployed.
 \section{Function Registry}
 \label{sec:function-registry}
 
-Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS). Each provider deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer}, \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{Function\allowbreak Registry\allowbreak Store} and the deployer strategy. The store persists each binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, in the file format described below. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer the extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
+Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS). Each provider deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer}, \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{Function\allowbreak Registry\allowbreak Store} and the deployer strategy. The store persists each binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, in the file format of Listing~\ref{lst:registry-structure}. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer the extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
@@ -33,18 +33,6 @@ Figure~\ref{fig:omniflow-integration-classes} details the classes that realise t
 The registry realises the indirection defined in Section~\ref{sec:dsl-extensions}, through which a
 workflow names an internal function by its \texttt{functionRef}, and is also the persistence layer
 of the resolution ladder, which creates and refreshes its entries (Section~\ref{subsec:registry-updates}).
-
-\subsection{Registry File Format}
-The file format is the one described in Section~\ref{sec:dsl-extensions} and shown in
-Listing~\ref{lst:registry-structure}: one JSON file per provider
-(\texttt{function-registry.gcp.json} or \texttt{function-registry.aws.json} by default). Two conventions become visible only in a registry that has been in use. On GCP, every entry
-carries, as its \texttt{serviceName}, the full resource name of the Cloud Run service
-(\texttt{projects/\allowbreak proj/\allowbreak locations/\allowbreak europe-west1/\allowbreak services/\allowbreak risk-score})
-rather than the bare service id, and a \texttt{run.app} URL, whether the function was deployed by
-QuickFaaS (Section~\ref{subsec:gcp-cloud-run-functions}) or found by discovery or by the bootstrap. The
-key follows the rule of Section~\ref{sec:dsl-extensions}: the bare \texttt{functionRef}, or a region-qualified key such as
-\texttt{"europe-west1/\allowbreak risk-score"} when the call used that form or the bootstrap found
-the same name in more than one region. The file is kept in a writable location (the working directory by default, or a path given to the deployer), never inside packaged resources, which are typically read-only in production.
 
 \subsection{Creation, Bootstrap and Updates}
 \label{subsec:registry-updates}
@@ -147,13 +135,8 @@ The GCP resolver validates and discovers functions only through the Cloud Run AP
 the integration deploys on GCP must be Cloud Run services. The original QuickFaaS deploys
 first-generation Cloud Functions (Section~\ref{sec:background_quickfaas}), which are not; its GCP
 provider was therefore moved to the Cloud Functions~v2 API, which creates \emph{Cloud Run
-functions}: functions backed by a Cloud Run service~\cite{gcpFunctionsVersionComparison}. The
-request body is restructured into a \texttt{buildConfig} (runtime, entry point and the source
-archive in Cloud Storage) and a \texttt{serviceConfig} (memory, timeout, instance limits). The
-function name is passed as the \texttt{functionId} of the create request, and storage events are
-filtered by bucket through Eventarc, with CloudEvents event types. Only the HTTP trigger, the one
-internal calls use, was exercised on GCP; the storage-trigger template still implements the
-first-generation \texttt{BackgroundFunction} interface.
+functions}: functions backed by a Cloud Run service~\cite{gcpFunctionsVersionComparison}. Only
+the HTTP trigger, the one internal calls use, was exercised on GCP.
 
 The v2 deployment is a long-running operation, and the backing service exists only once the build
 has finished. QuickFaaS therefore waits until the function reports the \texttt{ACTIVE} state and
@@ -206,13 +189,7 @@ absent everywhere.
 
 The registry did not arrive at its current form in a single step; the source tree still exposes
 the intermediate stages, which makes the design decisions worth recounting. Its starting point was
-the indirection of Section~\ref{sec:dsl-extensions}; four threads describe how it evolved from there.
-
-\paragraph{A metadata record per function.}
-Each function is represented in the registry by a single structured record,
-\texttt{FunctionInvocationMetadata}, which the two
-production resolvers, \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
-\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, consume directly (Section~\ref{subsec:store-internals}).
+the indirection of Section~\ref{sec:dsl-extensions}; three threads describe how it evolved from there.
 
 \paragraph{From provider-specific fields to a uniform endpoint.}
 Collapsing the endpoint into one \texttt{url} field was the change that made the AWS extension
@@ -225,10 +202,9 @@ provider-aware. The registry format is thus the same on both providers.
 The registry also evolved from something the developer would maintain by hand into something the
 integration maintains automatically, through the bootstrap, registration, refresh and pruning
 listed in Section~\ref{subsec:registry-updates}. In parallel, the single-read snapshot of Section~\ref{subsec:store-internals}
-replaced re-reading the file on every lookup (\texttt{resolveUrl}), first in a benchmark fixture,
-\texttt{OptimizedEndpointResolver}, which the local-resolution benchmarks still use as a
-provider-agnostic reference without live validation, and then in the two production resolvers;
-Chapter~\ref{cha:evaluation} quantifies the effect on both.
+replaced re-reading the file on every lookup, first in a reference resolver used by the
+benchmarks and then in the two production resolvers; Chapter~\ref{cha:evaluation} quantifies the
+effect on both.
 
 \paragraph{From a trusted cache to a verified indirection.}
 The two production resolvers did not always treat a registry hit the same way.
@@ -243,9 +219,7 @@ asymmetry was closed by introducing \texttt{Lambda\allowbreak Function\allowbrea
 the Cloud Run inspector: a hit is now confirmed live on both providers
 (Section~\ref{subsec:store-internals}). The change did not make the registry
 redundant, only its trust model stricter: the live check answers whether a binding the registry
-already named is still accurate, not what to look up or whether a deployment is needed. Indirection
-and idempotency, the two properties that motivated the registry in the first place
-(Section~\ref{sec:resolution-cascade}), are unaffected by whether the hit is trusted or verified.
+already named is still accurate, not what to look up or whether a deployment is needed.
 
 \section{AWS Lambda Support in QuickFaaS}
 Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{Create\allowbreak State\allowbreak Machine}, and expands the longest path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment (UML notation for alternative branches) has one branch for each of the three levels of the resolution ladder described in Section~\ref{sec:resolution-cascade}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work described step by step in Section~\ref{subsec:omniflow-aws-deployer}. The ARN it returns is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{Create\allowbreak State\allowbreak Machine}. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
@@ -339,8 +313,7 @@ Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoke
 
 
 Internal and external calls are told apart entirely by the renderer,
-\texttt{AmazonCall\allowbreak Renderer} (whose emitted resource strings live in
-\texttt{AmazonConstantsUtils}), from the \texttt{host} value injected during resolution. If the host
+\texttt{AmazonCall\allowbreak Renderer}, from the \texttt{host} value injected during resolution. If the host
 carries the \texttt{lambda://} prefix (the marker written by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}),
 the renderer emits a \texttt{Task} whose \texttt{Resource} is
 \texttt{arn:aws:states:::lambda:invoke} and whose \texttt{Parameters} carry the
@@ -351,9 +324,7 @@ the Lambda form the result is extracted with a \texttt{ResultSelector} that read
 \texttt{\$.Payload} into the step's result variable, and the value is scoped under a
 \texttt{ResultPath} named after the step so that later steps can reference it. Listing
 \ref{lst:rendered-lambda} shows the state a \texttt{call} to \texttt{internalFunction("fraud-check")}
-renders to. Its two remaining fields belong to neither form in particular: \texttt{InputPath}, fixed
-at \texttt{"\$"}, hands the whole state document to the task, and \texttt{Next} names the step that
-runs after it; both are emitted for an \texttt{apigateway:invoke} task as well.
+renders to.
 
 \begin{lstlisting}[language=json,caption={Step Functions state rendered for an internal Lambda call.},label={lst:rendered-lambda}]
 "fraud-check": {

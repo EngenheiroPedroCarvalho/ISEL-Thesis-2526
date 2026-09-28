@@ -59,16 +59,13 @@ ladder is designed so that the cheapest and least intrusive action is always pre
 actual deployment is a last resort rather than a default.
 
 \begin{enumerate}
-  \item \textbf{Level~1 (Registry).} The registry is consulted for the \texttt{functionRef}
-  (exact match first, then a suffix match on \texttt{"region/functionRef"}). A hit is the common
-  case for a function that has already been deployed once. The stored endpoint is then validated
-  against the live resource (the Cloud Run service on GCP, the Lambda function on AWS), so that
-  a stale binding cannot be used silently. A changed endpoint refreshes the entry. A deleted
-  function is looked for in the other regions: if it is found there, its entry is replaced;
-  otherwise the entry is removed and the deployment aborts. Validation contacts the provider, but
-  the registry keeps it cheap. An entry records where the function lives (the region inside the
-  Lambda ARN, the full resource name of the Cloud Run service), so validation is one lookup in a
-  known place rather than the search across every region that Level~2 performs.
+  \item \textbf{Level~1 (Registry).} The registry is consulted for the \texttt{functionRef}. A hit
+  is the common case for a function that has already been deployed once. The stored endpoint is
+  then validated against the live resource (the Cloud Run service on GCP, the Lambda function on
+  AWS) with a single lookup in the place the entry records, so that a stale binding cannot be used
+  silently. A changed endpoint refreshes the entry. A deleted function is looked for in the other
+  regions: if it is found there, its entry is replaced; otherwise the entry is removed and the
+  deployment aborts.
   \item \textbf{Level~2 (Provider discovery).} On a registry miss, the target provider is queried
   directly. On GCP this is a Cloud Run lookup across the project's regions, and on AWS a
   \texttt{GetFunction} lookup across every region enabled for the account. When the caller
@@ -109,20 +106,15 @@ endpoints at run time instead would require every workflow execution to look the
 which is outside the scope of this work.
 
 \paragraph{Provider and region scope.}
-Cloud providers organise their infrastructure into geographic \emph{regions} (e.g., \texttt{eu-west-1}
-on AWS or \texttt{europe-west1} on GCP), and every resource (a Lambda function, a Cloud Run
-service, a storage bucket, or the deployed workflow itself) lives in a specific region, which is
-part of its identity. Each deployment
-targets a single provider (Section~\ref{sec:int_cha_int_uni_multi}), but within it the workflow and its
-registry-resolved functions are \emph{not} strictly required to share a region. Nor is the
-developer required to declare one on either provider, since Level~2 searches every region.
-The search starts with the region the workflow is being deployed to, because the expected
-deployment places the workflow and its functions in the same region. The resolver does not
-require it, but same-region deployment minimises invocation latency and cross-region
-data-transfer cost, and simplifies data-residency compliance. One co-location constraint is,
-however, mandatory on AWS: a Lambda must reside in the same region as the S3 bucket that holds its
-deployment package, so the AWS deployer derives the effective region from that bucket
-(Chapter~\ref{cha:impl}).
+Every resource on a provider (a function, a storage bucket, the deployed workflow itself) lives in
+a geographic \emph{region} (e.g., \texttt{eu-west-1} on AWS or \texttt{europe-west1} on GCP),
+which is part of its identity. Each deployment targets a single provider
+(Section~\ref{sec:int_cha_int_uni_multi}), but the workflow and its functions need not share a
+region, and the developer need not declare one, since Level~2 searches every region. The search
+starts with the workflow's own region, where functions are expected to be, since co-location
+reduces latency and data-transfer cost. On AWS a Lambda must also live in the region of the S3
+bucket that holds its code, so the AWS deployer takes its region from that bucket
+(Section~\ref{subsec:omniflow-aws-deployer}).
 
 \section{Design Rationale: Embedding Function Deployment in OmniFlow}
 \label{sec:design-rationale}
@@ -207,27 +199,16 @@ A function reference (\texttt{functionRef}) is a stable logical identifier used 
 The function registry is a file, one per provider, that contains invocation metadata only for internal functions. Conceptually, it maps each \texttt{functionRef} to the concrete values required to invoke it.
 
 Listing~\ref{lst:registry-structure} shows the structure of the file, with one example per
-provider. The document has two top-level fields. \texttt{updatedAt} records, as an ISO-8601
-timestamp, when the file was last written, so that a developer inspecting it can tell how recent
-the bindings are. \texttt{functions} is an object used as a map: each key is a
-\texttt{functionRef} and the corresponding value is the invocation metadata bound to it. The key is
-the bare reference (\texttt{"fraud-check"} in the GCP example) while it is unambiguous. When the
-same name is found in more than one region, the key is promoted to the qualified
-\texttt{"region/functionRef"} form, which lets an ambiguous reference be reported instead of
-resolved arbitrarily. Each value carries exactly two fields: \texttt{serviceName}, the name the
-function has on the provider, and \texttt{url}, the single value the rendered workflow needs in
-order to invoke it.
-
-The two example files differ only in that last field, and this is where the provider shows through.
-On GCP, \texttt{url} is the HTTPS endpoint of the function
-(\texttt{https://\allowbreak fraud-check-\allowbreak a1b2c3d4e5-\allowbreak ue.\allowbreak a.\allowbreak run.\allowbreak app}), which the resolver
-splits into the \texttt{host} and \texttt{path} of an ordinary HTTP call, and \texttt{serviceName}
-is the full resource name of the Cloud Run service behind it. On AWS, \texttt{url} is
-the function's ARN
-(\texttt{arn:aws:\allowbreak lambda:\allowbreak eu-west-1:\allowbreak 123456789012:\allowbreak function:\allowbreak hello-lambda-fn}),
-which the rendered state machine uses as the resource of a native Lambda invocation rather than as
-an HTTP address. Nothing else is
-stored: no credentials and no deployment parameters. Both files are written and refreshed by the integration, never by hand.
+provider. \texttt{updatedAt} records when the file was last written, and \texttt{functions} maps
+each \texttt{functionRef} to its invocation metadata. The key is the bare reference while it is
+unambiguous; when the same name exists in more than one region, it takes the qualified
+\texttt{"region/functionRef"} form. Each value has two fields: \texttt{serviceName}, the name the
+function has on the provider (on GCP, the full resource name of the Cloud Run service), and
+\texttt{url}, the value the rendered workflow uses to invoke it: the function's HTTPS endpoint on
+GCP, which the resolver splits into \texttt{host} and \texttt{path}, and its ARN on AWS, used as
+the resource of a native Lambda invocation. No credentials or deployment parameters are stored.
+Both files are written and refreshed by the integration, never by hand, and are kept in a
+writable location (the working directory by default, or a path given to the deployer).
 
 \begin{lstlisting}[caption={Example registry files, one per provider (registry-managed functions only).},label={lst:registry-structure},basicstyle=\ttfamily\footnotesize,breaklines=false]
 function-registry.gcp.json:
@@ -273,17 +254,12 @@ step {
 }
 \end{lstlisting}
 
-The step is written with the vocabulary of any other OmniFlow step: \texttt{name} identifies it
-inside the workflow, \texttt{description} documents it, and \texttt{context(call\{\dots\})} makes it
-a call step. Inside the call, \texttt{method(GET)} still declares the HTTP verb, and
-\texttt{result("result")} names the workflow variable that receives the response. The only
-difference from a conventional call is what is \emph{not} there: no \texttt{host} and no
+The only difference from a conventional call is what is \emph{not} there: no \texttt{host} and no
 \texttt{path}. In their place, \texttt{internalFunction} supplies the \texttt{functionRef}
-\texttt{"quickfaas-test-fn"}, the key under which the endpoint is stored in (or added to) the
-registry, and \texttt{deploymentDescriptorPath}, a path to the QuickFaaS descriptor that is read
-only if the ladder reaches Level~3 and the function has to be deployed. Writing the step this way
-is a statement about ownership rather than about addressing: it says which function to call, and
-leaves it to the deployment to determine where that function is.
+\texttt{"quickfaas-test-fn"}, the key under which the endpoint is stored in the registry, and
+\texttt{deploymentDescriptorPath}, the QuickFaaS descriptor that is read only if the ladder
+reaches Level~3. The step says which function to call, and leaves it to the deployment to
+determine where that function is.
 
 \paragraph{QuickFaaS Deployment Descriptor and Code File}
 To deploy an internal function, QuickFaaS requires two artifacts: the JSON deployment descriptor of

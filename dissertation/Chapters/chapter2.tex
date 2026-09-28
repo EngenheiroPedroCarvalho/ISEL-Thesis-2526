@@ -52,14 +52,10 @@ Major cloud providers offer managed services for this role, notably AWS Step Fun
 QuickFaaS is a desktop-based tool developed to solve the problem of function portability~\cite{rodrigues2022quickfaas}. Its primary goal is to allow developers to write a function once and deploy it to multiple cloud providers without modifying the source code, targeting the elimination of code-level vendor lock-in.
 
 \subsubsection{Components Overview}
-QuickFaaS is architected as a self-contained desktop application built using Kotlin~\cite{kotlin_lang} and Compose for Desktop~\cite{compose_multiplatform}. This design choice ensures that the tool runs without requiring a pre-installed Java Development Kit (JDK) on the user's machine.
-
-The internal software architecture follows the Model-View-Controller (MVC) pattern to separate concerns:
-\begin{itemize}
-	\item \textbf{Controller:} Manages the application flow, particularly the initialisation of the local HTTP server used for OAuth callbacks and the coordination between the UI and the logic layer.
-	\item \textbf{Model:} Encapsulates the application domain, managing the state of cloud credentials, function definitions and deployment configurations.
-	\item \textbf{View:} Defines the User Interface (UI) with the Compose framework, which presents the deployment status and configurations to the user.
-\end{itemize}
+QuickFaaS is a self-contained desktop application written in Kotlin~\cite{kotlin_lang}, with a
+user interface built on Compose for Desktop~\cite{compose_multiplatform}. It also has a headless
+entry point that deploys the function described by a JSON deployment descriptor, which is the
+entry point this work uses.
 
 \subsubsection{Uniform Programming Model}
 To achieve portability, QuickFaaS introduces a Uniform Programming Model that abstracts the differences between provider-specific function signatures (e.g., AWS Lambda's \texttt{Context} vs. GCP's \texttt{HttpRequest}). This model relies on the Template Method Design Pattern:
@@ -72,25 +68,22 @@ To achieve portability, QuickFaaS introduces a Uniform Programming Model that ab
 \subsubsection{FaaS Deployment Model: The ZIP Strategy}
 While different cloud providers offer various methods for deploying code (such as inline editing, container images, or git syncing), the upload of a compressed source archive (ZIP) remains the most common denominator supported across AWS, Google Cloud and Azure. By standardising on this format, QuickFaaS does not have to build or manage containers on the user's machine, which keeps the tool light.
 
-The deployment of a cloud-agnostic function in QuickFaaS follows a structured pipeline that converts source code into a cloud-ready artifact.
-For a Java-based deployment to Google Cloud Platform (GCP), the flow is initiated by the \texttt{buildAndZip} operation, which creates the hook function file by integrating the developer's logic, such as \texttt{MyFunctionClass.java}, into a temporary project structure. This is followed by the Maven packaging stage, where the source code is compiled into an executable JAR file like \texttt{gcp-http-faas.jar}. All necessary libraries, templates and compiled code are subsequently bundled into a \texttt{function-source.zip} archive during the zip sources phase. The process continues with the upload of this archive to the storage bucket named in the deployment descriptor (the \texttt{bucket} field of Listing~\ref{lst:quickfaas_json_config}). A bucket in Google Cloud is a globally unique container within Google Cloud Storage (GCS), used to store any type of data as an object~\cite{GCP_bucket}; here it holds the ZIP archive. Finally, the GCP platform loads the source code from this bucket during deployment to provision the serverless function.
+For a Java function on Google Cloud Platform (GCP), QuickFaaS places the developer's hook (e.g.,
+\texttt{MyFunctionClass.java}) in a temporary project next to the provider's template (here
+\texttt{GcpHttpTemplate.java}, the entry point for HTTP events) and the QuickFaaS libraries,
+packages it with Maven, and zips the result. It then uploads the archive to the Cloud Storage
+bucket named in the deployment descriptor (the \texttt{bucket} field of
+Listing~\ref{lst:quickfaas_json_config})~\cite{GCP_bucket}, from which the provider builds and
+provisions the function.
 
-The generated ZIP archive serves as a container for all artifacts required for the function's execution in the cloud. It includes a \texttt{pom.xml} file that contains project metadata and Maven configurations, such as dependencies and build directories. The core logic resides in the \texttt{MyFunctionClass.java} hook function, while the \texttt{GcpHttpTemplate.java} serves as the predefined entry point for HTTP events, adhering to a naming convention based on the provider and trigger type. Execution-time properties are managed through the \texttt{function-configs.json} file, which is accessed via QuickFaaS libraries. The archive also incorporates several specialised JAR files: \texttt{quickfaas-triggers.jar} and \texttt{quickfaas-gcp-trigger-http.jar} establish and implement event trigger contracts, whereas \texttt{quickfaas-resources.jar} and \texttt{quickfaas-gcp-resources.jar} handle the contracts and implementation for interacting with cloud services. To conclude the deployment setup, developers must ensure that the Cloud Resource Manager API is enabled on GCP to allow for the programmatic management of resource metadata.
-
-On GCP specifically, the original QuickFaaS pipeline provisions a first-generation Cloud Function
-through the \texttt{cloudfunctions.googleapis.com/v1} API. Google has since renamed both
-generations: the first is now documented as a \emph{Cloud Run function (1st gen)}, and what used
-to be called a ``second-generation'' Cloud Function is simply a \emph{Cloud Run function}, that
-is, a Cloud Run service deployed from source code~\cite{gcpFunctionsVersionComparison}. This
-dissertation keeps the generation names, because they are what distinguishes the two APIs the code
-calls. A first-generation function is reachable at a URL of the form
+On GCP, the original QuickFaaS provisions a \emph{first-generation} Cloud Function, reachable at
 \texttt{https://\allowbreak <region>-\allowbreak <project-id>.\allowbreak cloudfunctions.\allowbreak net/\allowbreak <name>},
-and it is managed through the Cloud Functions API rather than the Cloud Run Admin
-API: it is not a Cloud Run service~\cite{gcpFunctionsVersionComparison}. The distinction matters to the proposed
-Function Registry, which validates and discovers GCP functions through the Cloud Run API; for that
-reason, this work moves QuickFaaS's GCP provider to the Cloud Functions~v2 API
-(Section~\ref{subsec:gcp-cloud-run-functions}), so that every function it deploys is a Cloud Run
-service.
+which, unlike a second-generation function, is not a Cloud Run
+service~\cite{gcpFunctionsVersionComparison}. (Google now calls the two generations \emph{Cloud
+Run function (1st gen)} and \emph{Cloud Run function}; this dissertation keeps the generation
+names, which distinguish the two APIs the code calls.) Because the proposed Function Registry
+validates and discovers GCP functions through the Cloud Run API, this work moves QuickFaaS's GCP
+provider to second-generation functions (Section~\ref{subsec:gcp-cloud-run-functions}).
 
 
 \subsubsection{QuickFaaS function deployment example}
@@ -105,13 +98,10 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 	\item \textbf{Deployment Definition:} Once the token is obtained, the developer populates the deployment file, \texttt{func-deployment.json} (Listing \ref{lst:quickfaas_json_config}). This JSON object defines the target infrastructure, including the  \texttt{cloudProvider}, \texttt{project} name and the \texttt{accessToken} the developer acquired from the authentication mechanism. It also specifies function metadata such as the \texttt{runtime} (e.g., \texttt{java17}) and trigger type.
 	Lastly, \texttt{functionFile} gives the location of the cloud-agnostic function file the
 	developer wishes to deploy.
-	The remaining fields complete the description. Inside \texttt{function}, \texttt{location} is the
-	region the function is created in, and \texttt{bucket} names the Cloud Storage bucket used to
-	stage the packaged source before the function is provisioned. The two trailing fields are
-	optional, and are left empty in this example. \texttt{dependenciesFile} points at a file whose
-	contents are injected into the dependency block of the generated \texttt{pom.xml}, so a function
-	that uses no third-party library needs none. \texttt{configurationsFile} supplies the
-	\texttt{function-configs.json} packaged with the function. Both fall back to an empty default when omitted.
+	Inside \texttt{function}, \texttt{location} is the region the function is created in, and
+	\texttt{bucket} names the Cloud Storage bucket used to stage the packaged source. The two
+	trailing fields (extra Maven dependencies and runtime configuration) are optional and left empty
+	here.
  
 	
 	\begin{lstlisting}[language=json, caption={Configuration JSON for QuickFaaS function deployment}, label={lst:quickfaas_json_config}]
@@ -191,11 +181,13 @@ The underlying implementation still associates each step with metadata such as a
 
 
 \subsubsection{Example: Function Chaining}
-Listing~\ref{lst:omniflow_chain} illustrates a simple function-chaining pattern expressed in the OmniFlow DSL, where the output of one step becomes the input to the next step through workflow variables. The workflow is named \texttt{FunctionChain}, declares \texttt{args} as its input through \texttt{params} and defines two sequential steps inside \texttt{steps(\ldots)}.
-
-The first step, \texttt{first-call}, uses the \texttt{call} context to perform an HTTP request. In this example, the request is a \texttt{POST} to the endpoint identified by \texttt{host("example-api.com")} and \texttt{path("/v1/process")}. The request body is constructed from the input data using \texttt{body(variable(\allowbreak "args.data"))}, showing how OmniFlow allows payloads to be derived from previously defined variables. The response is stored in the workflow variable \texttt{firstResult} through \texttt{result(\allowbreak "firstResult")}, which makes the response accessible to subsequent steps.
-
-The second step, \texttt{process-logic}, demonstrates local data manipulation using the \texttt{assign} context. It creates a new variable, \texttt{processedData} and assigns it to the value extracted from the previous call response (\texttt{firstResult.body}). Finally, the workflow declares \texttt{processedData} as the workflow output using \texttt{result("processedData")}. Overall, the listing shows how OmniFlow combines external invocations (\texttt{call}) and internal transformations (\texttt{assign}) using a consistent DSL, enabling the developer to express sequencing and data flow without writing provider-specific workflow definitions.
+Listing~\ref{lst:omniflow_chain} illustrates a simple function-chaining pattern in the OmniFlow
+DSL, where the output of one step becomes the input of the next through workflow variables. The
+workflow declares its input through \texttt{params}. The first step is a \texttt{call}: an HTTP
+\texttt{POST} to a literal \texttt{host} and \texttt{path}, whose body is taken from the input and
+whose response is stored in the variable \texttt{firstResult} by \texttt{result}. The second step
+is an \texttt{assign} that copies the body of that response into \texttt{processedData}, which the
+workflow returns as its output.
 
 \begin{lstlisting}[language=Kotlin, caption={OmniFlow Function Chaining Definition.}, label={lst:omniflow_chain}]
 val ChainWorkflow = workflow {
@@ -287,40 +279,19 @@ future work. That remaining step is what this dissertation addresses: a portable
 definition whose function references are turned into concrete endpoints as the workflow is
 deployed.
 
-These tools also resolve references between resources at deployment time, including the endpoint
-through which a workflow calls a function. Each of them lets the workflow definition name the
-function through an expression that the deployment engine replaces with the function's identifier
-once it is known. In AWS SAM, the \texttt{DefinitionSubstitutions} property of a state machine maps
-placeholders in its Amazon States Language definition to values such as
-\texttt{!GetAtt MyFunction.Arn}, a CloudFormation expression that reads the \texttt{Arn} attribute
-of the function resource \texttt{MyFunction} declared in the same template~\cite{awsSamStateMachine}.
-The value that expression yields is the function's Amazon Resource Name (ARN) introduced in
-Section~\ref{sec:int_cha_int_uni_multi}. Only its first fields are known when the template is written:
-the account and the deployed name are not, and \texttt{MyFunction} is the resource's logical identifier inside
-the template rather than the name the function ends up carrying. That is why the workflow names
-it through an expression instead of a literal string. The reference also fixes the order of the
-deployment: CloudFormation reads a \texttt{!GetAtt} to another resource as an implicit dependency,
-and so creates the function before the state machine that substitutes its
-ARN~\cite{awsCloudFormationDependsOn}.
-The Step Functions plugin for the Serverless Framework accepts \texttt{Fn::GetAtt: [hello, Arn]}
-(the same intrinsic in its long form) as the \texttt{Resource} of a task, and resolves it to the
-ARN of the function \texttt{hello} declared in the same service~\cite{serverlessStepFunctionsPlugin}.
-In Terraform, the state machine's definition is a string into which the tool interpolates
-expressions written as \texttt{\$\{\ldots\}}, evaluated when the configuration is applied:
-\texttt{\$\{aws\_lambda\_function.lambda.arn\}} names, in that order, the resource type
-\texttt{aws\_lambda\_function}, the label \texttt{lambda} given to one such resource in the same
-configuration, and the \texttt{arn} attribute that resource exports~\cite{terraformSfnStateMachine}.
-As with \texttt{MyFunction} above, \texttt{lambda} is the label the configuration uses internally
-rather than the name the function carries in AWS, and the attribute only holds a value once the
-function has been created. Such a reference also creates an implicit dependency between the two
-resources, so the function is created before the workflow that names
-it~\cite{terraformReferences}. Pulumi likewise records a dependency when one resource's output is
-passed as another's input, and orders their creation accordingly~\cite{pulumiInputsOutputs}. In each
-case the function is declared alongside the workflow and deployed with it, and its endpoint is
-written into the workflow at deployment time, the same static binding performed by the resolution
-ladder proposed in this dissertation and described in Section~\ref{sec:resolution-cascade}.
-They also update a function whose code changed, which this work does not. Conversely, they
-bind a workflow only to functions declared or explicitly referenced in the same template or
+These tools also resolve, at deployment time, the endpoint through which a workflow calls a
+function. The workflow definition names the function through an expression that the deployment
+engine replaces with the function's identifier once it exists. In AWS SAM, for example, the
+\texttt{DefinitionSubstitutions} of a state machine can map a placeholder to
+\texttt{!GetAtt MyFunction.Arn}, the Amazon Resource Name (ARN) of a function declared in the same
+template~\cite{awsSamStateMachine}. The Step Functions plugin for the Serverless Framework and
+Terraform offer equivalent references~\cite{serverlessStepFunctionsPlugin,terraformSfnStateMachine}.
+Each such reference is also an implicit dependency, so the function is created before the
+workflow that names it~\cite{awsCloudFormationDependsOn,terraformReferences}, and Pulumi orders
+resources in the same way~\cite{pulumiInputsOutputs}. This is the same static binding performed by
+the resolution ladder proposed in this dissertation (Section~\ref{sec:resolution-cascade}). These
+tools also update a function whose code changed, which this work does not. Conversely, they bind a
+workflow only to functions declared or explicitly referenced in the same template or
 configuration. Terraform and Pulumi can look up a function deployed by other means, but only
 through an explicit data source that names it, in the region the configuration
 targets~\cite{terraformLambdaDataSource,pulumiLambdaGetFunction}. The resolution ladder, by
