@@ -1,0 +1,79 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "QuickFaaSBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:PutObject",
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::omniflow-quickfaas-025064823406-eu-west-1",
+        "arn:aws:s3:::omniflow-quickfaas-025064823406-eu-west-1/*"
+      ]
+    },
+    {
+      "Sid": "CaseStudyRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:CreateRole",
+        "iam:PutRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::025064823406:role/OmniFlowStepFunctionsRole",
+        "arn:aws:iam::025064823406:role/OmniFlowLambdaExecutionRole"
+      ]
+    },
+    {
+      "Sid": "Lambda",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:AddPermission",
+        "lambda:GetFunctionUrlConfig",
+        "lambda:CreateFunctionUrlConfig",
+        "lambda:DeleteFunction"
+      ],
+      "Resource": "arn:aws:lambda:*:025064823406:function:*"
+    },
+    {
+      "Sid": "LambdaDiscovery",
+      "Effect": "Allow",
+      "Action": ["lambda:ListFunctions", "ec2:DescribeRegions", "s3:ListAllMyBuckets"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "StepFunctions",
+      "Effect": "Allow",
+      "Action": [
+        "states:CreateStateMachine",
+        "states:DeleteStateMachine",
+        "states:DescribeStateMachine",
+        "states:ListStateMachines",
+        "states:TagResource",
+        "states:StartExecution",
+        "states:DescribeExecution",
+        "states:GetExecutionHistory"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ApiGatewayForTheStub",
+      "Effect": "Allow",
+      "Action": ["apigateway:GET", "apigateway:POST", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE"],
+      "Resource": ["arn:aws:apigateway:eu-west-1::/restapis*", "arn:aws:apigateway:eu-west-1::/apis", "arn:aws:apigateway:eu-west-1::/apis/*"]
+    }
+  ]
+}

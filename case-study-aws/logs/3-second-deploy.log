@@ -1,0 +1,108 @@
+[36m[1m[DEPLOY][0m Checking if function-registry exists at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/function-registry.aws.json'...
+[32m  ✓[0m Function-registry found at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/function-registry.aws.json' (skipping bootstrap)
+15:27:28.365 [main] INFO  - Function Registry found at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/function-registry.aws.json' (skipping bootstrap).
+[36m[1m[DEPLOY][0m Detected [1m2[0m internal Lambda function(s) — resolving...
+
+--- Generated State Machine JSON ---
+{
+    "Comment": "Real-time fraud screening for card payment authorization",
+    "StartAt": "fraud-check",
+    "States": {
+        "fraud-check": {
+            "Comment": "Flag transactions that match known fraud patterns",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:fraud-check",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)",
+                        "country.$": "States.Format('{}', $.transaction.country)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "fraudResult.$": "$.Payload"
+            },
+            "ResultPath": "$.fraud-check",
+            "Next": "risk-score"
+        },
+        "risk-score": {
+            "Comment": "Score the transaction from its features",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:risk-score",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "riskResult.$": "$.Payload"
+            },
+            "ResultPath": "$.risk-score",
+            "Next": "decision"
+        },
+        "decision": {
+            "Comment": "Decline flagged or high-risk transactions",
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.fraud-check.fraudResult.flagged",
+                    "BooleanEquals": true,
+                    "Next": "decline-transaction"
+                },
+                {
+                    "Variable": "$.risk-score.riskResult.score",
+                    "NumericGreaterThan": 75,
+                    "Next": "decline-transaction"
+                }
+            ],
+            "Default": "approve-transaction"
+        },
+        "approve-transaction": {
+            "Comment": "Record the approval",
+            "Type": "Pass",
+            "Result": "approved",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "decline-transaction": {
+            "Comment": "Record the decline",
+            "Type": "Pass",
+            "Result": "declined",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "report-decision": {
+            "Comment": "Report the decision to core banking",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "ApiEndpoint": "9giljyyesc.execute-api.eu-west-1.amazonaws.com",
+                "Method": "POST",
+                "Path": "/",
+                "QueryParameters": {
+                    "decision.$": "States.Array(States.Format('{}', $.decision))"
+                },
+                "RequestBody.$": "$.transaction"
+            },
+            "ResultSelector": {
+                "coreBankingResult.$": "$.ResponseBody"
+            },
+            "ResultPath": "$.report-decision",
+            "End": true
+        }
+    }
+}
+--- End JSON ---
+
+15:27:29.378 [main] INFO  - Creating deployment request for State Machine payment-authorization
+15:27:29.786 [main] INFO  - State Machine creation result: CreateStateMachineResponse(StateMachineArn=arn:aws:states:eu-west-1:025064823406:stateMachine:payment-authorization, CreationDate=2026-09-28T14:27:29.711Z)
+[32m  ✓[0m State Machine 'payment-authorization' deployed to AWS Step Functions
+registry unchanged

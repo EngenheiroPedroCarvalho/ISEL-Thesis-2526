@@ -1,0 +1,2 @@
+tx-003: SUCCEEDED
+{"transaction":{"id":"tx-003","amount":300,"country":"PT"},"fraud-check":{"fraudResult":{"flagged":false}},"risk-score":{"riskResult":{"score":6}},"decision":"approved","report-decision":{"coreBankingResult":{"recorded":true,"id":"tx-003","decision":"approved"}}}
