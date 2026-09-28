@@ -46,8 +46,8 @@ The registry management layer provides the following behaviour:
     \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} obtains that listing through
     the \texttt{Cloud\allowbreak Functions\allowbreak Catalog} interface, implemented by
     \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Rest\allowbreak Catalog} (GCP) and
-    \texttt{Lambda\allowbreak Functions\allowbreak Catalog} (AWS); on
-    AWS this scans every region enabled for the account.
+    \texttt{Lambda\allowbreak Functions\allowbreak Catalog} (AWS). On
+AWS this scans every region enabled for the account.
     \item \textbf{Automatic registration:} when an internal function is not present in the
     registry but is found on the target provider (Cloud Run service on GCP, Lambda function
     on AWS), a new entry is written immediately with the discovered metadata.
@@ -133,7 +133,7 @@ within one workflow still observe each other's writes.
 \label{subsec:gcp-cloud-run-functions}
 The GCP resolver validates and discovers functions only through the Cloud Run API, so the functions
 the integration deploys on GCP must be Cloud Run services. The original QuickFaaS deploys
-first-generation Cloud Functions (Section~\ref{sec:background_quickfaas}), which are not; its GCP
+first-generation Cloud Functions (Section~\ref{sec:background_quickfaas}), which are not. Its GCP
 provider was therefore moved to the Cloud Functions~v2 API, which creates \emph{Cloud Run
 functions}: functions backed by a Cloud Run service~\cite{gcpFunctionsVersionComparison}. Only
 the HTTP trigger, the one internal calls use, was exercised on GCP.
@@ -153,7 +153,7 @@ as its \texttt{serviceName}, the full resource name of the service, which is the
 inspector looks up at Level~1.
 
 All three levels of the ladder and the registry bootstrap therefore cover these functions through
-the Cloud Run clients described above; only the Level~3 deployment itself calls the Cloud Functions
+the Cloud Run clients described above, and only the Level~3 deployment itself calls the Cloud Functions
 API. The resolver validates every registry hit: the URL does not
 identify the generation of the function behind it, since a second-generation function keeps a
 \texttt{cloudfunctions.net} endpoint besides its \texttt{run.app}
@@ -173,7 +173,7 @@ constraint is implementation-level.
 
 \paragraph{Insufficient permissions.}
 If the live lookup used to validate a registry hit is refused (an authorisation failure rather
-than an absence), deployment aborts immediately with a diagnostic naming the function; on GCP no
+than an absence), deployment aborts immediately with a diagnostic naming the function. On GCP, no
 rediscovery is attempted, since a permissions failure gives no information about whether the
 service still exists. The same rule applies on AWS, where a refused \texttt{GetFunction} is
 likewise distinguished from a genuine absence. The distinction is drawn more coarsely on the
@@ -187,15 +187,15 @@ absent everywhere.
 \subsection{Evolution of the Registry Design}
 \label{subsec:registry-evolution}
 
-The registry did not arrive at its current form in a single step; the source tree still exposes
+The registry did not arrive at its current form in a single step, and the source tree still exposes
 the intermediate stages, which makes the design decisions worth recounting. Its starting point was
-the indirection of Section~\ref{sec:dsl-extensions}; three threads describe how it evolved from there.
+the indirection of Section~\ref{sec:dsl-extensions}. Three threads describe how it evolved from there.
 
 \paragraph{From provider-specific fields to a uniform endpoint.}
 Collapsing the endpoint into one \texttt{url} field was the change that made the AWS extension
 cheap. Because \texttt{url} is treated as an opaque, provider-interpreted string (an HTTPS
 endpoint on GCP, a Lambda ARN on AWS), the registry schema did not have to change when the AWS
-provider was added; only the resolver that reads the field and the renderer that consumes it are
+provider was added: only the resolver that reads the field and the renderer that consumes it are
 provider-aware. The registry format is thus the same on both providers.
 
 \paragraph{From a manually edited file to an auto-managed source of truth.}
@@ -203,14 +203,14 @@ The registry also evolved from something the developer would maintain by hand in
 integration maintains automatically, through the bootstrap, registration, refresh and pruning
 listed in Section~\ref{subsec:registry-updates}. In parallel, the single-read snapshot of Section~\ref{subsec:store-internals}
 replaced re-reading the file on every lookup, first in a reference resolver used by the
-benchmarks and then in the two production resolvers; Chapter~\ref{cha:evaluation} quantifies the
+benchmarks and then in the two production resolvers. Chapter~\ref{cha:evaluation} quantifies the
 effect on both.
 
 \paragraph{From a trusted cache to a verified indirection.}
 The two production resolvers did not always treat a registry hit the same way.
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (GCP) validated every hit against the live
 Cloud Run service from the start, because a Cloud Run lookup needs the project/region/service
-triple that only the registry supplies; the one exception, first-generation Cloud Functions, which
+triple that only the registry supplies. The one exception, first-generation Cloud Functions, which
 it returned unchecked, disappeared when QuickFaaS moved to second-generation functions
 (Section~\ref{subsec:gcp-cloud-run-functions}). \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} initially
 trusted a hit outright, returning the cached ARN with no live check, since a Lambda name is
@@ -301,7 +301,7 @@ placeholder to request automatic role creation.
 
 \section{Runtime Invocation}
 \label{sec:runtime-invocation}
-Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Step Functions invokes the Lambda directly, through the native \texttt{arn:aws:states:::lambda:invoke} integration and with the ARN fixed at deployment time. The QuickFaaS template entry point, \texttt{AwsHttpTemplate}, reads only the \texttt{queryStringParameters} of the event it receives, and passes them to the developer's hook function as a map; the response is returned under \texttt{\$.Payload}. An internal call on AWS therefore passes its inputs with \texttt{query(\ldots)}. A call that declares a body is rejected by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} before the ladder runs, rather than rendered into a state machine that would silently drop it. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane.
+Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Step Functions invokes the Lambda directly, through the native \texttt{arn:aws:states:::lambda:invoke} integration and with the ARN fixed at deployment time. The QuickFaaS template entry point, \texttt{AwsHttpTemplate}, reads only the \texttt{queryStringParameters} of the event it receives, and passes them to the developer's hook function as a map. The response is returned under \texttt{\$.Payload}. An internal call on AWS therefore passes its inputs with \texttt{query(\ldots)}. A call that declares a body is rejected by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} before the ladder runs, rather than rendered into a state machine that would silently drop it. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane.
 
 \begin{figure}[htbp]
   \centering
@@ -317,7 +317,7 @@ Internal and external calls are told apart entirely by the renderer,
 carries the \texttt{lambda://} prefix (the marker written by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}),
 the renderer emits a \texttt{Task} whose \texttt{Resource} is
 \texttt{arn:aws:states:::lambda:invoke} and whose \texttt{Parameters} carry the
-\texttt{FunctionName} taken from the resolved ARN; any query terms are forwarded under a
+\texttt{FunctionName} taken from the resolved ARN. Any query terms are forwarded under a
 \texttt{Payload.queryStringParameters} object. Otherwise it emits the original
 \texttt{apigateway:invoke} task with \texttt{ApiEndpoint}, \texttt{Method} and \texttt{Path}. For
 the Lambda form the result is extracted with a \texttt{ResultSelector} that reads
@@ -342,7 +342,7 @@ renders to.
 
 Keeping the internal form as a variant of the existing \texttt{call} renderer (rather than a new
 state type) means the control-flow, result-passing and error-handling machinery that OmniFlow
-already emits for external calls applies unchanged to internal ones; only the \texttt{Resource} and
+already emits for external calls applies unchanged to internal ones: only the \texttt{Resource} and
 the parameter shape differ.
 
 On GCP, an internal call needs no renderer of its own. The resolver has already split the
@@ -350,13 +350,13 @@ On GCP, an internal call needs no renderer of its own. The resolver has already 
 same step it emits for an external call: a \texttt{call: http.post} (or the verb the step
 declares) whose \texttt{args.url} is the resolved URL. Authentication is not added by the
 resolver. It is declared on the call step, as for any external call, with
-\texttt{authentication(\allowbreak authentication \{ type("OIDC") \})}; the renderer then emits \texttt{auth: type: OIDC}, and
+\texttt{authentication(\allowbreak authentication \{ type("OIDC") \})}. The renderer then emits \texttt{auth: type: OIDC}, and
 Cloud Workflows attaches to each request an identity token for the service account the workflow
 runs as. That is the account to which \texttt{QuickFaasDeployer} grants
 \texttt{roles/\allowbreak run.invoker} (Section~\ref{subsec:gcp-cloud-run-functions}). QuickFaaS,
 however, also grants that role to all users, so a function it deploys accepts unauthenticated
 requests as well. While that grant stands, the OIDC token and the grant to the workflow's service
-account are redundant; they become the access control only once the public grant is removed.
+account are redundant, and become the access control only once the public grant is removed.
 
 
 

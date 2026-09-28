@@ -33,7 +33,7 @@ In the state introduced by this work (Figure~\ref{fig:architecture-after}), a si
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/architecture/architecture-after.png}
-  \caption{Unified deployment driven from a single workflow definition; components marked as new/extended are the contribution of this work.}
+  \caption{Unified deployment driven from a single workflow definition. Components marked as new/extended are the contribution of this work.}
   \label{fig:architecture-after}
 \end{figure}
 
@@ -64,7 +64,7 @@ actual deployment is a last resort rather than a default.
   then validated against the live resource (the Cloud Run service on GCP, the Lambda function on
   AWS) with a single lookup in the place the entry records, so that a stale binding cannot be used
   silently. A changed endpoint refreshes the entry. A deleted function is looked for in the other
-  regions: if it is found there, its entry is replaced; otherwise the entry is removed and the
+  regions: if it is found there, its entry is replaced, and if not, the entry is removed and the
   deployment aborts.
   \item \textbf{Level~2 (Provider discovery).} On a registry miss, the target provider is queried
   directly. On GCP this is a Cloud Run lookup across the project's regions, and on AWS a
@@ -75,7 +75,7 @@ actual deployment is a last resort rather than a default.
   metadata is recorded in the registry and used, again \emph{without} triggering a deployment.
   \item \textbf{Level~3 (QuickFaaS deployment).} Only when the function is absent from both the
   registry and the provider, and the call supplied a \texttt{deploymentDescriptorPath}, is QuickFaaS
-  invoked to deploy it; the returned metadata is then registered and used. If no descriptor was
+  invoked to deploy it. The returned metadata is then registered and used. If no descriptor was
   provided, deployment fails fast with a diagnostic naming the unresolved function.
 \end{enumerate}
 
@@ -150,7 +150,7 @@ securing and keeping it available. Second, doing so would reintroduce the
 ``additional runtime layer that must be operated'' that this thesis avoids
 (Section~\ref{ch:related-works}). Third, deployment uses the developer's own
 cloud credentials, resolved locally (e.g., application-default credentials or environment
-variables); a service-to-service design would have to transport or delegate those credentials
+variables). A service-to-service design would have to transport or delegate those credentials
 across a trust boundary, a security liability with no corresponding benefit for a single-developer,
 single-machine build. Finally, for a task that is sequential, local and short-lived, a
 direct invocation has fewer failure modes than a distributed protocol: there are no network
@@ -166,7 +166,7 @@ modifying it. It is also the most brittle part of the integration: it couples th
 systems at run time through a JAR path, and it parses the child process's output. The
 cleaner alternative to the subprocess is \emph{in-process library invocation} (linking QuickFaaS as
 a dependency), which preserves the OmniFlow-drives-QuickFaaS model while removing the process
-boundary; this is discussed as future work (Chapter~\ref{cha:conclusions}) and is a different axis
+boundary. It is discussed as future work (Chapter~\ref{cha:conclusions}) and is a different axis
 from the two-service design rejected above.
 
 \section{DSL Extensions}
@@ -201,7 +201,7 @@ The function registry is a file, one per provider, that contains invocation meta
 Listing~\ref{lst:registry-structure} shows the structure of the file, with one example per
 provider. \texttt{updatedAt} records when the file was last written, and \texttt{functions} maps
 each \texttt{functionRef} to its invocation metadata. The key is the bare reference while it is
-unambiguous; when the same name exists in more than one region, it takes the qualified
+unambiguous, and when the same name exists in more than one region, it takes the qualified
 \texttt{"region/functionRef"} form. Each value has two fields: \texttt{serviceName}, the name the
 function has on the provider (on GCP, the full resource name of the Cloud Run service), and
 \texttt{url}, the value the rendered workflow uses to invoke it: the function's HTTPS endpoint on
@@ -267,12 +267,12 @@ Listing~\ref{lst:quickfaas_json_config}, whose fields are described in
 Section~\ref{subsec:quickfaas-example}, and the function code file it names in \texttt{functionFile}.
 Two of the descriptor's fields matter to the integration beyond deployment. The \texttt{function.name} must
 equal the \texttt{functionRef} used on the call step, because the resolver looks the deployed
-function up under the reference it was given; the consequence of letting them diverge is
+function up under the reference it was given. The consequence of letting them diverge is
 described at the end of
 Section~\ref{sec:walkthrough}. And \texttt{function.location} fixes the region the
 resulting registry entry will point at, which is what a later resolution validates against. The
 descriptor is otherwise the same artifact QuickFaaS has always taken, read now by OmniFlow instead
-of by the developer running QuickFaaS by hand; the AWS variant, which adds an \texttt{iamRoleArn}
+of by the developer running QuickFaaS by hand. The AWS variant, which adds an \texttt{iamRoleArn}
 field for the Lambda execution role, is shown in
 Listing~\ref{lst:aws-descriptor}.
 
@@ -364,7 +364,7 @@ One misconfiguration is not caught before deployment: a \texttt{functionRef} tha
 \texttt{function.name} in its descriptor. The resolver passes the \texttt{functionRef} to the
 deployer as the function's name, while QuickFaaS deploys the function under the descriptor's name,
 and nothing checks that the two agree. When they differ, OmniFlow waits for a function named after
-the \texttt{functionRef}, and the deployment fails when that wait times out; the function that was
+the \texttt{functionRef}, and the deployment fails when that wait times out. The function that was
 deployed is not recorded in the registry.
 
 

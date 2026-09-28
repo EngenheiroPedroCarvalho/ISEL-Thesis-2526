@@ -20,7 +20,7 @@ Step Functions and Google Cloud Workflows. A workflow call names the function it
 stable logical identifier instead of an endpoint, and OmniFlow binds that identifier when the
 workflow is deployed. The binding is a ladder of three levels, each one tried only when the level
 before it fails. The first is a function registry, whose entry is validated against the live
-function; the second, a search of the provider's regions for a function of that name. The third,
+function. The second is a search of the provider's regions for a function of that name. The third,
 reached only once absence is confirmed, is a deployment through QuickFaaS from a deployment
 descriptor. QuickFaaS, previously limited to Google
 Cloud and Azure, was also extended with an AWS Lambda provider, so that the unification covers both

@@ -19,7 +19,7 @@
 \newglossaryentry{bucket}{
 	name={Bucket},
 	description={Storage container in Google Cloud Storage or Amazon S3. QuickFaaS uploads the
-	deployment package to a bucket, from which the provider loads the function code; on AWS, the
+	deployment package to a bucket, from which the provider loads the function code. On AWS, the
 	Lambda function must reside in the same region as its bucket.}
 }
 
@@ -34,7 +34,7 @@
 	name={Deployment descriptor},
 	description={JSON file read by QuickFaaS that holds a function's deployment parameters
 	(provider, project, region, bucket, runtime, trigger) and the path of its code file. An internal
-	call points to it through \texttt{deploymentDescriptorPath}; it is used only at Level~3 of the
+	call points to it through \texttt{deploymentDescriptorPath}, and it is used only at Level~3 of the
 	resolution ladder.}
 }
 
@@ -81,7 +81,7 @@
 	name={First-generation Cloud Function},
 	description={GCP function created through the first-generation Cloud Functions API, with a URL
 	under \texttt{cloudfunctions.net}. It is not a Cloud Run service, so the Function Registry
-	can neither validate nor discover it; the original QuickFaaS deployed functions of this kind.}
+	can neither validate nor discover it. The original QuickFaaS deployed functions of this kind.}
 }
 
 \newglossaryentry{registry}{
@@ -94,7 +94,7 @@
 	name={Function reference},
 	description={Stable logical identifier, written \texttt{functionRef}, that names an internal
 	function in the workflow, the registry and the deployment descriptor. It is a name, not an
-	endpoint; the form \texttt{"region/functionRef"} pins the lookup to a single region.}
+	endpoint. The form \texttt{"region/functionRef"} pins the lookup to a single region.}
 }
 
 \newglossaryentry{functionurl}{

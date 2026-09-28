@@ -72,3 +72,13 @@ Revisão à procura de pormenor excessivo; aplicados só os cortes de prioridade
 - **Cap. 6 (`chapter7.tex`), §6.1 Scope and Goals:** a lista das "seis partes" passa a uma frase com
   remissões para as secções. Em Threats to Validity, retirada a explicação dos dois testes de
   deployment completo do código.
+
+### Pontos e vírgulas desnecessários
+
+Retirados 72 ";" do texto, substituídos por ponto final, vírgula com conjunção ("and",
+"so", "since", "which") ou dois pontos, conforme a relação entre as orações: `abstract-en.tex`,
+`abstract-pt.tex`, capítulos 1, 2, 3, 5, 6, 7 e 8, `appendix-cascade.tex` e `glossary.tex`
+(inclui legendas de figuras e tabelas). A legenda de T11 foi reescrita ("with $I$ internal and $E$
+external calls, $R{=}F{=}10$ fixed"). Ficaram os ";" que separam itens de listas, as células
+abreviadas da tabela de correção (§6.2), as séries com vírgulas internas (grupos do Related Work,
+níveis no glossário, agradecimentos) e o ";" antes da remissão entre parênteses em §3.1.1.

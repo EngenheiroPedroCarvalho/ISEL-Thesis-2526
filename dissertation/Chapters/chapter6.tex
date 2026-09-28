@@ -9,7 +9,7 @@
 
 The previous chapters described the Function Registry and resolution ladder in isolation from
 any particular domain (Chapter~\ref{ch:proposed_solution}) and traced their implementation
-(Chapter~\ref{cha:impl}); Chapter~\ref{cha:evaluation} then measures what they cost. This
+(Chapter~\ref{cha:impl}). Chapter~\ref{cha:evaluation} then measures what they cost. This
 chapter applies those mechanisms to one scenario drawn from retail banking:
 a card-payment authorisation workflow that screens every transaction for fraud before it is
 settled. The scenario is not a validated production deployment. It extends
@@ -34,7 +34,7 @@ them to the gaps assessed in Chapter~\ref{cha:conclusions}.
 Consider a bank that authorises card payments through a workflow rather than a monolithic
 service: each transaction is screened by two independent scoring functions before the bank
 decides whether to settle it. \texttt{fraud-check} is a rules/ML-based service that flags
-transactions matching known fraud patterns; \texttt{risk-score} computes a numeric risk score from
+transactions matching known fraud patterns. \texttt{risk-score} computes a numeric risk score from
 transaction and account features. Both are internal functions owned by the bank's fraud team,
 deployed and iterated on independently of the orchestration logic. A third, external call reports
 each decision to the bank's core banking system, which settles approved transactions. Core banking
@@ -185,7 +185,7 @@ sequence of Figure~\ref{fig:aws-deploy-sequence}. Both ARNs are
 written to the registry, and \texttt{PaymentAuthorization} is deployed as a state machine.
 
 The bank then promotes \texttt{PaymentAuthorization} to its production account. The workflow
-definition does not change; only the descriptors do, since they name the production account's
+definition does not change: only the descriptors do, since they name the production account's
 deployment bucket (and, optionally, its execution role). The production deployment uses its own
 registry file (the deployers accept a registry path, so one per account is a configuration
 choice): OmniFlow bootstraps it from the production account, finds neither scoring function, and
@@ -214,7 +214,7 @@ resolvers and of OmniFlow's renderers, run on Listing~\ref{lst:case-payment-work
 provider replaced by the same kind of test doubles used in Section~\ref{sec:eval-correctness}: a
 lookup that reports each function as absent until it has been deployed, and a deployer that returns
 fixed endpoints. The account ID, the project and the \texttt{run.app} host are therefore
-placeholders; everything else, including the keys and the shape of each file, is what the
+placeholders. Everything else, including the keys and the shape of each file, is what the
 integration writes.
 
 The first deployment to the AWS test account starts from an empty registry. Both scoring calls
@@ -278,7 +278,7 @@ per-provider registry differs.
 Once deployed, the two deployments of \texttt{PaymentAuthorization} differ only in how the two
 scoring calls are invoked. On AWS, Step Functions invokes \texttt{fraud-check} and
 \texttt{risk-score} through the native \texttt{lambda:invoke} integration of
-Section~\ref{sec:runtime-invocation}; on GCP, they are HTTP calls to the resolved \texttt{run.app}
+Section~\ref{sec:runtime-invocation}. On GCP, they are HTTP calls to the resolved \texttt{run.app}
 URLs. The rest of the workflow is the same on both: the \texttt{decision} step becomes a native
 conditional (a \texttt{Choice} state on AWS), and \texttt{report-decision} an ordinary
 external call.

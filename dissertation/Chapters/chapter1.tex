@@ -5,8 +5,8 @@
 
 Cloud computing lets organisations provision computational resources on demand, scale dynamically and avoid the operational burden of maintaining physical hardware. Instead of relying on traditional on-premises infrastructures, organisations increasingly turn to cloud providers for compute, storage, networking and application services, benefiting from economies of scale, rapid deployment and global availability.
 
-The idea of computing delivered as a utility goes back to Parkhill~\cite{parkhill1966challenge};
-it was formalised as cloud computing in the late
+The idea of computing delivered as a utility goes back to Parkhill~\cite{parkhill1966challenge}.
+It was formalised as cloud computing in the late
 2000s~\cite{vaquero2008breaks,buyya2009cloud,armbrust2010view,ibmCloudComputing} and, from the
 introduction of Amazon EC2 in 2006, became the dominant commercial model. Cloud platforms are
 consumed through service models of decreasing operational responsibility (infrastructure, platform
@@ -32,7 +32,7 @@ that is compiled into a provider-specific workflow definition and deployed to th
 workflow engine~\cite{costa2023omniflow}. Each automates one half of a serverless application's
 deployment, and the goal of this work is to unify the two halves, so that a developer can deploy a
 workflow without coordinating function endpoints by hand. The two tools were developed
-independently, however, and act at different stages of the lifecycle; putting them together raises
+independently, however, and act at different stages of the lifecycle, so putting them together raises
 the challenges described below.
 
 \subsection{Disjointed Function Deployment Lifecycle}
@@ -66,7 +66,7 @@ the provider assigns and whose form it defines.
 	function was deployed. On AWS, a Lambda function is invoked through an Amazon Resource Name
 	(ARN) that contains the region and the account ID
 	(\texttt{arn:\allowbreak aws:\allowbreak lambda:\allowbreak <region>:\allowbreak%
-	<account-id>:\allowbreak function:\allowbreak <name>}); on GCP, a Cloud Function's URL
+	<account-id>:\allowbreak function:\allowbreak <name>}). On GCP, a Cloud Function's URL
 	contains the region and the project (Section~\ref{sec:background_quickfaas}). The same function
 	deployed to another account, project or provider therefore has a different endpoint.
 

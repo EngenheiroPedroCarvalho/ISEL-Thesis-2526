@@ -80,7 +80,7 @@ On GCP, the original QuickFaaS provisions a \emph{first-generation} Cloud Functi
 \texttt{https://\allowbreak <region>-\allowbreak <project-id>.\allowbreak cloudfunctions.\allowbreak net/\allowbreak <name>},
 which, unlike a second-generation function, is not a Cloud Run
 service~\cite{gcpFunctionsVersionComparison}. (Google now calls the two generations \emph{Cloud
-Run function (1st gen)} and \emph{Cloud Run function}; this dissertation keeps the generation
+Run function (1st gen)} and \emph{Cloud Run function}. This dissertation keeps the generation
 names, which distinguish the two APIs the code calls.) Because the proposed Function Registry
 validates and discovers GCP functions through the Cloud Run API, this work moves QuickFaaS's GCP
 provider to second-generation functions (Section~\ref{subsec:gcp-cloud-run-functions}).
@@ -177,7 +177,7 @@ Each \textbf{Step} represents a unit of behaviour inside the workflow. A step be
 
 A step cannot be, for example, both an execution and a conditional step. In the concrete DSL~\cite{silva2025advanced, costa2023omniflow}, all four are represented as steps that differ only in their role within the workflow.
 
-The underlying implementation still associates each step with metadata such as a \texttt{name} and, internally, a context object that captures the details of the chosen step kind. For execution steps, this context includes parameters such as HTTP method, host and path or variable assignments; for the other categories, it describes the nested branches or bodies to be executed. This abstraction allows the rest of the dissertation to reason about workflows in terms of a small set of step categories while remaining compatible with the richer, concrete model implemented by OmniFlow and used for rendering provider-specific workflow definitions.
+The underlying implementation still associates each step with metadata such as a \texttt{name} and, internally, a context object that captures the details of the chosen step kind. For execution steps, this context includes parameters such as HTTP method, host and path or variable assignments. For the other categories, it describes the nested branches or bodies to be executed. This abstraction allows the rest of the dissertation to reason about workflows in terms of a small set of step categories while remaining compatible with the richer, concrete model implemented by OmniFlow and used for rendering provider-specific workflow definitions.
 
 
 \subsubsection{Example: Function Chaining}
@@ -267,7 +267,7 @@ CloudFormation, so it inherits that service's resource model and is limited to A
 \emph{federated FaaS}: running the same function across several regions of several providers.
 Following a ``code once, deploy everywhere'' principle, its DSL places the function at the top of a
 three-level hierarchy (function, then providers, then regions). One declaration therefore covers
-every target instead of being repeated per provider and per region; the authors report up to
+every target instead of being repeated per provider and per region. The authors report up to
 9.23$\times$ fewer lines of code than Terraform or the Serverless Framework. A unified storage
 library backs this DSL: one command uploads a deployment package to, or copies it between, the
 storage services of AWS and GCP, so a function can be deployed directly from whichever provider's
@@ -355,7 +355,7 @@ instances that pass a health check~\cite{awsCloudMap}. \textbf{Consul} keeps a s
 the same role, likewise with health checks and DNS lookup~\cite{consulServiceDiscovery}.
 
 Both differ from the Function Registry in when and by whom the name is resolved. A service registry
-is consulted at run time, by the caller, on every lookup; the Function Registry is consulted once,
+is consulted at run time, by the caller, on every lookup. The Function Registry is consulted once,
 at deployment time, and its result is written into the workflow definition, so neither the
 workflow engine nor the function needs to know that a registry exists. A service registry also
 holds only what is registered with it, and deploys nothing, whereas the resolution ladder falls
@@ -432,8 +432,8 @@ account or project, with no shared registry.
 
   \smallskip
   \parbox{\textwidth}{\footnotesize \textsuperscript{a}\,Inherited from QuickFaaS (function
-  portability) and OmniFlow (workflow portability); workflow portability is partial because the
+  portability) and OmniFlow (workflow portability). Workflow portability is partial because the
   integration covers two providers, AWS and GCP.
   \textsuperscript{b}\,A function is found by name across the regions of one account or project,
-  on GCP only among Cloud Run services; there is no shared registry.}
+  on GCP only among Cloud Run services. There is no shared registry.}
 \end{table}

@@ -24,7 +24,7 @@ resolvers in Section~\ref{subsec:store-internals}, one per level of the resoluti
     \par (b) AWS
   \end{minipage}
   \caption{Level~1 (Registry): a registry hit is validated against the live Cloud Run service on
-  GCP (a) and against \texttt{GetFunction} on AWS (b); on a \texttt{NotFound} result, both paths
+  GCP (a) and against \texttt{GetFunction} on AWS (b). On a \texttt{NotFound} result, both paths
   attempt rediscovery (across every region, or in the one region a \texttt{"region/functionRef"}
   reference names) before a stale entry is removed.}
   \label{fig:resolution-cascade-level1}
@@ -45,7 +45,7 @@ resolvers in Section~\ref{subsec:store-internals}, one per level of the resoluti
   \end{minipage}
   \caption{Level~2 (Provider discovery): the target Cloud Run service is searched for across the
   project's regions on GCP (a) and the target Lambda across every region enabled for the account on
-  AWS (b); on both providers, the fully-qualified \texttt{"region/functionRef"} form is resolved
+  AWS (b). On both providers, the fully-qualified \texttt{"region/functionRef"} form is resolved
   with a single lookup in that region.}
   \label{fig:resolution-cascade-level2}
 \end{figure}
@@ -65,7 +65,7 @@ resolvers in Section~\ref{subsec:store-internals}, one per level of the resoluti
   \end{minipage}
   \caption{Level~3 (QuickFaaS deployment): \texttt{QuickFaasDeployer} invokes QuickFaaS, polls
   the Cloud Functions~v2 API until the function is active and grants the workflow's service account
-  \texttt{roles/\allowbreak run.invoker} on its Cloud Run service on GCP (a); \texttt{AwsLambdaDeployer}
+  \texttt{roles/\allowbreak run.invoker} on its Cloud Run service on GCP (a). \texttt{AwsLambdaDeployer}
   invokes QuickFaaS and polls \texttt{GetFunction} until the Lambda is active on AWS (b).
   The operational steps of the AWS branch are traced in Figure~\ref{fig:aws-deploy-sequence}.}
   \label{fig:resolution-cascade-level3}

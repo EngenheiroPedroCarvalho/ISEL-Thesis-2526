@@ -76,19 +76,19 @@ The implementation is that of a prototype, and several limitations should be sta
 \begin{itemize}
   \item \textbf{Static binding.} Endpoints are resolved when the workflow is deployed and embedded
   in the rendered artifact (Section~\ref{sec:resolution-cascade}). An endpoint that changes afterwards
-  reaches a deployed workflow only when that workflow is deployed again; nothing resolves
+  reaches a deployed workflow only when that workflow is deployed again, since nothing resolves
   endpoints at run time.
   \item \textbf{No update path.} The ladder deploys a function only when it is missing and never
   updates one that exists: a change to a function's code is not deployed by a workflow deployment,
   and has to be deployed separately (for example, with QuickFaaS directly).
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
-  or authenticity guarantee, and no cross-process locking; concurrent writers race, and a tampered
+  or authenticity guarantee, and no cross-process locking: concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
   \item \textbf{A per-machine index, not a shared store.} The registry lives in the working
   directory of whoever deploys. The shared record of the deployed functions is the provider itself:
   every registry hit is validated against it, and a missing registry is rebuilt from it. Two
   developers deploying the same workflow therefore converge on the same bindings, but each through
-  their own requests to the provider; they do not share a registry.
+  their own requests to the provider. They do not share a registry.
   \item \textbf{Cloud Run services only on GCP.} Validation, discovery and the bootstrap see
   only Cloud Run services, so first-generation Cloud Functions created outside the integration
   cannot be bound (Section~\ref{subsec:gcp-cloud-run-functions}).
@@ -98,8 +98,8 @@ The implementation is that of a prototype, and several limitations should be sta
   function it deploys to all users, which makes the invoker role granted to the workflow's service
   account redundant (Section~\ref{sec:runtime-invocation}).
   \item \textbf{Brittle integration boundary.} QuickFaaS is invoked as a subprocess, coupling two
-  build systems across a process boundary and detecting errors from the subprocess output; the
-  rationale for this boundary, and the in-process alternative, is discussed in
+  build systems across a process boundary and detecting errors from the subprocess output. The
+rationale for this boundary, and the in-process alternative, is discussed in
   Section~\ref{sec:design-rationale}.
   \item \textbf{Testability of cloud paths.} By design, the classes that call the cloud SDKs have
   no automated coverage, so the integration edges (where production incidents occur) are the

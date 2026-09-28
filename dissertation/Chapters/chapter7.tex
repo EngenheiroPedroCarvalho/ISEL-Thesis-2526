@@ -27,7 +27,7 @@ and out of the unit-test scope by design. The correctness checks replace them wi
 For RQ2, the evaluation therefore isolates what the integration adds: \emph{how much local work
 does the unification layer add to a deployment, how does it scale with the number of calls and
 the size of the registry, and how many requests does it send to the provider?} The first two
-parts are measured; the third is counted from the implementation
+parts are measured, and the third is counted from the implementation
 (Section~\ref{sec:eval-api-calls}).
 
 Section~\ref{sec:eval-correctness} addresses RQ1. Sections~\ref{sec:eval-resolution}
@@ -57,7 +57,7 @@ two tests of the registry bootstrap.
 \begin{table}[htbp]
   \centering
   \caption{Situations covered by the resolver unit tests, with the expected behaviour. Each row is
-  tested on both AWS and GCP unless marked otherwise; every test passes.}
+  tested on both AWS and GCP unless marked otherwise. Every test passes.}
   \label{tab:eval-correctness}
   \begin{tabular}{|p{0.42\textwidth}|p{0.48\textwidth}|}
     \hline
@@ -121,14 +121,14 @@ warm-up iterations and five measurement iterations of one second each
 (\texttt{-f 3 -wi 3 -i 5 -w 1 -r 1}), so each value is the mean of fifteen measured iterations
 across three JVMs, of already-JIT-compiled code. All experiments come from one run of the whole
 suite except T6 and T7, the two experiments on the production resolvers, which were measured in
-later sessions with the same settings on the same machine; where the sessions can be compared,
+later sessions with the same settings on the same machine. Where the sessions can be compared,
 they agree to within a few percent.
 
 \paragraph{Caveat on absolute values.}
 Measurements were taken on an Apple Silicon laptop running macOS, otherwise idle but not a
 dedicated benchmarking machine. With three forks the run-to-run spread is small: the 99.9\%
 confidence interval is under 1\% of the score for half the measurements and under 6\% for nine out
-of ten. The tables omit those intervals for readability; the few points where the interval is a
+of ten. The tables omit those intervals for readability. The few points where the interval is a
 large fraction of the score are identified in the text and should be read as noise. How far the
 values carry over to other hardware is discussed in Section~\ref{sec:eval-threats}.
 
@@ -137,7 +137,7 @@ Experiments keep the identifiers they carry in the benchmark suite: T1--T14 meas
 and the registry, and S1 measures packaging size.
 
 \paragraph{Notation.}
-The experiments share five symbols; what changes between them is the \emph{relationship} among
+The experiments share five symbols. What changes between them is the \emph{relationship} among
 these quantities, summarised in Table~\ref{tab:eval-notation}.
 
 \begin{table}[htbp]
@@ -173,17 +173,17 @@ The first experiment isolates the cost of resolving an internal call against the
 that needs no resolution. It runs the single-read reference resolver over a workflow of $N$ calls
 against a one-entry registry ($R{=}1$), once with every call internal and once with every call
 external. Both variants pay one registry read, because the resolver reads the file before walking
-the tree whether or not anything needs resolving; that read is what the $N{=}1$ figures measure,
+the tree whether or not anything needs resolving. That read is what the $N{=}1$ figures measure,
 about $9.8\,\mu$s (Table~\ref{tab:eval-t1} and Figure~\ref{fig:eval-t1}). The production deployers
-do not pay it for a workflow without internal calls, because they skip resolution altogether; the
+do not pay it for a workflow without internal calls, because they skip resolution altogether. The
 external column is therefore the baseline of the resolver, not the cost of deploying such a
 workflow. What separates the two columns is the per-call work.
 The internal path adds a lookup in the in-memory snapshot, the split of the resolved URL into host
 and path, and the rebuilding of the call node, which together cost about $0.22\,\mu$s per call,
 against about $0.006\,\mu$s for an external call, whose node is left unchanged. Resolving a 200-call
 workflow therefore costs $54.9\,\mu$s, of which the single read is roughly a fifth. Because the
-registry holds one entry, this experiment says nothing about the cost of reading a larger file;
-that is the variable the next experiment isolates. The $N{=}10$ point is noise: its value,
+registry holds one entry, this experiment says nothing about the cost of reading a larger file,
+which is the variable the next experiment isolates. The $N{=}10$ point is noise: its value,
 $16.9 \pm 16.8\,\mu$s, has a confidence interval that reaches almost down to zero.
 
 \begin{figure}[htbp]
@@ -221,8 +221,8 @@ $16.9 \pm 16.8\,\mu$s, has a confidence interval that reaches almost down to zer
     \includegraphics[width=\linewidth]{images/benchmarks/T1_resolution_overhead.png}
   \end{minipage}
   {\captionof{figure}{T1: resolution time of a workflow of $N$ calls, all internal against all external,
-  with $R{=}1$. Both lines start from the one registry read the resolver always performs; only the
-  internal line then grows with $N$. The error bar at $N{=}10$ reaches almost down to zero.}
+  with $R{=}1$. Both lines start from the one registry read the resolver always performs, and only
+the internal line then grows with $N$. The error bar at $N{=}10$ reaches almost down to zero.}
   \label{fig:eval-t1}}
 \end{figure}
 
@@ -272,7 +272,7 @@ change worth making.
     \includegraphics[width=\linewidth]{images/benchmarks/T2_registry_scaling.png}
   \end{minipage}
   {\captionof{figure}{T2: per-call resolution cost as a function of registry size $R$, for $N \in \{1, 10,
-  50, 200\}$ internal calls; the external-call control does not read the registry.}
+  50, 200\}$ internal calls. The external-call control does not read the registry.}
   \label{fig:eval-t2}}
 \end{figure}
 
@@ -437,13 +437,13 @@ response are measured, and only the network round-trip is not. What both measure
 local part of the ladder. The result has the same shape as the already-optimised reference
 implementation: a cost that is one registry read plus a constant per call. Reading down the
 $N{=}1$ column gives the read (plus, on GCP, one validation), which grows with $F$ because
-$R{=}F$; reading along a row gives the per-call work, $0.07$--$0.14\,\mu$s on AWS and about
+$R{=}F$. Reading along a row gives the per-call work, $0.07$--$0.14\,\mu$s on AWS and about
 $0.95\,\mu$s on GCP. Resolving a 200-call workflow against a registry of 10 functions costs
 $29.1\,\mu$s on AWS and $199.1\,\mu$s on GCP.
 
 The GCP resolver costs more per call because it parses the resolved URL into host and path, and
 because its Cloud Run client builds a request and parses a response, work that T6's fake skips
-entirely; the two experiments therefore do not stand in for the provider on equal terms. Either
+entirely. The two experiments therefore do not stand in for the provider on equal terms. Either
 way, the local work of a validation is well under a microsecond per call, whereas the request it
 prepares is a network round-trip to the provider (Section~\ref{sec:eval-api-calls}).
 
@@ -509,7 +509,7 @@ $45.5$ to $59.1\,\mu$s between $K{=}1$ and $K{=}100$, the mild increase expected
 has gained $K$ entries during the run), so the total is linear in $K$, not compounding. Across
 $R_0$, the cost per write grows roughly in proportion to the file: about $45\,\mu$s on an empty
 registry, $114\,\mu$s at $R_0{=}200$ and $490\,\mu$s at $R_0{=}1000$. The registry size is
-therefore not a second-order term for writes as it is for reads; it multiplies the cost of every
+therefore not a second-order term for writes as it is for reads: it multiplies the cost of every
 write.
 
 The miss-then-write pattern at the level of the store
@@ -607,7 +607,7 @@ registry (Table~\ref{tab:eval-t10} and Figure~\ref{fig:eval-t10}).
     \includegraphics[width=\linewidth]{images/benchmarks/T10_resolution_key_match_strategy.png}
   \end{minipage}
   {\captionof{figure}{T10: exact against suffix match in the single-read resolver, $F{=}10$/$N{=}50$
-  fixed (logarithmic vertical axis). Both grow with $R$ because of the read; the suffix path adds
+  fixed (logarithmic vertical axis). Both grow with $R$ because of the read, and the suffix path adds
   a scan of the loaded map on top of it.}
   \label{fig:eval-t10}}
 \end{figure}
@@ -625,8 +625,8 @@ $199\,\mu$s at $R{=}1000$.
 
 \begin{figure}[htbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T11: resolution time ($\mu$s) of a mixed workflow, $R{=}F{=}10$ fixed;
-  $I$ internal vs.\ $E$ external calls.}
+  {\captionsetup{textfont=sf}\captionof{table}{T11: resolution time ($\mu$s) of a mixed workflow with $I$ internal and
+$E$ external calls, $R{=}F{=}10$ fixed.}
   \label{tab:eval-t11}}
   \small
   \begin{tabular}{|r|r|r|r|r|r|r|}
@@ -650,7 +650,7 @@ $199\,\mu$s at $R{=}1000$.
 
 \paragraph{Workflow shape (T13, T14).}
 Nesting depth (T13) leaves the time essentially constant, $15.8$--$19.2\,\mu$s across depths 0--5
-with 20 internal calls held fixed; the depth-2 point ($69.0 \pm 40.8\,\mu$s) is noise, as its own
+with 20 internal calls held fixed. The depth-2 point ($69.0 \pm 40.8\,\mu$s) is noise, as its own
 confidence interval shows. Parallel width (T14) grows only with the total number of internal leaf
 calls ($N = 5\times\text{width}$), at $0.22\,\mu$s per call (the same slope as the flat
 workflows of T1 and T11), from $12.5\,\mu$s at $N{=}5$ to $119\,\mu$s at $N{=}500$
@@ -745,7 +745,7 @@ Table~\ref{tab:eval-api-calls} gives the count for each path through the ladder.
 
 Two requests fall outside the per-call count. The candidate-region list costs one EC2
 \texttt{Describe\allowbreak Regions} on AWS, and one Cloud Run \texttt{locations.list} request per response
-page on GCP; it is fetched lazily, so a deployment whose calls all resolve at Level~1 never pays
+page on GCP. The list is fetched lazily, so a deployment whose calls all resolve at Level~1 never pays
 it. The registry bootstrap, which runs only when the registry file is absent and the workflow has
 internal calls, costs that same region list plus one catalogue request per region and per response
 page: \texttt{ListFunctions} on AWS, \texttt{services.list} on GCP.
@@ -762,7 +762,7 @@ this path has no fixed count.
 For a deployment of $I$ internal calls, the traffic ranges from $I$ requests, when every call hits
 a valid registry entry, to $1 + I \cdot G$ when the registry is empty and the references are bare
 names. The registry is therefore not only a latency optimisation but the mechanism that keeps the
-request count linear in $I$ instead of proportional to $I \cdot G$; a region-qualified reference
+request count linear in $I$ instead of proportional to $I \cdot G$. A region-qualified reference
 buys the same bound for a call that has to miss.
 
 \section{Manual Effort Before and After}
@@ -780,7 +780,7 @@ total amount of configuration, since the deployment descriptor is written either
 hand-carried values. In the separate procedure, four values produced by one step are read by a
 human and typed into the next: the OAuth client ID and secret into the authentication module, the
 resulting \texttt{access\_token} into the descriptor, and the generated trigger URL into the
-workflow definition. A typo in any of the first three stops the function from being deployed; a
+workflow definition. A typo in any of the first three stops the function from being deployed. A
 typo in the URL is the costlier one, because it produces a workflow that deploys successfully and
 fails only at run time. In the integrated procedure that number is zero: the access
 token is taken from Application Default Credentials by the deployer, the invoker permission is
@@ -797,7 +797,7 @@ the registry and from the registry into the rendered workflow.
     \hline
     \textbf{QuickFaaS and OmniFlow used separately} & \textbf{Integrated (this work)} \\
     \hline
-    Create an OAuth 2.0 client in the console; copy the client ID and secret \emph{(2 carried by
+    Create an OAuth 2.0 client in the console and copy its client ID and secret \emph{(2 carried by
     hand)} & Not needed (the deployer uses Application Default Credentials, configured once per machine)
     \\
     \hline
@@ -917,7 +917,7 @@ dominates several of the experiments, so the factor they are most sensitive to i
 than processor speed: on slower storage every registry read and write would cost more, while the
 relationships between experiments would hold. What they support is therefore the shape of each
 cost and the relationships between the experiments, which the shared measurement conditions make
-comparable, rather than the values themselves; the individual points whose confidence intervals
+comparable, rather than the values themselves. The individual points whose confidence intervals
 are wide are identified where they appear and are not used to support any claim.
 
 A second limit is one of provenance: because T6 and T7 come from later measurement sessions
@@ -930,7 +930,7 @@ reports, not that the real AWS and GCP APIs report what the doubles assume. Evid
 live providers was left out of this evaluation by design (Section~\ref{sec:eval-scope}), and its
 absence is a limit of the evidence presented here. Obtaining that evidence means deploying
 workflows that contain internal calls against real accounts on both providers, at each level of the
-ladder; this is listed as future work (Section~\ref{sec:concl-future}).
+ladder. This is listed as future work (Section~\ref{sec:concl-future}).
 
 
 
