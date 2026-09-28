@@ -83,17 +83,18 @@ workflow, the registry and the deployment descriptor. It is not an endpoint: Omn
 one at deployment time.
 
 \paragraph{Function Registry.}
-A file per provider that maps each \texttt{functionRef} to the values needed to invoke it
-(Listing~\ref{lst:registry-structure}). \texttt{updatedAt} records the last write. The key is the
-bare reference, or \texttt{"region/functionRef"} when the same name exists in more than one region.
-Each entry has two fields: \texttt{serviceName}, the function's name on the provider (on GCP, the
-full resource name of the Cloud Run service), and \texttt{url}, what the rendered workflow invokes:
-the HTTPS endpoint on GCP, split by the resolver into \texttt{host} and \texttt{path}, and the ARN
-on AWS, used for a native Lambda invocation. No credentials are stored. The integration writes both
-files, by default in the working directory.
+A file per provider that maps each \texttt{functionRef} to the values needed to invoke it.
+\texttt{updatedAt} records the last write. The key is the bare reference, or
+\texttt{"region/functionRef"} when the same name exists in more than one region. Each entry has two
+fields: \texttt{serviceName}, the function's name on the provider, and \texttt{url}, what the
+rendered workflow invokes. No credentials are stored. The integration writes both files, by
+default in the working directory.
 
-\begin{lstlisting}[caption={Example registry files, one per provider (registry-managed functions only).},label={lst:registry-structure},basicstyle=\ttfamily\footnotesize,breaklines=false]
-function-registry.gcp.json:
+On GCP (Listing~\ref{lst:registry-gcp}), \texttt{serviceName} is the full resource name of the
+Cloud Run service, and \texttt{url} its HTTPS endpoint, which the resolver splits into
+\texttt{host} and \texttt{path}.
+
+\begin{lstlisting}[language=json,caption={Example GCP registry file, \texttt{function-registry.gcp.json}.},label={lst:registry-gcp},float=htbp,basicstyle=\ttfamily\footnotesize,breaklines=false]
 {
   "updatedAt": "2026-02-12T18:40:00Z",
   "functions": {
@@ -103,8 +104,12 @@ function-registry.gcp.json:
     }
   }
 }
+\end{lstlisting}
 
-function-registry.aws.json:
+On AWS (Listing~\ref{lst:registry-aws}), \texttt{serviceName} is the Lambda function's name, and
+\texttt{url} its ARN, used for a native Lambda invocation.
+
+\begin{lstlisting}[language=json,caption={Example AWS registry file, \texttt{function-registry.aws.json}.},label={lst:registry-aws},float=htbp,basicstyle=\ttfamily\footnotesize,breaklines=false]
 {
   "updatedAt": "2026-02-12T18:40:00Z",
   "functions": {
