@@ -3,13 +3,22 @@
 %% appendix-cascade.tex
 %% Resolution ladder sequence diagrams (ported from ISEL-Thesis-2526/thesis/appendix.tex)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\chapter{Sequence Diagrams}
+\chapter{Complete Diagrams}
 \label{app:cascade-sequences}
 
-This appendix gives the complete sequence diagrams that Chapter~\ref{cha:impl} shows in part: the
+This appendix gives the complete diagrams that Chapter~\ref{cha:impl} shows in part: the class
+model of the integration layer (Figure~\ref{fig:omniflow-integration-classes}), presented in four
+parts in Section~\ref{sec:function-registry}; the
 AWS deployment sequence (Figure~\ref{fig:aws-deploy-sequence}), whose Level~3 branch is
 Figure~\ref{fig:aws-deploy-level3}, and one diagram per level of the resolution ladder
 (Section~\ref{sec:resolution-cascade}), with GCP and AWS side by side.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
+  \caption{Class model of the integration layer added to OmniFlow.}
+  \label{fig:omniflow-integration-classes}
+\end{figure}
 
 \begin{figure}[htbp]
   \centering

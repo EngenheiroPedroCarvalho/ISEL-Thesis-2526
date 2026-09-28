@@ -16,27 +16,45 @@ Section~\ref{sec:runtime-invocation} follows a resolved call to its invocation a
 \section{Function Registry and Resolvers}
 \label{sec:function-registry}
 
-Figure~\ref{fig:omniflow-integration-classes} shows the classes added to OmniFlow. Function
-deployment sits behind the \texttt{Internal\allowbreak Function\allowbreak Deployer} strategy, with three implementations:
-\texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the default, which fails
-if invoked), \texttt{QuickFaasDeployer} (GCP) and \texttt{AwsLambdaDeployer} (AWS). Each provider
-deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer},
-\texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a resolver, and both resolvers use the
-\texttt{Function\allowbreak Registry\allowbreak Store}, which stores each binding as a
-\texttt{Function\allowbreak Invocation\allowbreak Metadata} record in the format of
-Listing~\ref{lst:registry-structure}. Supporting another provider means adding one resolver and one
-deployer.
+The classes added to OmniFlow form four groups, presented in turn with one part of the class
+model each: the entry points (Figure~\ref{fig:omniflow-classes-entry}), the Function Registry
+(Figure~\ref{fig:omniflow-classes-registry}), the resolvers and their provider lookups
+(Figure~\ref{fig:omniflow-classes-resolvers}), and the function deployment strategy
+(Figure~\ref{fig:omniflow-classes-deployers}, Section~\ref{sec:function-deployment}). The complete
+model is Figure~\ref{fig:omniflow-integration-classes}, in Appendix~\ref{app:cascade-sequences}.
+
+\paragraph{Entry points.} The two provider deployers,
+\texttt{Google\allowbreak Cloud\allowbreak Deployer} and
+\texttt{Amazon\allowbreak Cloud\allowbreak Deployer}, are where a workflow deployment starts
+(Figure~\ref{fig:omniflow-classes-entry}). If the workflow has internal calls, the deployer first
+has the \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} create the registry if it is
+missing, then passes the workflow to its provider's resolver. It then renders and deploys the
+resolved workflow; a workflow without internal calls skips the first two steps. Supporting another provider means adding
+one resolver and one deployer.
 
 \begin{figure}[tbp]
   \centering
-  \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
-  \caption{Class model of the integration layer added to OmniFlow.}
-  \label{fig:omniflow-integration-classes}
+  \includegraphics[width=0.6\textwidth]{images/implementation/omniflow-classes-entry.png}
+  \caption{Integration classes, part 1: the provider deployers, entry points of a deployment
+  (excerpt of Figure~\ref{fig:omniflow-integration-classes}).}
+  \label{fig:omniflow-classes-entry}
 \end{figure}
 
 \subsection{Creation, Bootstrap and Updates}
 \label{subsec:registry-updates}
-The integration maintains the registry itself:
+Figure~\ref{fig:omniflow-classes-registry} shows the registry classes.
+\texttt{Function\allowbreak Registry\allowbreak Store} reads and writes the file, and stores each
+binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, the
+\texttt{serviceName} and \texttt{url} of Listing~\ref{lst:registry-structure}. The integration
+maintains the registry itself:
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/implementation/omniflow-classes-registry.png}
+  \caption{Integration classes, part 2: the Function Registry and its bootstrap (excerpt of
+  Figure~\ref{fig:omniflow-integration-classes}).}
+  \label{fig:omniflow-classes-registry}
+\end{figure}
 
 \begin{itemize}
     \item \textbf{Bootstrap:} if the file is missing when a workflow with internal calls is
@@ -81,6 +99,9 @@ each reads the registry once, at the start of \texttt{resolve()}, into a snapsho
 call against it, and keeps it in sync with each \texttt{put()} and \texttt{remove()}.
 Chapter~\ref{cha:evaluation} measures both paths.
 
+Figure~\ref{fig:omniflow-classes-resolvers} shows the two resolvers. Each reads and writes the
+registry through the store, looks functions up on its provider, and delegates Level~3 to an
+\texttt{Internal\allowbreak Function\allowbreak Deployer}.
 \texttt{WorkflowInternalFunctionResolver} (GCP) implements the ladder on the Cloud Run API through
 \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Service\allowbreak Inspector}, which looks a
 service up by full name (validation) or by project, region and name (discovery).
@@ -93,7 +114,18 @@ sessions.
 Candidate regions come from GCP's locations API
 (\texttt{Cloud\allowbreak Run\allowbreak Locations\allowbreak V1\allowbreak Rest\allowbreak Client})
 and, since Lambda has no equivalent, from EC2 \texttt{DescribeRegions}
-(\texttt{Ec2Aws\allowbreak Regions\allowbreak Lister}). The workflow's own region is tried first.
+(\texttt{Ec2Aws\allowbreak Regions\allowbreak Lister}, behind the
+\texttt{Aws\allowbreak Regions\allowbreak Lister} interface). The workflow's own region is tried
+first.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.75\textwidth]{images/implementation/omniflow-classes-resolvers.png}
+  \caption{Integration classes, part 3: the two resolvers and the provider lookups they use
+  (excerpt of Figure~\ref{fig:omniflow-integration-classes}).}
+  \label{fig:omniflow-classes-resolvers}
+\end{figure}
+
 A hit that validates unchanged writes nothing, so the registry converges to a complete set of
 bindings. Appendix~\ref{app:cascade-sequences}
 (Figures~\ref{fig:resolution-cascade-level1}--\ref{fig:resolution-cascade-level3}) shows, level by
@@ -131,9 +163,23 @@ check only confirms the binding.
 
 \section{Function Deployment at Level~3}
 \label{sec:function-deployment}
-At Level~3, the resolver hands the call to the provider's
+At Level~3, the resolver hands the call to an
 \texttt{Internal\allowbreak Function\allowbreak Deployer}, which runs QuickFaaS as a subprocess
-(Section~\ref{sec:design-rationale}) and returns the new registry entry. On GCP this required moving
+(Section~\ref{sec:design-rationale}) and returns the new registry entry. The strategy has three
+implementations (Figure~\ref{fig:omniflow-classes-deployers}):
+\texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer}, the default, which fails
+if invoked, so that nothing is deployed unless a deployer is configured;
+\texttt{QuickFaasDeployer} for GCP (Section~\ref{subsec:gcp-cloud-run-functions}); and
+\texttt{AwsLambdaDeployer} for AWS (Section~\ref{subsec:omniflow-aws-deployer}).
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=\textwidth]{images/implementation/omniflow-classes-deployers.png}
+  \caption{Integration classes, part 4: the function deployment strategy used at Level~3 (excerpt
+  of Figure~\ref{fig:omniflow-integration-classes}).}
+  \label{fig:omniflow-classes-deployers}
+\end{figure}
+ On GCP this required moving
 QuickFaaS to second-generation functions; on AWS, a new QuickFaaS provider and an OmniFlow deployer
 that prepares the IAM role and permissions.
 
