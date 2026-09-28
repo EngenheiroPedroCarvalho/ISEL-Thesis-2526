@@ -924,13 +924,14 @@ A second limit is one of provenance: because T6 and T7 come from later measureme
 (Section~\ref{sec:eval-methodology}), their comparison with the reference path of T4 should be read as
 an order-of-magnitude comparison rather than an exact one.
 
-The correctness evidence for RQ1 is local as well. The resolver tests replace the provider with
+The correctness evidence for RQ1 is mostly local. The resolver tests replace the provider with
 test doubles, so they establish that each resolver takes the right decision given what the provider
-reports, not that the real AWS and GCP APIs report what the doubles assume. Evidence against the
-live providers was left out of this evaluation by design (Section~\ref{sec:eval-scope}), and its
-absence is a limit of the evidence presented here. Obtaining that evidence means deploying
-workflows that contain internal calls against real accounts on both providers, at each level of the
-ladder. This is listed as future work (Section~\ref{sec:concl-future}).
+reports, not that the real AWS and GCP APIs report what the doubles assume. The case study
+(Section~\ref{sec:case-artifacts}) checks that assumption on GCP for one workflow, on the paths its
+two deployments take: the registry bootstrap, Levels~2 and~3, and validated Level~1 hits. On AWS it
+remains unchecked. Obtaining that evidence systematically means deploying workflows that contain
+internal calls against real accounts on both providers, at each level of the ladder. This is listed
+as future work (Section~\ref{sec:concl-future}).
 
 
 

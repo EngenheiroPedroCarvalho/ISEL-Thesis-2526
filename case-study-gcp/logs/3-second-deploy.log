@@ -1,0 +1,46 @@
+10:51:02.905 ain] INFO  - Starting to convert Workflow into a Workflow
+[DEPLOY] Checking if function-registry exists at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/function-registry.gcp.json'...
+  ✓ Function-registry found at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/function-registry.gcp.json' (skipping bootstrap)
+10:51:02.908 ain] INFO  - Function Registry found at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/function-registry.gcp.json' (skipping bootstrap). 
+[DEPLOY] Detected 2 internal function(s) in workflow definition
+[DEPLOY] Resolving internal functions (registry lookup → Cloud Run discovery → QuickFaaS deploy)...
+  ✓ All internal functions resolved to live URLs
+[DEPLOY] Rendering workflow DSL to Google Workflows YAML...
+  ✓ Workflow YAML generated (44 lines)
+[DEPLOY] Deploying workflow 'payment-authorization' to Google Cloud Workflows...
+  → Creating Google Workflows client...
+10:51:03.837 ain] INFO  - Creating deployment request for Workflow payment-authorization
+  → Building workflow definition (project=tfm26-509910, zone=europe-west1)...
+  → Sending workflow 'payment-authorization' to Google Cloud Workflows API (async)...
+  → Waiting for workflow creation to complete...
+  ✓ Workflow 'payment-authorization' created successfully on Google Cloud
+10:51:09.763 ain] INFO  - Workflow creation result name: "projects/tfm26-509910/locations/europe-west1/workflows/payment-authorization"
+description: "Case study: real-time fraud detection for card payments"
+state: ACTIVE
+revision_id: "000001-515"
+create_time {
+  seconds: 1790589064
+  nanos: 854321084
+}
+update_time {
+  seconds: 1790589064
+  nanos: 854321084
+}
+revision_create_time {
+  seconds: 1790589064
+  nanos: 880838959
+}
+labels {
+  key: "app"
+  value: "omni-flow"
+}
+labels {
+  key: "case-study"
+  value: "payment-authorization"
+}
+service_account: "projects/tfm26-509910/serviceAccounts/workflow-test@tfm26-509910.iam.gserviceaccount.com"
+source_contents: "main:\n    params: [ transaction ]\n    steps:\n        - fraud-check:\n            call: http.post\n            args:\n                url: https://fraud-check-jllpr4krfq-ew.a.run.app\n                query:\n                    amount: ${transaction.amount}\n                    country: ${transaction.country}\n            result: fraudResult\n        - risk-score:\n            call: http.post\n            args:\n                url: https://risk-score-jllpr4krfq-ew.a.run.app\n                query:\n                    amount: ${transaction.amount}\n            result: riskResult\n        - decision:\n            switch:\n                - condition:\n                    ${fraudResult.body.flagged == true}\n                  next: decline-transaction\n                - condition:\n                    ${riskResult.body.score > 75}\n                  next: decline-transaction\n            next: approve-transaction\n        - approve-transaction:\n            next: report-decision\n            assign:\n                - decision: \'approved\'\n        - decline-transaction:\n            assign:\n                - decision: \'declined\'\n        - report-decision:\n            call: http.post\n            args:\n                url: https://core-banking-stub-jllpr4krfq-ew.a.run.app/\n                query:\n                    decision: ${decision}\n                body: ${transaction}\n            result: coreBankingResult\n        - return_output:\n            return: ${decision}"
+
+10:51:09.764 ain] INFO  - Metadata: ListenableFutureToApiFuture{delegate=TransformFuture@d2291de[status=SUCCESS, result=[com.google.cloud.workflows.v1.OperationMetadata@51c8f62c]]}
+  ✓ Workflow 'payment-authorization' deployed successfully to Google Cloud Workflows
+registry unchanged

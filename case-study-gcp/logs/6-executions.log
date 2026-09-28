@@ -1,0 +1,12 @@
+tx-001:
+Waiting for execution [8f988e77-1b1f-417a-9ef1-5ca5b0fcc0dc] to complete...
+..............done.
+projects/681321020890/locations/europe-west1/workflows/payment-authorization/executions/8f988e77-1b1f-417a-9ef1-5ca5b0fcc0dc	SUCCEEDED	"approved"
+tx-002:
+Waiting for execution [072c0213-589f-4ee0-b56e-cf28136c7294] to complete...
+................done.
+projects/681321020890/locations/europe-west1/workflows/payment-authorization/executions/072c0213-589f-4ee0-b56e-cf28136c7294	SUCCEEDED	"declined"
+tx-003:
+Waiting for execution [55207df9-f6f6-4562-bb6e-f57be374068f] to complete...
+...............done.
+projects/681321020890/locations/europe-west1/workflows/payment-authorization/executions/55207df9-f6f6-4562-bb6e-f57be374068f	SUCCEEDED	"approved"

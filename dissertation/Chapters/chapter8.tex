@@ -60,8 +60,9 @@ follows:
   \item \textbf{Evaluate feasibility and overhead}: \emph{partially met.}
   Chapter~\ref{cha:evaluation} checks the decisions of the resolution ladder on both providers
   and measures the resolution overhead, the registry write path and the packaging size. The
-  evidence is local only: the correctness checks simulate the provider, and the benchmarks ran on
-  a laptop rather than dedicated hardware. End-to-end deployment times were deliberately not
+  evidence is mostly local: apart from the GCP deployment of the case study
+  (Section~\ref{sec:case-artifacts}), the correctness checks simulate the provider, nothing ran
+  against AWS, and the benchmarks ran on a laptop rather than dedicated hardware. End-to-end deployment times were deliberately not
   measured, since they are known to take minutes and are dominated by the provider
   (Section~\ref{sec:eval-scope}). The
   provider calls that validation and discovery make are counted from the code
@@ -81,6 +82,15 @@ The implementation is that of a prototype, and several limitations should be sta
   \item \textbf{No update path.} The ladder deploys a function only when it is missing and never
   updates one that exists: a change to a function's code is not deployed by a workflow deployment,
   and has to be deployed separately (for example, with QuickFaaS directly).
+  \item \textbf{Workflow redeployment.} OmniFlow's deployers create a workflow and cannot update
+  one, so deploying a workflow again means deleting it first (Section~\ref{sec:case-artifacts}). The
+  second deployments described in Sections~\ref{sec:walkthrough} and~\ref{sec:case-artifacts}
+  assume that step.
+  \item \textbf{Bare references and restricted regions.} A bare \texttt{functionRef} that misses
+  the registry is looked for in every region, and a region that refuses the lookup stops the
+  resolution. In a project where some regions are closed by policy, such references abort, and the
+  region-qualified form that avoids the scan ties the definition to one provider's region names
+  (Section~\ref{sec:case-discussion}).
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
   or authenticity guarantee, and no cross-process locking: concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
@@ -125,8 +135,9 @@ structural ones.
   dry-run mode that reports the IAM changes it would make instead of applying them silently.
   \item \textbf{Make the cloud-calling code testable,} extracting the SDK interactions
   behind narrow interfaces so the deploy/IAM/readiness logic can be unit-tested against fakes.
-  \item \textbf{Validate the ladder against live providers,} deploying workflows that contain
-  internal calls to real AWS and GCP accounts at each level of the ladder, so that the correctness
+  \item \textbf{Validate the ladder against live providers,} on AWS, and on GCP beyond the single
+  workflow of Chapter~\ref{cha:case-study}, deploying workflows that contain internal calls at each
+  level of the ladder, so that the correctness
   evidence of Section~\ref{sec:eval-correctness} rests on the providers' own responses rather than
   on test doubles.
   \item \textbf{Extend the provider set,} adding Azure Functions (already a QuickFaaS target)
@@ -142,6 +153,6 @@ through an explicit resolution ladder. In local measurements the overhead of thi
 small and, with the single-read optimisation applied in both production resolvers, grows linearly.
 The solution fits an organisation that deploys one orchestration to several accounts or providers,
 as the case study of Chapter~\ref{cha:case-study} illustrates, or that exposes open-banking
-functions under PSD2. What remains is evidence against the real providers and engineering maturity (registry
+functions under PSD2. What remains is evidence against AWS and engineering maturity (registry
 integrity, least-privilege operation, test coverage of the cloud edges and an update path) to
 take the prototype to production.

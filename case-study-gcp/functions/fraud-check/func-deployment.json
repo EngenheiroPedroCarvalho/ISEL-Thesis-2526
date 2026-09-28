@@ -1,0 +1,13 @@
+{
+  "cloudProvider": "gcp",
+  "accessToken": "",
+  "project": "tfm26-509910",
+  "function": {
+    "name": "fraud-check",
+    "location": "europe-west1",
+    "bucket": "tfm26-quickfaas-deploy",
+    "runtime": "java17",
+    "trigger": { "type": "http" }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}

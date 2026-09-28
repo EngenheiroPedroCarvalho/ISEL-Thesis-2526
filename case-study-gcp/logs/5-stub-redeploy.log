@@ -1,0 +1,103 @@
+HttpRequest[GET /v1/projects] | HttpResponse[200 OK]
+HttpRequest[GET /storage/v1/b?project=tfm26-509910] | HttpResponse[200 OK]
+Building maven project...
+[WARN] Maven will be executed in interactive mode, but no input stream has been configured for this MavenInvoker instance.
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< quickfaas:gcp-http-faas >-----------------------
+[INFO] Building gcp-http-faas 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:resources (default-resources) @ gcp-http-faas ---
+[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.1:compile (default-compile) @ gcp-http-faas ---
+[INFO] Changes detected - recompiling the module!
+[WARNING] File encoding has not been set, using platform encoding UTF-8, i.e. build is platform dependent!
+[INFO] Compiling 2 source files to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/classes
+[INFO] 
+[INFO] --- maven-resources-plugin:2.6:testResources (default-testResources) @ gcp-http-faas ---
+[WARNING] Using platform encoding (UTF-8 actually) to copy filtered resources, i.e. build is platform dependent!
+[INFO] skip non existing resourceDirectory /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/src/test/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.1:testCompile (default-testCompile) @ gcp-http-faas ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- maven-surefire-plugin:2.12.4:test (default-test) @ gcp-http-faas ---
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- maven-jar-plugin:3.2.2:jar (default-jar) @ gcp-http-faas ---
+[INFO] Building jar: /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/gcp-http-faas-1.0.jar
+[INFO] 
+[INFO] --- maven-dependency-plugin:2.8:copy-dependencies (default) @ gcp-http-faas ---
+[INFO] Copying jsr305-3.0.2.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/jsr305-3.0.2.jar
+[INFO] Copying proto-google-iam-v1-1.3.1.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/proto-google-iam-v1-1.3.1.jar
+[INFO] Copying threetenbp-1.6.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/threetenbp-1.6.0.jar
+[INFO] Copying opencensus-api-0.31.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/opencensus-api-0.31.0.jar
+[INFO] Copying google-http-client-apache-v2-1.41.5.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-http-client-apache-v2-1.41.5.jar
+[INFO] Copying google-http-client-jackson2-1.41.5.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-http-client-jackson2-1.41.5.jar
+[INFO] Copying google-api-services-storage-v1-rev20220210-1.32.1.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-api-services-storage-v1-rev20220210-1.32.1.jar
+[INFO] Copying google-http-client-gson-1.41.7.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-http-client-gson-1.41.7.jar
+[INFO] Copying google-http-client-1.41.7.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-http-client-1.41.7.jar
+[INFO] Copying listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar
+[INFO] Copying httpclient-4.5.13.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/httpclient-4.5.13.jar
+[INFO] Copying auto-value-annotations-1.9.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/auto-value-annotations-1.9.jar
+[INFO] Copying google-cloud-core-2.6.1.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-cloud-core-2.6.1.jar
+[INFO] Copying grpc-context-1.45.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/grpc-context-1.45.0.jar
+[INFO] Copying opencensus-contrib-http-util-0.31.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/opencensus-contrib-http-util-0.31.0.jar
+[INFO] Copying api-common-2.1.5.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/api-common-2.1.5.jar
+[INFO] Copying gax-httpjson-0.98.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/gax-httpjson-0.98.0.jar
+[INFO] Copying protobuf-java-util-3.19.4.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/protobuf-java-util-3.19.4.jar
+[INFO] Copying gax-2.16.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/gax-2.16.0.jar
+[INFO] Copying j2objc-annotations-1.3.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/j2objc-annotations-1.3.jar
+[INFO] Copying google-http-client-appengine-1.41.5.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-http-client-appengine-1.41.5.jar
+[INFO] Copying quickfaas-gcp-resources-1.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/quickfaas-gcp-resources-1.0.jar
+[INFO] Copying quickfaas-resources-1.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/quickfaas-resources-1.0.jar
+[INFO] Copying javax.annotation-api-1.3.2.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/javax.annotation-api-1.3.2.jar
+[INFO] Copying jackson-core-2.13.2.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/jackson-core-2.13.2.jar
+[INFO] Copying failureaccess-1.0.1.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/failureaccess-1.0.1.jar
+[INFO] Copying checker-qual-3.21.3.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/checker-qual-3.21.3.jar
+[INFO] Copying protobuf-java-3.19.4.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/protobuf-java-3.19.4.jar
+[INFO] Copying quickfaas-gcp-trigger-http-1.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/quickfaas-gcp-trigger-http-1.0.jar
+[INFO] Copying google-cloud-core-http-2.5.11.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-cloud-core-http-2.5.11.jar
+[INFO] Copying proto-google-common-protos-2.8.3.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/proto-google-common-protos-2.8.3.jar
+[INFO] Copying google-cloud-storage-2.6.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-cloud-storage-2.6.0.jar
+[INFO] Copying cloudevents-api-2.0.0.RC2.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/cloudevents-api-2.0.0.RC2.jar
+[INFO] Copying google-auth-library-credentials-1.6.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-auth-library-credentials-1.6.0.jar
+[INFO] Copying commons-logging-1.2.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/commons-logging-1.2.jar
+[INFO] Copying httpcore-4.4.15.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/httpcore-4.4.15.jar
+[INFO] Copying google-oauth-client-1.33.1.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-oauth-client-1.33.1.jar
+[INFO] Copying functions-framework-api-1.0.4.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/functions-framework-api-1.0.4.jar
+[INFO] Copying gson-2.9.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/gson-2.9.0.jar
+[INFO] Copying error_prone_annotations-2.11.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/error_prone_annotations-2.11.0.jar
+[INFO] Copying commons-codec-1.11.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/commons-codec-1.11.jar
+[INFO] Copying google-auth-library-oauth2-http-1.6.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-auth-library-oauth2-http-1.6.0.jar
+[INFO] Copying google-api-client-1.33.4.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/google-api-client-1.33.4.jar
+[INFO] Copying quickfaas-triggers-1.0.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/quickfaas-triggers-1.0.jar
+[INFO] Copying guava-31.1-jre.jar to /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/function-deployment/java/temporary/quickfaas-tmp-16319900234380092776/target/gcp-function/libs/guava-31.1-jre.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.533 s
+[INFO] Finished at: 2026-09-28T10:56:11+01:00
+[INFO] ------------------------------------------------------------------------
+Storing source code in bucket...
+HttpRequest[POST /upload/storage/v1/b/tfm26-quickfaas-deploy/o?uploadType=resumable&name=quickfaas/core-banking-stub/function-source.zip] | HttpResponse[200 OK]
+HttpRequest[PUT /upload/storage/v1/b/tfm26-quickfaas-deploy/o?uploadType=resumable&name=quickfaas/core-banking-stub/function-source.zip&upload_id=AP6rU83fHo94e9YZir6jNgn9xmemtyNvMjtgappMvKIUQdkBGo1bw3o7BIz5-gCtkz6Sx-VtxSz9mBLfED7frRqUIkR4hOsaBEmvkC1GkcPiAK52] | HttpResponse[200 OK]
+Deploying function 'core-banking-stub'...
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[404 Not Found]
+HttpRequest[POST /v2/projects/tfm26-509910/locations/europe-west1/functions?functionId=core-banking-stub] | HttpResponse[200 OK]
+Waiting for function 'core-banking-stub' to become ACTIVE...
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[GET /v2/projects/tfm26-509910/locations/europe-west1/functions/core-banking-stub] | HttpResponse[200 OK]
+HttpRequest[POST /v2/projects/tfm26-509910/locations/europe-west1/services/core-banking-stub:setIamPolicy] | HttpResponse[200 OK]
+Deployment finished successfully!

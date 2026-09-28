@@ -1,0 +1,21 @@
+{
+  "updatedAt" : "2026-09-28T09:50:43.371639Z",
+  "functions" : {
+    "core-banking-stub" : {
+      "serviceName" : "projects/tfm26-509910/locations/europe-west1/services/core-banking-stub",
+      "url" : "https://core-banking-stub-jllpr4krfq-ew.a.run.app"
+    },
+    "quickfaas-test-fn" : {
+      "serviceName" : "projects/tfm26-509910/locations/europe-west1/services/quickfaas-test-fn",
+      "url" : "https://quickfaas-test-fn-jllpr4krfq-ew.a.run.app"
+    },
+    "europe-west1/fraud-check" : {
+      "serviceName" : "projects/tfm26-509910/locations/europe-west1/services/fraud-check",
+      "url" : "https://fraud-check-jllpr4krfq-ew.a.run.app"
+    },
+    "europe-west1/risk-score" : {
+      "serviceName" : "projects/tfm26-509910/locations/europe-west1/services/risk-score",
+      "url" : "https://risk-score-jllpr4krfq-ew.a.run.app"
+    }
+  }
+}

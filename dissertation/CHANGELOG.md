@@ -87,3 +87,27 @@ níveis no glossário, agradecimentos) e o ";" antes da remissão entre parênte
 
 `abstract-pt.tex`: as duas ocorrências de "cascata" passam a "escada", para acompanhar o termo
 "resolution ladder" do texto em inglês.
+
+### Caso de estudo executado no GCP (cap. 5) e evidência (cap. 6 e 7)
+
+O `PaymentAuthorization` foi implantado e executado no projeto GCP `tfm26-509910` a 28/09; os
+artefactos (workflow, funções, scripts, logs) estão em `case-study-gcp/` na raiz do repositório.
+
+- **Cap. 5 (`chapter6.tex`):**
+  - Abertura: a implantação no GCP foi executada; as do AWS são descritas e produzidas com test
+    doubles.
+  - Listing 5.1: as chamadas de pontuação passam `amount` e `country` como query parameters em vez
+    do mapa `transaction` (um valor de query no Cloud Workflows não pode ser um mapa); o texto que a
+    justifica foi atualizado.
+  - §5.4: o parágrafo inicial passa a referir só o AWS; o parágrafo do GCP foi reescrito com a
+    execução real (referências com região, stub do core banking, bootstrap, Level 3, segunda
+    implantação com Level 1 e registo idêntico, workflow apagado entre as duas). A Listing 5.3 passa
+    a ser o registo real (quatro entradas). Nova Tabela `tab:case-executions` com as três execuções.
+  - §5.6 Discussion: novo parágrafo com os quatro limites que a execução revelou (referências sem
+    região e regiões fechadas, deployer só cria workflows, host literal em formas diferentes nos dois
+    renderers, `getFromJsonBody` do QuickFaaS e o charset do Cloud Workflows).
+- **Cap. 6 (`chapter7.tex`), Threats to Validity:** a evidência passa a ser "mostly local", com a
+  execução do caso de estudo no GCP; no AWS continua por verificar.
+- **Cap. 7 (`chapter8.tex`):** objetivo 4 (evidência "mostly local"), dois itens novos no Critical
+  Assessment ("Workflow redeployment", "Bare references and restricted regions"), trabalho futuro
+  (validar no AWS e no GCP para além de um workflow) e Final Remarks ("evidence against AWS").
