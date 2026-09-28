@@ -15,6 +15,15 @@ Todas as `figure` e `table` de `chapter2.tex`, `chapter3.tex`, `chapter5.tex`, `
 da página e vão para o topo (ou fundo) da página, com o texto seguido. Texto e numeração
 inalterados.
 
+### Pequenas edições de texto e paginação (cap. 2, 3, 6)
+
+- **Cap. 2 (`chapter2.tex`), abertura:** "OmniFlow (workflow definition/deployment) and QuickFaaS
+  (function definition/deployment)" passa a só "OmniFlow and QuickFaaS".
+- **Cap. 3 (`chapter3.tex`):** três dois-pontos passam a vírgulas: no parágrafo sobre o passo
+  `Call` e nos parágrafos sobre as Figuras `fig:architecture-before` e `fig:architecture-after`.
+- **Cap. 6 (`chapter7.tex`):** as Tabelas T6 e T7, e T8 e T9, passam a ficar lado a lado, cada par
+  num só float com duas `minipage`. Conteúdo e numeração inalterados.
+
 No cap. 6 (`chapter7.tex`, §6.5), as tabelas T6/T7 (resolvers de produção AWS e GCP) e T8/T9
 (caminho de escrita) passam a estar lado a lado, duas a duas, num só float cada par, como já
 estavam as duas tabelas da T4. A T11 (sete colunas) fica sozinha.
