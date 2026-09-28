@@ -54,7 +54,7 @@ semantics prescribe (Section~\ref{sec:walkthrough} and Section~\ref{subsec:valid
 expected behaviour in every case: all 46 resolver tests (23 for AWS, 23 for GCP) pass, as do the
 two tests of the registry bootstrap.
 
-\begin{table}[htbp]
+\begin{table}[tbp]
   \centering
   \caption{Situations covered by the resolver unit tests, with the expected behaviour. Each row is
   tested on both AWS and GCP unless marked otherwise. Every test passes.}
@@ -141,7 +141,7 @@ Table~\ref{tab:eval-notation} lists the symbols the experiments share. What chan
 experiments is the \emph{relationship} among these quantities. The count of provider requests in
 Section~\ref{sec:eval-api-calls} adds one more, $G$, defined there.
 
-\begin{table}[htbp]
+\begin{table}[tbp]
   \centering
   \caption{Notation used throughout the evaluation.}
   \label{tab:eval-notation}
@@ -191,7 +191,7 @@ registry holds one entry, this experiment says nothing about the cost of reading
 which is the variable the next experiment isolates. The $N{=}10$ point is noise: its value,
 $16.9 \pm 16.8\,\mu$s, has a confidence interval that reaches almost down to zero.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T1: resolution time ($\mu$s) of a workflow of $N$ calls, all internal vs.\ all
   external, with $R{=}1$. Both columns include the one registry read the resolver always performs.}
@@ -247,7 +247,7 @@ functions of a realistic system therefore sits around or below that crossover, w
 dominates, which is what makes reading it once per workflow (rather than once per call) the
 change worth making.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T2: per-call resolution cost as a function of registry size $R$, with the registry
   re-read on every internal call: total time divided by $N$, averaged over $N \in \{1, 10, 50,
@@ -291,7 +291,7 @@ in the number of calls) and reduces to the cost of one read of an $R$-entry file
 therefore grows with the product $N \cdot R$, reaching $200\times$ in the largest configuration measured
 ($N{=}200$, $R{=}1000$: $36.7$\,ms down to $0.18$\,ms).
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T3: total resolution time ($\mu$s), naive (per-call read) vs.\ optimised (single
   read).}
@@ -329,7 +329,7 @@ $10.2$ to $18.5\,\mu$s as $F$ goes from 1 to 50.
 The speedup is therefore $1\times$ at $N{=}1$, where both paths read the file exactly once, and
 climbs to $38\times$ ($F{=}1$) and $58\times$ ($F{=}50$) at $N{=}200$.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
@@ -388,7 +388,7 @@ the 50 calls, the optimised path reads it once, so the gap widens from $26\times
 $46\times$ at $R{=}1000$ (Table~\ref{tab:eval-t5} and Figure~\ref{fig:eval-t5}). The optimised
 column is the cost of one read plus 50 lookups, and tracks the per-read cost measured in T2.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T5: resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
   \label{tab:eval-t5}}
@@ -452,57 +452,59 @@ entirely. The two experiments therefore do not stand in for the provider on equa
 way, the local work of a validation is at most about a microsecond per call, whereas the request it
 prepares is a network round-trip to the provider (Section~\ref{sec:eval-api-calls}).
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T6: AWS provider: resolution time ($\mu$s) of the real resolver
-  (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with the
-  single-read optimisation.}
-  \label{tab:eval-t6}}
-  \small
-  \begin{tabular}{|l|r|r|r|r|r|}
-    \hline
-    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
-    \hline
-    1  & 9.9  & 10.3 & 10.9 & 13.8 & 24.6 \\
-    \hline
-    2  & 10.2 & 11.0 & 11.4 & 14.7 & 26.3 \\
-    \hline
-    5  & 11.0 & 11.2 & 11.7 & 15.3 & 27.6 \\
-    \hline
-    10 & 11.7 & 12.2 & 12.7 & 16.3 & 29.1 \\
-    \hline
-    20 & 14.4 & 14.8 & 14.4 & 19.7 & 34.5 \\
-    \hline
-    50 & 20.0 & 20.3 & 20.3 & 26.6 & 47.5 \\
-    \hline
-  \end{tabular}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T7: GCP provider: resolution time ($\mu$s) of the real resolver
-  (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with
-  the single-read optimisation and with every hit validated
-  through a Cloud Run client answered locally.}
-  \label{tab:eval-t7}}
-  \small
-  \begin{tabular}{|l|r|r|r|r|r|}
-    \hline
-    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
-    \hline
-    1  & 11.8 & 15.8 & 21.3 & 59.3 & 207.1 \\
-    \hline
-    2  & 12.1 & 16.4 & 21.3 & 61.3 & 209.1 \\
-    \hline
-    5  & 13.0 & 17.5 & 21.9 & 62.4 & 211.5 \\
-    \hline
-    10 & 15.1 & 18.4 & 23.1 & 60.2 & 199.1 \\
-    \hline
-    20 & 15.4 & 19.2 & 24.0 & 61.5 & 205.9 \\
-    \hline
-    50 & 21.9 & 25.6 & 30.6 & 67.5 & 209.0 \\
-    \hline
-  \end{tabular}
+  \begin{minipage}[b]{0.48\textwidth}
+    \centering
+    {\captionsetup{textfont=sf}\captionof{table}{T6: AWS provider: resolution time ($\mu$s) of the real resolver
+    (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with the
+    single-read optimisation.}
+    \label{tab:eval-t6}}
+    \small
+    \begin{tabular}{|l|r|r|r|r|r|}
+      \hline
+      $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+      \hline
+      1  & 9.9  & 10.3 & 10.9 & 13.8 & 24.6 \\
+      \hline
+      2  & 10.2 & 11.0 & 11.4 & 14.7 & 26.3 \\
+      \hline
+      5  & 11.0 & 11.2 & 11.7 & 15.3 & 27.6 \\
+      \hline
+      10 & 11.7 & 12.2 & 12.7 & 16.3 & 29.1 \\
+      \hline
+      20 & 14.4 & 14.8 & 14.4 & 19.7 & 34.5 \\
+      \hline
+      50 & 20.0 & 20.3 & 20.3 & 26.6 & 47.5 \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[b]{0.48\textwidth}
+    \centering
+    {\captionsetup{textfont=sf}\captionof{table}{T7: GCP provider: resolution time ($\mu$s) of the real resolver
+    (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, with
+    the single-read optimisation and with every hit validated
+    through a Cloud Run client answered locally.}
+    \label{tab:eval-t7}}
+    \small
+    \begin{tabular}{|l|r|r|r|r|r|}
+      \hline
+      $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+      \hline
+      1  & 11.8 & 15.8 & 21.3 & 59.3 & 207.1 \\
+      \hline
+      2  & 12.1 & 16.4 & 21.3 & 61.3 & 209.1 \\
+      \hline
+      5  & 13.0 & 17.5 & 21.9 & 62.4 & 211.5 \\
+      \hline
+      10 & 15.1 & 18.4 & 23.1 & 60.2 & 199.1 \\
+      \hline
+      20 & 15.4 & 19.2 & 24.0 & 61.5 & 205.9 \\
+      \hline
+      50 & 21.9 & 25.6 & 30.6 & 67.5 & 209.0 \\
+      \hline
+    \end{tabular}
+  \end{minipage}
 \end{figure}
 
 \paragraph{Registry write path (T8, T9).}
@@ -526,50 +528,54 @@ in the snapshot with \texttt{tryResolveEntryIn}, so their writes cost what T8 me
 disagrees, $K{=}10$ at $R_0{=}10$, and its confidence interval ($\pm732\,\mu$s on a mean of
 $874\,\mu$s) says it is noise rather than an effect.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T8: total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
-  size $R_0$.}
-  \label{tab:eval-t8}}
-  \small
-  \begin{tabular}{|l|r|r|r|r|r|}
-    \hline
-    $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
-    \hline
-    1   & 45.5     & 48.2     & 63.8     & 114       & 490       \\
-    \hline
-    5   & 224      & 242      & 329      & 529       & 1\,945    \\
-    \hline
-    10  & 463      & 496      & 640      & 1\,041    & 3\,751    \\
-    \hline
-    50  & 2\,517   & 2\,706   & 3\,650   & 5\,363    & 17\,942   \\
-    \hline
-    100 & 5\,914   & 6\,693   & 7\,594   & 11\,515   & 36\,195   \\
-    \hline
-  \end{tabular}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T9: total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
-  registry size $R_0$.}
-  \label{tab:eval-t9}}
-  \small
-  \begin{tabular}{|l|r|r|r|r|r|}
-    \hline
-    $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
-    \hline
-    1   & 57.2     & 62.7     & 90.2     & 164       & 686       \\
-    \hline
-    5   & 298      & 323      & 427      & 769       & 2\,901    \\
-    \hline
-    10  & 597      & 874      & 973      & 1\,557    & 5\,751    \\
-    \hline
-    50  & 3\,265   & 3\,510   & 5\,051   & 8\,144    & 28\,694   \\
-    \hline
-    100 & 8\,369   & 8\,307   & 10\,516  & 17\,689   & 58\,572   \\
-    \hline
-  \end{tabular}
+  \begin{minipage}[b]{0.48\textwidth}
+    \centering
+    {\captionsetup{textfont=sf}\captionof{table}{T8: total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
+    size $R_0$.}
+    \label{tab:eval-t8}}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{|l|r|r|r|r|r|}
+      \hline
+      $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
+      \hline
+      1   & 45.5     & 48.2     & 63.8     & 114       & 490       \\
+      \hline
+      5   & 224      & 242      & 329      & 529       & 1\,945    \\
+      \hline
+      10  & 463      & 496      & 640      & 1\,041    & 3\,751    \\
+      \hline
+      50  & 2\,517   & 2\,706   & 3\,650   & 5\,363    & 17\,942   \\
+      \hline
+      100 & 5\,914   & 6\,693   & 7\,594   & 11\,515   & 36\,195   \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[b]{0.48\textwidth}
+    \centering
+    {\captionsetup{textfont=sf}\captionof{table}{T9: total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
+    registry size $R_0$.}
+    \label{tab:eval-t9}}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{|l|r|r|r|r|r|}
+      \hline
+      $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
+      \hline
+      1   & 57.2     & 62.7     & 90.2     & 164       & 686       \\
+      \hline
+      5   & 298      & 323      & 427      & 769       & 2\,901    \\
+      \hline
+      10  & 597      & 874      & 973      & 1\,557    & 5\,751    \\
+      \hline
+      50  & 3\,265   & 3\,510   & 5\,051   & 8\,144    & 28\,694   \\
+      \hline
+      100 & 8\,369   & 8\,307   & 10\,516  & 17\,689   & 58\,572   \\
+      \hline
+    \end{tabular}
+  \end{minipage}
 \end{figure}
 
 \section{Match Strategy, Mixed Workflows, and Structure}
@@ -582,7 +588,7 @@ to exact match grows steadily from $1.28\times$ at $R{=}10$ to $1.95\times$ at $
 stays cheap in absolute terms: $391\,\mu$s for fifty suffix lookups over a thousand-entry
 registry (Table~\ref{tab:eval-t10} and Figure~\ref{fig:eval-t10}).
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T10: exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
   \label{tab:eval-t10}}
@@ -628,7 +634,7 @@ registry-size effect shown in T5 is unchanged when a fraction of the calls are e
 $I{=}40$ internal calls the cost still tracks the one read, from $20\,\mu$s at $R{=}10$ to
 $199\,\mu$s at $R{=}1000$.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T11: resolution time ($\mu$s) of a mixed workflow with $I$ internal and
 $E$ external calls, $R{=}F{=}10$ fixed.}
@@ -663,7 +669,7 @@ workflows of T1 and T11), from $12.5\,\mu$s at $N{=}5$ to $119\,\mu$s at $N{=}50
 \texttt{Iteration} and \texttt{Parallel} contexts, the shape of the tree is irrelevant: only the
 count of internal calls matters.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T14: resolution time ($\mu$s) vs.\ \texttt{Parallel} branch width,
   $N = 5\times$ width, $R{=}F{=}10$.}
@@ -722,7 +728,7 @@ cached in the resolver, and a region scan is paid only by the calls that miss.
 
 Table~\ref{tab:eval-api-calls} gives the count for each path through the ladder.
 
-\begin{table}[htbp]
+\begin{table}[tbp]
   \centering
   \caption{Provider API requests issued per internal call, by ladder path, counted from the
   implementation. $G$ is the number of candidate regions.}
@@ -792,7 +798,7 @@ token is taken from Application Default Credentials by the deployer, the invoker
 granted by the deployer, and the endpoint never leaves the tool: it goes from the provider into
 the registry and from the registry into the rendered workflow.
 
-\begin{table}[htbp]
+\begin{table}[tbp]
   \centering
   \caption{Developer actions required to make one function available to one workflow on GCP.
   ``Carried by hand'' counts values produced by one step that the developer must read and re-enter
@@ -850,7 +856,7 @@ implementation of the same logic. The provider-agnostic layer adds about $0.9$\,
 bundle, and proportionally less for a function with real dependencies), consistent with the original QuickFaaS
 evaluation for GCP and Azure~\cite{rodrigues2022quickfaas}.
 
-\begin{table}[htbp]
+\begin{table}[tbp]
   \centering
   \small
   \caption{S1: Lambda bundle size, provider-agnostic layer vs.\ native implementation.}

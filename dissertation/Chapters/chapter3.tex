@@ -3,7 +3,7 @@
 
 This chapter introduces the core idea of the proposed OmniFlow-QuickFaaS integration. The objective is to reduce the manual work required to deploy workflows that depend on serverless functions, while keeping the workflow definition readable and stable.
 
-In the reference OmniFlow usage, a \texttt{Call} step is expressed as an HTTP request: the developer supplies concrete invocation details such as \texttt{method}, \texttt{host} and \texttt{path}. The proposed solution lets the developer name a function they own on the call step instead, through a dedicated \texttt{internalFunction(name, deploymentDescriptorPath)} construct, and resolves its endpoint automatically at deployment time. This enables a single, workflow-first deployment that resolves (or, if needed, provisions) the required functions and then deploys the workflow to the chosen cloud provider.
+In the reference OmniFlow usage, a \texttt{Call} step is expressed as an HTTP request, the developer supplies concrete invocation details such as \texttt{method}, \texttt{host} and \texttt{path}. The proposed solution lets the developer name a function they own on the call step instead, through a dedicated \texttt{internalFunction(name, deploymentDescriptorPath)} construct, and resolves its endpoint automatically at deployment time. This enables a single, workflow-first deployment that resolves (or, if needed, provisions) the required functions and then deploys the workflow to the chosen cloud provider.
 
 Section~\ref{sec:components-architecture} presents the components the integration adds.
 Section~\ref{sec:dsl-extensions} describes the \texttt{internal\allowbreak Function} construct and the concepts
@@ -21,18 +21,18 @@ The proposed integration keeps the original OmniFlow workflow model but extends 
 
 Figures~\ref{fig:architecture-before} and~\ref{fig:architecture-after} contrast the developer workflow before and after the integration proposed in this dissertation.
 
-In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaaS are used independently. The developer first deploys each function with QuickFaaS in a separate manual step, retrieves the resulting invocation endpoint, and copies it by hand into the workflow definition before deploying the workflow: the manual synchronisation described in Section~\ref{sec:int_cha_int_uni_multi}, with the ordering it imposes and the errors it invites. Moreover, QuickFaaS offered no AWS path at all (Section~\ref{sec:int_objectives}). The two lifecycle concerns, function deployment and workflow deployment, are therefore completely disconnected.
+In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaaS are used independently. The developer first deploys each function with QuickFaaS in a separate manual step, retrieves the resulting invocation endpoint, and copies it by hand into the workflow definition before deploying the workflow, the manual synchronisation described in Section~\ref{sec:int_cha_int_uni_multi}, with the ordering it imposes and the errors it invites. Moreover, QuickFaaS offered no AWS path at all (Section~\ref{sec:int_objectives}). The two lifecycle concerns, function deployment and workflow deployment, are therefore completely disconnected.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=0.85\textwidth]{images/architecture/architecture-before.png}
   \caption{OmniFlow and QuickFaaS operate as two disjoint tools.}
   \label{fig:architecture-before}
 \end{figure}
 
-In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver, backed by a registry file of its own that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. The two halves of the contribution are visible in a single view: the AWS provider inside QuickFaaS and the resolver–registry layer that unifies function and workflow deployment.
+In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver, backed by a registry file of its own that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. The two halves of the contribution are visible in a single view, the AWS provider inside QuickFaaS and the resolver–registry layer that unifies function and workflow deployment.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\textwidth]{images/architecture/architecture-after.png}
   \caption{Unified deployment driven from a single workflow definition. Components marked as new/extended are the contribution of this work.}
@@ -58,7 +58,7 @@ Of the step categories introduced in Section~\ref{sec:background_omniflow}, this
 
 Figure~\ref{fig:call-step-model} shows how the \texttt{call} step is extended to express calls whose endpoint is resolved automatically. In the original design, a \texttt{CallContext} carries the literal HTTP fields \texttt{host} and \texttt{path}. This work adds an optional association to an \texttt{InternalFunction}, which holds a logical \texttt{name} (the \texttt{functionRef}) and an optional \texttt{deploymentDescriptorPath}. The two construction paths are \emph{mutually exclusive}: a call sets either \texttt{host}/\texttt{path} or \texttt{internalFunction}, never both, since for the latter \texttt{host} and \texttt{path} are injected at deployment time by the resolution mechanism. Keeping this form as an alternative on the existing step, rather than introducing a new step type, means developers continue to describe calls with the same HTTP vocabulary.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=0.8\textwidth]{images/dsl-extension/call-step-model.png}
   \caption[Extended model of the \texttt{call} execution step.]{Extended model of the

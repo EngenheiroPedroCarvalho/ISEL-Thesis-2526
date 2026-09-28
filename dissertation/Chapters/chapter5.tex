@@ -23,7 +23,7 @@ through to its actual invocation once the workflow has been deployed.
 \label{sec:function-registry}
 
 Figure~\ref{fig:omniflow-integration-classes} details the classes that realise the unification inside OmniFlow. Function deployment is abstracted behind the \texttt{InternalFunctionDeployer} interface, following the strategy pattern, with three implementations: \texttt{Noop\allowbreak Internal\allowbreak Function\allowbreak Deployer} (the safe default, which raises if invoked), \texttt{QuickFaasDeployer} (GCP), and \texttt{AwsLambdaDeployer} (AWS). Each provider deployer (\texttt{Google\allowbreak Cloud\allowbreak Deployer}, \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}) owns a provider-specific resolver, and both resolvers share two collaborators: the \texttt{Function\allowbreak Registry\allowbreak Store} and the deployer strategy. The store persists each binding as a \texttt{Function\allowbreak Invocation\allowbreak Metadata} record, in the file format of Listing~\ref{lst:registry-structure}. The \texttt{Function\allowbreak Registry\allowbreak Bootstrapper} populates a missing registry by discovery. This structure keeps the two providers symmetric and makes the deployer the extension point: supporting a further platform means adding one resolver and one \texttt{InternalFunctionDeployer}, without touching the existing ones.
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/omniflow-integration-classes.png}
   \caption{Class model of the integration layer added to OmniFlow.}
@@ -105,7 +105,11 @@ looks a service up by its full name to validate a hit, and by project, region an
 discovery.
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} follows the same shape on the
 Lambda API. It reads the region to validate from the stored ARN, and consults the Lambda API
-through the \texttt{Lambda\allowbreak Function\allowbreak Inspector} interface.
+through the \texttt{Lambda\allowbreak Function\allowbreak Inspector} interface. Its implementation,
+like the region lister and the bootstrap catalog, builds its AWS clients with the SDK's
+\texttt{Environment\allowbreak Variable\allowbreak Credentials\allowbreak Provider}, so OmniFlow
+reads the AWS credentials only from environment variables (\texttt{AWS\_ACCESS\_KEY\_ID},
+\texttt{AWS\_SECRET\_ACCESS\_KEY}), not from a shared profile or an SSO session.
 
 Region discovery is itself provider-specific. GCP already exposed a project-scoped locations API,
 queried through
@@ -143,7 +147,11 @@ If the live lookup used to validate a registry hit is refused (an authorisation 
 than an absence), deployment aborts immediately with a diagnostic naming the function. On GCP, no
 rediscovery is attempted, since a permissions failure gives no information about whether the
 service still exists. The same rule applies on AWS, where a refused \texttt{GetFunction} is
-likewise distinguished from a genuine absence. The distinction is drawn more coarsely when a
+likewise distinguished from a genuine absence. What counts as a refusal differs, however: on GCP
+it is an HTTP 403 (or a response without a service URL), and any other error status aborts the
+deployment at once, whereas on AWS it is any Lambda API error other than
+\texttt{Resource\allowbreak Not\allowbreak Found\allowbreak Exception}, so throttling and transient
+service errors are also reported as refusals. The distinction is drawn more coarsely when a
 registry miss is searched for across regions, on both providers. While the scan is running, a region where the lookup is
 refused is simply excluded from the candidate set, the same as a region where the function is
 absent, so a permissions gap in one region does not by itself stop a match found elsewhere. If the
@@ -234,7 +242,7 @@ that points to one fails validation like a deleted service.
 \label{subsec:aws-lambda-deployment}
 Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{Create\allowbreak State\allowbreak Machine}, and expands the longest path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment (UML notation for alternative branches) has one branch for each of the three levels of the resolution ladder described in Section~\ref{sec:resolution-cascade}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work described step by step in Section~\ref{subsec:omniflow-aws-deployer}. The ARN it returns is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{Create\allowbreak State\allowbreak Machine}.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/aws-deploy-sequence.png}
   \caption{Deployment sequence on AWS, with one branch per level of the resolution ladder and
@@ -314,7 +322,7 @@ placeholder to request automatic role creation.
 \label{sec:runtime-invocation}
 Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Step Functions invokes the Lambda directly, through the native \texttt{arn:aws:states:::lambda:invoke} integration and with the ARN fixed at deployment time. The QuickFaaS template entry point, \texttt{AwsHttpTemplate}, reads only the \texttt{queryStringParameters} of the event it receives, and passes them to the developer's hook function as a map. The response is returned under \texttt{\$.Payload}. An internal call on AWS therefore passes its inputs with \texttt{query(\ldots)}. A call that declares a body is rejected by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} before the ladder runs, rather than rendered into a state machine that would silently drop it. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane.
 
-\begin{figure}[htbp]
+\begin{figure}[tbp]
   \centering
   \includegraphics[width=0.8\textwidth]{images/implementation/aws-runtime-invocation.png}
   \caption{Runtime invocation of an internal function on AWS via the native

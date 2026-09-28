@@ -235,8 +235,7 @@ Section~\ref{sec:int_cha_int_uni_multi}, which the proposed solution removes.
 \section{Related Work}
 \label{ch:related-works}
 
-The proposed integration between \textit{OmniFlow} (workflow definition/deployment) and \textit{QuickFaaS} (function definition/deployment)
-sits at the intersection of two problem areas: (i) composing and deploying workflows without being forced to embed provider-specific workflow specifications and (ii) deploying cloud functions with reduced provider coupling.
+The proposed integration between \textit{OmniFlow} and \textit{QuickFaaS} sits at the intersection of two problem areas: (i) composing and deploying workflows without being forced to embed provider-specific workflow specifications and (ii) deploying cloud functions with reduced provider coupling.
 Although each deployment target in this dissertation is a \emph{single provider at a time} (Section~\ref{sec:int_cha_int_uni_multi}), portability concerns remain relevant because developers still want to avoid hard-coding endpoints and to preserve the ability to migrate or re-deploy the same application in another provider with minimal changes.
 
 This section reviews the tools, frameworks and methods surveyed in the QuickFaaS
@@ -384,7 +383,7 @@ when a function is missing, with its deployment on demand. The table also marks 
 this work: its workflow portability covers two providers, and its discovery is confined to one
 account or project, with no shared registry.
 
-\begin{table}[htbp]
+\begin{table}[tbp]
   \centering
   \small
   \caption{Positioning of the surveyed families against this thesis's dimensions

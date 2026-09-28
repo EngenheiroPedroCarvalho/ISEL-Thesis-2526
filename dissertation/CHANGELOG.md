@@ -8,6 +8,17 @@ este ficheiro.)
 
 ## 2026-09-28
 
+### Figuras e tabelas deixam de interromper o texto (cap. 2, 3, 4, 5, 6)
+
+Todas as `figure` e `table` de `chapter2.tex`, `chapter3.tex`, `chapter5.tex`, `chapter6.tex` e
+`chapter7.tex` passaram de `[htbp]` para `[tbp]`: deixam de ser colocadas entre parágrafos a meio
+da página e vão para o topo (ou fundo) da página, com o texto seguido. Texto e numeração
+inalterados.
+
+No cap. 6 (`chapter7.tex`, §6.5), as tabelas T6/T7 (resolvers de produção AWS e GCP) e T8/T9
+(caminho de escrita) passam a estar lado a lado, duas a duas, num só float cada par, como já
+estavam as duas tabelas da T4. A T11 (sete colunas) fica sozinha.
+
 ### Caso de estudo executado também no AWS (cap. 5, `chapter6.tex`)
 
 O deploy na conta AWS de teste deixou de ser descrito com test doubles: foi executado numa conta
@@ -63,3 +74,14 @@ real (evidência em `case-study-aws/`), depois de corrigido o renderer AWS (merg
   Nível 1); saiu "On AWS it remains unchecked". Os caminhos que continuam sem verificação contra as
   APIs reais passam a ser nomeados: os abortos por entradas obsoletas, nomes ambíguos e regiões
   inacessíveis.
+
+### Diferenças AWS/GCP na procura de funções (cap. 4, `chapter5.tex`)
+
+- **§4.1.3 "Registry Store and Resolver Internals":** nova frase: do lado do OmniFlow, o inspector
+  Lambda, o `AwsRegionsLister` e o catálogo do bootstrap usam `EnvironmentVariableCredentialsProvider`,
+  por isso as credenciais AWS vêm só de `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (não de perfis
+  partilhados nem de SSO).
+- **§4.1.4 "Validation and Error Semantics", parágrafo "Insufficient permissions":** nova frase:
+  no GCP, uma recusa é um HTTP 403 (ou uma resposta sem URL do serviço) e os outros códigos de erro
+  abortam logo; no AWS, é qualquer erro da API Lambda que não seja `ResourceNotFoundException`, pelo
+  que *throttling* e erros transitórios também aparecem como recusas.
