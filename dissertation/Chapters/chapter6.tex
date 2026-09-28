@@ -131,11 +131,35 @@ cannot update a workflow.
 registry with the two services already in the project and reached Level~3 for both scoring calls:
 about a minute per function, three minutes in all. A second deployment, again after deleting the
 workflow, bound both calls at Level~1, deployed nothing, took seven seconds, and left the registry
-byte-identical.
+byte-identical. Figure~\ref{fig:case-gcp-console} shows the result in the Google Cloud console: the
+three functions, public, in \texttt{europe-west1}, and the deployed workflow.
+
+\begin{figure}[tbp]
+  \centering
+  \begin{subfigure}[b]{\textwidth}
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/GCP/img.png}
+    \caption{Cloud Run functions: the two scoring functions and the core banking stub.}
+    \label{fig:case-gcp-functions}
+  \end{subfigure}
+
+  \medskip
+  \begin{subfigure}[b]{\textwidth}
+    \centering
+    \includegraphics[width=0.55\textwidth]{images/GCP/img_1.png}
+    \caption{Cloud Workflows: the deployed \texttt{payment-authorization} workflow.}
+    \label{fig:case-gcp-workflow}
+  \end{subfigure}
+  \caption{The case study's functions and workflow in the Google Cloud console (Portuguese
+  interface).}
+  \label{fig:case-gcp-console}
+\end{figure}
 
 Listing~\ref{lst:case-registry-new} shows the entries each first deployment added, keyed by the
 qualified reference; the complete registries are Listings~\ref{lst:case-registry-aws}
-and~\ref{lst:case-registry-gcp} (Appendix~\ref{app:listings}). The ARN becomes the
+and~\ref{lst:case-registry-gcp} (Appendix~\ref{app:listings}), which also gives the functions'
+code on each provider and the complete rendered definitions
+(Section~\ref{app:case-code}). The ARN becomes the
 \texttt{FunctionName} of a \texttt{lambda:invoke} task (Listing~\ref{lst:rendered-lambda}); the
 \texttt{run.app} URL becomes the \texttt{url} of an \texttt{http.post} call.
 
@@ -156,7 +180,7 @@ function-registry.gcp.json:
 \end{lstlisting}
 
 Three transactions were executed on each provider (Table~\ref{tab:case-executions}), each with the
-expected decision. On AWS, the input carries the transaction under a \texttt{transaction} key,
+expected decision; the inputs are in Listing~\ref{lst:case-inputs}. On AWS, the input carries the transaction under a \texttt{transaction} key,
 since the state machine's paths refer to it (\texttt{\$.transaction.amount}). The stub echoed each
 transaction's identifier, confirming that the transaction was still in the state after the
 \texttt{assign} steps (Section~\ref{sec:case-discussion}). At run time, the two deployments differ

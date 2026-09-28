@@ -7,7 +7,8 @@
 \label{app:listings}
 
 This appendix gives the complete workflows and registries that Chapters~\ref{ch:proposed_solution}
-and~\ref{cha:case-study} show in part.
+and~\ref{cha:case-study} show in part, and the code, rendered definitions and inputs of the case
+study (Section~\ref{app:case-code}).
 
 \section{FraudPipeline Workflow}
 
@@ -197,4 +198,294 @@ the functions the bootstrap found already deployed (on AWS, one of them in anoth
     }
   }
 }
+\end{lstlisting}
+
+\section{Case-Study Functions and Rendered Workflows}
+\label{app:case-code}
+
+This section gives the code of the case-study functions on each provider, the workflow definitions
+OmniFlow rendered from Listing~\ref{lst:case-payment-workflow}, and the inputs of the executions
+(Section~\ref{sec:case-artifacts}). The files are in the repository folders
+\texttt{case-study-gcp} and \texttt{case-study-aws}.
+
+\subsection{Functions on GCP}
+
+On GCP, each function is a QuickFaaS hook that takes an \texttt{HttpRequestQf} and an
+\texttt{HttpResponseQf} (Listings~\ref{lst:case-gcp-fraud}--\ref{lst:case-gcp-stub}). The stub
+parses the body itself, because QuickFaaS's JSON helper rejects the content type Cloud Workflows
+sends (Section~\ref{sec:case-discussion}).
+
+\begin{lstlisting}[language=Java,caption={\texttt{fraud-check} on GCP.},label={lst:case-gcp-fraud},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+import quickfaas.triggers.http.HttpRequestQf;
+import quickfaas.triggers.http.HttpResponseQf;
+
+// Flags a transaction as suspicious when it is a high-value payment made abroad.
+public class MyFunctionClass {
+    public void myFunction(HttpRequestQf req, HttpResponseQf res) {
+        double amount = Double.parseDouble(req.getQueryParameter("amount"));
+        String country = req.getQueryParameter("country");
+        boolean flagged = amount > 1000 && !"PT".equals(country);
+        res.setContentType("application/json");
+        res.send(200, "{\"flagged\": " + flagged + "}");
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Java,caption={\texttt{risk-score} on GCP.},label={lst:case-gcp-risk},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+import quickfaas.triggers.http.HttpRequestQf;
+import quickfaas.triggers.http.HttpResponseQf;
+
+// Scores a transaction from 0 to 100, growing with its amount.
+public class MyFunctionClass {
+    public void myFunction(HttpRequestQf req, HttpResponseQf res) {
+        double amount = Double.parseDouble(req.getQueryParameter("amount"));
+        long score = Math.min(100, Math.round(amount / 50));
+        res.setContentType("application/json");
+        res.send(200, "{\"score\": " + score + "}");
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Java,caption={Core banking stub on GCP.},label={lst:case-gcp-stub},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+import com.google.gson.JsonParser;
+import quickfaas.triggers.http.HttpRequestQf;
+import quickfaas.triggers.http.HttpResponseQf;
+
+// Stand-in for the core banking system: acknowledges the decision it receives.
+// Parses the body itself: getFromJsonBody rejects Cloud Workflows' 'application/json; charset=utf-8'.
+public class MyFunctionClass {
+    public void myFunction(HttpRequestQf req, HttpResponseQf res) {
+        String decision = req.getQueryParameter("decision");
+        String id = JsonParser.parseString(req.getBody()).getAsJsonObject().get("id").getAsString();
+        res.setContentType("application/json");
+        res.send(200, "{\"recorded\": true, \"id\": \"" + id + "\", \"decision\": \"" + decision + "\"}");
+    }
+}
+\end{lstlisting}
+
+\subsection{Functions on AWS}
+
+On AWS the QuickFaaS Lambda template passes the query parameters as a map and returns what the
+function returns (Listings~\ref{lst:case-aws-fraud} and~\ref{lst:case-aws-risk}), so the scoring
+logic is the same as on GCP but written against another signature. The stub is a Python Lambda
+function behind an API Gateway HTTP API, created with the AWS CLI rather than QuickFaaS, because it
+must read the transaction from the request body (Listing~\ref{lst:case-aws-stub}).
+
+\begin{lstlisting}[language=Java,caption={\texttt{fraud-check} on AWS.},label={lst:case-aws-fraud},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+import com.amazonaws.services.lambda.runtime.Context;
+import java.util.Map;
+
+// Flags a transaction as suspicious when it is a high-value payment made abroad.
+public class MyFunctionClass {
+    public Map<String, Object> handleRequest(Map<String, String> query, Context context) {
+        double amount = Double.parseDouble(query.get("amount"));
+        String country = query.get("country");
+        return Map.of("flagged", amount > 1000 && !"PT".equals(country));
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Java,caption={\texttt{risk-score} on AWS.},label={lst:case-aws-risk},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+import com.amazonaws.services.lambda.runtime.Context;
+import java.util.Map;
+
+// Scores a transaction from 0 to 100, growing with its amount.
+public class MyFunctionClass {
+    public Map<String, Object> handleRequest(Map<String, String> query, Context context) {
+        double amount = Double.parseDouble(query.get("amount"));
+        return Map.of("score", Math.min(100, Math.round(amount / 50)));
+    }
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Python,caption={Core banking stub on AWS (Python, behind API Gateway).},label={lst:case-aws-stub},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+import base64
+import json
+
+
+# Stand-in for the core banking system, behind an API Gateway HTTP API: acknowledges the decision
+# (query parameter) for the transaction it receives as the JSON body.
+def handler(event, context):
+    body = event.get("body") or "{}"
+    if event.get("isBase64Encoded"):
+        body = base64.b64decode(body).decode()
+    transaction = json.loads(body)
+    decision = (event.get("queryStringParameters") or {}).get("decision")
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({"recorded": True, "id": transaction.get("id"), "decision": decision}),
+    }
+\end{lstlisting}
+
+\subsection{Rendered Workflow Definitions}
+
+Listing~\ref{lst:case-rendered-gcp} is the Cloud Workflows definition (YAML) deployed to GCP, and
+Listing~\ref{lst:case-rendered-aws} the Step Functions state machine (Amazon States Language,
+JSON) deployed to AWS. Both come from the same workflow definition; only the resolved endpoints and
+the provider's syntax differ.
+
+\begin{lstlisting}[language={},caption={Cloud Workflows definition rendered for GCP (YAML).},label={lst:case-rendered-gcp},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+main:
+    params: [ transaction ]
+    steps:
+        - fraud-check:
+            call: http.post
+            args:
+                url: https://fraud-check-jllpr4krfq-ew.a.run.app
+                query:
+                    amount: ${transaction.amount}
+                    country: ${transaction.country}
+            result: fraudResult
+        - risk-score:
+            call: http.post
+            args:
+                url: https://risk-score-jllpr4krfq-ew.a.run.app
+                query:
+                    amount: ${transaction.amount}
+            result: riskResult
+        - decision:
+            switch:
+                - condition:
+                    ${fraudResult.body.flagged == true}
+                  next: decline-transaction
+                - condition:
+                    ${riskResult.body.score > 75}
+                  next: decline-transaction
+            next: approve-transaction
+        - approve-transaction:
+            next: report-decision
+            assign:
+                - decision: 'approved'
+        - decline-transaction:
+            assign:
+                - decision: 'declined'
+        - report-decision:
+            call: http.post
+            args:
+                url: https://core-banking-stub-jllpr4krfq-ew.a.run.app/
+                query:
+                    decision: ${decision}
+                body: ${transaction}
+            result: coreBankingResult
+        - return_output:
+            return: ${decision}
+\end{lstlisting}
+
+\begin{lstlisting}[language=json,caption={Step Functions state machine rendered for AWS (Amazon States Language, JSON).},label={lst:case-rendered-aws},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+{
+    "Comment": "Real-time fraud screening for card payment authorization",
+    "StartAt": "fraud-check",
+    "States": {
+        "fraud-check": {
+            "Comment": "Flag transactions that match known fraud patterns",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:fraud-check",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)",
+                        "country.$": "States.Format('{}', $.transaction.country)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "fraudResult.$": "$.Payload"
+            },
+            "ResultPath": "$.fraud-check",
+            "Next": "risk-score"
+        },
+        "risk-score": {
+            "Comment": "Score the transaction from its features",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:risk-score",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "riskResult.$": "$.Payload"
+            },
+            "ResultPath": "$.risk-score",
+            "Next": "decision"
+        },
+        "decision": {
+            "Comment": "Decline flagged or high-risk transactions",
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.fraud-check.fraudResult.flagged",
+                    "BooleanEquals": true,
+                    "Next": "decline-transaction"
+                },
+                {
+                    "Variable": "$.risk-score.riskResult.score",
+                    "NumericGreaterThan": 75,
+                    "Next": "decline-transaction"
+                }
+            ],
+            "Default": "approve-transaction"
+        },
+        "approve-transaction": {
+            "Comment": "Record the approval",
+            "Type": "Pass",
+            "Result": "approved",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "decline-transaction": {
+            "Comment": "Record the decline",
+            "Type": "Pass",
+            "Result": "declined",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "report-decision": {
+            "Comment": "Report the decision to core banking",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "ApiEndpoint": "9giljyyesc.execute-api.eu-west-1.amazonaws.com",
+                "Method": "POST",
+                "Path": "/",
+                "QueryParameters": {
+                    "decision.$": "States.Array(States.Format('{}', $.decision))"
+                },
+                "RequestBody.$": "$.transaction"
+            },
+            "ResultSelector": {
+                "coreBankingResult.$": "$.ResponseBody"
+            },
+            "ResultPath": "$.report-decision",
+            "End": true
+        }
+    }
+}
+\end{lstlisting}
+
+\subsection{Execution Inputs}
+
+Listing~\ref{lst:case-inputs} gives the input of each execution of Table~\ref{tab:case-executions}.
+On GCP the input is the transaction itself, bound to the workflow parameter \texttt{transaction};
+on AWS it is wrapped in a \texttt{transaction} key, the path the state machine reads
+(\texttt{\$.transaction.amount}).
+
+\begin{lstlisting}[language=json,caption={Inputs of the three executions on each provider.},label={lst:case-inputs},basicstyle=\ttfamily\footnotesize,breaklines=false]
+GCP (gcloud workflows run --data=...):
+{"id":"tx-001","amount":120,"country":"PT"}
+{"id":"tx-002","amount":4800,"country":"ES"}
+{"id":"tx-003","amount":300,"country":"PT"}
+
+AWS (aws stepfunctions start-execution --input ...):
+{"transaction":{"id":"tx-001","amount":120,"country":"PT"}}
+{"transaction":{"id":"tx-002","amount":4800,"country":"ES"}}
+{"transaction":{"id":"tx-003","amount":300,"country":"PT"}}
 \end{lstlisting}
