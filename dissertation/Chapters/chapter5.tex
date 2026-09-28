@@ -93,9 +93,10 @@ exposes a small interface:
   are split in the same way);
   \item \texttt{put()} inserts or refreshes one entry, and \texttt{remove()} deletes a stale one.
 \end{itemize}
-The store keeps no in-memory state between calls, so \texttt{readAll()} and
-\texttt{tryResolveEntry()} re-read and re-parse the file on every call. Chapter~\ref{cha:evaluation}
-analyses the performance consequences of this choice.
+The store itself keeps no in-memory state between calls, so \texttt{readAll()} and
+\texttt{tryResolveEntry()} re-read and re-parse the file on every call. The resolvers avoid this
+cost by reading the registry once per resolution, as described below.
+Chapter~\ref{cha:evaluation} analyses the performance consequences of both paths.
 
 The two provider resolvers sit on top of this store.
 \texttt{WorkflowInternalFunctionResolver} (GCP) realises the three levels of the ladder on the

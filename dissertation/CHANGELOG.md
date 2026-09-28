@@ -1,6 +1,6 @@
 # Alterações aos capítulos da dissertação
 
-Só alterações ainda não enviadas (push). Base: `444bf4c` (último commit em
+Só alterações ainda não enviadas (push). Base: `cce3b3c` (último commit em
 `origin/claude/progress-report-compliance-e4damf`). Depois de um push, o registo recomeça vazio.
 
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
@@ -8,10 +8,9 @@ este ficheiro.)
 
 ## 2026-09-28
 
-### Pequena edição de texto (cap. 3, `chapter3.tex`)
+### Leitura única do registo (cap. 5, `chapter5.tex`)
 
-- **"Provider and region scope":** "and the developer need not declare one, since Level~2 searches
-  every region" passa a frase própria: "Nor does the developer have to specify where a function is:
-  Level~2 searches every region." Evita o "need not" repetido e dois "since" seguidos.
-- **Propriedades da ordem de resolução:** os dois-pontos depois de "idempotent with respect to
-  functions" e de "safe by default" passam a vírgulas.
+- **"Store internals":** a frase sobre a store não guardar estado em memória passa a dizer que
+  os resolvers evitam esse custo lendo o registo uma vez por resolução (explicado mais abaixo na
+  mesma secção), e que o cap. 7 analisa as consequências de desempenho "of both paths". Antes, a
+  frase dava a entender que a releitura por chamada continuava por resolver.
