@@ -1,179 +1,141 @@
-% 
+%
 %  chapter8.tex
 %  ISELthesis
-%  
+%
 %  Created by Matilde Pós-de-Mina Pato on 2012/10/09.
 %
 \chapter{Conclusions and Future Work}
 \label{cha:conclusions}
 
-This dissertation set out to unify two previously independent tools (QuickFaaS, which deploys
-serverless functions, and OmniFlow, which defines and deploys workflows) so that a serverless
-application can be deployed from a single workflow definition, without manually coordinating
-function endpoints. This final chapter summarises the contribution, revisits the objectives,
-assesses the work critically, and outlines future directions.
+This dissertation unified QuickFaaS, which deploys serverless functions, and OmniFlow, which
+defines and deploys workflows, so that a serverless application is deployed from a single workflow
+definition, without function endpoints being coordinated by hand.
 
 \section{Summary of Contributions}
 \label{sec:concl-contributions}
 
-The work delivered the five contributions listed in Section~\ref{sec:int_contributions}:
+The work delivered the five contributions of Section~\ref{sec:int_contributions}:
 \begin{enumerate}
-  \item a call model that separates internal from external functions, through the
-  \texttt{internalFunction} construct on the OmniFlow \texttt{call} step
+  \item the \texttt{internalFunction} construct, which separates internal from external calls
   (Section~\ref{sec:dsl-extensions});
   \item a per-provider Function Registry and a three-level resolution ladder that binds each
-  internal call at deployment time (Section~\ref{sec:resolution-cascade} and
-  Section~\ref{sec:function-registry});
-  \item an AWS Lambda provider in QuickFaaS, with the matching deployer in OmniFlow
-  (Section~\ref{sec:function-deployment}); to let the ladder cover the functions QuickFaaS deploys
-  on GCP, its GCP provider was also moved to second-generation functions, which are Cloud Run
-  services (Section~\ref{subsec:gcp-cloud-run-functions});
-  \item a prototype that integrates the two tools, and a case study in card-payment fraud
-  detection, run on AWS and on GCP (Chapter~\ref{cha:case-study});
-  \item an evaluation of the ladder's decisions on both providers and of the cost of resolution
+  internal call at deployment time (Sections~\ref{sec:resolution-cascade}
+  and~\ref{sec:function-registry});
+  \item an AWS Lambda provider in QuickFaaS, with the matching OmniFlow deployer, and the move of
+  QuickFaaS's GCP provider to second-generation functions, so that the ladder covers the functions
+  it deploys (Section~\ref{sec:function-deployment});
+  \item a prototype and a card-payment fraud detection case study, run on AWS and GCP
+  (Chapter~\ref{cha:case-study});
+  \item an evaluation of the ladder's decisions and of the cost of resolution
   (Chapter~\ref{cha:evaluation}).
 \end{enumerate}
-How far each meets the objectives set out in Chapter~\ref{cha:introduction} is assessed next.
 
 \section{Objectives Revisited}
 \label{sec:concl-objectives}
 
-The two research questions of Section~\ref{sec:int_objectives} are answered as follows:
 \begin{itemize}
-  \item \textbf{RQ1 (feasibility and correctness)}: yes, for the resolution logic. On both AWS
-  and GCP the ladder binds each internal call to the right endpoint and deploys a function only
-  when its absence is confirmed, and it aborts on stale entries, ambiguous names and inaccessible
-  regions (Section~\ref{sec:eval-correctness}), within the limits stated below for objective 4.
-  \item \textbf{RQ2 (overhead)}: small. In the production resolvers, resolving a workflow of 200
-  internal calls against a registry of ten functions takes $29\,\mu$s on AWS and $199\,\mu$s on GCP,
-  growing linearly with the number of internal calls, while the registry is read once per
-  deployment (Section~\ref{sec:eval-discussion}). On the provider side, resolution sends one
-  request per internal call when the registry is current (Section~\ref{sec:eval-api-calls}).
+  \item \textbf{RQ1 (feasibility and correctness)}: yes, for the resolution logic. On both
+  providers the ladder binds each internal call to the right endpoint, deploys a function only when
+  its absence is confirmed, and aborts on stale entries, ambiguous names and inaccessible regions
+  (Section~\ref{sec:eval-correctness}), with the limits stated below for objective~4.
+  \item \textbf{RQ2 (overhead)}: small. The production resolvers resolve 200 internal calls against
+  a registry of ten functions in $29\,\mu$s on AWS and $199\,\mu$s on GCP, growing linearly with the
+  number of internal calls, with one registry read per deployment
+  (Section~\ref{sec:eval-discussion}). Resolution sends one provider request per internal call when
+  the registry is current (Section~\ref{sec:eval-api-calls}).
 \end{itemize}
 
-Against the four objectives stated in Section~\ref{sec:int_objectives}, the work stands as
-follows:
+The objectives of Section~\ref{sec:int_objectives} stand as follows:
 \begin{enumerate}
   \item \textbf{Design a unified integration architecture}: \emph{met.} The registry, the
-  \texttt{functionRef} indirection, the \texttt{internalFunction} construct and the resolver
-  strategy (Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}) let a single workflow
-  definition drive both function and workflow deployment, binding endpoints when the workflow is
-  deployed (Section~\ref{sec:resolution-cascade}).
-  \item \textbf{Implement an orchestration prototype}: \emph{met.}
-  The prototype resolves the internal functions of a workflow on both providers, and deploys the
-  missing ones, without endpoints being copied by hand.
-  \item \textbf{Extend QuickFaaS to AWS Lambda}: \emph{met.} QuickFaaS gained an AWS provider
-  and OmniFlow an \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
-  and~\ref{subsec:omniflow-aws-deployer}). The provider-agnostic packaging layer adds about
-  0.9\,KB to a Lambda bundle (Table~\ref{tab:eval-s1}), and the resolver tests cover both
-  providers (Section~\ref{sec:eval-correctness}).
-  \item \textbf{Evaluate feasibility and overhead}: \emph{partially met.}
-  Chapter~\ref{cha:evaluation} checks the decisions of the resolution ladder on both providers
-  and measures the resolution overhead, the registry write path and the packaging size. The
-  evidence is mostly local: apart from the deployments of the case study to AWS and GCP
-  (Section~\ref{sec:case-artifacts}), the correctness checks simulate the provider, and the
-  benchmarks ran on a laptop rather than dedicated hardware. End-to-end deployment times were deliberately not
-  measured, since they are known to take minutes and are dominated by the provider
-  (Section~\ref{sec:eval-scope}). The
-  provider calls that validation and discovery make are counted from the code
-  (Section~\ref{sec:eval-api-calls}) rather than timed.
+  \texttt{functionRef}, the \texttt{internalFunction} construct and the resolver strategy let one
+  definition drive both deployments (Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}).
+  \item \textbf{Implement an orchestration prototype}: \emph{met.} The prototype resolves a
+  workflow's internal functions on both providers, and deploys the missing ones, without endpoints
+  being copied by hand.
+  \item \textbf{Extend QuickFaaS to AWS Lambda}: \emph{met.} QuickFaaS gained an AWS provider and
+  OmniFlow an \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
+  and~\ref{subsec:omniflow-aws-deployer}). The provider-agnostic layer adds about 0.9\,KB to a
+  Lambda bundle (Table~\ref{tab:eval-s1}).
+  \item \textbf{Evaluate feasibility and overhead}: \emph{partially met.} Apart from the case
+  study's deployments (Section~\ref{sec:case-artifacts}), the correctness checks simulate the
+  provider, and the benchmarks ran on a laptop. End-to-end deployment times were not measured,
+  since the provider dominates them (Section~\ref{sec:eval-scope}), and provider requests were
+  counted from the code, not timed (Section~\ref{sec:eval-api-calls}).
 \end{enumerate}
 
 \section{Critical Assessment}
 \label{sec:concl-critical}
 
-The implementation is a prototype, with the following limitations.
+The implementation is a prototype, with these limitations:
 
 \begin{itemize}
-  \item \textbf{Static binding.} Endpoints are resolved when the workflow is deployed and embedded
-  in the rendered artifact (Section~\ref{sec:resolution-cascade}). An endpoint that changes afterwards
-  reaches a deployed workflow only when that workflow is deployed again, since nothing resolves
-  endpoints at run time.
-  \item \textbf{No update path.} The ladder deploys a function only when it is missing and never
-  updates one that exists: a change to a function's code is not deployed by a workflow deployment,
-  and has to be deployed separately (for example, with QuickFaaS directly).
-  \item \textbf{Workflow redeployment.} OmniFlow's deployers create a workflow and cannot update
-  one, so deploying a workflow again means deleting it first (Section~\ref{sec:case-artifacts}). The
-  second deployments described in Sections~\ref{sec:walkthrough} and~\ref{sec:case-artifacts}
-  assume that step.
-  \item \textbf{Bare references and restricted regions.} A bare \texttt{functionRef} that misses
-  the registry is looked for in every region. A region that refuses the lookup does not matter if
-  the function is found elsewhere, but when it is found nowhere the resolution aborts, since its
-  absence was not confirmed. In a project where some regions are closed by policy, a bare
-  reference to a function that does not exist yet therefore aborts instead of reaching Level~3, and the
-  region-qualified form that avoids the scan ties the definition to one provider's region names
+  \item \textbf{Static binding.} An endpoint that changes after deployment reaches the workflow
+  only when it is deployed again (Section~\ref{sec:resolution-cascade}).
+  \item \textbf{No update path.} The ladder deploys only missing functions; a code change must be
+  deployed separately, for example with QuickFaaS directly.
+  \item \textbf{Workflow redeployment.} OmniFlow's deployers cannot update a workflow, so it must be
+  deleted before being deployed again (Section~\ref{sec:case-artifacts}).
+  \item \textbf{Bare references and restricted regions.} A bare reference that misses the registry
+  is searched for in every region. If some regions refuse the lookup and the function is found
+  nowhere, the resolution aborts instead of reaching Level~3, and the region-qualified form that
+  avoids the scan ties the definition to one provider's region names
   (Section~\ref{sec:case-discussion}).
-  \item \textbf{Renderer limits.} OmniFlow's AWS renderer turns an \texttt{assign} of several
-  variables into a \texttt{Pass} state that replaces the whole state document (the
-  single-variable case, which the case study uses, writes only that variable); and the two
-  renderers expect a literal host in different forms, so an external call is not portable between
-  providers (Section~\ref{sec:case-discussion}).
-  \item \textbf{Provider-specific function source.} QuickFaaS's GCP hooks and its AWS Lambda
-  template call the developer's code through different signatures, so the same workflow deploys
-  to both providers but each internal function is written once per provider
+  \item \textbf{Renderer limits.} The AWS renderer turns a multi-variable \texttt{assign} into a
+  \texttt{Pass} state that replaces the whole state, and the two renderers expect a literal host in
+  different forms, so external calls are not portable (Section~\ref{sec:case-discussion}).
+  \item \textbf{Provider-specific function source.} QuickFaaS's GCP hook and AWS template use
+  different signatures, so each internal function is written once per provider
   (Section~\ref{sec:case-discussion}).
-  \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
-  or authenticity guarantee, and no cross-process locking: concurrent writers race, and a tampered
-  \texttt{url}/ARN would be trusted blindly.
-  \item \textbf{A per-machine index, not a shared store.} The registry lives in the working
-  directory of whoever deploys. The shared record of the deployed functions is the provider itself:
-  every registry hit is validated against it, and a missing registry is rebuilt from it. Two
-  developers deploying the same workflow therefore converge on the same bindings, but each through
-  their own requests to the provider. They do not share a registry.
-  \item \textbf{Cloud Run services only on GCP.} Validation, discovery and the bootstrap see
-  only Cloud Run services, so first-generation Cloud Functions created outside the integration
-  cannot be bound (Section~\ref{subsec:gcp-cloud-run-functions}).
-  \item \textbf{Broad, automatic IAM.} The AWS path auto-creates and mutates a shared execution
-  role and grants invoke permissions as a deployment side effect, which suits a prototype but
-  not a least-privilege, change-controlled environment. On GCP, QuickFaaS opens every
-  function it deploys to all users, which makes the invoker role granted to the workflow's service
-  account redundant (Section~\ref{sec:runtime-invocation}).
-  \item \textbf{Brittle integration boundary.} QuickFaaS is invoked as a subprocess, coupling two
-  build systems across a process boundary and detecting errors from the subprocess output. The
-rationale for this boundary, and the in-process alternative, is discussed in
-  Section~\ref{sec:design-rationale}.
-  \item \textbf{Testability of cloud paths.} By design, the classes that call the cloud SDKs have
-  no automated coverage, so the integration edges (where production incidents occur) are the
-  least tested.
+  \item \textbf{Unguarded registry.} A flat JSON file with no cache, no integrity guarantee and no
+  cross-process locking: concurrent writers race, and a tampered \texttt{url} would be trusted.
+  \item \textbf{A per-machine index, not a shared store.} Each developer has their own registry.
+  The shared record is the provider itself, against which every hit is validated and from which a
+  missing registry is rebuilt, so developers converge on the same bindings, each through their own
+  requests.
+  \item \textbf{Cloud Run services only on GCP.} First-generation Cloud Functions created outside
+  the integration cannot be bound (Section~\ref{subsec:gcp-cloud-run-functions}).
+  \item \textbf{Broad, automatic IAM.} On AWS, a shared execution role is created or modified and
+  invoke permissions are granted as side effects; on GCP, QuickFaaS opens every function to all
+  users, making the grant to the workflow's service account redundant
+  (Section~\ref{sec:runtime-invocation}). Neither suits a least-privilege environment.
+  \item \textbf{Brittle integration boundary.} QuickFaaS runs as a subprocess whose output is parsed
+  (Section~\ref{sec:design-rationale}).
+  \item \textbf{Untested cloud paths.} By design, the classes that call cloud SDKs have no automated
+  tests, so the integration edges are the least tested.
 \end{itemize}
 
 \section{Future Work}
 \label{sec:concl-future}
 
-The following directions are ordered from smallest change with the clearest payoff to the larger
-structural ones.
+From the smallest change with the clearest payoff to the larger ones:
 
 \begin{enumerate}
-  \item \textbf{Add an update path:} record a hash of each function's source in its registry entry
-  and redeploy the function through QuickFaaS when the source its descriptor points to changes, so
-  that a workflow deployment also brings its functions up to date.
-  \item \textbf{Harden the registry:} a pluggable, access-controlled backend (database or secret/parameter store)
-  behind the current interface, with cross-process locking, per-entry integrity, an in-memory
-  cache with explicit invalidation, and an append-only, attributable write history.
-  \item \textbf{Replace the subprocess boundary} by invoking QuickFaaS in-process as a library
+  \item \textbf{Add an update path:} store a hash of each function's source in its registry entry
+  and redeploy the function when the source changes.
+  \item \textbf{Harden the registry:} an access-controlled backend (database or parameter store)
+  behind the current interface, with locking, per-entry integrity, caching and an attributable
+  write history.
+  \item \textbf{Invoke QuickFaaS in-process} as a library instead of a subprocess
   (Section~\ref{sec:design-rationale}).
-  \item \textbf{Move to least-privilege, change-controlled IAM,} with pre-provisioned roles and a
-  dry-run mode that reports the IAM changes it would make instead of applying them silently.
-  \item \textbf{Make the cloud-calling code testable,} extracting the SDK interactions
-  behind narrow interfaces so the deploy/IAM/readiness logic can be unit-tested against fakes.
-  \item \textbf{Validate the ladder against live providers} beyond the single workflow of
-  Chapter~\ref{cha:case-study}, deploying workflows that contain internal calls at each
-  level of the ladder, so that the correctness
-  evidence of Section~\ref{sec:eval-correctness} rests on the providers' own responses rather than
-  on test doubles.
-  \item \textbf{Extend the provider set,} adding Azure Functions (already a QuickFaaS target)
-  through the existing extension point to further substantiate the portability claim.
+  \item \textbf{Least-privilege IAM:} pre-provisioned roles and a dry-run mode that reports IAM
+  changes instead of applying them.
+  \item \textbf{Testable cloud code:} SDK interactions behind narrow interfaces, so the deployment,
+  IAM and readiness logic can be tested against fakes.
+  \item \textbf{Validate the ladder on live providers} at every level, beyond the single workflow of
+  Chapter~\ref{cha:case-study}, so that the evidence of Section~\ref{sec:eval-correctness} rests on
+  the providers' own responses.
+  \item \textbf{Add Azure Functions}, already a QuickFaaS target, through the existing extension
+  point.
 \end{enumerate}
 
 \section{Final Remarks}
 \label{sec:concl-final}
 
-The integration shows that function deployment and workflow orchestration can be driven from a
-single, provider-agnostic definition, with concrete endpoint binding deferred to deployment time
-through an explicit resolution ladder. In local measurements the overhead of this unification is
-small and, with the single-read optimisation applied in both production resolvers, grows linearly.
-The solution fits an organisation that deploys one orchestration to several accounts or providers,
-as the case study of Chapter~\ref{cha:case-study} illustrates. What remains is live evidence
-beyond a single workflow and engineering maturity (registry
-integrity, least-privilege operation, test coverage of the cloud edges and an update path) to
-take the prototype to production.
+Function deployment and workflow orchestration can be driven from a single, provider-agnostic
+definition, with endpoints bound at deployment time by an explicit resolution ladder. The local
+overhead is small and, with the single registry read, grows linearly. The approach suits an
+organisation that deploys one workflow to several accounts or providers, as the case study
+illustrates. Taking it to production requires live evidence beyond one workflow and engineering
+maturity: registry integrity, least-privilege operation, tests of the cloud edges and an update
+path.

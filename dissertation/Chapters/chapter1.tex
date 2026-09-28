@@ -3,128 +3,88 @@
 
 \hyphenation{QuickFaaS OmniFlow}
 
-Cloud computing lets organisations provision computational resources on demand, scale them with
-the load and obtain compute, storage and networking from a provider instead of maintaining
-hardware of their own.
-
-The idea of computing delivered as a utility goes back to Parkhill~\cite{parkhill1966challenge}.
-It was formalised as cloud computing in the late
-2000s~\cite{vaquero2008breaks,buyya2009cloud,armbrust2010view}, and public offerings such as
-Amazon EC2 made it the dominant commercial model~\cite{armbrust2010view}. Cloud platforms are
-consumed through service models of decreasing operational responsibility (infrastructure, platform
-and software as a service), of which serverless computing, the paradigm this dissertation
-addresses, is the furthest step.
+Cloud computing lets organisations obtain compute, storage and networking on demand from a
+provider instead of maintaining their own hardware. The idea of computing as a utility goes back
+to Parkhill~\cite{parkhill1966challenge}. It was formalised as cloud computing in the late
+2000s~\cite{vaquero2008breaks,buyya2009cloud,armbrust2010view}, and offerings such as Amazon EC2
+made it the dominant commercial model~\cite{armbrust2010view}. Its service models
+(infrastructure, platform and software as a service) shift operational responsibility to the
+provider, and serverless computing, the paradigm this dissertation addresses, goes furthest.
 
 \section{The Emergence of Serverless Computing}
 \label{sec:int_eme_ser_eve_dri_arc}
 
-Serverless computing is the most recent of these models. Serverless platforms allow developers to deploy fine-grained units of execution, typically called \textit{functions}, that run on demand without requiring explicit management of servers or runtime environments. The provider scales them automatically with demand, and charges only for the time they run.
-
-Shafiei et al.\ survey the open challenges of serverless computing, among them state management, cold starts and unpredictable performance~\cite{serverlessComputing}. These concerns remain active research areas, particularly in latency-sensitive applications. Jonas et al.\ argue that serverless computing simplifies cloud programming, and identify the limitations it must overcome to become the default way of programming the cloud~\cite{jonas2019cloudProgramming}.
+Serverless platforms run fine-grained units of execution, called \textit{functions}, on demand,
+without the developer managing servers or runtimes. The provider scales them with demand and
+charges only for the time they run. Open challenges remain, among them state management, cold
+starts and unpredictable performance~\cite{serverlessComputing}, and Jonas et al.\ identify the
+limitations serverless computing must overcome to become the default way of programming the
+cloud~\cite{jonas2019cloudProgramming}.
 
 \section{Challenges in Unified Serverless Workflow Orchestration}
 \label{sec:int_cha_int_uni_multi}
 
-This dissertation builds on two tools developed for that ecosystem, and takes a single cloud
-target as its scope: a workflow deployed on a provider invokes only functions deployed on that
-same provider. \textbf{QuickFaaS} automates the packaging and deployment of serverless functions,
-reducing the manual effort required to create and update them on a chosen
-provider~\cite{rodrigues2022quickfaas}. \textbf{OmniFlow} defines workflows in a higher-level DSL
-that is compiled into a provider-specific workflow definition and deployed to the provider's
-workflow engine~\cite{costa2023omniflow}. Each automates one half of a serverless application's
-deployment, and the goal of this work is to unify the two halves, so that a developer can deploy a
-workflow without coordinating function endpoints by hand. The two tools were developed
-independently, however, and act at different stages of the lifecycle, so putting them together raises
-the challenges described below.
+This dissertation builds on two tools. \textbf{QuickFaaS} packages and deploys serverless
+functions to a chosen provider~\cite{rodrigues2022quickfaas}. \textbf{OmniFlow} compiles
+workflows written in a Kotlin DSL into a provider's workflow definition and deploys
+it~\cite{costa2023omniflow}. Each automates one half of a serverless application's deployment. The
+goal of this work is to unify them, so that a workflow can be deployed without coordinating
+function endpoints by hand. The scope is a single cloud target: a workflow deployed on a provider
+invokes only functions deployed on that same provider. Unifying the two tools raises three
+challenges.
 
 \subsection{Disjointed Function Deployment Lifecycle}
-Without the integration, the function deployment lifecycle managed by QuickFaaS is disconnected from the workflow definition lifecycle managed by OmniFlow.
 \begin{itemize}
-	\item \textbf{Manual pre-deployment:} OmniFlow workflow execution relies on functions that are
-	already deployed and reachable. The developer must therefore deploy every required function
-	first (e.g., using QuickFaaS), obtain its provider-assigned invocation identifier (typically an
-	HTTP URL or a resource identifier) and copy it into the workflow definition. The QuickFaaS
-	procedure in Section~\ref{subsec:quickfaas-example} shows what this involves, and the URL it produces
-	must then be written into the \texttt{host} and \texttt{path} of every OmniFlow call step that
-	invokes the function.
-
-	\item \textbf{No verified link:} nothing connects the workflow definition to the functions it
-	calls. The two tools keep no common record of which functions a workflow depends on or where
-	those functions were deployed, and nothing checks, before the workflow is deployed, that each
-	endpoint it embeds belongs to a deployed function: a function that is
-	missing, or that was deployed under another account or project, is noticed only when the
-	workflow fails, at deployment or at run time.
+	\item \textbf{Manual pre-deployment:} an OmniFlow workflow can only call functions that already
+	exist. The developer must deploy each one first (e.g., with QuickFaaS,
+	Section~\ref{subsec:quickfaas-example}), obtain its provider-assigned endpoint and copy it into
+	the \texttt{host} and \texttt{path} of every call step that invokes it.
+	\item \textbf{No verified link:} the two tools keep no common record of which functions a
+	workflow depends on or where they were deployed. A missing function, or one deployed under
+	another account or project, is noticed only when the workflow fails.
 \end{itemize}
 
 \subsection{Provider-Specific Function Identification and Invocation Binding}
-Even when targeting a single provider, serverless functions are invoked through identifiers that
-the provider assigns and whose form it defines.
 \begin{itemize}
-	\item \textbf{The endpoint exists only after deployment:} the provider assigns a function's
-	invocation identifier when the function is first deployed. Even when its form can be predicted,
-	it refers to nothing until the function exists.
-
-	\item \textbf{The endpoint depends on the deployment target:} the identifier records where the
-	function was deployed. On AWS, a Lambda function is invoked through an Amazon Resource Name
-	(ARN) that contains the region and the account ID
+	\item \textbf{The endpoint exists only after deployment} and depends on where the function was
+	deployed. On AWS, a Lambda function is invoked through an Amazon Resource Name (ARN) that
+	contains the region and the account ID
 	(\texttt{arn:\allowbreak aws:\allowbreak lambda:\allowbreak <region>:\allowbreak%
 	<account-id>:\allowbreak function:\allowbreak <name>}). On GCP, a Cloud Run function's URL
-	is assigned by Google when the function is deployed, and carries a hash generated for the
-	project and a code for the region (\texttt{-ew} for \texttt{europe-west1}), so it cannot be
-	written before the function exists (Section~\ref{subsec:gcp-cloud-run-functions}). The same function
-	deployed to another account, project or provider therefore has a different endpoint.
-
-	\item \textbf{Need for logical references:} the integration therefore requires a mapping
-	mechanism: the workflow should name a function by a stable logical identifier, and the concrete
-	endpoint should be resolved when the workflow is deployed, against the account, project and
-	region it is being deployed to. The workflow definition then carries no endpoint of its own,
-	and the binding becomes something the tooling produces rather than something the developer
-	transcribes.
+	carries a hash that Google generates for the project and a code for the region, so it cannot be
+	written before the function exists (Section~\ref{subsec:gcp-cloud-run-functions}). The same
+	function in another account, project or provider has a different endpoint.
+	\item \textbf{Need for logical references:} the workflow should name a function by a stable
+	logical identifier, and the tooling should resolve the concrete endpoint at deployment time,
+	against the target account, project and region.
 \end{itemize}
 
 \subsection{Automated Artifact and Metadata Generation}
-Resolving a reference presumes that the function exists. When it does not, the workflow tooling
-must be able to have it deployed on its behalf, which requires a consistent data exchange in both
-directions.
+When a referenced function does not exist, the workflow tooling must be able to have it deployed.
 \begin{itemize}
-	\item \textbf{Artifact standardisation:} to request a deployment, the workflow tooling must
-	hand the function deployment tooling a deployable artifact (a source path or a package
-	reference) together with the minimal configuration that goes with it. A consistent packaging
-	and descriptor format is required so that the request can be issued automatically and
-	repeatably.
-
-	\item \textbf{Metadata synchronisation:} a deployment returns invocation metadata (an
-	endpoint and lightweight provider details), which must be recorded where the next workflow
-	deployment will look for it. Only
-	non-secret metadata is involved: a function's name and its endpoint.
+	\item \textbf{Artifact standardisation:} the workflow tooling must hand the function deployment
+	tool a deployable artifact and its configuration in a consistent format, so that the request can
+	be issued automatically.
+	\item \textbf{Metadata synchronisation:} the endpoint a deployment returns must be recorded where
+	the next workflow deployment will look for it. Only non-secret metadata is involved: a
+	function's name and its endpoint.
 \end{itemize}
-
-
 
 \section{Motivation: Unifying Function Deployment and Workflow Orchestration}
 \label{sec:int_motivation}
 
-Each of the challenges above can be worked around by hand, and for a single deployment the cost of
-doing so is small. What makes them worth addressing is that the work is repeated. Every function
-added to a workflow, every move between regions, accounts or providers and every additional
-deployment target sends the developer back through the manual pre-deployment described above. The
-effort therefore grows with the number of functions a workflow calls and with the
-number of targets it is deployed to. It grows, moreover, in the one part of the process that
-contributes nothing to the application being built: copying a value from one tool into another.
-
-This dissertation is motivated by the opportunity to close that gap by integrating QuickFaaS and
-OmniFlow into a workflow-first development experience. Such an integration is intended to:
+Each challenge can be worked around by hand, but the work repeats: every new function and every
+move between regions, accounts or providers sends the developer back through the manual
+pre-deployment. The effort grows with the number of functions and of deployment targets, and it is
+spent copying values from one tool into another. An integration of QuickFaaS and OmniFlow should
+therefore:
 \begin{itemize}
-	\item \textbf{Drive both deployments from one definition:} deploying a workflow should also
-	make the functions it calls available, so that the developer no longer has to order the two
-	steps or check that the first finished before starting the second.
-
-	\item \textbf{Take endpoints out of the developer's hands:} the values the provider assigns
-	should be read and recorded by the tooling, which removes the copying step.
-
-	\item \textbf{Keep a definition independent of its target:} with no concrete endpoint in the
-	workflow definition, the same definition should deploy to another account, project or provider
-	without being edited.
+	\item \textbf{drive both deployments from one definition}, so that deploying a workflow also
+	makes the functions it calls available;
+	\item \textbf{take endpoints out of the developer's hands}, with the tooling reading and
+	recording the values the provider assigns;
+	\item \textbf{keep the definition independent of its target}, so that it deploys to another
+	account, project or provider without being edited.
 \end{itemize}
 
 \section{Research Questions and Objectives}
@@ -144,17 +104,17 @@ Two research questions guide the work:
 To answer them, this work aims to:
 
 \begin{enumerate}
-	\item \textbf{Design a unified integration architecture:} define the components and interfaces required for OmniFlow to coordinate workflow deployment with function availability. This includes the introduction of logical function identifiers, a registry of invocation metadata and an explicit mechanism that allows the developer to have QuickFaaS deploy a function that does not exist yet.
-
-	\item \textbf{Implement an orchestration prototype:} develop a working prototype that integrates the libraries so that a serverless application, comprising both the workflow definition and its function dependencies, can be deployed predictably to a single provider without manually copying endpoints into the workflow definition.
-
-	\item \textbf{Evaluate feasibility and overhead:} answer RQ1 by checking the
-	decision the resolution takes in each situation it can meet. Answer RQ2 by measuring the local
-	cost that resolution adds to a deployment and how that cost scales, and by counting the requests
-	it sends to the provider. The evaluation also discusses the practical limitations of the
-	prototype.
+	\item \textbf{Design a unified integration architecture:} logical function identifiers, a
+	registry of invocation metadata, and an explicit way for the developer to have QuickFaaS deploy
+	a function that does not exist yet.
+	\item \textbf{Implement an orchestration prototype} that deploys a workflow and the functions it
+	calls to a single provider without endpoints being copied by hand.
+	\item \textbf{Extend QuickFaaS to AWS Lambda}, so that the unification covers AWS as well as
+	GCP.
+	\item \textbf{Evaluate feasibility and overhead:} answer RQ1 by checking the decision the
+	resolution takes in each situation it can meet, and RQ2 by measuring the local cost it adds,
+	how that cost scales, and how many requests it sends to the provider.
 \end{enumerate}
-
 
 \section{Contributions}
 \label{sec:int_contributions}
@@ -163,55 +123,46 @@ The contributions of this dissertation are the following:
 
 \begin{enumerate}
 	\item \textbf{A call model that separates internal from external functions.} The OmniFlow
-	\texttt{call} step is extended with the \texttt{internalFunction} construct, which names a
-	function the workflow developer owns and may optionally point to the QuickFaaS deployment
-	descriptor that builds it. A call is either internal (a logical name, resolved at deployment
-	time) or external (an explicit \texttt{host} and \texttt{path}, left to the developer), and the
-	two forms are mutually exclusive, so the origin of every invoked function is unambiguous.
-
+	\texttt{call} step gains the \texttt{internalFunction} construct, which names a function the
+	developer owns and may point to the QuickFaaS descriptor that builds it. A call is either
+	internal (a logical name, resolved at deployment time) or external (a literal \texttt{host} and
+	\texttt{path}), never both.
 	\item \textbf{A function registry and a deployment-time resolution ladder.} A per-provider
 	registry stores the invocation metadata of each internal function. A three-level ladder binds
-	each logical name to a concrete endpoint before the workflow is rendered. Its levels are a
-	registry entry validated against the live function, provider discovery across regions, and
-	deployment through QuickFaaS, which runs only when the function is confirmed to be absent and a
-	descriptor was supplied. The ladder fails fast: an inconclusive lookup aborts the deployment instead of
-	deploying a function that may already exist.
-
-	\item \textbf{AWS Lambda support in QuickFaaS.} QuickFaaS gains an AWS provider, and OmniFlow
-	the matching function deployer, which extends the unification to AWS.
-
-	\item \textbf{A prototype and a case study.} The two tools are integrated into a working
-	prototype in which a single workflow definition deploys, with its internal functions, to AWS or
-	to GCP. A real-time fraud detection scenario for card payments walks through the registry and
-	the ladder: it was deployed and run on both AWS and GCP.
-
-	\item \textbf{An evaluation of the ladder's decisions and of its cost.} The behaviour of the
-	resolution is checked in each situation it can meet on both providers. The measurements cover
-	its overhead, how it scales with the number of calls and the size of the registry, the registry
-	write path, and the packaging overhead of the provider-agnostic layer on AWS.
+	each logical name to an endpoint before the workflow is rendered: a registry entry validated
+	against the live function, provider discovery across regions, and deployment through QuickFaaS
+	when the function is confirmed absent and a descriptor was supplied. An inconclusive lookup
+	aborts the deployment instead of deploying a function that may already exist.
+	\item \textbf{AWS Lambda support in QuickFaaS}, with the matching deployer in OmniFlow.
+	\item \textbf{A prototype and a case study.} A single workflow definition deploys, with its
+	internal functions, to AWS or to GCP. A card-payment fraud detection scenario was deployed and
+	run on both providers.
+	\item \textbf{An evaluation} of the ladder's decisions on both providers, of its cost and
+	scalability, of the registry write path, and of the packaging overhead on AWS.
 \end{enumerate}
 
 Part of this work was published, with the supervisors of this dissertation, at the Iberian
 Conference on Information Systems and Technologies (CISTI), as ``Towards Cloud-Agnostic Serverless
-Applications: Unifying Function Deployment and Workflow
-Orchestration''~\cite{carvalho2026towards}. That paper reports the work in progress: the
-motivation, the layered architecture of the unified framework, the distinction between internal and
-external calls, and the Function Registry that maps logical function names to deployed endpoints.
-The dissertation carries that design to completion and adds what the paper left open: the
-resolution ladder with its validation and discovery levels, the AWS Lambda support, the case study,
-and the quantitative evaluation.
+Applications: Unifying Function Deployment and Workflow Orchestration''~\cite{carvalho2026towards}.
+That paper presents the motivation, the layered architecture, the internal/external call
+distinction and the Function Registry. This dissertation completes the design and adds the
+resolution ladder, the AWS Lambda support, the case study and the quantitative evaluation.
 
 \section{Structure of the Work}
 \label{sec:int_structure}
 
-The dissertation is organised as follows:
-
 \begin{itemize}
-  \item \textbf{Chapter 1} introduces the problem, motivation, objectives, and scope of the work.
-  \item \textbf{Chapter 2} provides the background on serverless computing, presents the two base technologies, QuickFaaS (function deployment) and OmniFlow (workflow definition and deployment), and surveys related work on function deployment automation, workflow composition/orchestration and service registries.
-  \item \textbf{Chapter 3} presents the proposed solution: a workflow-first deployment procedure on a single cloud provider, based on logical function references (\texttt{functionRef}), a function registry for endpoint resolution, and the \texttt{internalFunction} construct on the call step, which delegates on-demand function deployment to QuickFaaS.
-  \item \textbf{Chapter 4} describes the implementation of the integration: the function registry and its deployment-time resolution ladder, the AWS Lambda support added to QuickFaaS, and the runtime invocation of registry-resolved functions.
-  \item \textbf{Chapter 5} presents an illustrative case study (real-time fraud detection for card payments) that grounds the registry and resolution ladder in a concrete banking scenario, run on AWS and on GCP.
-  \item \textbf{Chapter 6} evaluates the prototype and answers the two research questions: whether the resolution ladder takes the right decisions on both providers, and what resolution costs.
-  \item \textbf{Chapter 7} concludes the dissertation, revisits the objectives, assesses the work critically, and outlines future work.
+  \item \textbf{Chapter 2} presents the background (serverless computing, workflows, QuickFaaS and
+  OmniFlow) and the related work.
+  \item \textbf{Chapter 3} presents the proposed solution: logical function references, the
+  Function Registry, the \texttt{internalFunction} construct and the resolution ladder.
+  \item \textbf{Chapter 4} describes the implementation: the registry and resolvers, function
+  deployment at Level~3 (including AWS Lambda support in QuickFaaS), and runtime invocation.
+  \item \textbf{Chapter 5} presents a case study, real-time fraud detection for card payments, run
+  on AWS and on GCP.
+  \item \textbf{Chapter 6} evaluates the prototype and answers the two research questions.
+  \item \textbf{Chapter 7} concludes and outlines future work.
 \end{itemize}
+
+The appendices hold the complete versions of the diagrams, listings and result tables that the
+chapters show in part.

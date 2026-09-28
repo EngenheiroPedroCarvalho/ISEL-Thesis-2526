@@ -34,7 +34,9 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 | `Chapters/chapter6.tex` | 5 Case Study | `cha:case-study` |
 | `Chapters/chapter7.tex` | 6 Evaluation | `cha:evaluation` |
 | `Chapters/chapter8.tex` | 7 Conclusions | `cha:conclusions` |
-| `Chapters/appendix-cascade.tex` | Appendix A: Resolution Ladder Sequence Diagrams | `app:cascade-sequences` |
+| `Chapters/appendix-cascade.tex` | Appendix A: Sequence Diagrams (full AWS deployment sequence + ladder levels) | `app:cascade-sequences` |
+| `Chapters/appendix-listings.tex` | Appendix B: Complete Listings (workflows and registries shown as excerpts in Ch. 3 and 5) | `app:listings` |
+| `Chapters/appendix-benchmarks.tex` | Appendix C: Benchmark Results (full T2–T14 tables/figures summarised in Ch. 6) | `app:benchmarks` |
 
 - File numbers match chapter numbers only up to `chapter3.tex`: from `chapter5.tex` on, each file
   holds the chapter one number lower. Background and Related Work were merged into one chapter

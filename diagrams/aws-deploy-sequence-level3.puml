@@ -1,0 +1,28 @@
+@startuml aws-deploy-sequence-level3
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title AWS deployment sequence -- Level 3 (excerpt; full sequence in Appendix A)
+
+participant "AwsInternalFunctionResolver" as R
+participant "FunctionRegistryStore" as REG
+participant "AwsLambdaDeployer" as ALD
+participant "AwsLambdaIamHelper" as IAM
+participant "QuickFaaS JAR\n(AwsProvider)" as QF
+participant "AWS APIs\n(IAM, S3, Lambda)" as AWS
+
+R -> ALD : deployOrUpdate(name, descriptorPath)
+ALD -> IAM : resolveOrCreateLambdaExecutionRole(iamRoleArn)
+IAM -> AWS : GetRole / CreateRole + AttachRolePolicy
+AWS --> IAM : execution role ARN
+ALD -> ALD : patch role ARN into a temporary descriptor
+ALD -> AWS : GetBucketLocation -> effective region
+ALD -> QF : java -jar QuickFaaS.jar\n[<=3 attempts, 20 s backoff on IAM propagation]
+QF -> AWS : PutObject (S3); CreateFunction /\nUpdateFunctionCode; Function URL
+QF --> ALD : deployment finished
+ALD -> AWS : GetFunction - poll until Active (<=180 s)
+ALD -> IAM : grantStepFunctionsInvoke
+IAM -> AWS : AddPermission (states.amazonaws.com)
+ALD --> R : FunctionInvocationMetadata (url = ARN)
+R -> REG : put(name, metadata)
+@enduml

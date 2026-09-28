@@ -1,27 +1,25 @@
 \chapter{Proposed Solution: Workflow-First Deployment via Function Registry Resolution}
 \label{ch:proposed_solution}
 
-This chapter introduces the core idea of the proposed OmniFlow-QuickFaaS integration. The objective is to reduce the manual work required to deploy workflows that depend on serverless functions, while keeping the workflow definition readable and stable.
+In OmniFlow, a \texttt{call} step is an HTTP request with a concrete \texttt{method}, \texttt{host}
+and \texttt{path}. The proposed solution lets the developer name a function they own instead,
+through \texttt{internalFunction(name, deploymentDescriptorPath)}, and resolves its endpoint at
+deployment time. A single, workflow-first deployment then resolves (or, if needed, deploys) the
+functions and deploys the workflow.
 
-In the reference OmniFlow usage, a \texttt{Call} step is expressed as an HTTP request, the developer supplies concrete invocation details such as \texttt{method}, \texttt{host} and \texttt{path}. The proposed solution lets the developer name a function they own on the call step instead, through a dedicated \texttt{internalFunction(name, deploymentDescriptorPath)} construct, and resolves its endpoint automatically at deployment time. This enables a single, workflow-first deployment that resolves (or, if needed, provisions) the required functions and then deploys the workflow to the chosen cloud provider.
-
-Section~\ref{sec:components-architecture} presents the components the integration adds.
-Section~\ref{sec:dsl-extensions} describes the \texttt{internal\allowbreak Function} construct and the concepts
-it relies on (the \texttt{functionRef}, the Function Registry and the deployment descriptor).
-Section~\ref{sec:resolution-cascade} presents the three-level resolution ladder that binds each
-internal call, and Section~\ref{sec:design-rationale} explains why OmniFlow drives QuickFaaS within
-a single deployment process. Section~\ref{sec:developer-workflow} follows the procedure from the
-developer's point of view, up to a walkthrough of a first and a second deployment
-(Section~\ref{sec:walkthrough}).
+Section~\ref{sec:components-architecture} presents the components the integration adds, and
+Section~\ref{sec:dsl-extensions} the \texttt{internalFunction} construct and the concepts it relies
+on. Section~\ref{sec:resolution-cascade} presents the three-level resolution ladder,
+Section~\ref{sec:design-rationale} why OmniFlow drives QuickFaaS, and
+Section~\ref{sec:developer-workflow} the procedure from the developer's point of view.
 
 \section{Components Architecture}
 \label{sec:components-architecture}
 
-The proposed integration keeps the original OmniFlow workflow model but extends the toolchain with a small set of additional components that cooperate at deployment time.
-
-Figures~\ref{fig:architecture-before} and~\ref{fig:architecture-after} contrast the developer workflow before and after the integration proposed in this dissertation.
-
-In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaaS are used independently. The developer first deploys each function with QuickFaaS in a separate manual step, retrieves the resulting invocation endpoint, and copies it by hand into the workflow definition before deploying the workflow, the manual synchronisation described in Section~\ref{sec:int_cha_int_uni_multi}, with the ordering it imposes and the errors it invites. Moreover, QuickFaaS offered no AWS path at all (Section~\ref{sec:int_objectives}). The two lifecycle concerns, function deployment and workflow deployment, are therefore completely disconnected.
+Figures~\ref{fig:architecture-before} and~\ref{fig:architecture-after} contrast the two tools
+before and after the integration. Before it, the developer deploys each function with QuickFaaS,
+reads its endpoint and copies it into the workflow definition
+(Section~\ref{sec:int_cha_int_uni_multi}); QuickFaaS has no AWS support.
 
 \begin{figure}[tbp]
   \centering
@@ -30,7 +28,10 @@ In the prior state (Figure~\ref{fig:architecture-before}), OmniFlow and QuickFaa
   \label{fig:architecture-before}
 \end{figure}
 
-In the state introduced by this work (Figure~\ref{fig:architecture-after}), a single workflow definition drives both concerns. Each provider deployer delegates call resolution to a provider-specific resolver, backed by a registry file of its own that maps logical identifiers to concrete invocation metadata. QuickFaaS is extended with an \texttt{AwsProvider}, so a function can be deployed on demand to AWS Lambda through the same subprocess mechanism already used for GCP. The two halves of the contribution are visible in a single view, the AWS provider inside QuickFaaS and the resolver–registry layer that unifies function and workflow deployment.
+After it, one workflow definition drives both deployments. Each provider deployer delegates call
+resolution to a provider-specific resolver, backed by a registry file of its own that maps logical
+names to invocation metadata. QuickFaaS gains an \texttt{AwsProvider}, so a function can be
+deployed on demand to AWS Lambda through the same subprocess mechanism used for GCP.
 
 \begin{figure}[tbp]
   \centering
@@ -39,24 +40,27 @@ In the state introduced by this work (Figure~\ref{fig:architecture-after}), a si
   \label{fig:architecture-after}
 \end{figure}
 
-The end-to-end flow proceeds as follows:
+The end-to-end flow is:
 \begin{enumerate}
   \item the developer defines the workflow and one QuickFaaS descriptor per internal function;
   \item OmniFlow walks the workflow tree and finds each internal call;
-  \item for each internal call, it resolves the endpoint from the registry, discovers it directly
-  on the provider, or deploys it through QuickFaaS;
-  \item metadata obtained by discovery or deployment, or refreshed after drift, is written to
-  the registry; and
-  \item the resolved workflow is rendered and deployed to the provider's workflow service.
+  \item for each internal call, it resolves the endpoint from the registry, discovers it on the
+  provider, or deploys the function through QuickFaaS;
+  \item metadata obtained by discovery or deployment, or refreshed after drift, is written to the
+  registry;
+  \item the resolved workflow is rendered and deployed.
 \end{enumerate}
-Calls that already carry a literal endpoint bypass the registry entirely.
+Calls with a literal endpoint bypass the registry.
 
 \section{DSL Extensions}
 \label{sec:dsl-extensions}
 
-Of the step categories introduced in Section~\ref{sec:background_omniflow}, this section focuses on one execution step, the \texttt{call} step, and on how it is extended in this dissertation.
-
-Figure~\ref{fig:call-step-model} shows how the \texttt{call} step is extended to express calls whose endpoint is resolved automatically. In the original design, a \texttt{CallContext} carries the literal HTTP fields \texttt{host} and \texttt{path}. This work adds an optional association to an \texttt{InternalFunction}, which holds a logical \texttt{name} (the \texttt{functionRef}) and an optional \texttt{deploymentDescriptorPath}. The two construction paths are \emph{mutually exclusive}: a call sets either \texttt{host}/\texttt{path} or \texttt{internalFunction}, never both, since for the latter \texttt{host} and \texttt{path} are injected at deployment time by the resolution mechanism. Keeping this form as an alternative on the existing step, rather than introducing a new step type, means developers continue to describe calls with the same HTTP vocabulary.
+Figure~\ref{fig:call-step-model} shows the extended \texttt{call} step. A \texttt{CallContext}
+carries either the literal \texttt{host} and \texttt{path} or, new in this work, an
+\texttt{InternalFunction} with a logical \texttt{name} (the \texttt{functionRef}) and an optional
+\texttt{deploymentDescriptorPath}. The two forms are mutually exclusive: for an internal call,
+\texttt{host} and \texttt{path} are injected at deployment time. Extending the existing step, rather
+than adding a step type, keeps the same HTTP vocabulary for both.
 
 \begin{figure}[tbp]
   \centering
@@ -67,30 +71,26 @@ Figure~\ref{fig:call-step-model} shows how the \texttt{call} step is extended to
   \label{fig:call-step-model}
 \end{figure}
 
-The concepts the resolved form relies on, and through which it connects to the QuickFaaS-based
-deployment and registry mechanisms described in the following sections, can be summarised as
-follows:
+\paragraph{Internal and external functions.}
+A function whose code the workflow developer owns and may deploy is \emph{internal}, declared with
+\texttt{internalFunction}. A function or API the developer does not own is \emph{external}: it is
+called through a literal \texttt{host}/\texttt{path}, never deployed by QuickFaaS and never
+recorded in the registry.
 
-\paragraph{Function Ownership Determines Resolution.}
-Which of the two forms a call uses depends on who owns the target. A function whose source code the workflow developer owns, and is allowed to deploy and update, is an \emph{internal} function, declared through \texttt{internalFunction}. A function or API the developer does not own (for example, a third-party service) is \emph{external}: it is called through a literal \texttt{host}/\texttt{path} and treated as an unmanaged HTTP endpoint, which is never deployed or updated through QuickFaaS and is not recorded in the registry.
-
-\paragraph{Function Reference (\texttt{functionRef}).}
-A function reference (\texttt{functionRef}) is a stable logical identifier used to name a function whose endpoint is resolved through the registry (e.g., \texttt{"fraud-check"}). This identifier is used consistently across the workflow definition, the registry metadata and the deployment descriptors. It is not an endpoint but a name that allows OmniFlow to bind a call to the concrete endpoint during deployment.
+\paragraph{Function reference (\texttt{functionRef}).}
+A stable logical name for an internal function (e.g., \texttt{"fraud-check"}), used in the
+workflow, the registry and the deployment descriptor. It is not an endpoint: OmniFlow binds it to
+one at deployment time.
 
 \paragraph{Function Registry.}
-The function registry is a file, one per provider, that contains invocation metadata only for internal functions. Conceptually, it maps each \texttt{functionRef} to the concrete values required to invoke it.
-
-Listing~\ref{lst:registry-structure} shows the structure of the file, with one example per
-provider. \texttt{updatedAt} records when the file was last written, and \texttt{functions} maps
-each \texttt{functionRef} to its invocation metadata. The key is the bare reference while it is
-unambiguous, and when the same name exists in more than one region, it takes the qualified
-\texttt{"region/functionRef"} form. Each value has two fields: \texttt{serviceName}, the name the
-function has on the provider (on GCP, the full resource name of the Cloud Run service), and
-\texttt{url}, the value the rendered workflow uses to invoke it: the function's HTTPS endpoint on
-GCP, which the resolver splits into \texttt{host} and \texttt{path}, and its ARN on AWS, used as
-the resource of a native Lambda invocation. No credentials or deployment parameters are stored.
-Both files are written and refreshed by the integration, never by hand, and are kept in a
-writable location (the working directory by default, or a path given to the deployer).
+A file per provider that maps each \texttt{functionRef} to the values needed to invoke it
+(Listing~\ref{lst:registry-structure}). \texttt{updatedAt} records the last write. The key is the
+bare reference, or \texttt{"region/functionRef"} when the same name exists in more than one region.
+Each entry has two fields: \texttt{serviceName}, the function's name on the provider (on GCP, the
+full resource name of the Cloud Run service), and \texttt{url}, what the rendered workflow invokes:
+the HTTPS endpoint on GCP, split by the resolver into \texttt{host} and \texttt{path}, and the ARN
+on AWS, used for a native Lambda invocation. No credentials are stored. The integration writes both
+files, by default in the working directory.
 
 \begin{lstlisting}[caption={Example registry files, one per provider (registry-managed functions only).},label={lst:registry-structure},basicstyle=\ttfamily\footnotesize,breaklines=false]
 function-registry.gcp.json:
@@ -116,257 +116,160 @@ function-registry.aws.json:
 }
 \end{lstlisting}
 
-Listing~\ref{lst:call-step-internal} shows a complete call step whose endpoint is resolved through
-the registry.
+Listing~\ref{lst:call-step-internal} shows an internal call. It has no \texttt{host} or
+\texttt{path}: \texttt{internalFunction} gives the \texttt{functionRef} and the QuickFaaS
+descriptor, which is read only if the ladder reaches Level~3. The step says which function to
+call; the deployment determines where it is.
 
-\begin{lstlisting}[language=Kotlin,caption={Call step declared via \texttt{internalFunction}.},label={lst:call-step-internal}]
+\begin{lstlisting}[language=Kotlin,caption={Call step declared via \texttt{internalFunction} (excerpt of the \texttt{FraudPipeline} workflow, Listing~\ref{lst:wf-fraudpipeline-full}).},label={lst:call-step-internal}]
 step {
-  name("call-auto-deployed-function")
-  description("Calls a function that QuickFaaS will deploy if not already running")
-  context(
-    call {
-      method(GET)
-      internalFunction(
-        "quickfaas-test-fn",
-        deploymentDescriptorPath = "./functions/quickfaas-test-fn/func-deployment.json"
-      )
-      result("result")
-    }
-  )
+  name("fraud-check")
+  description("Call the fraud-check function")
+  context(call {
+    method(GET)
+    internalFunction("fraud-check", "./deploy/fraud-check.json")
+    result("fraudResult")
+  })
 }
 \end{lstlisting}
 
-The only difference from a conventional call is what is \emph{not} there: no \texttt{host} and no
-\texttt{path}. In their place, \texttt{internalFunction} supplies the \texttt{functionRef}
-\texttt{"quickfaas-test-fn"}, the key under which the endpoint is stored in the registry, and
-\texttt{deploymentDescriptorPath}, the QuickFaaS descriptor that is read only if the resolution
-ladder of Section~\ref{sec:resolution-cascade} reaches Level~3. The step says which function to call, and leaves it to the deployment to
-determine where that function is.
-
-\paragraph{QuickFaaS Deployment Descriptor and Code File}
-To deploy an internal function, QuickFaaS requires two artifacts: the JSON deployment descriptor of
-Listing~\ref{lst:quickfaas_json_config}, whose fields are described in
-Section~\ref{subsec:quickfaas-example}, and the function code file it names in \texttt{functionFile}.
-Two of the descriptor's fields matter to the integration beyond deployment. The \texttt{function.name} must
-equal the \texttt{functionRef} used on the call step, because the resolver looks the deployed
-function up under the reference it was given. The consequence of letting them diverge is
-described at the end of
-Section~\ref{sec:walkthrough}. And \texttt{function.location} fixes the region the
-resulting registry entry will point at, which is what a later resolution validates against. The
-descriptor is otherwise the same artifact QuickFaaS has always taken, read now by OmniFlow instead
-of by the developer running QuickFaaS by hand. The AWS variant, which adds an \texttt{iamRoleArn}
-field for the Lambda execution role, is shown in
-Listing~\ref{lst:aws-descriptor}.
+\paragraph{Deployment descriptor and code file.}
+An internal function is deployed from the QuickFaaS descriptor of
+Listing~\ref{lst:quickfaas_json_config} and the code file named in its \texttt{functionFile}. Two
+fields matter beyond deployment: \texttt{function.name} must equal the \texttt{functionRef}, since
+the resolver looks the deployed function up by that reference (Section~\ref{sec:walkthrough}); and
+\texttt{function.location} fixes the region the registry entry points at. The AWS variant adds an
+\texttt{iamRoleArn} field for the Lambda execution role (Listing~\ref{lst:aws-descriptor}).
 
 \section{The Resolution Ladder}
 \label{sec:resolution-cascade}
 
-Step~(3) of the end-to-end flow listed in Section~\ref{sec:components-architecture} is the core
-of the integration: a three-level ladder,
-applied independently to each internal call and stopping at the first level that succeeds. The
-ladder is designed so that the cheapest and least intrusive action is always preferred, and an
-actual deployment is a last resort rather than a default.
+Each internal call is resolved independently by a three-level ladder that stops at the first level
+that succeeds. The cheapest, least intrusive action comes first; a deployment is the last resort.
 
 \begin{enumerate}
-  \item \textbf{Level~1 (Registry).} The registry is consulted for the \texttt{functionRef}. A hit
-  is the common case for a function that has already been deployed once. The stored endpoint is
-  then validated against the live resource (the Cloud Run service on GCP, the Lambda function on
-  AWS) with a single lookup in the place the entry records, so that a stale binding cannot be used
-  silently. A changed endpoint refreshes the entry. A deleted function is looked for in the other
-  regions: if it is found there, its entry is replaced, and if not, the entry is removed and the
-  deployment aborts.
-  \item \textbf{Level~2 (Provider discovery).} On a registry miss, the target provider is queried
-  directly. On GCP this is a Cloud Run lookup across the project's regions, and on AWS a
-  \texttt{GetFunction} lookup across every region enabled for the account. When the caller
-  supplies the fully-qualified \texttt{"region/functionRef"} form, a single lookup is made on
-  either provider. If the
-  function already exists (for instance, because it was deployed outside the integration), its
-  metadata is recorded in the registry and used, again \emph{without} triggering a deployment.
+  \item \textbf{Level~1 (Registry).} The registry is looked up for the \texttt{functionRef}. A hit
+  is validated with a single lookup of the live function (the Cloud Run service on GCP, the Lambda
+  function on AWS) where the entry records it. A changed endpoint refreshes the entry. A deleted
+  function is searched for in the other regions: if found, the entry is replaced; if not, the entry
+  is removed and the deployment aborts.
+  \item \textbf{Level~2 (Provider discovery).} On a registry miss, the function is looked up on
+  the provider: across the project's Cloud Run regions on GCP, and across every region enabled for
+  the account on AWS (\texttt{GetFunction}). A \texttt{"region/functionRef"} reference takes a
+  single lookup. A function found, for instance one deployed outside the integration, is recorded
+  in the registry and used, without a deployment.
   \item \textbf{Level~3 (QuickFaaS deployment).} Only when the function is absent from both the
-  registry and the provider, and the call supplied a \texttt{deploymentDescriptorPath}, is QuickFaaS
-  invoked to deploy it. The returned metadata is then registered and used. If no descriptor was
-  provided, deployment fails fast with a diagnostic naming the unresolved function.
+  registry and the provider, and the call supplies a \texttt{deploymentDescriptorPath}, does
+  QuickFaaS deploy it. The returned metadata is registered and used. Without a descriptor, the
+  deployment aborts with a diagnostic naming the function.
 \end{enumerate}
 
-This ordering gives the integration three properties. It is \emph{idempotent} with respect to
-functions, re-deploying the same workflow re-resolves from the registry (or the
-provider) and does not redeploy a function that already exists. It is \emph{safe by default}, validation
-and discovery never mutate the provider, and a deployment happens only on an explicit descriptor
-and only after the function's absence is confirmed. A deployment does change more than the
-function itself, since it also grants the permissions needed to invoke it (and, on AWS, sets up
-its execution role; Section~\ref{subsec:omniflow-aws-deployer}). And it is
-\emph{observable}: each level emits an explicit diagnostic, so the developer can see whether a
-call was served from the registry, discovered on the provider, or freshly deployed. The concrete
-class-level realisation of this ladder, including drift handling and ambiguity detection, is
-described in Chapter~\ref{cha:impl}.
+The ladder is \emph{idempotent}: re-deploying a workflow resolves from the registry or the provider
+and never redeploys an existing function. It is \emph{safe by default}: validation and discovery
+never change the provider, and a deployment requires an explicit descriptor and confirmed absence
+(a deployment also grants invocation permissions and, on AWS, sets up an execution role;
+Section~\ref{subsec:omniflow-aws-deployer}). And it is \emph{observable}: each level reports whether
+a call was served from the registry, discovered or deployed. Chapter~\ref{cha:impl} describes the
+implementation.
 
 \paragraph{Static binding.}
-The ladder runs only when the workflow is deployed. The endpoint it resolves is written into the
-rendered workflow (as the \texttt{url} of an HTTP call in a GCP Workflows definition, and as the
-\texttt{FunctionName} ARN of a \texttt{lambda:invoke} task in a Step Functions state machine),
-and the deployed workflow never consults the registry at run time. The binding is therefore
-\emph{static}: if a function's endpoint changes after the workflow has been deployed, the deployed
-workflow keeps calling the old endpoint until it is deployed again. On that next deployment,
-Level~1 validation detects the change and binds the call to the new endpoint. In practice an endpoint changes
-less often than a function's code: updating a Lambda's code in place keeps its ARN, and
-redeploying a Cloud Function or Cloud Run service under the same name and region keeps its URL. It
-changes when the function is recreated under another name, region, account or project. Resolving
-endpoints at run time instead would require every workflow execution to look the function up,
-which is outside the scope of this work.
+The ladder runs only at deployment. The resolved endpoint is written into the rendered workflow
+(the \texttt{url} of an HTTP call in Cloud Workflows, the \texttt{FunctionName} of a
+\texttt{lambda:invoke} task in Step Functions), and the deployed workflow never consults the
+registry. If an endpoint changes afterwards, the workflow keeps calling the old one until it is
+deployed again, when Level~1 detects the change. Endpoints change rarely: updating a Lambda's code
+keeps its ARN, and redeploying a Cloud Run function under the same name and region keeps its URL.
+They change when a function is recreated under another name, region, account or project. Run-time
+resolution is outside the scope of this work.
 
 \paragraph{Provider and region scope.}
-Every resource on a provider (a function, a storage bucket, the deployed workflow itself) lives in
-a geographic \emph{region} (e.g., \texttt{eu-west-1} on AWS or \texttt{europe-west1} on GCP),
-which is part of its identity. Each deployment targets a single provider
+Every provider resource lives in a \emph{region} (e.g., \texttt{eu-west-1} on AWS,
+\texttt{europe-west1} on GCP), which is part of its identity. Each deployment targets one provider
 (Section~\ref{sec:int_cha_int_uni_multi}), but the workflow and its functions need not share a
-region. Nor does the developer have to specify where a function is: Level~2 searches every region. The search
-starts with the workflow's own region, where functions are expected to be, since co-location
-reduces latency and data-transfer cost. On AWS a Lambda must also live in the region of the S3
-bucket that holds its code, so the AWS deployer takes its region from that bucket
-(Section~\ref{subsec:omniflow-aws-deployer}).
+region, and the developer need not say where a function is: Level~2 searches every region,
+starting with the workflow's own, where co-location reduces latency and cost. On AWS, a Lambda must
+be in the region of the S3 bucket that holds its code, so the AWS deployer takes its region from
+that bucket (Section~\ref{subsec:omniflow-aws-deployer}).
 
 \section{Design Rationale: Embedding Function Deployment in OmniFlow}
 \label{sec:design-rationale}
 
-A central design decision of this integration is that OmniFlow \emph{drives} QuickFaaS as part of a
-single workflow deployment, rather than the two tools being deployed as independent, long-running
-services that communicate over a network API. This section justifies that choice and states its
-trade-offs explicitly.
-
 \paragraph{Why OmniFlow orchestrates QuickFaaS.}
-Only OmniFlow has the information needed to drive a \emph{workflow-first} deployment: it owns the
-deployment entry point and the workflow tree, and therefore knows which functions the
-workflow references and in what order they must be resolved. QuickFaaS, by contrast, operates at the
-granularity of a single function described by a deployment descriptor and has no notion of a
-workflow. The orchestration must therefore live on the OmniFlow side, with QuickFaaS acting as the
-function-deployment mechanism it invokes on demand. This is a \emph{deployment-time},
-client-side, one-shot action performed on the developer's machine, not a recurring runtime
-interaction between two systems.
+Only OmniFlow knows the workflow: it owns the deployment entry point and the workflow tree, and
+therefore which functions to resolve. QuickFaaS works on one function at a time and has no notion
+of a workflow. OmniFlow therefore drives QuickFaaS, in a one-shot, client-side action at deployment
+time. To keep the tools decoupled, function deployment sits behind a strategy interface with one
+implementation per provider (Section~\ref{sec:function-registry}), each invoking QuickFaaS as an
+external process. QuickFaaS is reused as-is, with its own repository, Gradle build and
+Kotlin~1.6.20 toolchain.
 
-To keep the two tools decoupled despite this dependency, function deployment is reached through a
-strategy interface with one implementation per provider (Section~\ref{sec:function-registry}), each of
-which invokes QuickFaaS as an external process. QuickFaaS is thus reused as-is, remaining a separately owned and separately built
-tool (its own repository, Gradle build and Kotlin~1.6.20 toolchain), instead of having its source
-merged into OmniFlow's Maven build.
+\paragraph{Why not two communicating services.}
+Neither tool is a service: OmniFlow is a library invoked during a build, QuickFaaS a desktop
+application with no network API. Running them as services would mean re-architecting and operating
+both, the additional runtime layer this work avoids (Section~\ref{ch:related-works}), and carrying
+local cloud credentials across a trust boundary, with no benefit for a deployment on one machine.
 
-\paragraph{Why not two independent communicating services.}
-An alternative design would run OmniFlow and QuickFaaS as two standing services that exchange
-messages over a network. Neither tool is a service (OmniFlow is a library invoked during a build,
-and QuickFaaS a desktop application with no network API), so this design would mean
-re-architecting and operating both, which reintroduces the ``additional runtime layer that must be
-operated'' this thesis avoids (Section~\ref{ch:related-works}). It would also have to carry the
-developer's local cloud credentials across a trust boundary, with no benefit for a deployment that
-runs on one machine.
-
-\paragraph{Trade-off of the current mechanism.}
-In the present prototype the invocation is realised as a subprocess: OmniFlow places the deployment
-descriptor (and the function source) next to the QuickFaaS JAR and launches it with
-\texttt{java\ -jar}, detecting success from the process exit code and a marker printed on its
-output. It reuses QuickFaaS's existing headless entry point without modifying it. It is also the most brittle part of the integration: it couples the two build
-systems at run time through a JAR path, and it parses the child process's output. The
-alternative to the subprocess is \emph{in-process library invocation} (linking QuickFaaS as
-a dependency), which preserves the OmniFlow-drives-QuickFaaS model while removing the process
-boundary. It is discussed as future work (Chapter~\ref{cha:conclusions}) and is a different axis
-from the two-service design rejected above.
+\paragraph{Trade-off of the subprocess.}
+OmniFlow places the descriptor and function source next to the QuickFaaS JAR, launches it with
+\texttt{java\ -jar}, and detects success from the exit code and a marker on its output. This reuses
+QuickFaaS's headless entry point unchanged, but it is the most brittle part of the integration: it
+couples the two builds through a JAR path and parses the child's output. Invoking QuickFaaS
+in-process as a library would remove the process boundary while keeping the same model; it is
+future work (Chapter~\ref{cha:conclusions}).
 
 \section{Developer Procedure for Deploying a Workflow}
 \label{sec:developer-workflow}
 
-Consider a workflow that introduces one new function, resolved through the registry, and calls one function through a literal endpoint. For the former, the developer prepares a QuickFaaS deployment descriptor file (JSON) and the code file it references in \texttt{functionFile}. No QuickFaaS descriptor is created for the latter, which the developer does not own.
+Consider the \texttt{FraudPipeline} workflow (Listing~\ref{lst:wf-fraudpipeline-full}), with one
+internal and one external call. For the internal \texttt{fraud-check}
+(Listing~\ref{lst:call-step-internal}), the developer writes a QuickFaaS descriptor and the code file
+it names, and chooses a \texttt{functionRef}. Reading the registry shows which references are in
+use, but is not needed for a new function. The external step (Listing~\ref{lst:wf-external-part})
+calls a partner API through a literal \texttt{host}/\texttt{path}, and needs no descriptor.
 
-Because such calls are declared with \texttt{internalFunction("fraud-check", ...)} rather than a concrete endpoint, the developer only needs to choose a stable \texttt{functionRef}. Read access to the Function Registry helps to see which functions are already registered and which \texttt{functionRef} identifiers are in use. It is not required for a brand-new function: after the first integrated deployment, OmniFlow records the binding, so the same \texttt{functionRef} can be reused in future workflows.
-
-The workflow is written as shown in Listing~\ref{lst:wf-internal-part} and Listing~\ref{lst:wf-external-part}. Listing~\ref{lst:wf-internal-part} shows the first step, which calls a function resolved through the registry: instead of a concrete endpoint it uses \texttt{internalFunction(\allowbreak "fraud-check",\allowbreak "./deploy/fraud-check.json")}, whose second argument points to the QuickFaaS descriptor. Listing~\ref{lst:wf-external-part} completes the workflow with a second step that calls an API using literal \texttt{host}/\texttt{path} values and no \texttt{internalFunction}. What the integrated deployment does with each of the two calls is traced in Section~\ref{sec:walkthrough}.
-
-\begin{lstlisting}[language=Kotlin,caption={FraudPipeline workflow (part 1/2): call resolved through the registry.},label={lst:wf-internal-part},basicstyle=\ttfamily\small,breaklines=false]
-val wf = workflow {
-  name("FraudPipeline")
-  description("Fraud check followed by a partner risk score")
-  params("args")
-  steps(
-    step {
-      name("fraud-check")
-      description("Call the fraud-check function")
-      context(call {
-        method(GET)
-        internalFunction("fraud-check", "./deploy/fraud-check.json")
-        result("fraudResult")
-      })
-    },
-    ...
-\end{lstlisting}
-
-\begin{lstlisting}[language=Kotlin,caption={FraudPipeline workflow (part 2/2): call with a literal endpoint.},label={lst:wf-external-part},basicstyle=\ttfamily\small,breaklines=false]
-...
-// FraudPipeline workflow (continuation)
-    step {
-      name("external-risk-api")
-      description("Call the partner risk-scoring API")
-      context(call {
-        method(POST)
-        host("api.partner.example")
-        path("/v1/risk-score")
-        result("riskResult")
-      })
-    }
-  )
-  result("riskResult")
+\begin{lstlisting}[language=Kotlin,caption={External call of the \texttt{FraudPipeline} workflow (excerpt of Listing~\ref{lst:wf-fraudpipeline-full}).},label={lst:wf-external-part},basicstyle=\ttfamily\small,breaklines=false]
+step {
+  name("external-risk-api")
+  description("Call the partner risk-scoring API")
+  context(call {
+    method(POST)
+    host("api.partner.example")
+    path("/v1/risk-score")
+    result("riskResult")
+  })
 }
 \end{lstlisting}
 
 \subsection{Walkthrough of an Integrated Deployment}
 \label{sec:walkthrough}
 
-Deploying the \texttt{FraudPipeline} of Listings~\ref{lst:wf-internal-part}
-and~\ref{lst:wf-external-part} makes the ladder concrete. Suppose \texttt{fraud-check} has never
-been deployed and the registry does not yet exist. OmniFlow first bootstraps the registry (on GCP by listing the project's HTTP-invocable
-services, on AWS by listing the Lambda functions across every region enabled for the account) and then walks the workflow tree. The \texttt{external-risk-api} step carries literal \texttt{host}/\texttt{path} and
-is skipped by the resolver. The \texttt{fraud-check} step carries an \texttt{internalFunction}, so
-the ladder runs: Level~1 misses (empty registry), Level~2 misses (the function does not exist on
-the provider), and Level~3 runs because the call supplied
-\texttt{"./deploy/fraud-check.json"}. QuickFaaS deploys the function, the returned endpoint (an
-HTTPS URL on GCP, an ARN on AWS) is written to the registry under the key \texttt{fraud-check}, and
-the resolved value is injected into the step. With every such call now bound, OmniFlow renders
-the provider artifact and deploys the workflow.
+Suppose \texttt{fraud-check} has never been deployed and there is no registry. OmniFlow first
+bootstraps the registry (on GCP by listing the project's HTTP-invocable services, on AWS by listing
+the Lambda functions in every enabled region), then walks the workflow tree. The resolver skips
+\texttt{external-risk-api}. For \texttt{fraud-check}, Level~1 misses, Level~2 misses, and Level~3
+runs because a descriptor was supplied: QuickFaaS deploys the function, its endpoint (a URL on GCP,
+an ARN on AWS) is written to the registry under \texttt{fraud-check}, and injected into the step.
+OmniFlow then renders and deploys the workflow.
 
-A second deployment of the same workflow shows what the indirection saves:
-\texttt{fraud-check} is now a Level~1 registry hit, no descriptor is consulted, and no
-function is redeployed. The workflow definition did not change, and would not have to if
-\texttt{fraud-check} had meanwhile been recreated at a new endpoint: Level~1 would bind the call to
-it (Section~\ref{sec:resolution-cascade}).
+On a second deployment, \texttt{fraud-check} is a Level~1 hit: no descriptor is read and nothing is
+redeployed. Had the function been recreated at a new endpoint, Level~1 would bind the call to it,
+with no change to the workflow definition.
 
 \paragraph{Error and edge cases.}
-The same procedure defines a small number of failure modes, all fail-fast and all reported before
-any provider artifact is rendered:
+All fail fast, before any artifact is rendered:
 \begin{itemize}
-  \item \textbf{Unresolvable function.} Absent from the registry and the provider, with no
-  descriptor supplied: deployment aborts with an error that names the function and tells the
-  developer to deploy it first.
-  \item \textbf{Ambiguous reference.} A bare \texttt{functionRef} that matches entries in more
-  than one region (in the registry or on the provider): deployment aborts and asks the developer to
-  use the fully-qualified \texttt{"region/functionRef"} form.
-  \item \textbf{Mutually exclusive forms.} A call that sets both \texttt{internalFunction} and
-  \texttt{host}/\texttt{path}: rejected at DSL build time and again at resolution time.
-  \item \textbf{Stale binding.} A registry entry whose function no longer exists (a deleted
-  Lambda function on AWS, a deleted Cloud Run service on GCP) and cannot be rediscovered in another
-  region: the entry is removed and deployment aborts. It aborts even when the call supplies a
-  descriptor, rather than emit a workflow bound to a dead endpoint.
+  \item \textbf{Unresolvable function:} absent from the registry and the provider, with no
+  descriptor. The deployment aborts, naming the function.
+  \item \textbf{Ambiguous reference:} a bare \texttt{functionRef} that matches more than one region.
+  The deployment aborts and asks for the \texttt{"region/functionRef"} form.
+  \item \textbf{Both forms on one call:} \texttt{internalFunction} together with
+  \texttt{host}/\texttt{path} is rejected when the DSL is built and again at resolution.
+  \item \textbf{Stale binding:} a registry entry whose function no longer exists and cannot be
+  rediscovered. The entry is removed and the deployment aborts, even if a descriptor is supplied,
+  rather than bind the workflow to a dead endpoint.
 \end{itemize}
 
-One misconfiguration is not caught before deployment: a \texttt{functionRef} that differs from the
-\texttt{function.name} in its descriptor. The resolver passes the \texttt{functionRef} to the
-deployer as the function's name, while QuickFaaS deploys the function under the descriptor's name,
-and nothing checks that the two agree. When they differ, OmniFlow waits for a function named after
-the \texttt{functionRef}, and the deployment fails when that wait times out. The function that was
-deployed is not recorded in the registry.
-
-
-
-
-
-
-
-
-
-
-
+One misconfiguration is not caught beforehand: a \texttt{functionRef} different from the
+descriptor's \texttt{function.name}. QuickFaaS deploys the function under the descriptor's name,
+while OmniFlow waits for one named after the \texttt{functionRef}; the wait times out and the
+deployed function is not registered.

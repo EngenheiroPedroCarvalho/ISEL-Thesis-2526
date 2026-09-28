@@ -22,7 +22,7 @@ note right of ALD
   full breakdown (IAM role, S3 bucket region,
   subprocess retries, GetFunction polling,
   Step Functions permission grant) is in
-  the AWS deployment sequence diagram (Chapter 4)
+  the AWS deployment sequence diagram (this appendix)
 end note
 ALD -> ALD : resolve/create Lambda execution IAM role
 ALD -> ALD : patch role ARN into descriptor copy
