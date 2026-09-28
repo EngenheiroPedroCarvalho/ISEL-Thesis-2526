@@ -318,14 +318,6 @@ call on AWS therefore passes its inputs with \texttt{query(\ldots)}, and
 body before the ladder runs, rather than render a state machine that would drop it. The native
 integration avoids per-call request signing.
 
-\begin{figure}[tbp]
-  \centering
-  \includegraphics[width=0.8\textwidth]{images/implementation/aws-runtime-invocation.png}
-  \caption{Runtime invocation of an internal function on AWS via the native
-  \texttt{lambda:invoke} integration.}
-  \label{fig:aws-runtime-invocation}
-\end{figure}
-
 \texttt{AmazonCall\allowbreak Renderer} tells internal from external calls by the injected host. A
 \texttt{lambda://} host yields a \texttt{Task} with \texttt{Resource}
 \texttt{arn:aws:states:::lambda:invoke}, the ARN as \texttt{FunctionName}, and query terms under
@@ -348,3 +340,11 @@ result-passing and error handling apply unchanged; only the \texttt{Resource} an
   "Next": "external-risk-api"
 }
 \end{lstlisting}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{images/implementation/aws-runtime-invocation.png}
+  \caption{Runtime invocation of an internal function on AWS via the native
+  \texttt{lambda:invoke} integration.}
+  \label{fig:aws-runtime-invocation}
+\end{figure}
