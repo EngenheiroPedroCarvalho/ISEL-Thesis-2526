@@ -29,7 +29,7 @@ The work delivered the five contributions listed in Section~\ref{sec:int_contrib
   on GCP, its GCP provider was also moved to second-generation functions, which are Cloud Run
   services (Section~\ref{subsec:gcp-cloud-run-functions});
   \item a prototype that integrates the two tools, and a case study in card-payment fraud
-  detection, run on GCP (Chapter~\ref{cha:case-study});
+  detection, run on AWS and on GCP (Chapter~\ref{cha:case-study});
   \item an evaluation of the ladder's decisions on both providers and of the cost of resolution
   (Chapter~\ref{cha:evaluation}).
 \end{enumerate}
@@ -70,9 +70,9 @@ follows:
   \item \textbf{Evaluate feasibility and overhead}: \emph{partially met.}
   Chapter~\ref{cha:evaluation} checks the decisions of the resolution ladder on both providers
   and measures the resolution overhead, the registry write path and the packaging size. The
-  evidence is mostly local: apart from the GCP deployment of the case study
-  (Section~\ref{sec:case-artifacts}), the correctness checks simulate the provider, nothing ran
-  against AWS, and the benchmarks ran on a laptop rather than dedicated hardware. End-to-end deployment times were deliberately not
+  evidence is mostly local: apart from the deployments of the case study to AWS and GCP
+  (Section~\ref{sec:case-artifacts}), the correctness checks simulate the provider, and the
+  benchmarks ran on a laptop rather than dedicated hardware. End-to-end deployment times were deliberately not
   measured, since they are known to take minutes and are dominated by the provider
   (Section~\ref{sec:eval-scope}). The
   provider calls that validation and discovery make are counted from the code
@@ -103,11 +103,15 @@ The implementation is a prototype, with the following limitations.
   reference to a function that does not exist yet therefore aborts instead of reaching Level~3, and the
   region-qualified form that avoids the scan ties the definition to one provider's region names
   (Section~\ref{sec:case-discussion}).
-  \item \textbf{Renderer limits.} OmniFlow's AWS renderer turns an \texttt{assign} step into a
-  \texttt{Pass} state that replaces the whole state document, so the case-study workflow cannot
-  run end to end on AWS; and the two renderers expect a literal host in different forms, so an
-  external call is not portable between providers (Section~\ref{sec:case-discussion}). Both are in
-  OmniFlow's renderers, which this work did not change.
+  \item \textbf{Renderer limits.} OmniFlow's AWS renderer turns an \texttt{assign} of several
+  variables into a \texttt{Pass} state that replaces the whole state document (the
+  single-variable case, which the case study uses, writes only that variable); and the two
+  renderers expect a literal host in different forms, so an external call is not portable between
+  providers (Section~\ref{sec:case-discussion}).
+  \item \textbf{Provider-specific function source.} QuickFaaS's GCP hooks and its AWS Lambda
+  template call the developer's code through different signatures, so the same workflow deploys
+  to both providers but each internal function is written once per provider
+  (Section~\ref{sec:case-discussion}).
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
   or authenticity guarantee, and no cross-process locking: concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
@@ -152,8 +156,8 @@ structural ones.
   dry-run mode that reports the IAM changes it would make instead of applying them silently.
   \item \textbf{Make the cloud-calling code testable,} extracting the SDK interactions
   behind narrow interfaces so the deploy/IAM/readiness logic can be unit-tested against fakes.
-  \item \textbf{Validate the ladder against live providers,} on AWS, and on GCP beyond the single
-  workflow of Chapter~\ref{cha:case-study}, deploying workflows that contain internal calls at each
+  \item \textbf{Validate the ladder against live providers} beyond the single workflow of
+  Chapter~\ref{cha:case-study}, deploying workflows that contain internal calls at each
   level of the ladder, so that the correctness
   evidence of Section~\ref{sec:eval-correctness} rests on the providers' own responses rather than
   on test doubles.
@@ -169,6 +173,7 @@ single, provider-agnostic definition, with concrete endpoint binding deferred to
 through an explicit resolution ladder. In local measurements the overhead of this unification is
 small and, with the single-read optimisation applied in both production resolvers, grows linearly.
 The solution fits an organisation that deploys one orchestration to several accounts or providers,
-as the case study of Chapter~\ref{cha:case-study} illustrates. What remains is evidence against AWS and engineering maturity (registry
+as the case study of Chapter~\ref{cha:case-study} illustrates. What remains is live evidence
+beyond a single workflow and engineering maturity (registry
 integrity, least-privilege operation, test coverage of the cloud edges and an update path) to
 take the prototype to production.

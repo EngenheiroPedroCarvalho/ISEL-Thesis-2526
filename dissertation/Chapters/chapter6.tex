@@ -16,17 +16,17 @@ settled. The scenario is not a validated production deployment. It extends
 the \texttt{FraudPipeline} example of Section~\ref{sec:developer-workflow} to make an
 authorisation decision. It is used here to walk through the integration end to end, and to
 discuss where it fits an actual banking environment and where it does not yet fit one. The
-deployment to GCP was executed against a live project. The two deployments to AWS are described,
-and their output is produced with the provider replaced by test doubles.
+deployments to an AWS test account and to GCP were executed against a live account and a live
+project. The deployment to a production AWS account is only described.
 
 The chapter is organised as follows. Section~\ref{sec:case-scenario} sets out the business
 requirements a payment-authorisation workflow imposes and why they line up with the problem this
 work addresses. Section~\ref{sec:case-design} defines the workflow in the OmniFlow DSL.
 Section~\ref{sec:case-deployment} walks the resolution ladder through three deployments of that
 same workflow (to a test and a production AWS account, then to GCP) to show how the bindings
-follow the deployment target. Section~\ref{sec:case-artifacts} shows the registries and bindings
-produced by two of them, the AWS test deployment and the run on GCP, and how the deployed workflow
-invokes the scoring functions. Section~\ref{sec:case-discussion} discusses the scenario's relevance and its limits, connecting
+follow the deployment target. Section~\ref{sec:case-artifacts} reports the two deployments that
+were run, to the AWS test account and to GCP: the registries and bindings they produced, the
+executions, and how the deployed workflow invokes the scoring functions. Section~\ref{sec:case-discussion} discusses the scenario's relevance and its limits, connecting
 them to the gaps assessed in Chapter~\ref{cha:conclusions}.
 
 \section{Scenario and Requirements}
@@ -198,7 +198,7 @@ copied between accounts. The registry file must not be shared between the two ac
 written for the test account names a function the production account does not have, so its
 validation fails, the entry is treated as stale, and the production deployment aborts
 (Section~\ref{sec:walkthrough}). This production deployment is only described:
-Section~\ref{sec:case-artifacts} shows the test-account deployment and the run on GCP.
+Section~\ref{sec:case-artifacts} reports the runs in the test account and on GCP.
 
 Now suppose the bank's exit strategy calls for the same fraud-screening workflow to run on a
 second provider (Section~\ref{sec:case-scenario}). Deploying it to GCP takes GCP descriptors (targeting Cloud Run functions instead of Lambda) and the
@@ -214,64 +214,86 @@ definition does not change between the two.
 \section{What the Deployments Produce}
 \label{sec:case-artifacts}
 
-The AWS listings in this section were not written by hand. They are the output of the AWS
-resolver and renderer, run on Listing~\ref{lst:case-payment-workflow} with the provider replaced
-by the same kind of test doubles used in Section~\ref{sec:eval-correctness}: a lookup that reports
-each function as absent until it has been deployed, and a deployer that returns fixed endpoints.
-The account ID is therefore a placeholder. Everything else, including the keys and the shape of
-each file, is what the integration writes. The GCP registry comes from the run against a live
-project described at the end of the section.
+Both deployments were run on 28 September 2026. The workflow as run, the functions, the scripts
+and the logs of each are kept in the repository, in the folders \texttt{case-study-aws} and
+\texttt{case-study-gcp}. Both runs departed from Listing~\ref{lst:case-payment-workflow} in the
+same two places. The internal references were region-qualified (\texttt{"eu-west-1/fraud-check"}
+on AWS, \texttt{"europe-west1/fraud-check"} on GCP). On GCP this was necessary, because one region
+of the project refuses Cloud Run lookups, and a bare reference that misses the registry would then
+abort at Level~2 (Section~\ref{subsec:validation-error-semantics}). And \texttt{report-decision}
+called a stub of the core banking system, deployed outside the ladder.
 
-The first deployment to the AWS test account starts from an empty registry. Both scoring calls
-miss at Level~1 and Level~2 and reach Level~3, so the deployer is asked for exactly two
-deployments, \texttt{fraud-check} and \texttt{risk-score}, each from the descriptor named on its
-call. The external \texttt{report-decision} call never reaches the resolver. The registry that
-results is Listing~\ref{lst:case-registry-aws}: one entry per internal function, keyed by its
-\texttt{functionRef}, holding the ARN that the rendered state machine uses.
+In the AWS test account, the stub was a Lambda function behind an API Gateway HTTP API, created
+with the AWS CLI. The AWS renderer turns an external call into an \texttt{apigateway:invoke} task,
+so the stub needs an API Gateway endpoint, and the QuickFaaS Lambda template passes only query
+parameters to the hook (Section~\ref{sec:runtime-invocation}), so a QuickFaaS function could not
+read the transaction sent as the body. The first deployment bootstrapped the registry, which
+recorded the six Lambda functions already in the account, one of them in another region, and
+reached Level~3 for both scoring calls. QuickFaaS took about 17 seconds to deploy each function,
+and the whole deployment about 48 seconds. Listing~\ref{lst:case-registry-aws} is the registry it
+left: the two new entries are keyed by the qualified reference and hold the function's ARN, which
+the state machine uses as the \texttt{FunctionName} of a \texttt{lambda:invoke} task, in the form
+shown in Listing~\ref{lst:rendered-lambda}. A second deployment bound both calls at Level~1,
+deployed nothing, took about a second and a half, and left the registry file byte-identical. Before
+it, the state machine had to be deleted, since OmniFlow's deployers create a workflow and cannot
+update one.
 
-\begin{lstlisting}[language=json,caption={AWS registry after the first deployment of \texttt{PaymentAuthorization}.},label={lst:case-registry-aws},basicstyle=\ttfamily\footnotesize,breaklines=false]
+\begin{lstlisting}[language=json,caption={AWS registry after the first deployment of \texttt{PaymentAuthorization}, from the run against a live account.},label={lst:case-registry-aws},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=false]
 {
-  "updatedAt" : "2026-09-27T22:31:50.404890Z",
+  "updatedAt" : "2026-09-28T14:18:54.523561Z",
   "functions" : {
-    "fraud-check" : {
-      "serviceName" : "fraud-check",
-      "url" : "arn:aws:lambda:eu-west-1:111111111111:function:fraud-check"
+    "aws-char-stats-fn" : {
+      "serviceName" : "aws-char-stats-fn",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:aws-char-stats-fn"
     },
-    "risk-score" : {
+    "region-a-greeting-fn" : {
+      "serviceName" : "region-a-greeting-fn",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:region-a-greeting-fn"
+    },
+    "aws-preprocess-fn" : {
+      "serviceName" : "aws-preprocess-fn",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:aws-preprocess-fn"
+    },
+    "aws-summary-fn" : {
+      "serviceName" : "aws-summary-fn",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:aws-summary-fn"
+    },
+    "core-banking-stub" : {
+      "serviceName" : "core-banking-stub",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:core-banking-stub"
+    },
+    "region-b-greeting-fn" : {
+      "serviceName" : "region-b-greeting-fn",
+      "url" : "arn:aws:lambda:eu-central-1:025064823406:function:region-b-greeting-fn"
+    },
+    "eu-west-1/fraud-check" : {
+      "serviceName" : "fraud-check",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:fraud-check"
+    },
+    "eu-west-1/risk-score" : {
       "serviceName" : "risk-score",
-      "url" : "arn:aws:lambda:eu-west-1:111111111111:function:risk-score"
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:risk-score"
     }
   }
 }
 \end{lstlisting}
 
-Deploying the same workflow to the test account a second time, with both functions now reported
-as live, shows the
-other half of the ladder. Both calls are Level~1 hits that validate unchanged, the deployer is not
-called at all, and the registry file is left untouched: its \texttt{updatedAt} is the same
-timestamp as in Listing~\ref{lst:case-registry-aws}, because a hit that validates unchanged writes
-nothing. The rendered state machine is identical to the one produced by the first deployment. In
-it, each scoring step is a \texttt{lambda:invoke} task whose \texttt{FunctionName} is the ARN of
-Listing~\ref{lst:case-registry-aws}, in the form shown in Listing~\ref{lst:rendered-lambda}.
+On GCP, the stub was deployed with QuickFaaS. The first deployment bootstrapped the registry,
+which recorded the two Cloud Run services already in the project, and reached Level~3 for both
+scoring calls. QuickFaaS took about a minute to deploy each function, and the whole deployment
+about three minutes. Listing~\ref{lst:case-registry-gcp} is the registry it left: the two new
+entries are keyed by the qualified reference, and hold the full resource name of the Cloud Run
+service and its \texttt{run.app} URL, which the deployed Cloud Workflows definition uses as the
+\texttt{url} of an \texttt{http.post} call. A second deployment, again after deleting the
+workflow, bound both calls at Level~1, deployed nothing, took seven seconds, and left the registry
+file byte-identical.
 
-The deployment to GCP was run against a live project. The workflow as run, the three functions,
-the scripts and the logs are kept in the repository, in the folder \texttt{case-study-gcp}. It
-departed from Listing~\ref{lst:case-payment-workflow} in two
-places. The internal references were region-qualified (\texttt{"europe-west1/fraud-check"}),
-because one region of the project refuses Cloud Run lookups, and a bare reference that misses
-the registry would then abort at Level~2 (Section~\ref{subsec:validation-error-semantics}). And
-\texttt{report-decision} called a stub of the core banking system, deployed with QuickFaaS outside
-the ladder. The first deployment bootstrapped the registry, which recorded the two Cloud Run
-services already in the project, and reached Level~3 for both scoring calls. QuickFaaS took about
-a minute to deploy each function, and the whole deployment about three minutes.
-Listing~\ref{lst:case-registry-gcp} is the registry it left: the two new entries are keyed by the
-qualified reference, and hold the full resource name of the Cloud Run service and its
-\texttt{run.app} URL, which the deployed Cloud Workflows definition uses as the \texttt{url} of an
-\texttt{http.post} call. A second deployment bound both calls at Level~1, deployed nothing,
-took seven seconds, and left the registry file byte-identical. Before it, the workflow had to be
-deleted, since OmniFlow's GCP deployer creates a workflow and cannot update one. Three
-transactions were then executed (Table~\ref{tab:case-executions}), and each reached the expected
-decision.
+Three transactions were executed on each provider (Table~\ref{tab:case-executions}), and each
+reached the expected decision on both. On AWS, the execution input carries the transaction under a
+\texttt{transaction} key, because in Step Functions the input is the state document that the
+paths in the state machine refer to (\texttt{\$.transaction.amount}). The stub echoed the identifier of each
+transaction it received, so the transaction was still in the state when \texttt{report-decision}
+ran, after the \texttt{assign} steps (Section~\ref{sec:case-discussion}).
 
 \begin{lstlisting}[language=json,caption={GCP registry after the first deployment of \texttt{PaymentAuthorization}, from the run against a live project.},label={lst:case-registry-gcp},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=false]
 {
@@ -299,17 +321,18 @@ decision.
 
 \begin{table}[htbp]
   \centering
-  \caption{Executions of \texttt{PaymentAuthorization} on GCP after the second deployment.}
+  \caption{Executions of \texttt{PaymentAuthorization} on AWS and GCP. Every execution ended in
+  \texttt{SUCCEEDED}; each provider's column gives the decision it returned.}
   \label{tab:case-executions}
   \begin{tabular}{|l|r|c|l|l|}
     \hline
-    \textbf{Transaction} & \textbf{Amount} & \textbf{Country} & \textbf{State} & \textbf{Result} \\
+    \textbf{Transaction} & \textbf{Amount} & \textbf{Country} & \textbf{AWS} & \textbf{GCP} \\
     \hline
-    \texttt{tx-001} & 120  & PT & \texttt{SUCCEEDED} & \texttt{approved} \\
+    \texttt{tx-001} & 120  & PT & \texttt{approved} & \texttt{approved} \\
     \hline
-    \texttt{tx-002} & 4\,800 & ES & \texttt{SUCCEEDED} & \texttt{declined} \\
+    \texttt{tx-002} & 4\,800 & ES & \texttt{declined} & \texttt{declined} \\
     \hline
-    \texttt{tx-003} & 300  & PT & \texttt{SUCCEEDED} & \texttt{approved} \\
+    \texttt{tx-003} & 300  & PT & \texttt{approved} & \texttt{approved} \\
     \hline
   \end{tabular}
 \end{table}
@@ -332,25 +355,34 @@ workflow calls the new model without being redeployed. But a workflow deployment
 new model itself, because the ladder only deploys missing functions
 (Section~\ref{sec:concl-critical}).
 
-Rendering the workflow for Section~\ref{sec:case-artifacts} also exposed a limitation of OmniFlow's
-AWS renderer, which this work did not change. An \texttt{assign} step becomes a \texttt{Pass}
-state whose \texttt{Result} replaces the whole state document, so after
-\texttt{approve-transaction} or \texttt{decline-transaction} the transaction the workflow received
-is no longer in the state, and \texttt{report-decision} cannot send it. The Cloud Workflows
-definition does not have this problem, since \texttt{assign} there only adds a variable. On AWS,
-the \texttt{PaymentAuthorization} workflow therefore needs the renderer to keep the rest of the state
-when a variable is assigned before it can run end to end.
+Rendering the workflow for AWS before running it exposed two defects in OmniFlow's AWS renderer,
+which this work fixed. First, an \texttt{assign} step became a \texttt{Pass} state whose
+\texttt{Result} replaced the whole state document, so after \texttt{approve-transaction} or
+\texttt{decline-transaction} the transaction the workflow received was no longer in the state, and
+\texttt{report-decision} could not send it. An \texttt{assign} of a single variable is rendered as
+a \texttt{Pass} state that writes only that variable, with \texttt{"Result": "approved"} and
+\texttt{"ResultPath": "\$.decision"} (or, when the value is another variable, an
+\texttt{InputPath} that copies it), and leaves the rest of the state as it was. An \texttt{assign}
+of several variables is still rendered with a \texttt{Result} that replaces the state, because a JSONPath
+\texttt{ResultPath} writes to a single place; the Cloud Workflows definition has no such limit,
+since \texttt{assign} there only adds variables. Second, the query parameters of a Lambda call were
+wrapped in \texttt{States.Array}, the form \texttt{apigateway:invoke} requires, so a hook received
+\texttt{"[120]"} instead of \texttt{"120"}. They are passed in the Lambda payload as plain
+strings, and API Gateway calls keep the arrays.
 
-Running the workflow on GCP exposed four limits that the local tests could not. First, a bare
-reference assumes that every region can be queried. In a project where some regions are closed
-by policy, it aborts, and the region-qualified form that avoids the scan names a region in the
-provider's own terms, so the definition no longer deploys unchanged to the other provider.
+Running the workflow on the two providers exposed five limits that the local tests could not.
+First, a bare reference assumes that every region can be queried. In a project where some regions
+are closed by policy, it aborts, and the region-qualified form that avoids the scan names a region
+in the provider's own terms, so the definition no longer deploys unchanged to the other provider.
 Second, OmniFlow's deployers only create workflows, so redeploying one means deleting it first.
 Third, the GCP and AWS renderers expect a literal host in different forms (with a scheme for
 Cloud Workflows, without one for the API Gateway endpoint), so an external call is not portable
-either. Fourth, QuickFaaS's GCP request adapter accepts a JSON body only when the content type is
-exactly \texttt{application/json}, and Cloud Workflows adds a charset, so the stub had to read
-the body itself.
+either. Fourth, the function source is not portable between providers. A QuickFaaS hook for GCP
+receives a request and a response object, while the AWS Lambda template calls a method that takes
+the query parameters as a map and returns the result, so each scoring function was written once
+per provider. Fifth, QuickFaaS's GCP request adapter accepts a JSON body only when the content
+type is exactly \texttt{application/json}, and Cloud Workflows adds a charset, so the GCP stub had
+to read the body itself.
 
 The scenario equally exposes why this remains illustrative rather than production-ready: the
 unguarded registry and the broad, automatically granted IAM role assessed in

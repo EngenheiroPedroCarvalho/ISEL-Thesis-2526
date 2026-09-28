@@ -22,7 +22,7 @@ Cloud and Azure, was also extended with an AWS Lambda provider, so that the unif
 clouds OmniFlow targets.
 
 Forty-six unit tests cover every path the ladder can take on both providers, and a case study was
-deployed and run on Google Cloud. Benchmarks show that the local work of resolving a workflow of two
+deployed and run on AWS and on Google Cloud. Benchmarks show that the local work of resolving a workflow of two
 hundred internal calls costs tens of microseconds, growing linearly with the number of calls, and
 resolution sends one request to the provider per internal call when the registry is current.
 Deploying a serverless application from a single definition is therefore feasible, at a cost that is
