@@ -5,36 +5,30 @@
 %%
 %% Abstract in English
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Deploying a serverless application means deploying two things: the functions that do the work and
-the workflow that orchestrates them. A different tool handles each, and the two are not
-independent. A workflow invokes a function through the endpoint the provider assigns when that
-function is deployed (a Cloud Run URL, a Lambda ARN), and that endpoint depends on the
-account, project and region it was deployed to. The developer therefore deploys the functions with
-one tool, reads the endpoints it produced and copies them by hand into the workflow definition
-consumed by another. The copying is repeated for every deployment target, and a wrong endpoint goes
-undetected: the workflow definition stays valid, deploys successfully and fails only when it runs.
+Deploying a serverless application means deploying the functions that do the work and the workflow
+that orchestrates them, usually with a different tool for each. The two are not independent: a
+workflow invokes a function through the endpoint the provider assigns when that function is deployed
+(a Cloud Run URL, a Lambda ARN), and that endpoint depends on the account, project and region. The
+developer therefore copies each endpoint by hand from one tool into the other, for every deployment
+target, and a wrong endpoint goes undetected until the workflow runs.
 
-This dissertation removes that manual step by unifying the two tools: QuickFaaS, which deploys
-portable serverless functions, and OmniFlow, a Kotlin DSL that renders and deploys workflows to AWS
-Step Functions and Google Cloud Workflows. A workflow call names the function it invokes by a
-stable logical identifier instead of an endpoint, and OmniFlow binds that identifier when the
-workflow is deployed. The binding is a ladder of three levels, each one tried only when the level
-before it fails. The first is a function registry, whose entry is validated against the live
-function. The second is a search of the provider's regions for a function of that name. The third,
-reached only once absence is confirmed, is a deployment through QuickFaaS from a deployment
-descriptor. QuickFaaS, previously limited to Google
+This dissertation removes that manual step by unifying QuickFaaS, which deploys portable serverless
+functions, with OmniFlow, a Kotlin DSL that renders and deploys workflows to AWS Step Functions and
+Google Cloud Workflows. A workflow call names its function by a stable logical identifier, which
+OmniFlow binds to an endpoint when the workflow is deployed, through a ladder of three levels: a
+function registry validated against the live function, a search of the provider's regions, and, only
+once absence is confirmed, a deployment through QuickFaaS. QuickFaaS, previously limited to Google
 Cloud and Azure, was also extended with an AWS Lambda provider, so that the unification covers both
 clouds OmniFlow targets.
 
-The prototype was evaluated for correctness and for cost. Forty-six unit tests cover every path
-the ladder can take on both providers. Benchmarks show that the local work of resolving a
-workflow of two hundred internal calls costs tens of microseconds, growing linearly with the
-number of internal calls while the registry is read only once. The requests that resolution sends
-to the provider are bounded from the implementation: one per internal call when the registry is
-current. Deploying a serverless application from a single definition is therefore feasible, and
-the resolution it adds is negligible beside a cloud deployment measured in minutes.
+Forty-six unit tests cover every path the ladder can take on both providers, and a case study was
+deployed and run on Google Cloud. Benchmarks show that the local work of resolving a workflow of two
+hundred internal calls costs tens of microseconds, growing linearly with the number of calls, and
+resolution sends one request to the provider per internal call when the registry is current.
+Deploying a serverless application from a single definition is therefore feasible, at a cost that is
+negligible beside a cloud deployment measured in minutes.
 % Palavras-chave do resumo em Inglês
 \begin{keywords}
 Serverless computing, Function-as-a-Service, Workflow orchestration, Multi-cloud portability,
-Deployment-time endpoint binding, AWS Lambda, Google Cloud
+Deployment-time endpoint binding
 \end{keywords}

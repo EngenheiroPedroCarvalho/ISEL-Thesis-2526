@@ -2,7 +2,7 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 11
-title Resolution cascade -- Level 2: Provider discovery (GCP)
+title Resolution ladder -- Level 2: Provider discovery (GCP)
 
 participant "Resolver\n(WorkflowInternalFunctionResolver)" as R
 participant "FunctionRegistryStore" as REG

@@ -2,7 +2,7 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 11
-title Resolution cascade -- Level 1: Registry lookup and live validation (AWS)
+title Resolution ladder -- Level 1: Registry lookup and live validation (AWS)
 
 participant "Resolver\n(AwsInternalFunctionResolver)" as R
 participant "FunctionRegistryStore" as REG

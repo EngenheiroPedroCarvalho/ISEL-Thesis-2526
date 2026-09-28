@@ -2,7 +2,7 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 11
-title Resolution cascade -- Level 2: Provider discovery (AWS)
+title Resolution ladder -- Level 2: Provider discovery (AWS)
 
 participant "Resolver\n(AwsInternalFunctionResolver)" as R
 participant "LambdaFunctionInspector" as AI

@@ -97,6 +97,8 @@
 
 % Let biblatex break long URLs inside letter and digit runs, not only at the
 % punctuation, so entries whose URL ends in a long word stay inside the margin.
+% Dates of access as YYYY-MM-DD (the default MM/DD/YYYY is ambiguous).
+\ExecuteBibliographyOptions{urldate=iso,seconds=false}
 \setcounter{biburllcpenalty}{7000}
 \setcounter{biburlucpenalty}{8000}
 \setcounter{biburlnumpenalty}{7000}
@@ -104,6 +106,46 @@
 % Allow TeX a final, looser pass over paragraphs it cannot break otherwise,
 % instead of letting a long identifier run into the margin.
 \setlength{\emergencystretch}{1em}
+
+% Normas de escrita e apresentação do TFM (CTC do ISEL, 2025/26), applied here so that the
+% template files stay untouched.
+\makeatletter
+% n.º 6-7: the abstract in Portuguese comes before the one in English.
+\abstractorder(en):={pt,en}
+% n.º 12-13: chapter, section and subsection titles in black; sections 12 pt, subsections 11 pt.
+\renewcommand{\iselthesis@titlecolor}{black}
+\renewcommand{\iselthesis@subtitlecolor}{black}
+\renewcommand{\iselthesis@sectioncolor}{black}
+\renewcommand{\iselthesis@subsectioncolor}{black}
+\renewcommand{\iselthesis@subsubsectioncolor}{black}
+\renewcommand\section{\@startsection{section}{1}{0pt}%
+  {-3.5ex plus -0.5ex minus -.2ex}%
+  {2.3ex \@plus.2ex}%
+  {\iselthesis@sectionfont\bfseries\fontsize{12}{14.5}\selectfont\color{\iselthesis@sectioncolor}}}
+\renewcommand\subsection{\@startsection{subsection}{2}{0pt}%
+  {-2.5ex plus -0.5ex minus -.2ex}%
+  {1.5ex \@plus .2ex}%
+  {\iselthesis@sectionfont\bfseries\fontsize{11}{13.5}\selectfont\color{\iselthesis@subsectioncolor}}}
+\renewcommand\printchaptertitle[1]{%
+  \ifNoChapNumber
+    \begin{tabular}{@{}p{\textwidth}}%
+      \chaptitlefont\MakeUppercase{#1}%
+    \end{tabular}%
+  \else
+    \hspace*{-1.5cm}%
+    \begin{tabular}{@{}p{1.0cm}p{\dimexpr\textwidth+1.5cm-1.0cm\relax}}%
+      \chapnumfont\thechapter%
+      & \chaptitlefont\MakeUppercase{#1}%
+    \end{tabular}%
+    \par\vspace{0.05cm}%
+    \hspace*{-3cm}\noindent\rule{\dimexpr\textwidth+3cm\relax}{.5pt}%
+  \fi
+  \NoChapNumberfalse%
+}
+\makeatother
+% n.º 14: figure and table captions in 9 pt.
+\captionsetup{font={footnotesize,sf}}
+\captionsetup[lstlisting]{font={footnotesize,sf}}
 
 %%==== DANGER ==== DANGER ==== DANGER ==== DANGER ==== DANGER ====
 %%==== DANGER ==== DANGER ==== DANGER ==== DANGER ==== DANGER ====

@@ -24,10 +24,9 @@ requirements a payment-authorisation workflow imposes and why they line up with 
 work addresses. Section~\ref{sec:case-design} defines the workflow in the OmniFlow DSL.
 Section~\ref{sec:case-deployment} walks the resolution ladder through three deployments of that
 same workflow (to a test and a production AWS account, then to GCP) to show how the bindings
-follow the deployment target, and Section~\ref{sec:case-artifacts} shows the registries and the
-bindings those deployments produce, including those of the run on GCP.
-Section~\ref{sec:case-runtime} follows a transaction through the deployed workflow at runtime, and
-Section~\ref{sec:case-discussion} discusses the scenario's relevance and its limits, connecting
+follow the deployment target. Section~\ref{sec:case-artifacts} shows the registries and bindings
+produced by two of them, the AWS test deployment and the run on GCP, and how the deployed workflow
+invokes the scoring functions. Section~\ref{sec:case-discussion} discusses the scenario's relevance and its limits, connecting
 them to the gaps assessed in Chapter~\ref{cha:conclusions}.
 
 \section{Scenario and Requirements}
@@ -60,10 +59,11 @@ this dissertation:
     candidate for such a function. Exiting a provider is easier if the orchestration and the
     functions it calls can be deployed elsewhere, not just the infrastructure underneath them.
     \item \textbf{Auditability of bindings.} A bank's change-management process typically requires
-    a record of which endpoint each deployment was bound to, which the
-    registry's \texttt{updatedAt}-stamped entries provide in a basic form
-    (Section~\ref{subsec:registry-evolution}), even though a production deployment would need the
-    stronger guarantees discussed in Section~\ref{sec:case-discussion}.
+    a record of which endpoint each deployment was bound to. The registry provides it only in a
+    basic form: it holds the current binding of each function and, in \texttt{updatedAt}, when the
+    file last changed (Section~\ref{sec:dsl-extensions}), but not which deployment wrote each entry.
+    A production deployment would need the stronger guarantees discussed in
+    Section~\ref{sec:case-discussion}.
 \end{itemize}
 
 \section{Workflow Design}
@@ -197,7 +197,8 @@ Level~3 deploys both there, recording ARNs that carry the production account ID.
 copied between accounts. The registry file must not be shared between the two accounts: an entry
 written for the test account names a function the production account does not have, so its
 validation fails, the entry is treated as stale, and the production deployment aborts
-(Section~\ref{sec:walkthrough}).
+(Section~\ref{sec:walkthrough}). This production deployment is only described:
+Section~\ref{sec:case-artifacts} shows the test-account deployment and the run on GCP.
 
 Now suppose the bank's exit strategy calls for the same fraud-screening workflow to run on a
 second provider (Section~\ref{sec:case-scenario}). Deploying it to GCP takes GCP descriptors (targeting Cloud Run functions instead of Lambda) and the
@@ -253,9 +254,9 @@ nothing. The rendered state machine is identical to the one produced by the firs
 it, each scoring step is a \texttt{lambda:invoke} task whose \texttt{FunctionName} is the ARN of
 Listing~\ref{lst:case-registry-aws}, in the form shown in Listing~\ref{lst:rendered-lambda}.
 
-The deployment to GCP was run against a live project, with the artifacts kept in the
-repository.\footnote{Folder \texttt{case-study-gcp}: the workflow as run, the three functions,
-the scripts and the logs.} It departed from Listing~\ref{lst:case-payment-workflow} in two
+The deployment to GCP was run against a live project. The workflow as run, the three functions,
+the scripts and the logs are kept in the repository, in the folder \texttt{case-study-gcp}. It
+departed from Listing~\ref{lst:case-payment-workflow} in two
 places. The internal references were region-qualified (\texttt{"europe-west1/fraud-check"}),
 because one region of the project refuses Cloud Run lookups, and a bare reference that misses
 the registry would then abort at Level~2 (Section~\ref{subsec:validation-error-semantics}). And
@@ -313,10 +314,7 @@ decision.
   \end{tabular}
 \end{table}
 
-\section{Runtime Invocation}
-\label{sec:case-runtime}
-
-Once deployed, the two deployments of \texttt{PaymentAuthorization} differ only in how the two
+At run time, the two deployments of \texttt{PaymentAuthorization} differ only in how the two
 scoring calls are invoked. On AWS, Step Functions invokes \texttt{fraud-check} and
 \texttt{risk-score} through the native \texttt{lambda:invoke} integration of
 Section~\ref{sec:runtime-invocation}. On GCP, they are HTTP calls to the resolved \texttt{run.app}
@@ -328,9 +326,11 @@ external call.
 \label{sec:case-discussion}
 
 Section~\ref{sec:case-deployment} shows the integration's central claim in a setting where it
-plausibly matters. The fraud team's frequent model updates are a different matter: a retrained \texttt{fraud-check} redeployed in place keeps its endpoint
-(Section~\ref{sec:resolution-cascade}), so the deployed workflow calls the new model unchanged. Conversely, a workflow deployment never deploys the new model itself, because the
-ladder only deploys missing functions (Section~\ref{sec:concl-critical}).
+plausibly matters. Updating the fraud model is different. A retrained \texttt{fraud-check}
+redeployed in place keeps its endpoint (Section~\ref{sec:resolution-cascade}), so the deployed
+workflow calls the new model without being redeployed. But a workflow deployment never deploys the
+new model itself, because the ladder only deploys missing functions
+(Section~\ref{sec:concl-critical}).
 
 Rendering the workflow for Section~\ref{sec:case-artifacts} also exposed a limitation of OmniFlow's
 AWS renderer, which this work did not change. An \texttt{assign} step becomes a \texttt{Pass}

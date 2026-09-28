@@ -188,8 +188,9 @@
 
 \newglossaryentry{stale}{
 	name={Stale entry},
-	description={Registry entry whose function no longer exists on the provider. It is removed and
-	the deployment aborts, even when a deployment descriptor is present.}
+	description={Registry entry whose function no longer exists where the entry says. The function
+	is looked for in the other regions: if it is found, the entry is replaced; otherwise the entry is
+	removed and the deployment aborts, even when a deployment descriptor is present.}
 }
 
 \newglossaryentry{statemachine}{

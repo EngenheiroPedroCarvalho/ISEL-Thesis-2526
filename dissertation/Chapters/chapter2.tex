@@ -16,7 +16,9 @@ orchestration that this work aims to close.
 
 \subsection{Serverless Computing and FaaS}
 \label{sec:serverless_computing_faas}
-Serverless computing represents a shift in cloud execution models where the cloud provider assumes full responsibility for allocating resources, patching operating systems and auto-scaling infrastructure. The defining characteristic of this model is its granular billing, where users are charged only for the actual execution time of their code, eliminating costs for idle provisioned capacity~\cite{serverlessComputing}.
+In serverless computing, the cloud provider allocates resources, patches the operating system and
+scales the infrastructure. Users are charged only for the time their code runs, not for idle
+capacity~\cite{serverlessComputing}.
 
 Function-as-a-Service (FaaS) is the main form of the serverless model. It enables developers to deploy single-purpose, stateless functions that are triggered by specific events (e.g., HTTP requests, database changes). The lack of standardisation across providers (e.g., AWS Lambda, Google Cloud Functions, Azure Functions) exposes FaaS applications to vendor lock-in, as function code often becomes tightly coupled to provider-specific SDKs and deployment artifacts~\cite{rodrigues2022quickfaas}.
 
@@ -29,8 +31,8 @@ the \emph{packaging and deployment} axis: providers accept code through differen
 mechanisms, with different naming, permission and trigger conventions, which QuickFaaS addresses
 as described in Section~\ref{sec:background_quickfaas}. Beyond portability, the statelessness and
 event-driven nature of FaaS also shape how functions are \emph{composed}. A function holds no state
-between invocations and cannot directly call another, so non-trivial applications must lift
-control-flow and data-flow into an external orchestrator, the workflow layer discussed next,
+between invocations and cannot directly call another, so non-trivial applications must move
+their control flow and data flow into an external orchestrator, the workflow layer discussed next,
 rather than encode them inside the functions themselves~\cite{serverlessComputing}.
 
 \subsection{Workflows and Orchestration}
@@ -49,10 +51,9 @@ Major cloud providers offer managed services for this role, notably AWS Step Fun
 
 \subsection{QuickFaaS: Portable Function Deployment}
 \label{sec:background_quickfaas}
-QuickFaaS is a desktop-based tool developed to solve the problem of function portability~\cite{rodrigues2022quickfaas}. Its primary goal is to allow developers to write a function once and deploy it to multiple cloud providers without modifying the source code, targeting the elimination of code-level vendor lock-in.
-
-\subsubsection{Components Overview}
-QuickFaaS is a self-contained desktop application written in Kotlin~\cite{kotlin_lang}, with a
+QuickFaaS is a tool that lets developers write a function once and deploy it to several cloud
+providers without changing its source code, which removes code-level vendor
+lock-in~\cite{rodrigues2022quickfaas}. It is a self-contained desktop application written in Kotlin~\cite{kotlin_lang}, with a
 user interface built on Compose for Desktop~\cite{compose_multiplatform}. It also has a headless
 entry point that deploys the function described by a JSON deployment descriptor, which is the
 entry point this work uses.
@@ -62,11 +63,11 @@ To achieve portability, QuickFaaS introduces a Uniform Programming Model that ab
 
 \begin{itemize}
 	\item \textbf{Hook function:} Developers implement a single, cloud-agnostic interface (the "Hook"). This interface uses generic request/response objects (e.g., \texttt{HttpRequestQf}) that are decoupled from any specific vendor SDK.
-	\item \textbf{Template function:} QuickFaaS maintains a set of ``Template Functions'' for each supported provider. These templates act as wrappers, they are the actual entry points invoked by the cloud provider. Upon invocation, the template adapts the provider-specific data into the generic format and calls the developer's Hook logic.
+	\item \textbf{Template function:} QuickFaaS maintains a set of ``Template Functions'' for each supported provider. These templates are wrappers: they are the entry points the cloud provider invokes. Upon invocation, the template adapts the provider-specific data into the generic format and calls the developer's Hook logic.
 \end{itemize}
 
 \subsubsection{FaaS Deployment Model: The ZIP Strategy}
-While different cloud providers offer various methods for deploying code (such as inline editing, container images, or git syncing), the upload of a compressed source archive (ZIP) remains the most common denominator supported across AWS, Google Cloud and Azure. By standardising on this format, QuickFaaS does not have to build or manage containers on the user's machine, which keeps the tool light.
+While different cloud providers offer various methods for deploying code (such as inline editing, container images, or git syncing), the upload of a compressed source archive (ZIP) is the lowest common denominator supported by AWS, Google Cloud and Azure. By standardising on this format, QuickFaaS does not have to build or manage containers on the user's machine, which keeps the tool light.
 
 For a Java function on Google Cloud Platform (GCP), QuickFaaS places the developer's hook (e.g.,
 \texttt{MyFunctionClass.java}) in a temporary project next to the provider's template (here
@@ -88,14 +89,17 @@ provider to second-generation functions (Section~\ref{subsec:gcp-cloud-run-funct
 
 \subsubsection{QuickFaaS function deployment example}
 \label{subsec:quickfaas-example}
-To deploy a function using the current QuickFaaS implementation for Google Cloud Platform (GCP), the developer follows a structured procedure involving specific credential provisioning and JSON configuration.
+To deploy a function to Google Cloud Platform (GCP) with the original QuickFaaS, the developer
+provisions credentials and writes a JSON configuration, in the following steps.
 
 \begin{enumerate}
-	\item \textbf{Credential Provisioning:} The developer must first create an OAuth 2.0 client within the Google Cloud Console to retrieve the Client ID and Client Secret. This step requires registering the authorized redirect URL (e.g., \newline http://localhost:8080/quickfaas/gcp/callback) and the authorizedJavaScript origins to ensure secure communication during the authentication flow.
+	\item \textbf{Credential Provisioning:} The developer must first create an OAuth 2.0 client within the Google Cloud Console to retrieve the Client ID and Client Secret. This step requires registering the authorised redirect URL (e.g.,
+\url{http://localhost:8080/quickfaas/gcp/callback}) and the authorised JavaScript origins used by
+the authentication flow.
 	
-	\item \textbf{Authentication Configuration:} The retrieved Client ID and Secret are injected into the authentication module. The developer runs the auxiliary Node.js server to initiate the OAuth protocol, successfully retrieving the \texttt{access\_token} required for deployment.
+	\item \textbf{Authentication Configuration:} The retrieved Client ID and Secret are injected into the authentication module. The developer runs the auxiliary Node.js server, which carries out the OAuth flow and returns the \texttt{access\_token} required for deployment.
 	
-	\item \textbf{Deployment Definition:} Once the token is obtained, the developer populates the deployment file, \texttt{func-deployment.json} (Listing \ref{lst:quickfaas_json_config}). This JSON object defines the target infrastructure, including the  \texttt{cloudProvider}, \texttt{project} name and the \texttt{accessToken} the developer acquired from the authentication mechanism. It also specifies function metadata such as the \texttt{runtime} (e.g., \texttt{java17}) and trigger type.
+	\item \textbf{Deployment Definition:} Once the token is obtained, the developer populates the deployment file, \texttt{func-deployment.json} (Listing \ref{lst:quickfaas_json_config}). This JSON object defines the target infrastructure, including the  \texttt{cloudProvider}, the \texttt{project} ID and the \texttt{accessToken} the developer acquired from the authentication mechanism. It also specifies function metadata such as the \texttt{runtime} (e.g., \texttt{java17}) and trigger type.
 	Lastly, \texttt{functionFile} gives the location of the cloud-agnostic function file the
 	developer wishes to deploy.
 	Inside \texttt{function}, \texttt{location} is the region the function is created in, and
@@ -104,15 +108,15 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 	here.
  
 	
-	\begin{lstlisting}[language=json, caption={Configuration JSON for QuickFaaS function deployment}, label={lst:quickfaas_json_config}]
+	\begin{lstlisting}[language=json, caption={Configuration JSON for QuickFaaS function deployment.}, label={lst:quickfaas_json_config}]
 		{
 			"cloudProvider": "gcp",
 			"accessToken": "access-token-received",
-			"project": "TFM2526",
+			"project": "tfm26-509910",
 			"function": {
-				"name": "QuickFaas_HTTP_Test",
+				"name": "quickfaas-test-fn",
 				"location": "europe-west1",
-				"bucket": "run-sources-tfm2526-europe-west1",
+				"bucket": "tfm26-quickfaas-deploy",
 				"runtime": "java17",
 				"trigger": {
 					"type": "http"
@@ -124,7 +128,7 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 		}
 	\end{lstlisting}
 	
-	\item \textbf{Hook Function Implementation:} The developer implements the business logic by creating a cloud-agnostic class (e.g., \texttt{MyFunctionClass.java}), as shown in Listing \ref{lst:hook_function}. This class uses the generic QuickFaaS interfaces, such as \texttt{HttpRequestQf} and \texttt{HttpResponseQf}, effectively decoupling the code from provider-specific SDKs.
+	\item \textbf{Hook Function Implementation:} The developer implements the business logic by creating a cloud-agnostic class (e.g., \texttt{MyFunctionClass.java}), as shown in Listing \ref{lst:hook_function}. This class uses the generic QuickFaaS interfaces, such as \texttt{HttpRequestQf} and \texttt{HttpResponseQf}, which decouple the code from provider-specific SDKs.
 	
 	\begin{lstlisting}[language=Java, caption={Cloud-agnostic hook function implementation.}, label={lst:hook_function}]
 	import quickfaas.triggers.http.HttpRequestQf;
@@ -147,23 +151,23 @@ To deploy a function using the current QuickFaaS implementation for Google Cloud
 \subsection{OmniFlow: Portable Workflow Orchestration}
 \label{sec:background_omniflow}
 
-OmniFlow is a Kotlin-based library and Domain Specific Language (DSL) for defining serverless workflows independently of a specific provider workflow schema. The developer writes the workflow once using the OmniFlow DSL and the library translates that abstract definition into the workflow format required by a chosen cloud provider (e.g., Google Cloud Workflows) and deploys it through the provider APIs. By separating \emph{workflow logic} from \emph{provider-specific workflow definitions}, OmniFlow aims to reduce orchestration-level lock-in and make workflow specifications easier to maintain over time~\cite{costa2023omniflow,silva2025advanced}.
+OmniFlow is a Kotlin library and Domain-Specific Language (DSL) for defining serverless workflows independently of a specific provider workflow schema. The developer writes the workflow once using the OmniFlow DSL and the library translates that abstract definition into the workflow format required by a chosen cloud provider (e.g., Google Cloud Workflows) and deploys it through the provider APIs. By separating \emph{workflow logic} from \emph{provider-specific workflow definitions}, OmniFlow aims to reduce orchestration-level lock-in and make workflow specifications easier to maintain over time~\cite{costa2023omniflow,silva2025advanced}.
 
 \subsubsection{Components Overview}
 OmniFlow is designed as a client-side library integrated into the developer’s application, organised in four components that run in sequence~\cite{silva2025advanced}:
 
 \begin{enumerate}
-	\item \textbf{Domain Specific Language (DSL):} the developer-facing interface used to define workflows in Kotlin. OmniFlow relies on Kotlin’s \emph{type-safe builder} style to provide a structured and readable syntax for declaring workflow metadata and steps~\cite{type-safe_builders}.
+	\item \textbf{Domain-Specific Language (DSL):} the developer-facing interface used to define workflows in Kotlin. OmniFlow relies on Kotlin’s \emph{type-safe builder} style for declaring workflow metadata and steps~\cite{type-safe_builders}.
 
 	\item \textbf{Internal Model:} the DSL constructs an internal, provider-agnostic representation of the workflow. Internally, workflows are represented as a \emph{hierarchical tree} of nodes: the workflow is the root node and each step corresponds to a child node, where some step types may contain nested child steps~\cite{silva2025advanced}. This tree-based representation is the basis for workflow traversal and rendering.
 
-	\item \textbf{Renderer:} the renderer traverses the internal model and produces the provider-specific workflow artifact. OmniFlow performs this traversal using a depth-first search (DFS) over the workflow tree to ensure steps are rendered in a predictable and structured order~\cite{silva2025advanced}. Rendering is organised around the \texttt{NodeRenderer} abstraction: for each node type, a corresponding renderer is selected (via a strategy-based matching mechanism) and invoked during traversal~\cite{silva2025advanced}. Rendering follows a begin/end discipline, with a rendering context propagated through the traversal, so that nested steps become correctly scoped provider artifacts~\cite{silva2025advanced}. The resulting output is typically a textual artifact (e.g., YAML for Google Cloud Workflows) suitable for deployment.
+	\item \textbf{Renderer:} the renderer traverses the internal model and produces the provider-specific workflow artifact. OmniFlow performs this traversal using a depth-first search (DFS) over the workflow tree so that steps are rendered in a predictable order. Rendering is organised around the \texttt{NodeRenderer} abstraction: for each node type, a corresponding renderer is selected (via a strategy-based matching mechanism) and invoked during traversal. Rendering follows a begin/end discipline, with a rendering context propagated through the traversal, so that nested steps become correctly scoped provider artifacts~\cite{silva2025advanced}. The resulting output is typically a textual artifact (e.g., YAML for Google Cloud Workflows) suitable for deployment.
 
 	\item \textbf{Deployment Services:} after rendering, a provider adapter is responsible for deploying the generated workflow definition to the chosen cloud provider’s workflow service (e.g., by invoking the provider API/SDK). From the developer perspective, this stage turns the rendered artifact into an executable workflow resource managed by the cloud provider~\cite{costa2023omniflow}.
 \end{enumerate}
 
 \subsubsection{Workflow Entity Model}
-OmniFlow models a workflow as a root \textbf{Workflow} entity that is \emph{composed by} one or more steps.
+OmniFlow models a workflow as a root \textbf{Workflow} entity that is \emph{composed of} one or more steps.
 At the DSL level, the workflow root typically includes a \texttt{name}, a \texttt{description}, an input variable and a result variable~\cite{silva2025advanced}. OmniFlow's model captures these as two entities: input, representing the data received by the workflow, and output, representing the value returned at the end of execution. A workflow therefore \emph{receives} exactly one input and \emph{returns} exactly one output in each execution.
 
 Each \textbf{Step} represents a unit of behaviour inside the workflow. A step belongs to one of four disjoint categories:
@@ -175,9 +179,9 @@ Each \textbf{Step} represents a unit of behaviour inside the workflow. A step be
   \item \textbf{Parallel Step}: steps that execute multiple branches concurrently.
 \end{itemize}
 
-A step cannot be, for example, both an execution and a conditional step. In the concrete DSL~\cite{silva2025advanced, costa2023omniflow}, all four are represented as steps that differ only in their role within the workflow.
-
-The underlying implementation still associates each step with metadata such as a \texttt{name} and, internally, a context object that captures the details of the chosen step kind. For execution steps, this context includes parameters such as HTTP method, host and path or variable assignments. For the other categories, it describes the nested branches or bodies to be executed. This abstraction allows the rest of the dissertation to reason about workflows in terms of a small set of step categories while remaining compatible with the richer, concrete model implemented by OmniFlow and used for rendering provider-specific workflow definitions.
+In the DSL, every step has a \texttt{name}, a \texttt{description} and a \emph{context} that holds
+the details of its category: for an execution step, the HTTP method, host and path or the variable
+assignments; for the others, the nested branches or bodies to execute.
 
 
 \subsubsection{Example: Function Chaining}
@@ -250,9 +254,9 @@ integration.
 
 A first family of approaches focuses on automating resource deployment and configuration through templates or IaC specifications.
 
-\textbf{AWS CloudFormation}~\cite{awsCloudFormation} exemplifies provider-specific modelling tools. Its main limitation for portability is that the resource model is inherently tied to the AWS platform, meaning that expressing the same deployment in another provider requires different tooling and specifications.
+\textbf{AWS CloudFormation}~\cite{awsCloudFormation} is a provider-specific modelling tool. Its resource model belongs to AWS, so the same deployment on another provider requires different tooling and specifications.
 
-\textbf{Terraform}~\cite{terraform} is widely used to manage infrastructure in a provider-agnostic way at the tooling level. However, deploying FaaS resources still tends to be provider-specific in practice: function packaging conventions, configuration resources, permissions and event bindings must be encoded using provider-specific parameters. As a result, Terraform automates deployments but does not, by itself, provide a uniform function development and invocation model.
+\textbf{Terraform}~\cite{terraform} manages infrastructure on many providers with the same tool. However, deploying FaaS resources still tends to be provider-specific in practice: function packaging conventions, configuration resources, permissions and event bindings must be encoded using provider-specific parameters. As a result, Terraform automates deployments but does not, by itself, provide a uniform function development and invocation model.
 
 \textbf{Serverless Framework}~\cite{serverlessFramework} also provides infrastructure automation using YAML for app-centric definitions. Although it reduces operational effort, it still describes provider-specific services and event types and portability depends on the availability and maturity of plugins for each provider.
 
@@ -305,11 +309,11 @@ language, with its own references to its own functions.
 
 A second family either introduces a portable runtime layer or attempts to automatically transform existing code into a FaaS-compatible format.
 
-\textbf{OpenFaaS~\cite{openFaaS}} provides a unified experience for deploying functions on top of containers and orchestration platforms, supported by language templates~\cite{openFaaSTemplates} and a set of trigger mechanisms~\cite{openFaaSTriggers}. This enables functions to run in different environments without changing code but it effectively creates a parallel FaaS platform ``on top of'' container orchestration. Direct integration with provider-native event sources may be limited, which often leads to HTTP-centric invocation patterns rather than native event bindings.
+\textbf{OpenFaaS~\cite{openFaaS}} provides a unified experience for deploying functions on top of containers and orchestration platforms, supported by language templates~\cite{openFaaSTemplates} and a set of trigger mechanisms~\cite{openFaaSTriggers}. This enables functions to run in different environments without changing code, but it creates a parallel FaaS platform ``on top of'' container orchestration. Direct integration with provider-native event sources may be limited, which often leads to HTTP-centric invocation patterns rather than native event bindings.
 
-Regarding automated conversion, Spillner presents work on transforming Python applications into FaaS deployments~\cite{spillner2017pythonfaas} (referred to in the surveyed text as \textit{Lambada}) and Spillner and Dorodko explore Java analysis and transformation into AWS Lambda functions~\cite{spillnerDorodko2017javaLambda}. These approaches are relevant because they attempt to lower the barrier to adoption by converting existing code. However, they are typically anchored to a specific target platform (e.g., AWS Lambda) and automated rewriting can introduce execution overhead and constraints that are difficult to generalise across providers.
+Regarding automated conversion, Spillner presents work on transforming Python applications into FaaS deployments~\cite{spillner2017pythonfaas} (with a tool its author calls \textit{Lambada}) and Spillner and Dorodko explore Java analysis and transformation into AWS Lambda functions~\cite{spillnerDorodko2017javaLambda}. These approaches are relevant because they attempt to lower the barrier to adoption by converting existing code. However, they are typically anchored to a specific target platform (e.g., AWS Lambda) and automated rewriting can introduce execution overhead and constraints that are difficult to generalise across providers.
 
-In summary, these approaches either (i) replace the provider runtime with a portable runtime layer or (ii) generate provider-specific function artifacts. Neither directly matches the intended goal of this thesis, where provider-native FaaS services remain the target deployment surface but development and orchestration artifacts should remain as provider-agnostic as possible.
+In summary, these approaches either (i) replace the provider runtime with a portable runtime layer or (ii) generate provider-specific function artifacts. Neither directly matches the intended goal of this thesis, where functions are still deployed to the providers' own FaaS services but development and orchestration artifacts should remain as provider-agnostic as possible.
 
 \subsection{Assessing Portability Instead of Enabling It}
 
@@ -321,7 +325,7 @@ This is valuable for decision support and for identifying portability blockers b
 
 \subsection{Workflow Composition and Orchestration Frameworks}
 
-A final family focuses on function composition, workflow execution efficiency and workflow management models.
+A fourth family focuses on function composition, workflow execution efficiency and workflow management models.
 
 \textbf{FaaSFlow}~\cite{li2022faasflow} is motivated by performance and efficiency problems in serverless workflow execution. Its core contribution is architectural, shifting scheduling responsibilities away from a central master to worker-side logic and reducing data movement overhead through mechanisms such as adaptive storage. This matters for \textit{runtime efficiency}, but it is not primarily a workflow deployment portability approach.
 

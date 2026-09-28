@@ -2,7 +2,7 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 11
-title Resolution cascade -- Level 1: Registry lookup and live validation (GCP)
+title Resolution ladder -- Level 1: Registry lookup and live validation (GCP)
 
 participant "Resolver\n(WorkflowInternalFunctionResolver)" as R
 participant "FunctionRegistryStore" as REG

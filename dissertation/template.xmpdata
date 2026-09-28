@@ -24,7 +24,7 @@
 % ─────────────────────────────────────────────────────────
 % If you have:     \nctitle(main,en){Master Thesis Title, Project Work or Internship Report}
 % Then write here: \Title{Master Thesis Title, Project Work or Internship Report}
-\Title{Unified Orchestration of Multi-Cloud Serverless Workflows using QuickFaaS and Omniflow}
+\Title{Unified Orchestration of Multi-Cloud Serverless Workflows using QuickFaaS and OmniFlow}
 
 % ─────────────────────────────────────────────────────────
 % KEYWORDS - Add 5-10 relevant keywords separated by \sep

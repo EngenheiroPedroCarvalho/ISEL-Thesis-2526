@@ -16,13 +16,23 @@ assesses the work critically, and outlines future directions.
 \section{Summary of Contributions}
 \label{sec:concl-contributions}
 
-The work delivered two complementary halves: the unification of function and workflow deployment,
-through the Function Registry and the deployment-time resolution ladder
-(Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}), and the AWS Lambda provider added to
-QuickFaaS, with the matching deployer in OmniFlow (Section~\ref{subsec:quickfaas-aws-provider}).
-To let the ladder cover the functions it deploys on GCP, QuickFaaS's GCP provider was also moved
-to second-generation functions, which are Cloud Run services
-(Section~\ref{subsec:gcp-cloud-run-functions}).
+The work delivered the five contributions listed in Section~\ref{sec:int_contributions}:
+\begin{enumerate}
+  \item a call model that separates internal from external functions, through the
+  \texttt{internalFunction} construct on the OmniFlow \texttt{call} step
+  (Section~\ref{sec:dsl-extensions});
+  \item a per-provider Function Registry and a three-level resolution ladder that binds each
+  internal call at deployment time (Section~\ref{sec:resolution-cascade} and
+  Section~\ref{sec:function-registry});
+  \item an AWS Lambda provider in QuickFaaS, with the matching deployer in OmniFlow
+  (Section~\ref{sec:function-deployment}); to let the ladder cover the functions QuickFaaS deploys
+  on GCP, its GCP provider was also moved to second-generation functions, which are Cloud Run
+  services (Section~\ref{subsec:gcp-cloud-run-functions});
+  \item a prototype that integrates the two tools, and a case study in card-payment fraud
+  detection, run on GCP (Chapter~\ref{cha:case-study});
+  \item an evaluation of the ladder's decisions on both providers and of the cost of resolution
+  (Chapter~\ref{cha:evaluation}).
+\end{enumerate}
 How far each meets the objectives set out in Chapter~\ref{cha:introduction} is assessed next.
 
 \section{Objectives Revisited}
@@ -72,7 +82,7 @@ follows:
 \section{Critical Assessment}
 \label{sec:concl-critical}
 
-The implementation is that of a prototype, and several limitations should be stated plainly.
+The implementation is a prototype, with the following limitations.
 
 \begin{itemize}
   \item \textbf{Static binding.} Endpoints are resolved when the workflow is deployed and embedded
@@ -87,10 +97,17 @@ The implementation is that of a prototype, and several limitations should be sta
   second deployments described in Sections~\ref{sec:walkthrough} and~\ref{sec:case-artifacts}
   assume that step.
   \item \textbf{Bare references and restricted regions.} A bare \texttt{functionRef} that misses
-  the registry is looked for in every region, and a region that refuses the lookup stops the
-  resolution. In a project where some regions are closed by policy, such references abort, and the
+  the registry is looked for in every region. A region that refuses the lookup does not matter if
+  the function is found elsewhere, but when it is found nowhere the resolution aborts, since its
+  absence was not confirmed. In a project where some regions are closed by policy, a bare
+  reference to a function that does not exist yet therefore aborts instead of reaching Level~3, and the
   region-qualified form that avoids the scan ties the definition to one provider's region names
   (Section~\ref{sec:case-discussion}).
+  \item \textbf{Renderer limits.} OmniFlow's AWS renderer turns an \texttt{assign} step into a
+  \texttt{Pass} state that replaces the whole state document, so the case-study workflow cannot
+  run end to end on AWS; and the two renderers expect a literal host in different forms, so an
+  external call is not portable between providers (Section~\ref{sec:case-discussion}). Both are in
+  OmniFlow's renderers, which this work did not change.
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
   or authenticity guarantee, and no cross-process locking: concurrent writers race, and a tampered
   \texttt{url}/ARN would be trusted blindly.
@@ -103,8 +120,8 @@ The implementation is that of a prototype, and several limitations should be sta
   only Cloud Run services, so first-generation Cloud Functions created outside the integration
   cannot be bound (Section~\ref{subsec:gcp-cloud-run-functions}).
   \item \textbf{Broad, automatic IAM.} The AWS path auto-creates and mutates a shared execution
-  role and grants invoke permissions as a deployment side effect: convenient for a demo, but at
-  odds with a least-privilege, change-controlled environment. On GCP, QuickFaaS opens every
+  role and grants invoke permissions as a deployment side effect, which suits a prototype but
+  not a least-privilege, change-controlled environment. On GCP, QuickFaaS opens every
   function it deploys to all users, which makes the invoker role granted to the workflow's service
   account redundant (Section~\ref{sec:runtime-invocation}).
   \item \textbf{Brittle integration boundary.} QuickFaaS is invoked as a subprocess, coupling two
@@ -152,7 +169,6 @@ single, provider-agnostic definition, with concrete endpoint binding deferred to
 through an explicit resolution ladder. In local measurements the overhead of this unification is
 small and, with the single-read optimisation applied in both production resolvers, grows linearly.
 The solution fits an organisation that deploys one orchestration to several accounts or providers,
-as the case study of Chapter~\ref{cha:case-study} illustrates, or that exposes open-banking
-functions under PSD2. What remains is evidence against AWS and engineering maturity (registry
+as the case study of Chapter~\ref{cha:case-study} illustrates. What remains is evidence against AWS and engineering maturity (registry
 integrity, least-privilege operation, test coverage of the cloud edges and an update path) to
 take the prototype to production.

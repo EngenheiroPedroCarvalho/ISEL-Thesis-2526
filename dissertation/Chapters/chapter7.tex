@@ -137,8 +137,9 @@ Experiments keep the identifiers they carry in the benchmark suite: T1--T14 meas
 and the registry, and S1 measures packaging size.
 
 \paragraph{Notation.}
-The experiments share five symbols. What changes between them is the \emph{relationship} among
-these quantities, summarised in Table~\ref{tab:eval-notation}.
+Table~\ref{tab:eval-notation} lists the symbols the experiments share. What changes between
+experiments is the \emph{relationship} among these quantities. The count of provider requests in
+Section~\ref{sec:eval-api-calls} adds one more, $G$, defined there.
 
 \begin{table}[htbp]
   \centering
@@ -157,6 +158,10 @@ these quantities, summarised in Table~\ref{tab:eval-notation}.
     $R$ & number of entries in the registry file when it is read/written \\
     \hline
     $F$ & number of \emph{distinct} internal functions the workflow references \\
+    \hline
+    $K$ & number of successive registry writes (T8, T9) \\
+    \hline
+    $R_0$ & number of entries in the registry before the writes (T8, T9) \\
     \hline
   \end{tabular}
 \end{table}
@@ -444,7 +449,7 @@ $29.1\,\mu$s on AWS and $199.1\,\mu$s on GCP.
 The GCP resolver costs more per call because it parses the resolved URL into host and path, and
 because its Cloud Run client builds a request and parses a response, work that T6's fake skips
 entirely. The two experiments therefore do not stand in for the provider on equal terms. Either
-way, the local work of a validation is well under a microsecond per call, whereas the request it
+way, the local work of a validation is at most about a microsecond per call, whereas the request it
 prepares is a network round-trip to the provider (Section~\ref{sec:eval-api-calls}).
 
 \begin{figure}[htbp]
@@ -515,8 +520,8 @@ write.
 The miss-then-write pattern at the level of the store
 (\texttt{tryResolveEntry} followed by \texttt{put}) adds between 26\% and 62\%
 (Table~\ref{tab:eval-t9}), because \texttt{tryResolveEntry} reads the whole file once more before
-the write rewrites it. The production resolvers do not pay this surcharge: they look every call up
-in the snapshot with \texttt{tryResolveEntryIn}, so their writes cost what T8 measures. The surcharge grows with $R_0$ (about 30\% on an empty registry, about
+the write rewrites it. The production resolvers do not pay this extra cost: they look every call up
+in the snapshot with \texttt{tryResolveEntryIn}, so their writes cost what T8 measures. The extra cost grows with $R_0$ (about 30\% on an empty registry, about
 60\% at $R_0{=}1000$), which is what an extra full read of a growing file predicts. One point
 disagrees, $K{=}10$ at $R_0{=}10$, and its confidence interval ($\pm732\,\mu$s on a mean of
 $874\,\mu$s) says it is noise rather than an effect.
@@ -613,13 +618,13 @@ registry (Table~\ref{tab:eval-t10} and Figure~\ref{fig:eval-t10}).
 \end{figure}
 
 \paragraph{Mixed internal/external workflows (T11, T12).}
-The first workflows to mix internal and external calls confirm that resolution cost scales with
+Workflows that mix internal and external calls confirm that resolution cost scales with
 $I$ (internal calls), not with $N{=}I{+}E$: the $I{=}0$ row stays at $11$--$14\,\mu$s as $E$ grows
 to 200, because external calls incur no registry lookup, while reading down a column from $I{=}0$
 to $I{=}200$ multiplies the cost by five (Table~\ref{tab:eval-t11}). Each row is flat apart from
 isolated jumps of 16--22\% that vanish at the next point (at $E{=}10$ for $I{=}50$ and $I{=}200$,
 and at $E{=}50$ for $I{\le}1$), and each column grows at about $0.22\,\mu$s per internal call, the same per-call figure as T1. The
-registry-size effect proved in T5 is unchanged when a fraction of the calls are external: with
+registry-size effect shown in T5 is unchanged when a fraction of the calls are external: with
 $I{=}40$ internal calls the cost still tracks the one read, from $20\,\mu$s at $R{=}10$ to
 $199\,\mu$s at $R{=}1000$.
 
@@ -733,7 +738,7 @@ Table~\ref{tab:eval-api-calls} gives the count for each path through the ladder.
     to $G$ lookups \\
     \hline
     Level~2, bare \texttt{functionRef} & up to $G$ \texttt{GetFunction} (the scan stops at the
-    second match) & up to $G$ \texttt{services.get} \\
+    second match) & up to $G$ \texttt{services.get} (likewise) \\
     \hline
     Level~2, \texttt{"region/name"} reference & 1 & 1 \\
     \hline
@@ -827,7 +832,7 @@ the registry and from the registry into the rendered workflow.
   \end{tabular}
 \end{table}
 
-Two qualifications keep the comparison honest. First, the integrated procedure does not remove
+Two qualifications apply. First, the integrated procedure does not remove
 configuration, it relocates it: the descriptor is still written by hand, and the credentials still
 have to exist (Application Default Credentials on GCP, environment credentials on AWS), so
 what is saved is the copying, not the setup. Second, the saving is per function and per endpoint
@@ -842,8 +847,8 @@ The AWS provider added in this work packages a Lambda through the QuickFaaS prov
 developer hook plus the \texttt{AwsHttpTemplate} adapter and \texttt{aws-lambda-java-core}). Table
 \ref{tab:eval-s1} compares the resulting bundle against an equivalent native \texttt{RequestHandler}
 implementation of the same logic. The provider-agnostic layer adds about $0.9$\,KB (6.6\% of a trivial
-bundle, and well under 0.1\% of a real function), consistent with the original QuickFaaS
-evaluation for GCP and Azure.
+bundle, and proportionally less for a function with real dependencies), consistent with the original QuickFaaS
+evaluation for GCP and Azure~\cite{rodrigues2022quickfaas}.
 
 \begin{table}[htbp]
   \centering
@@ -876,7 +881,7 @@ therefore positive for the resolution logic on both providers, with one qualific
 evidence comes from tests that simulate the provider.
 
 \paragraph{Answer to RQ2.}
-For RQ2, the benchmarks support six conclusions.
+For RQ2, the benchmarks support five conclusions.
 
 First, in the naive form the cost of the unification grows in direct proportion to both the
 number of calls and the registry size, and is dominated by the fixed cost of reopening the
@@ -887,12 +892,12 @@ $0.22\,\mu$s per internal call, a speedup of $200\times$ in the largest configur
 (T3, T4, T5).
 Third, the production resolvers (T6, T7) show the same one-read-plus-a-constant shape as the
 optimised reference path: $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a 200-call workflow.
-Fourth, the provider-agnostic packaging layer adds negligible size to a Lambda bundle (S1). Fifth, resolution cost tracks
+Fourth, resolution cost tracks
 the number of internal calls rather than the workflow's total call count: external calls add only
-the shared tree-traversal cost, never a registry lookup (T11, T12). Sixth, neither nesting depth
+the shared tree-traversal cost, never a registry lookup (T11, T12). Fifth, neither nesting depth
 nor parallel width changes the cost beyond what the total count of internal calls already
 predicts: the resolver's explicit recursion into \texttt{Iteration} and \texttt{Parallel} contexts
-is free in practice (T13, T14).
+adds no measurable cost (T13, T14).
 
 On the provider side, the request count of Section~\ref{sec:eval-api-calls} completes the answer:
 resolution sends one request per internal call when every call hits a valid registry entry, and
