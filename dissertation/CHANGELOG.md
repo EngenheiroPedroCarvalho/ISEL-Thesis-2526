@@ -82,3 +82,8 @@ Retirados 72 ";" do texto, substituídos por ponto final, vírgula com conjunç�
 external calls, $R{=}F{=}10$ fixed"). Ficaram os ";" que separam itens de listas, as células
 abreviadas da tabela de correção (§6.2), as séries com vírgulas internas (grupos do Related Work,
 níveis no glossário, agradecimentos) e o ";" antes da remissão entre parênteses em §3.1.1.
+
+### Abstract em português: "cascata" passa a "escada"
+
+`abstract-pt.tex`: as duas ocorrências de "cascata" passam a "escada", para acompanhar o termo
+"resolution ladder" do texto em inglês.
