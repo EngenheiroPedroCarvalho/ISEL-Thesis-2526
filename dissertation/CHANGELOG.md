@@ -1,6 +1,6 @@
 # Alterações aos capítulos da dissertação
 
-Só alterações ainda não enviadas (push). Base: `0e254e8` (último commit em
+Só alterações ainda não enviadas (push). Base: `444bf4c` (último commit em
 `origin/claude/progress-report-compliance-e4damf`). Depois de um push, o registo recomeça vazio.
 
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
@@ -8,89 +8,10 @@ este ficheiro.)
 
 ## 2026-09-28
 
-### Figuras e tabelas deixam de interromper o texto (cap. 2, 3, 4, 5, 6)
+### Pequena edição de texto (cap. 3, `chapter3.tex`)
 
-Todas as `figure` e `table` de `chapter2.tex`, `chapter3.tex`, `chapter5.tex`, `chapter6.tex` e
-`chapter7.tex` passaram de `[htbp]` para `[tbp]`: deixam de ser colocadas entre parágrafos a meio
-da página e vão para o topo (ou fundo) da página, com o texto seguido. Texto e numeração
-inalterados.
-
-### Pequenas edições de texto e paginação (cap. 2, 3, 6)
-
-- **Cap. 2 (`chapter2.tex`), abertura:** "OmniFlow (workflow definition/deployment) and QuickFaaS
-  (function definition/deployment)" passa a só "OmniFlow and QuickFaaS".
-- **Cap. 3 (`chapter3.tex`):** três dois-pontos passam a vírgulas: no parágrafo sobre o passo
-  `Call` e nos parágrafos sobre as Figuras `fig:architecture-before` e `fig:architecture-after`.
-- **Cap. 6 (`chapter7.tex`):** as Tabelas T6 e T7, e T8 e T9, passam a ficar lado a lado, cada par
-  num só float com duas `minipage`. Conteúdo e numeração inalterados.
-
-No cap. 6 (`chapter7.tex`, §6.5), as tabelas T6/T7 (resolvers de produção AWS e GCP) e T8/T9
-(caminho de escrita) passam a estar lado a lado, duas a duas, num só float cada par, como já
-estavam as duas tabelas da T4. A T11 (sete colunas) fica sozinha.
-
-### Caso de estudo executado também no AWS (cap. 5, `chapter6.tex`)
-
-O deploy na conta AWS de teste deixou de ser descrito com test doubles: foi executado numa conta
-real (evidência em `case-study-aws/`), depois de corrigido o renderer AWS (merge de
-`experiment/aws-pass-state`).
-
-- **Introdução e §5.3:** os deploys na conta AWS de teste e no GCP foram executados; só o deploy na
-  conta de produção fica descrito.
-- **§5.4 "What the Deployments Produce":** reescrita. O parágrafo sobre os test doubles e o
-  segundo deploy simulado saíram. Há agora um parágrafo com os desvios comuns às duas execuções
-  (referências com região e stub do core banking) e outro sobre a execução no AWS (stub em Lambda
-  atrás de uma HTTP API do API Gateway, bootstrap com seis funções já existentes, Nível 3 com cerca
-  de 17 s por função e 48 s no total, segundo deploy no Nível 1 em cerca de 1,5 s, registry igual
-  byte a byte). O parágrafo do GCP foi encurtado para não repetir os desvios. O Listing
-  `lst:case-registry-aws` passou a ser o registry real (oito entradas, conta `025064823406`), em
-  vez do registry com conta fictícia. Novo parágrafo sobre as execuções: o input no Step Functions
-  leva a transação na chave `transaction`, e o stub devolveu o `id` de cada transação.
-- **Tabela `tab:case-executions`:** passa a mostrar as três transações nos dois providers (colunas
-  AWS e GCP); todas terminaram em `SUCCEEDED`.
-- **§5.5 Discussion:** o parágrafo sobre o `Pass` que substituía o estado inteiro ("which this
-  work did not change") passa a descrever os dois defeitos do renderer AWS e a correção: um
-  `assign` de uma variável escreve só essa variável (`Result`/`InputPath` + `ResultPath`), um de
-  várias variáveis continua a substituir o estado; os query parameters das Lambdas deixam de ir
-  em `States.Array`. Os "four limits" do GCP passam a "five limits" das duas execuções, com um novo
-  quarto limite: o código das funções não é portável entre providers (os hooks QuickFaaS do GCP e
-  do AWS têm assinaturas diferentes).
-
-### Cap. 1 e Conclusões alinhados com a execução no AWS (`chapter1.tex`, `chapter8.tex`)
-
-- **Cap. 1:** na lista de contribuições, o caso de estudo passa de "deployed and run on GCP, and
-  its AWS deployment was produced … with the provider simulated" a "deployed and run on both AWS
-  and GCP"; na descrição da estrutura, o Cap. 5 passa de "run on GCP and resolved for AWS" a "run
-  on AWS and on GCP".
-- **Conclusões (cap. 7):**
-  - Contribuições: o caso de estudo é "run on AWS and on GCP".
-  - Objetivo 4: a evidência não local passa a incluir os deploys do caso de estudo no AWS e no
-    GCP; saiu "nothing ran against AWS".
-  - Avaliação crítica: "Renderer limits" deixa de dizer que o caso de estudo não corre no AWS e
-    que o renderer não foi alterado; fica a limitação dos assigns com várias variáveis e a dos
-    hosts literais. Novo ponto "Provider-specific function source": os hooks QuickFaaS do GCP e o
-    template Lambda do AWS têm assinaturas diferentes, por isso cada função é escrita uma vez por
-    provider.
-  - Trabalho futuro: "Validate the ladder against live providers" deixa de destacar o AWS e passa
-    a "beyond the single workflow" do caso de estudo.
-  - Considerações finais: "evidence against AWS" passa a "live evidence beyond a single workflow".
-
-### Resumos e Avaliação alinhados com a execução no AWS (`abstract-en.tex`, `abstract-pt.tex`, `chapter7.tex`)
-
-- **Resumos:** o caso de estudo foi "deployed and run on AWS and on Google Cloud" / "implantado e
-  executado no AWS e no Google Cloud" (antes, só no Google Cloud).
-- **Cap. 6, limitações da evidência de correção:** o caso de estudo passa a verificar os
-  pressupostos dos test doubles nos dois providers (bootstrap, Níveis 2 e 3, hits validados no
-  Nível 1); saiu "On AWS it remains unchecked". Os caminhos que continuam sem verificação contra as
-  APIs reais passam a ser nomeados: os abortos por entradas obsoletas, nomes ambíguos e regiões
-  inacessíveis.
-
-### Diferenças AWS/GCP na procura de funções (cap. 4, `chapter5.tex`)
-
-- **§4.1.3 "Registry Store and Resolver Internals":** nova frase: do lado do OmniFlow, o inspector
-  Lambda, o `AwsRegionsLister` e o catálogo do bootstrap usam `EnvironmentVariableCredentialsProvider`,
-  por isso as credenciais AWS vêm só de `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (não de perfis
-  partilhados nem de SSO).
-- **§4.1.4 "Validation and Error Semantics", parágrafo "Insufficient permissions":** nova frase:
-  no GCP, uma recusa é um HTTP 403 (ou uma resposta sem URL do serviço) e os outros códigos de erro
-  abortam logo; no AWS, é qualquer erro da API Lambda que não seja `ResourceNotFoundException`, pelo
-  que *throttling* e erros transitórios também aparecem como recusas.
+- **"Provider and region scope":** "and the developer need not declare one, since Level~2 searches
+  every region" passa a frase própria: "Nor does the developer have to specify where a function is:
+  Level~2 searches every region." Evita o "need not" repetido e dois "since" seguidos.
+- **Propriedades da ordem de resolução:** os dois-pontos depois de "idempotent with respect to
+  functions" e de "safe by default" passam a vírgulas.

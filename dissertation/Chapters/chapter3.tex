@@ -189,8 +189,8 @@ actual deployment is a last resort rather than a default.
 \end{enumerate}
 
 This ordering gives the integration three properties. It is \emph{idempotent} with respect to
-functions: re-deploying the same workflow re-resolves from the registry (or the
-provider) and does not redeploy a function that already exists. It is \emph{safe by default}: validation
+functions, re-deploying the same workflow re-resolves from the registry (or the
+provider) and does not redeploy a function that already exists. It is \emph{safe by default}, validation
 and discovery never mutate the provider, and a deployment happens only on an explicit descriptor
 and only after the function's absence is confirmed. A deployment does change more than the
 function itself, since it also grants the permissions needed to invoke it (and, on AWS, sets up
@@ -219,7 +219,7 @@ Every resource on a provider (a function, a storage bucket, the deployed workflo
 a geographic \emph{region} (e.g., \texttt{eu-west-1} on AWS or \texttt{europe-west1} on GCP),
 which is part of its identity. Each deployment targets a single provider
 (Section~\ref{sec:int_cha_int_uni_multi}), but the workflow and its functions need not share a
-region, and the developer need not declare one, since Level~2 searches every region. The search
+region. Nor does the developer have to specify where a function is: Level~2 searches every region. The search
 starts with the workflow's own region, where functions are expected to be, since co-location
 reduces latency and data-transfer cost. On AWS a Lambda must also live in the region of the S3
 bucket that holds its code, so the AWS deployer takes its region from that bucket
