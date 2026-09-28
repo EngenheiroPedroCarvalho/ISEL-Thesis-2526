@@ -1,0 +1,96 @@
+{
+    "Comment": "Real-time fraud screening for card payment authorization",
+    "StartAt": "fraud-check",
+    "States": {
+        "fraud-check": {
+            "Comment": "Flag transactions that match known fraud patterns",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:fraud-check",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)",
+                        "country.$": "States.Format('{}', $.transaction.country)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "fraudResult.$": "$.Payload"
+            },
+            "ResultPath": "$.fraud-check",
+            "Next": "risk-score"
+        },
+        "risk-score": {
+            "Comment": "Score the transaction from its features",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:risk-score",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "riskResult.$": "$.Payload"
+            },
+            "ResultPath": "$.risk-score",
+            "Next": "decision"
+        },
+        "decision": {
+            "Comment": "Decline flagged or high-risk transactions",
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.fraud-check.fraudResult.flagged",
+                    "BooleanEquals": true,
+                    "Next": "decline-transaction"
+                },
+                {
+                    "Variable": "$.risk-score.riskResult.score",
+                    "NumericGreaterThan": 75,
+                    "Next": "decline-transaction"
+                }
+            ],
+            "Default": "approve-transaction"
+        },
+        "approve-transaction": {
+            "Comment": "Record the approval",
+            "Type": "Pass",
+            "Result": "approved",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "decline-transaction": {
+            "Comment": "Record the decline",
+            "Type": "Pass",
+            "Result": "declined",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "report-decision": {
+            "Comment": "Report the decision to core banking",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "ApiEndpoint": "9giljyyesc.execute-api.eu-west-1.amazonaws.com",
+                "Method": "POST",
+                "Path": "/",
+                "QueryParameters": {
+                    "decision.$": "States.Array(States.Format('{}', $.decision))"
+                },
+                "RequestBody.$": "$.transaction"
+            },
+            "ResultSelector": {
+                "coreBankingResult.$": "$.ResponseBody"
+            },
+            "ResultPath": "$.report-decision",
+            "End": true
+        }
+    }
+}

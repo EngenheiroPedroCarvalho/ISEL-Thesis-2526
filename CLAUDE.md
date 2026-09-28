@@ -54,6 +54,7 @@ ISEL-Thesis-2526/
 │   └── TESTING.md                           # full testing documentation (read this)
 ├── dissertation/                            # MSc dissertation LaTeX sources (canonical; see its CLAUDE.md)
 ├── case-study-gcp/                          # Ch. 5 case study run on live GCP (2026-09-28): workflow, functions, scripts, logs
+├── case-study-aws/                          # the same case study run on live AWS (2026-09-28), with the experiment/aws-pass-state renderer
 ├── diagrams/                                # PlantUML sources and PNGs for the thesis figures
 ├── thesis/                                  # older split copy of the chapters (superseded; do not edit)
 ├── quickfaas-essentials/                    # reference clone of the original QuickFaaS (do not edit)

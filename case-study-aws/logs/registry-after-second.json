@@ -1,0 +1,37 @@
+{
+  "updatedAt" : "2026-09-28T14:18:54.523561Z",
+  "functions" : {
+    "aws-char-stats-fn" : {
+      "serviceName" : "aws-char-stats-fn",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:aws-char-stats-fn"
+    },
+    "region-a-greeting-fn" : {
+      "serviceName" : "region-a-greeting-fn",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:region-a-greeting-fn"
+    },
+    "aws-preprocess-fn" : {
+      "serviceName" : "aws-preprocess-fn",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:aws-preprocess-fn"
+    },
+    "aws-summary-fn" : {
+      "serviceName" : "aws-summary-fn",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:aws-summary-fn"
+    },
+    "core-banking-stub" : {
+      "serviceName" : "core-banking-stub",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:core-banking-stub"
+    },
+    "region-b-greeting-fn" : {
+      "serviceName" : "region-b-greeting-fn",
+      "url" : "arn:aws:lambda:eu-central-1:025064823406:function:region-b-greeting-fn"
+    },
+    "eu-west-1/fraud-check" : {
+      "serviceName" : "fraud-check",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:fraud-check"
+    },
+    "eu-west-1/risk-score" : {
+      "serviceName" : "risk-score",
+      "url" : "arn:aws:lambda:eu-west-1:025064823406:function:risk-score"
+    }
+  }
+}

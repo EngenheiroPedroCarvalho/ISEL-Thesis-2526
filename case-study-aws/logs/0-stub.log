@@ -1,0 +1,3 @@
+== Phase 0: Lambda execution role and core-banking stub
+stub: 9giljyyesc.execute-api.eu-west-1.amazonaws.com
+{"recorded": true, "id": "probe", "decision": "probe"}

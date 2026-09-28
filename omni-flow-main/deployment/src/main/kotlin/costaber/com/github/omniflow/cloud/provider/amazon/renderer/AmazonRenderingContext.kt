@@ -21,11 +21,18 @@ class AmazonRenderingContext(
     private lateinit var stepsNames: MutableList<String>
     private var currentStepName: String? = null
     private var lastVariable: VariableInitialization<*>? = null
+    private var singleVariableAssign = false
     private var lastCondition: Condition? = null
 
     fun setVariables(variables: Collection<VariableInitialization<*>>) {
         lastVariable = variables.lastOrNull()
+        // Auto-generated loop counters ("name.$") keep the whole-state Result form.
+        singleVariableAssign = variables.size == 1 && !variables.first().variable.name.endsWith(".$")
     }
+
+    // A Pass state that assigns one variable writes only that variable (ResultPath), so the rest
+    // of the state survives; with several variables its Result still replaces the whole state.
+    fun isSingleVariableAssign() = singleVariableAssign
 
     fun isNotLastVariable(variableInitialization: VariableInitialization<*>) =
         lastVariable != variableInitialization

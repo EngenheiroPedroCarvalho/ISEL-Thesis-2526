@@ -1,0 +1,14 @@
+{
+  "cloudProvider": "aws",
+  "accessToken": "",
+  "iamRoleArn": "<REPLACE_WITH_LAMBDA_EXECUTION_ROLE_ARN>",
+  "project": "025064823406",
+  "function": {
+    "name": "risk-score",
+    "location": "eu-west-1",
+    "bucket": "omniflow-quickfaas-025064823406-eu-west-1",
+    "runtime": "java17",
+    "trigger": { "type": "http" }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}
