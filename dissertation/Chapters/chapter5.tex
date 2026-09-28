@@ -215,11 +215,29 @@ pointing to one fails validation like a deleted service.
 \paragraph{Invocation.}
 An internal call needs no special rendering on GCP: the resolver has already split the
 \texttt{run.app} URL into \texttt{host} and \texttt{path}, so \texttt{GoogleCallRenderer} emits the
-same \texttt{call: http.post} (or the declared verb) as for an external call. Authentication is
-declared on the step, as for any call, with
-\texttt{authentication(\allowbreak authentication \{ type("OIDC") \})}, and Cloud Workflows then
-attaches an identity token for the workflow's service account, the account
-\texttt{QuickFaasDeployer} grants \texttt{roles/\allowbreak run.invoker}. Because QuickFaaS also
+same \texttt{call: http.post} (or the declared verb) as for an external call.
+Listing~\ref{lst:rendered-gcp} shows the step \texttt{fraud-check} renders to in the case study
+(Listing~\ref{lst:case-payment-excerpt}): the resolved \texttt{run.app} URL is the call's
+\texttt{url}, the query terms become \texttt{query}, and the response is stored in
+\texttt{fraudResult}.
+
+\begin{lstlisting}[caption={Cloud Workflows step rendered for the internal call \texttt{fraud-check}, from the case study run on GCP.},label={lst:rendered-gcp},float=htbp,language={},basicstyle=\ttfamily\small,breaklines=false]
+- fraud-check:
+    call: http.post
+    args:
+        url: https://fraud-check-jllpr4krfq-ew.a.run.app
+        query:
+            amount: ${transaction.amount}
+            country: ${transaction.country}
+    result: fraudResult
+\end{lstlisting}
+
+Authentication is declared on the step, as for any call, with
+\texttt{authentication(\allowbreak authentication \{ type("OIDC") \})}; the renderer then adds
+\texttt{auth: type: OIDC} under \texttt{args}, and Cloud Workflows attaches an identity token for
+the workflow's service account, the account \texttt{QuickFaasDeployer} grants
+\texttt{roles/\allowbreak run.invoker}. The case study declared none, since its functions were
+public. Because QuickFaaS also
 grants that role to all users, the token and the grant only become the access control once the
 public grant is removed.
 
