@@ -9,9 +9,9 @@
 
 This chapter describes how the design of Chapter~\ref{ch:proposed_solution} is implemented.
 Section~\ref{sec:function-registry} presents the Function Registry and the two resolvers that
-consult it. Section~\ref{sec:function-deployment} covers Level~3: the move of QuickFaaS's GCP
-provider to second-generation functions, and AWS Lambda support in QuickFaaS and OmniFlow.
-Section~\ref{sec:runtime-invocation} follows a resolved call to its invocation at run time.
+consult it. Section~\ref{sec:function-deployment} covers, for each provider, how a missing function is
+deployed at Level~3 (the move of QuickFaaS's GCP provider to second-generation functions, and AWS
+Lambda support in QuickFaaS and OmniFlow) and how the deployed workflow invokes it at run time.
 
 \section{Function Registry and Resolvers}
 \label{sec:function-registry}
@@ -161,7 +161,7 @@ in both production resolvers. Third, the AWS resolver initially trusted a hit wi
 on both providers, as on GCP from the start. The registry still names what to look up; the live
 check only confirms the binding.
 
-\section{Function Deployment at Level~3}
+\section{Function Deployment and Invocation}
 \label{sec:function-deployment}
 At Level~3, the resolver hands the call to an
 \texttt{Internal\allowbreak Function\allowbreak Deployer}, which runs QuickFaaS as a subprocess
@@ -179,9 +179,13 @@ if invoked, so that nothing is deployed unless a deployer is configured;
   of Figure~\ref{fig:omniflow-integration-classes}).}
   \label{fig:omniflow-classes-deployers}
 \end{figure}
- On GCP this required moving
-QuickFaaS to second-generation functions; on AWS, a new QuickFaaS provider and an OmniFlow deployer
-that prepares the IAM role and permissions.
+
+On GCP, deployment required moving QuickFaaS to second-generation functions
+(Section~\ref{subsec:gcp-cloud-run-functions}); on AWS, a new QuickFaaS provider and an OmniFlow
+deployer that prepares the IAM role and permissions (Section~\ref{subsec:aws-lambda-deployment}).
+Each subsection ends with how the deployed workflow invokes the function at run time. In both
+cases the endpoint is the one written into the workflow at deployment, and the registry is not
+consulted.
 
 \subsection{Cloud Run Functions on GCP}
 \label{subsec:gcp-cloud-run-functions}
@@ -208,7 +212,18 @@ endpoint~\cite{gcpFunctionsVersionComparison}. First-generation functions create
 integration are therefore not supported: discovery and the bootstrap do not list them, and an entry
 pointing to one fails validation like a deleted service.
 
-\subsection{Deployment on AWS}
+\paragraph{Invocation.}
+An internal call needs no special rendering on GCP: the resolver has already split the
+\texttt{run.app} URL into \texttt{host} and \texttt{path}, so \texttt{GoogleCallRenderer} emits the
+same \texttt{call: http.post} (or the declared verb) as for an external call. Authentication is
+declared on the step, as for any call, with
+\texttt{authentication(\allowbreak authentication \{ type("OIDC") \})}, and Cloud Workflows then
+attaches an identity token for the workflow's service account, the account
+\texttt{QuickFaasDeployer} grants \texttt{roles/\allowbreak run.invoker}. Because QuickFaaS also
+grants that role to all users, the token and the grant only become the access control once the
+public grant is removed.
+
+\subsection{AWS Lambda Functions}
 \label{subsec:aws-lambda-deployment}
 AWS support has two layers that meet at the subprocess boundary: an AWS provider inside QuickFaaS,
 which deploys the Lambda function, and \texttt{Aws\allowbreak Lambda\allowbreak Deployer} inside
@@ -225,9 +240,8 @@ branch per level, is in Figure~\ref{fig:aws-deploy-sequence} (Appendix~\ref{app:
   \label{fig:aws-deploy-level3}
 \end{figure}
 
-\subsection{The QuickFaaS AWS Provider}
+\paragraph{The QuickFaaS AWS provider.}
 \label{subsec:quickfaas-aws-provider}
-
 The AWS provider implements QuickFaaS's \texttt{CloudProvider}, \texttt{Cloud\allowbreak Function}
 and \texttt{CloudRequests} abstractions with the same ZIP strategy used for GCP and Azure. Its core,
 \texttt{Aws\allowbreak Lambda\allowbreak Function.\allowbreak deployZip}, uploads the archive to the descriptor's S3 bucket, checks
@@ -238,9 +252,8 @@ provider-agnostic template \texttt{AwsHttpTemplate}, and the runtimes are \textt
 \texttt{GetBucketLocation}. Finally, the provider creates (or reuses) a Lambda \emph{Function URL}
 with \texttt{AuthType = AWS\_IAM}.
 
-\subsection{The OmniFlow-Side AWS Deployer}
+\paragraph{The OmniFlow-side AWS deployer.}
 \label{subsec:omniflow-aws-deployer}
-
 \texttt{AwsLambdaDeployer} does the AWS work around the subprocess. It resolves the Lambda execution
 role: if \texttt{iamRoleArn} is blank or a placeholder, it creates
 \texttt{OmniFlowLambdaExecutionRole} with \texttt{AWSLambdaBasicExecutionRole}; if an ARN is given,
@@ -252,14 +265,14 @@ function is \texttt{Active} (at most 180 seconds), reads the ARN and grants Step
 to invoke the function.
 
 The deployer stores the ARN, not the Function URL, because internal calls use the native
-\texttt{lambda:invoke} integration (Section~\ref{sec:runtime-invocation}). The AWS descriptor
+\texttt{lambda:invoke} integration, described below. The AWS descriptor
 (Listing~\ref{lst:aws-descriptor}) has the fields of the GCP one
 (Listing~\ref{lst:quickfaas_json_config}) with AWS values (the account number as
 \texttt{project}, an AWS region, an S3 bucket) and an empty \texttt{accessToken}, since credentials
 come from the environment. It adds \texttt{iamRoleArn}, which may be a placeholder to request
 automatic role creation.
 
-\begin{lstlisting}[language=json,caption={Minimal AWS deployment descriptor for an internal function.},label={lst:aws-descriptor}]
+\begin{lstlisting}[language=json,caption={Minimal AWS deployment descriptor for an internal function.},label={lst:aws-descriptor},float=htbp]
 {
   "cloudProvider": "aws",
   "accessToken": "",
@@ -276,9 +289,9 @@ automatic role creation.
 }
 \end{lstlisting}
 
-\section{Runtime Invocation}
+\paragraph{Invocation.}
 \label{sec:runtime-invocation}
-On AWS (Figure~\ref{fig:aws-runtime-invocation}), Step Functions invokes the Lambda function
+Step Functions (Figure~\ref{fig:aws-runtime-invocation}) invokes the Lambda function
 through the native \texttt{arn:\allowbreak aws:\allowbreak states:::\allowbreak lambda:\allowbreak invoke} integration, with the ARN fixed at
 deployment. \texttt{AwsHttpTemplate} reads only the \texttt{query\allowbreak String\allowbreak Parameters} of the event and
 passes them to the hook as a map; the response is returned under \texttt{\$.Payload}. An internal
@@ -304,7 +317,7 @@ the result variable, stored under a \texttt{ResultPath} named after the step
 task. Since the internal form is a variant of the existing call renderer, OmniFlow's control-flow,
 result-passing and error handling apply unchanged; only the \texttt{Resource} and parameters differ.
 
-\begin{lstlisting}[language=json,caption={Step Functions state rendered for an internal Lambda call.},label={lst:rendered-lambda}]
+\begin{lstlisting}[language=json,caption={Step Functions state rendered for an internal Lambda call.},label={lst:rendered-lambda},float=htbp]
 "fraud-check": {
   "Type": "Task",
   "Resource": "arn:aws:states:::lambda:invoke",
@@ -317,13 +330,3 @@ result-passing and error handling apply unchanged; only the \texttt{Resource} an
   "Next": "external-risk-api"
 }
 \end{lstlisting}
-
-On GCP, an internal call needs no special rendering: the resolver has already split the
-\texttt{run.app} URL into \texttt{host} and \texttt{path}, so \texttt{GoogleCallRenderer} emits the
-same \texttt{call: http.post} (or the declared verb) as for an external call. Authentication is
-declared on the step, as for any call, with
-\texttt{authentication(\allowbreak authentication \{ type("OIDC") \})}, and Cloud Workflows then
-attaches an identity token for the workflow's service account, the account
-\texttt{QuickFaasDeployer} grants \texttt{roles/\allowbreak run.invoker}. Because QuickFaaS also
-grants that role to all users, the token and the grant only become the access control once the
-public grant is removed.

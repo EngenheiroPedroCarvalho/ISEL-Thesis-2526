@@ -54,8 +54,7 @@ The objectives of Section~\ref{sec:int_objectives} stand as follows:
   workflow's internal functions on both providers, and deploys the missing ones, without endpoints
   being copied by hand.
   \item \textbf{Extend QuickFaaS to AWS Lambda}: \emph{met.} QuickFaaS gained an AWS provider and
-  OmniFlow an \texttt{AwsLambdaDeployer} (Sections~\ref{subsec:quickfaas-aws-provider}
-  and~\ref{subsec:omniflow-aws-deployer}). The provider-agnostic layer adds about 0.9\,KB to a
+  OmniFlow an \texttt{AwsLambdaDeployer} (Section~\ref{subsec:aws-lambda-deployment}). The provider-agnostic layer adds about 0.9\,KB to a
   Lambda bundle (Table~\ref{tab:eval-s1}).
   \item \textbf{Evaluate feasibility and overhead}: \emph{partially met.} Apart from the case
   study's deployments (Section~\ref{sec:case-artifacts}), the correctness checks simulate the
@@ -98,7 +97,7 @@ The implementation is a prototype, with these limitations:
   \item \textbf{Broad, automatic IAM.} On AWS, a shared execution role is created or modified and
   invoke permissions are granted as side effects; on GCP, QuickFaaS opens every function to all
   users, making the grant to the workflow's service account redundant
-  (Section~\ref{sec:runtime-invocation}). Neither suits a least-privilege environment.
+  (Section~\ref{subsec:gcp-cloud-run-functions}). Neither suits a least-privilege environment.
   \item \textbf{Brittle integration boundary.} QuickFaaS runs as a subprocess whose output is parsed
   (Section~\ref{sec:design-rationale}).
   \item \textbf{Untested cloud paths.} By design, the classes that call cloud SDKs have no automated
