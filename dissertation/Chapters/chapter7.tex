@@ -32,15 +32,15 @@ parts are measured; the third is counted from the implementation
 
 The evaluation has six parts:
 \begin{itemize}
-  \item \textbf{Correctness of the resolution cascade} (RQ1): the decision each production
-  resolver takes in every situation the cascade can meet, checked by unit tests on both providers.
+  \item \textbf{Correctness of the resolution ladder} (RQ1): the decision each production
+  resolver takes in every situation the ladder can meet, checked by unit tests on both providers.
   \item \textbf{Resolution overhead and scalability} (RQ2): the cost of resolving internal calls as a
   function of the number of calls ($N$) and the size of the registry ($R$), and the effect of the
   single-read optimisation.
   \item \textbf{Real auto-deploy resolvers} (RQ2): the cost of the production resolvers
   (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}, \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) and of the
   registry write path.
-  \item \textbf{Provider API calls} (RQ2): how many requests each cascade path sends to the
+  \item \textbf{Provider API calls} (RQ2): how many requests each ladder path sends to the
   provider, counted from the implementation rather than measured.
   \item \textbf{Manual effort} (RQ1): the developer actions the integration removes, counted
   against the procedure the two tools required separately.
@@ -48,21 +48,21 @@ The evaluation has six parts:
   deployment bundle.
 \end{itemize}
 
-\section{Correctness of the Resolution Cascade}
+\section{Correctness of the Resolution Ladder}
 \label{sec:eval-correctness}
 
-RQ1 asks whether the resolution cascade binds each internal call to the right endpoint and deploys
+RQ1 asks whether the resolution ladder binds each internal call to the right endpoint and deploys
 a function only when its absence is confirmed. Each production resolver
 (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) has a unit-test
-suite that resolves a small workflow in each situation the cascade can meet. The provider is
+suite that resolves a small workflow in each situation the ladder can meet. The provider is
 replaced by test doubles: a function lookup that answers ``found'', ``not found'' or ``access
 denied'' per region, a fixed list of regions, and a deployer that records the deployments it is
 asked for. The registry is a real file in a temporary directory. Each test checks the endpoint
 written into the call, the registry contents afterwards and, where relevant, whether the deployer
 was called or the resolution aborted.
 
-Table~\ref{tab:eval-correctness} lists the situations with the behaviour that the cascade
+Table~\ref{tab:eval-correctness} lists the situations with the behaviour that the ladder
 semantics prescribe (Section~\ref{sec:walkthrough} and Section~\ref{subsec:validation-error-semantics}). The observed behaviour matches the
 expected behaviour in every case: all 46 resolver tests (23 for AWS, 23 for GCP) pass, as do the
 two tests of the registry bootstrap.
@@ -108,9 +108,9 @@ two tests of the registry bootstrap.
     External calls & host and path unchanged \\
     \hline
     Call setting both \texttt{internalFunction} and a literal \texttt{host}/\texttt{path} & rejected
-    before the cascade starts \\
+    before the ladder starts \\
     \hline
-    Internal call that declares a body (AWS only) & rejected before the cascade starts; nothing
+    Internal call that declares a body (AWS only) & rejected before the ladder starts; nothing
     deployed (Section~\ref{sec:runtime-invocation}) \\
     \hline
     Several internal calls in one workflow & registry read once \\
@@ -478,7 +478,7 @@ inspector is a local fake that confirms every registered function. On GCP the re
 hit, and only its HTTP client is replaced by one that answers each \texttt{services.get} locally
 with the registered URL, so building the request, obtaining the token and parsing the JSON
 response are measured, and only the network round-trip is not. What both measure is therefore the
-local part of the cascade. The result has the same shape as the already-optimised reference
+local part of the ladder. The result has the same shape as the already-optimised reference
 implementation: a cost that is one registry read plus a constant per call. Reading down the
 $N{=}1$ column gives the read (plus, on GCP, one validation), which grows with $F$ because
 $R{=}F$; reading along a row gives the per-call work, $0.07$--$0.14\,\mu$s on AWS and about
@@ -874,7 +874,7 @@ count of internal calls matters.
 \section{Provider API Calls per Resolution}
 \label{sec:eval-api-calls}
 
-This section counts the network traffic the cascade generates, which the experiments above do not
+This section counts the network traffic the ladder generates, which the experiments above do not
 see: the figures are read from the code of the two resolvers and of the clients they use, and they are
 numbers of provider API requests, not latencies. Let $G$ be the number of candidate regions: the
 regions enabled for the AWS account, or the Cloud Run locations visible to the GCP project.
@@ -888,11 +888,11 @@ every call names the same function ($F{=}1$). Each is a network round-trip that 
 include. The list of candidate regions, by contrast, is fetched at most once per deployment and
 cached in the resolver, and a region scan is paid only by the calls that miss.
 
-Table~\ref{tab:eval-api-calls} gives the count for each path through the cascade.
+Table~\ref{tab:eval-api-calls} gives the count for each path through the ladder.
 
 \begin{table}[htbp]
   \centering
-  \caption{Provider API requests issued per internal call, by cascade path, counted from the
+  \caption{Provider API requests issued per internal call, by ladder path, counted from the
   implementation. $G$ is the number of candidate regions.}
   \label{tab:eval-api-calls}
   \begin{tabular}{|p{0.30\textwidth}|p{0.30\textwidth}|p{0.30\textwidth}|}
@@ -1124,9 +1124,9 @@ live providers was left out of this evaluation by design (Section~\ref{sec:eval-
 absence is a limit of the evidence presented here. The two full-deployment tests the code base
 carries would not supply it. They need cloud credentials, which is why they are excluded from the
 automated suite, and the workflow they deploy gives every call a literal host, so they exercise
-workflow deployment and never enter the resolution cascade. Obtaining that evidence means deploying
+workflow deployment and never enter the resolution ladder. Obtaining that evidence means deploying
 workflows that contain internal calls against real accounts on both providers, at each level of the
-cascade; this is listed as future work (Section~\ref{sec:concl-future}).
+ladder; this is listed as future work (Section~\ref{sec:concl-future}).
 
 
 

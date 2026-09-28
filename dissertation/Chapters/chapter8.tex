@@ -17,10 +17,10 @@ assesses the work critically, and outlines future directions.
 \label{sec:concl-contributions}
 
 The work delivered two complementary halves: the unification of function and workflow deployment,
-through the Function Registry and the deployment-time resolution cascade
+through the Function Registry and the deployment-time resolution ladder
 (Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}), and the AWS Lambda provider added to
 QuickFaaS, with the matching deployer in OmniFlow (Section~\ref{subsec:quickfaas-aws-provider}).
-To let the cascade cover the functions it deploys on GCP, QuickFaaS's GCP provider was also moved
+To let the ladder cover the functions it deploys on GCP, QuickFaaS's GCP provider was also moved
 to second-generation functions, which are Cloud Run services
 (Section~\ref{subsec:gcp-cloud-run-functions}).
 How far each meets the objectives set out in Chapter~\ref{cha:introduction} is assessed next.
@@ -31,7 +31,7 @@ How far each meets the objectives set out in Chapter~\ref{cha:introduction} is a
 The two research questions of Section~\ref{sec:int_objectives} are answered as follows:
 \begin{itemize}
   \item \textbf{RQ1 (feasibility and correctness)}: yes, for the resolution logic. On both AWS
-  and GCP the cascade binds each internal call to the right endpoint and deploys a function only
+  and GCP the ladder binds each internal call to the right endpoint and deploys a function only
   when its absence is confirmed, and it aborts on stale entries, ambiguous names and inaccessible
   regions (Section~\ref{sec:eval-correctness}), within the limits stated below for objective 4.
   \item \textbf{RQ2 (overhead)}: small. In the production resolvers, resolving a workflow of 200
@@ -58,7 +58,7 @@ follows:
   0.9\,KB to a Lambda bundle (Table~\ref{tab:eval-s1}), and the resolver tests cover both
   providers (Section~\ref{sec:eval-correctness}).
   \item \textbf{Evaluate feasibility and overhead}: \emph{partially met.}
-  Chapter~\ref{cha:evaluation} checks the decisions of the resolution cascade on both providers
+  Chapter~\ref{cha:evaluation} checks the decisions of the resolution ladder on both providers
   and measures the resolution overhead, the registry write path and the packaging size. The
   evidence is local only: the correctness checks simulate the provider, and the benchmarks ran on
   a laptop rather than dedicated hardware. End-to-end deployment times were deliberately not
@@ -78,7 +78,7 @@ The implementation is that of a prototype, and several limitations should be sta
   in the rendered artifact (Section~\ref{sec:resolution-cascade}). An endpoint that changes afterwards
   reaches a deployed workflow only when that workflow is deployed again; nothing resolves
   endpoints at run time.
-  \item \textbf{No update path.} The cascade deploys a function only when it is missing and never
+  \item \textbf{No update path.} The ladder deploys a function only when it is missing and never
   updates one that exists: a change to a function's code is not deployed by a workflow deployment,
   and has to be deployed separately (for example, with QuickFaaS directly).
   \item \textbf{Unguarded registry.} The registry is a flat JSON file with no cache, no integrity
@@ -125,8 +125,8 @@ structural ones.
   dry-run mode that reports the IAM changes it would make instead of applying them silently.
   \item \textbf{Make the cloud-calling code testable,} extracting the SDK interactions
   behind narrow interfaces so the deploy/IAM/readiness logic can be unit-tested against fakes.
-  \item \textbf{Validate the cascade against live providers,} deploying workflows that contain
-  internal calls to real AWS and GCP accounts at each level of the cascade, so that the correctness
+  \item \textbf{Validate the ladder against live providers,} deploying workflows that contain
+  internal calls to real AWS and GCP accounts at each level of the ladder, so that the correctness
   evidence of Section~\ref{sec:eval-correctness} rests on the providers' own responses rather than
   on test doubles.
   \item \textbf{Extend the provider set,} adding Azure Functions (already a QuickFaaS target)
@@ -138,7 +138,7 @@ structural ones.
 
 The integration shows that function deployment and workflow orchestration can be driven from a
 single, provider-agnostic definition, with concrete endpoint binding deferred to deployment time
-through an explicit resolution cascade. In local measurements the overhead of this unification is
+through an explicit resolution ladder. In local measurements the overhead of this unification is
 small and, with the single-read optimisation applied in both production resolvers, grows linearly.
 The solution fits an organisation that deploys one orchestration to several accounts or providers,
 as the case study of Chapter~\ref{cha:case-study} illustrates, or that exposes open-banking

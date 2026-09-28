@@ -171,12 +171,12 @@ The contributions of this dissertation are the following:
 	time) or external (an explicit \texttt{host} and \texttt{path}, left to the developer), and the
 	two forms are mutually exclusive, so the origin of every invoked function is unambiguous.
 
-	\item \textbf{A function registry and a deployment-time resolution cascade.} A per-provider
-	registry stores the invocation metadata of each internal function. A three-level cascade binds
+	\item \textbf{A function registry and a deployment-time resolution ladder.} A per-provider
+	registry stores the invocation metadata of each internal function. A three-level ladder binds
 	each logical name to a concrete endpoint before the workflow is rendered. Its levels are a
 	registry entry validated against the live function, provider discovery across regions, and
 	deployment through QuickFaaS, which runs only when the function is confirmed to be absent and a
-	descriptor was supplied. The cascade fails fast: an inconclusive lookup aborts the deployment instead of
+	descriptor was supplied. The ladder fails fast: an inconclusive lookup aborts the deployment instead of
 	deploying a function that may already exist.
 
 	\item \textbf{AWS Lambda support in QuickFaaS.} QuickFaaS gains an AWS provider, and OmniFlow
@@ -185,9 +185,9 @@ The contributions of this dissertation are the following:
 	\item \textbf{A prototype and a case study.} The two tools are integrated into a working
 	prototype in which a single workflow definition deploys, with its internal functions, to AWS or
 	to GCP. A real-time fraud detection scenario for card payments walks through the registry and
-	the cascade end to end on both providers.
+	the ladder end to end on both providers.
 
-	\item \textbf{An evaluation of the cascade's decisions and of its cost.} The behaviour of the
+	\item \textbf{An evaluation of the ladder's decisions and of its cost.} The behaviour of the
 	resolution is checked in each situation it can meet on both providers. The measurements cover
 	its overhead, how it scales with the number of calls and the size of the registry, the registry
 	write path, and the packaging overhead of the provider-agnostic layer on AWS.
@@ -200,7 +200,7 @@ Orchestration''~\cite{carvalho2026towards}. That paper reports the work in progr
 motivation, the layered architecture of the unified framework, the distinction between internal and
 external calls, and the Function Registry that maps logical function names to deployed endpoints.
 The dissertation carries that design to completion and adds what the paper left open: the
-resolution cascade with its validation and discovery levels, the AWS Lambda support, the case study,
+resolution ladder with its validation and discovery levels, the AWS Lambda support, the case study,
 and the quantitative evaluation.
 
 \section{Structure of the Work}
@@ -212,8 +212,8 @@ The remainder of this dissertation is organised as follows:
   \item \textbf{Chapter 1} introduces the problem, motivation, objectives, and scope of the work.
   \item \textbf{Chapter 2} provides the background on serverless computing, presents the two base technologies, QuickFaaS (function deployment) and OmniFlow (workflow definition and deployment), and surveys related work on function deployment automation, workflow composition/orchestration and service registries.
   \item \textbf{Chapter 3} presents the proposed solution: a workflow-first deployment procedure on a single cloud provider, based on logical function references (\texttt{functionRef}), a function registry for endpoint resolution, and the \texttt{internalFunction} construct on the call step, which delegates on-demand function deployment to QuickFaaS.
-  \item \textbf{Chapter 4} describes the implementation of the integration: the function registry and its deployment-time resolution cascade, the AWS Lambda support added to QuickFaaS, and the runtime invocation of registry-resolved functions.
-  \item \textbf{Chapter 5} presents an illustrative case study (real-time fraud detection for card payments) that grounds the registry and resolution cascade in a concrete banking scenario, deployed to both AWS and GCP.
-  \item \textbf{Chapter 6} evaluates the prototype and answers the two research questions: whether the resolution cascade takes the right decisions on both providers, and what resolution costs.
+  \item \textbf{Chapter 4} describes the implementation of the integration: the function registry and its deployment-time resolution ladder, the AWS Lambda support added to QuickFaaS, and the runtime invocation of registry-resolved functions.
+  \item \textbf{Chapter 5} presents an illustrative case study (real-time fraud detection for card payments) that grounds the registry and resolution ladder in a concrete banking scenario, deployed to both AWS and GCP.
+  \item \textbf{Chapter 6} evaluates the prototype and answers the two research questions: whether the resolution ladder takes the right decisions on both providers, and what resolution costs.
   \item \textbf{Chapter 7} concludes the dissertation, revisits the objectives, assesses the work critically, and outlines future work.
 \end{itemize}

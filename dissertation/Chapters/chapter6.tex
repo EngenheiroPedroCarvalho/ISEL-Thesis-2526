@@ -7,7 +7,7 @@
 \chapter{Case Study: Real-Time Fraud Detection for Card Payments}
 \label{cha:case-study}
 
-The previous chapters described the Function Registry and resolution cascade in isolation from
+The previous chapters described the Function Registry and resolution ladder in isolation from
 any particular domain (Chapter~\ref{ch:proposed_solution}) and traced their implementation
 (Chapter~\ref{cha:impl}); Chapter~\ref{cha:evaluation} then measures what they cost. This
 chapter applies those mechanisms to one scenario drawn from retail banking:
@@ -20,7 +20,7 @@ discuss where it fits an actual banking environment and where it does not yet fi
 The chapter is organised as follows. Section~\ref{sec:case-scenario} sets out the business
 requirements a payment-authorisation workflow imposes and why they line up with the problem this
 work addresses. Section~\ref{sec:case-design} defines the workflow in the OmniFlow DSL.
-Section~\ref{sec:case-deployment} walks the resolution cascade through three deployments of that
+Section~\ref{sec:case-deployment} walks the resolution ladder through three deployments of that
 same workflow (to a test and a production AWS account, then to GCP) to show how the bindings
 follow the deployment target, and Section~\ref{sec:case-artifacts} shows the registries and the
 bindings those deployments produce.
@@ -180,7 +180,7 @@ Section~\ref{sec:case-deployment} shows next.
 \label{sec:case-deployment}
 
 Suppose neither \texttt{fraud-check} nor \texttt{risk-score} has been deployed yet, and the bank
-deploys \texttt{PaymentAuthorization} to its AWS test account first. The cascade runs as in the
+deploys \texttt{PaymentAuthorization} to its AWS test account first. The ladder runs as in the
 walkthrough of Section~\ref{sec:walkthrough}, and reaches Level~3 for both calls: QuickFaaS deploys \texttt{fraud-check} and \texttt{risk-score}
 as Lambda functions from the descriptors referenced in the workflow, following the AWS deployment
 sequence of Figure~\ref{fig:aws-deploy-sequence}. Both ARNs are
@@ -244,7 +244,7 @@ results is Listing~\ref{lst:case-registry-aws}: one entry per internal function,
 
 Deploying the same workflow to the test account a second time, with both functions now reported
 as live, shows the
-other half of the cascade. Both calls are Level~1 hits that validate unchanged, the deployer is not
+other half of the ladder. Both calls are Level~1 hits that validate unchanged, the deployer is not
 called at all, and the registry file is left untouched: its \texttt{updatedAt} is the same
 timestamp as in Listing~\ref{lst:case-registry-aws}, because a hit that validates unchanged writes
 nothing. The rendered state machine is identical to the one produced by the first deployment. In
@@ -291,7 +291,7 @@ external call.
 Section~\ref{sec:case-deployment} shows the integration's central claim in a setting where it
 plausibly matters. The fraud team's frequent model updates are a different matter: a retrained \texttt{fraud-check} redeployed in place keeps its endpoint
 (Section~\ref{sec:resolution-cascade}), so the deployed workflow calls the new model unchanged. Conversely, a workflow deployment never deploys the new model itself, because the
-cascade only deploys missing functions (Section~\ref{sec:concl-critical}).
+ladder only deploys missing functions (Section~\ref{sec:concl-critical}).
 
 Rendering the workflow for Section~\ref{sec:case-artifacts} also exposed a limitation of OmniFlow's
 AWS renderer, which this work did not change. An \texttt{assign} step becomes a \texttt{Pass}

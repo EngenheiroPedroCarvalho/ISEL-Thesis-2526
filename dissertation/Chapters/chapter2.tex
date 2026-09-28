@@ -318,12 +318,12 @@ it~\cite{terraformReferences}. Pulumi likewise records a dependency when one res
 passed as another's input, and orders their creation accordingly~\cite{pulumiInputsOutputs}. In each
 case the function is declared alongside the workflow and deployed with it, and its endpoint is
 written into the workflow at deployment time, the same static binding performed by the resolution
-cascade proposed in this dissertation and described in Section~\ref{sec:resolution-cascade}.
+ladder proposed in this dissertation and described in Section~\ref{sec:resolution-cascade}.
 They also update a function whose code changed, which this work does not. Conversely, they
 bind a workflow only to functions declared or explicitly referenced in the same template or
 configuration. Terraform and Pulumi can look up a function deployed by other means, but only
 through an explicit data source that names it, in the region the configuration
-targets~\cite{terraformLambdaDataSource,pulumiLambdaGetFunction}. The resolution cascade, by
+targets~\cite{terraformLambdaDataSource,pulumiLambdaGetFunction}. The resolution ladder, by
 contrast, searches the provider's regions for a function it was only given the name of, and
 deploys it when it is absent.
 What none of them offers is a workflow definition independent of the provider: the state machine is
@@ -387,7 +387,7 @@ Both differ from the Function Registry in when and by whom the name is resolved.
 is consulted at run time, by the caller, on every lookup; the Function Registry is consulted once,
 at deployment time, and its result is written into the workflow definition, so neither the
 workflow engine nor the function needs to know that a registry exists. A service registry also
-holds only what is registered with it, and deploys nothing, whereas the resolution cascade falls
+holds only what is registered with it, and deploys nothing, whereas the resolution ladder falls
 back to searching the provider and, when the function is absent, to deploying it. Conversely, a
 service registry is shared and kept current as instances come and go, which the Function Registry,
 a local file validated on each deployment, is not (Section~\ref{sec:concl-critical}).

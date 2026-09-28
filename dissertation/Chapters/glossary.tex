@@ -35,7 +35,7 @@
 	description={JSON file read by QuickFaaS that holds a function's deployment parameters
 	(provider, project, region, bucket, runtime, trigger) and the path of its code file. An internal
 	call points to it through \texttt{deploymentDescriptorPath}; it is used only at Level~3 of the
-	resolution cascade.}
+	resolution ladder.}
 }
 
 \newglossaryentry{package}{
@@ -87,7 +87,7 @@
 \newglossaryentry{registry}{
 	name={Function Registry},
 	description={JSON file, one per provider, that maps each \texttt{functionRef} to the invocation
-	metadata of an internal function. It is the persistence layer of the resolution cascade.}
+	metadata of an internal function. It is the persistence layer of the resolution ladder.}
 }
 
 \newglossaryentry{functionref}{
@@ -157,7 +157,7 @@
 }
 
 \newglossaryentry{cascade}{
-	name={Resolution cascade},
+	name={Resolution ladder},
 	description={Three-level procedure that binds each internal call to an endpoint at deployment
 	time, stopping at the first level that succeeds: Level~1, a registry hit validated against the
 	live function; Level~2, discovery on the provider; Level~3, deployment through QuickFaaS, only

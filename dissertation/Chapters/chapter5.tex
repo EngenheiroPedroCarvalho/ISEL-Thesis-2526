@@ -7,7 +7,7 @@
 \chapter{Implementation}
 \label{cha:impl}
 
-This chapter describes how the architecture and resolution cascade introduced in
+This chapter describes how the architecture and resolution ladder introduced in
 Chapter~\ref{ch:proposed_solution} are realised in code.
 
 The chapter is organised in three sections. Section~\ref{sec:function-registry} presents the
@@ -15,7 +15,7 @@ Function Registry itself: its file format, how entries are created and kept up t
 two provider resolvers that consult it at deployment time, and the change to QuickFaaS's GCP
 provider that lets them cover the functions it deploys. The following
 section, AWS Lambda Support in QuickFaaS, traces the concrete deployment steps that Level~3 of the
-cascade triggers on AWS.
+ladder triggers on AWS.
 Section~\ref{sec:runtime-invocation} closes the chapter by following a resolved internal call
 through to its actual invocation once the workflow has been deployed.
 
@@ -32,7 +32,7 @@ Figure~\ref{fig:omniflow-integration-classes} details the classes that realise t
 
 The registry realises the indirection defined in Section~\ref{sec:dsl-extensions}, through which a
 workflow names an internal function by its \texttt{functionRef}, and is also the persistence layer
-of the resolution cascade, which creates and refreshes its entries (Section~\ref{subsec:registry-updates}).
+of the resolution ladder, which creates and refreshes its entries (Section~\ref{subsec:registry-updates}).
 
 \subsection{Registry File Format}
 The file format is the one described in Section~\ref{sec:dsl-extensions} and shown in
@@ -67,7 +67,7 @@ The registry management layer provides the following behaviour:
     resulting invocation metadata is written to the registry, so subsequent deployments
     resolve the function without redeploying it.
     \item \textbf{Drift handling:} a registry hit whose endpoint has changed is refreshed, and a
-    stale entry is replaced or removed as Level~1 of the cascade prescribes
+    stale entry is replaced or removed as Level~1 of the ladder prescribes
     (Section~\ref{sec:resolution-cascade}).
 \end{itemize}
 
@@ -79,7 +79,7 @@ The registry is consumed at deployment time by an endpoint resolution step that 
 provider-specific artifact (e.g., Google Workflows YAML) is rendered. OmniFlow traverses the
 workflow tree (including nested branches, iterations and parallel blocks) and intercepts
 every \texttt{CallContext} carrying an \texttt{internalFunction} declaration, leaving external
-calls untouched. Each intercepted call is then put through the three-level cascade defined in
+calls untouched. Each intercepted call is then put through the three-level ladder defined in
 Section~\ref{sec:resolution-cascade}. Section~\ref{subsec:store-internals} describes how the two
 resolvers realise it, and Section~\ref{subsec:validation-error-semantics} the errors they raise
 when a call cannot be bound.
@@ -108,7 +108,7 @@ The store keeps no in-memory state between calls, so \texttt{readAll()} and
 analyses the performance consequences of this choice.
 
 The two provider resolvers sit on top of this store.
-\texttt{WorkflowInternalFunctionResolver} (GCP) realises the three levels of the cascade on the
+\texttt{WorkflowInternalFunctionResolver} (GCP) realises the three levels of the ladder on the
 Cloud Run API, through
 \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Service\allowbreak Inspector}. The inspector
 looks a service up by its full name to validate a hit, and by project, region and name during
@@ -169,7 +169,7 @@ account the workflow runs as. It then returns the two fields of the registry ent
 as its \texttt{serviceName}, the full resource name of the service, which is the form the
 inspector looks up at Level~1.
 
-All three levels of the cascade and the registry bootstrap therefore cover these functions through
+All three levels of the ladder and the registry bootstrap therefore cover these functions through
 the Cloud Run clients described above; only the Level~3 deployment itself calls the Cloud Functions
 API. The resolver validates every registry hit: the URL does not
 identify the generation of the function behind it, since a second-generation function keeps a
@@ -182,7 +182,7 @@ that points to one fails validation like a deleted service.
 \label{subsec:validation-error-semantics}
 Several correctness constraints are enforced to avoid silent misconfiguration. Three of them, an
 unresolvable function, an ambiguous reference and a stale registry entry, are stated with the rest
-of the cascade's failure modes in Section~\ref{sec:walkthrough}, and all abort the deployment before any provider artifact is
+of the ladder's failure modes in Section~\ref{sec:walkthrough}, and all abort the deployment before any provider artifact is
 rendered. One consequence of the second belongs here: supplying a \texttt{deploymentDescriptorPath} does
 not resolve an ambiguous reference, because ambiguity is a data-consistency problem rather than an
 absence, so QuickFaaS is never invoked to hide it. The remaining
@@ -248,12 +248,12 @@ and idempotency, the two properties that motivated the registry in the first pla
 (Section~\ref{sec:resolution-cascade}), are unaffected by whether the hit is trusted or verified.
 
 \section{AWS Lambda Support in QuickFaaS}
-Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{Create\allowbreak State\allowbreak Machine}, and expands the longest path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment (UML notation for alternative branches) has one branch for each of the three levels of the resolution cascade described in Section~\ref{sec:resolution-cascade}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work described step by step in Section~\ref{subsec:omniflow-aws-deployer}. The ARN it returns is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{Create\allowbreak State\allowbreak Machine}. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
+Figure~\ref{fig:aws-deploy-sequence} traces the end-to-end deployment on AWS, from the registry bootstrap to \texttt{Create\allowbreak State\allowbreak Machine}, and expands the longest path, where an internal function exists in neither the registry nor AWS. The \texttt{alt} fragment (UML notation for alternative branches) has one branch for each of the three levels of the resolution ladder described in Section~\ref{sec:resolution-cascade}, and a fourth for the calls that fail fast. Once Level~3 is reached, \texttt{AwsLambdaDeployer} performs the AWS-specific work described step by step in Section~\ref{subsec:omniflow-aws-deployer}. The ARN it returns is stored in the registry and, once all calls are resolved, the workflow is rendered with a \texttt{lambda:invoke} task resource and submitted via \texttt{Create\allowbreak State\allowbreak Machine}. The rationale for invoking QuickFaaS as a subprocess, rather than integrating the two tools as separate communicating services, is discussed in Section~\ref{sec:design-rationale}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/aws-deploy-sequence.png}
-  \caption{Deployment sequence on AWS, with one branch per level of the resolution cascade and
+  \caption{Deployment sequence on AWS, with one branch per level of the resolution ladder and
   the Level~3 path (function absent from both the registry and the provider) expanded.}
   \label{fig:aws-deploy-sequence}
 \end{figure}
@@ -327,7 +327,7 @@ placeholder to request automatic role creation.
 
 \section{Runtime Invocation}
 \label{sec:runtime-invocation}
-Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Step Functions invokes the Lambda directly, through the native \texttt{arn:aws:states:::lambda:invoke} integration and with the ARN fixed at deployment time. The QuickFaaS template entry point, \texttt{AwsHttpTemplate}, reads only the \texttt{queryStringParameters} of the event it receives, and passes them to the developer's hook function as a map; the response is returned under \texttt{\$.Payload}. An internal call on AWS therefore passes its inputs with \texttt{query(\ldots)}. A call that declares a body is rejected by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} before the cascade runs, rather than rendered into a state machine that would silently drop it. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane.
+Figure~\ref{fig:aws-runtime-invocation} shows how an internal function is invoked at runtime, once the workflow is deployed. Step Functions invokes the Lambda directly, through the native \texttt{arn:aws:states:::lambda:invoke} integration and with the ARN fixed at deployment time. The QuickFaaS template entry point, \texttt{AwsHttpTemplate}, reads only the \texttt{queryStringParameters} of the event it receives, and passes them to the developer's hook function as a map; the response is returned under \texttt{\$.Payload}. An internal call on AWS therefore passes its inputs with \texttt{query(\ldots)}. A call that declares a body is rejected by \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} before the ladder runs, rather than rendered into a state machine that would silently drop it. Using the native integration rather than an HTTP endpoint avoids per-call request signing and keeps the invocation within the AWS control plane.
 
 \begin{figure}[htbp]
   \centering

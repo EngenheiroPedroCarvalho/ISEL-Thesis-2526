@@ -10,7 +10,7 @@ ISEL MSc dissertation (English, `docdegree=msc`, `lang=en`) on integrating **Omn
 DSL that renders and deploys workflows to AWS Step Functions and GCP Workflows) with **QuickFaaS**
 (portable deployment of serverless functions). The contribution has two parts:
 
-1. **Unification:** a Function Registry and a three-level *resolution cascade* (registry →
+1. **Unification:** a Function Registry and a three-level *resolution ladder* (registry →
    provider discovery → QuickFaaS deployment), triggered by
    `internalFunction(name, deploymentDescriptorPath)` on the OmniFlow `call` step.
 2. **AWS support:** an AWS Lambda provider added to QuickFaaS.
@@ -34,7 +34,7 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 | `Chapters/chapter6.tex` | 5 Case Study | `cha:case-study` |
 | `Chapters/chapter7.tex` | 6 Evaluation | `cha:evaluation` |
 | `Chapters/chapter8.tex` | 7 Conclusions | `cha:conclusions` |
-| `Chapters/appendix-cascade.tex` | Appendix A: Resolution Cascade Sequence Diagrams | `app:cascade-sequences` |
+| `Chapters/appendix-cascade.tex` | Appendix A: Resolution Ladder Sequence Diagrams | `app:cascade-sequences` |
 
 - File numbers match chapter numbers only up to `chapter3.tex`: from `chapter5.tex` on, each file
   holds the chapter one number lower. Background and Related Work were merged into one chapter
@@ -97,7 +97,7 @@ yet; `changelog.txt` is the template's own history and is unrelated. Whenever yo
 
 The code is in the same repository, one level up (`..` is
 `/Users/pedrocarvalho/IdeaProjects/ISEL-Thesis-2526`). `../CLAUDE.md` describes its packages, how
-the resolution cascade behaves (the facts the thesis text must stay consistent with), and how to
+the resolution ladder behaves (the facts the thesis text must stay consistent with), and how to
 run its tests, including the `JAVA_HOME` workaround for this Mac's terminal.
 
 - `../omni-flow-main/` is OmniFlow (Maven modules `deployment/` and `benchmark/`; tests are
@@ -115,8 +115,8 @@ Key classes, under `../omni-flow-main/deployment/src/main/kotlin/costaber/com/gi
 
 | Concern | Path |
 |---|---|
-| GCP cascade | `internalfunction/WorkflowInternalFunctionResolver.kt` |
-| AWS cascade | `internalfunction/quickfaas/AwsInternalFunctionResolver.kt` |
+| GCP ladder | `internalfunction/WorkflowInternalFunctionResolver.kt` |
+| AWS ladder | `internalfunction/quickfaas/AwsInternalFunctionResolver.kt` |
 | Level 3 deployers | `internalfunction/quickfaas/` (`QuickFaasDeployer`, `AwsLambdaDeployer`) |
 | Registry | `registry/FunctionRegistryStore.kt`, `registry/FunctionRegistryBootstrapper.kt` |
 | Entry points, default registry paths | `cloud/provider/{google,amazon}/deployer/*CloudDeployer.kt` |
@@ -135,7 +135,9 @@ Key classes, under `../omni-flow-main/deployment/src/main/kotlin/costaber/com/gi
   with `\hline`, with thousands written as `1\,234`.
 - Newer prose is hard-wrapped at about 100 columns.
 - Terminology: an *internal call* uses `internalFunction`; an *external call* has a literal
-  `host`/`path`. Also `functionRef`, *Function Registry*, and *resolution cascade* with Level 1/2/3.
+  `host`/`path`. Also `functionRef`, *Function Registry*, and *resolution ladder* with Level 1/2/3
+  (renamed from "resolution cascade" on 2026-09-28; don't reintroduce "cascade" in the prose, but
+  labels and file names such as `sec:resolution-cascade` and `appendix-cascade.tex` keep it).
 - Technical claims must match the code. When discussing them with the user, cite `file:line`.
 - When evaluation numbers change, update the table and the prose together; the Discussion and
   Conclusions restate numbers.

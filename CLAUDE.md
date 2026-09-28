@@ -69,9 +69,9 @@ Under `omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
 - `registry/` — the Function Registry: `FunctionRegistryStore` (JSON file I/O and lookups),
   `FunctionRegistryBootstrapper` and `CloudFunctionsCatalog` (populate a missing registry from the
   provider), `FunctionInvocationMetadata`.
-- `internalfunction/` — `WorkflowInternalFunctionResolver` (GCP cascade) and the
+- `internalfunction/` — `WorkflowInternalFunctionResolver` (GCP ladder) and the
   `InternalFunctionDeployer` strategy (with `NoopInternalFunctionDeployer`).
-- `internalfunction/quickfaas/` — `AwsInternalFunctionResolver` (AWS cascade), the Level 3
+- `internalfunction/quickfaas/` — `AwsInternalFunctionResolver` (AWS ladder), the Level 3
   deployers `QuickFaasDeployer` (GCP) and `AwsLambdaDeployer` (AWS), `QuickFaasDescriptor` /
   `QuickFaasDescriptorLoader`, and `QuickFaasProcessInvoker` (runs the QuickFaaS jar as a
   subprocess).
@@ -84,7 +84,7 @@ Under `omni-flow-main/deployment/src/main/kotlin/costaber/com/github/omniflow/`:
 Under `omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/src/main/kotlin/model/`: the AWS
 provider added to QuickFaaS (`AwsProvider`, `AwsLambdaFunction`, `AwsRequests`, `AwsS3Bucket`, …).
 
-## How the resolution cascade behaves (verified 2026-09-11; GCP 2nd gen on 2026-09-27)
+## How the resolution ladder behaves (verified 2026-09-11; GCP 2nd gen on 2026-09-27)
 
 The dissertation describes this behaviour, so keep the code and `dissertation/` consistent.
 
@@ -98,13 +98,13 @@ The dissertation describes this behaviour, so keep the code and `dissertation/` 
 - **No deployment without confirmed absence:** a discovery error (for example, inaccessible
   regions) aborts; it never falls through to Level 3. A stale registry entry also aborts, even when
   a descriptor is present.
-- **No updates:** Level 3 runs only when the function is absent; the cascade never updates an
+- **No updates:** Level 3 runs only when the function is absent; the ladder never updates an
   existing function.
 - **Static binding:** the resolved endpoint is embedded in the rendered workflow at deployment
   time.
 - **AWS internal calls take query parameters only:** the QuickFaaS Lambda template reads only
   `queryStringParameters`, so `AwsInternalFunctionResolver` rejects an internal call that declares a
-  body before the cascade runs. `body(variable("x"))` is kept as `CallContext.bodyTerm` (whole-body
+  body before the ladder runs. `body(variable("x"))` is kept as `CallContext.bodyTerm` (whole-body
   term) on both renderers. Known open issue: the AWS renderer's `Pass` states replace the whole
   state (Ch. 5 discussion). Merged from `experiment/gcf-gen2` on 2026-09-27.
 - **GCP functions are 2nd gen:** QuickFaaS deploys through the Cloud Functions v2 API, so every
@@ -113,7 +113,7 @@ The dissertation describes this behaviour, so keep the code and `dissertation/` 
   `roles/run.invoker` on the service. Every registry hit is validated against Cloud Run (there is
   no `cloudfunctions.net` short-circuit). First-gen functions created outside the integration are
   invisible to validation, discovery and bootstrap. Merged from `experiment/gcf-gen2` on
-  2026-09-27, after the cascade (all three levels and bootstrap) was run against a live GCP
+  2026-09-27, after the ladder (all three levels and bootstrap) was run against a live GCP
   project; thesis: Ch. 4 "Cloud Run Functions on GCP".
 
 ## Build, test, coverage

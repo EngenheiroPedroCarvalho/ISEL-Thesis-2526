@@ -18,7 +18,7 @@ This dissertation removes that manual step by unifying the two tools: QuickFaaS,
 portable serverless functions, and OmniFlow, a Kotlin DSL that renders and deploys workflows to AWS
 Step Functions and Google Cloud Workflows. A workflow call names the function it invokes by a
 stable logical identifier instead of an endpoint, and OmniFlow binds that identifier when the
-workflow is deployed. The binding is a cascade of three levels, each one tried only when the level
+workflow is deployed. The binding is a ladder of three levels, each one tried only when the level
 before it fails. The first is a function registry, whose entry is validated against the live
 function; the second, a search of the provider's regions for a function of that name. The third,
 reached only once absence is confirmed, is a deployment through QuickFaaS from a deployment
@@ -27,7 +27,7 @@ Cloud and Azure, was also extended with an AWS Lambda provider, so that the unif
 clouds OmniFlow targets.
 
 The prototype was evaluated for correctness and for cost. Forty-six unit tests cover every path
-the cascade can take on both providers. Benchmarks show that the local work of resolving a
+the ladder can take on both providers. Benchmarks show that the local work of resolving a
 workflow of two hundred internal calls costs tens of microseconds, growing linearly with the
 number of internal calls while the registry is read only once. The requests that resolution sends
 to the provider are bounded from the implementation: one per internal call when the registry is

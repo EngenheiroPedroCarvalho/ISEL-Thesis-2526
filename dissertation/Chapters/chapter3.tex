@@ -6,7 +6,7 @@ This chapter introduces the core idea of the proposed OmniFlow-QuickFaaS integra
 In the reference OmniFlow usage, a \texttt{Call} step is expressed as an HTTP request: the developer supplies concrete invocation details such as \texttt{method}, \texttt{host} and \texttt{path}. The proposed solution lets the developer name a function they own on the call step instead, through a dedicated \texttt{internalFunction(name, deploymentDescriptorPath)} construct, and resolves its endpoint automatically at deployment time. This enables a single, workflow-first deployment that resolves (or, if needed, provisions) the required functions and then deploys the workflow to the chosen cloud provider.
 
 Section~\ref{sec:components-architecture} presents the components the integration adds and the
-three-level resolution cascade. Section~\ref{sec:design-rationale} explains why OmniFlow drives
+three-level resolution ladder. Section~\ref{sec:design-rationale} explains why OmniFlow drives
 QuickFaaS within a single deployment process. Section~\ref{sec:dsl-extensions} describes the
 \texttt{internalFunction} construct and the concepts it relies on, and
 Section~\ref{sec:developer-workflow} follows the procedure from the developer's point of view, up
@@ -49,13 +49,13 @@ The end-to-end flow proceeds as follows:
 \end{enumerate}
 Calls that already carry a literal endpoint bypass the registry entirely.
 
-\subsection{The Resolution Cascade}
+\subsection{The Resolution Ladder}
 \label{sec:resolution-cascade}
 
 Step~(3) of the end-to-end flow listed in Section~\ref{sec:components-architecture} is the core
-of the integration: a three-level cascade,
+of the integration: a three-level ladder,
 applied independently to each internal call and stopping at the first level that succeeds. The
-cascade is designed so that the cheapest and least intrusive action is always preferred, and an
+ladder is designed so that the cheapest and least intrusive action is always preferred, and an
 actual deployment is a last resort rather than a default.
 
 \begin{enumerate}
@@ -91,11 +91,11 @@ function itself, since it also grants the permissions needed to invoke it (and, 
 its execution role; Section~\ref{subsec:omniflow-aws-deployer}). And it is
 \emph{observable}: each level emits an explicit diagnostic, so the developer can see whether a
 call was served from the registry, discovered on the provider, or freshly deployed. The concrete
-class-level realisation of this cascade, including drift handling and ambiguity detection, is
+class-level realisation of this ladder, including drift handling and ambiguity detection, is
 described in Chapter~\ref{cha:impl}.
 
 \paragraph{Static binding.}
-The cascade runs only when the workflow is deployed. The endpoint it resolves is written into the
+The ladder runs only when the workflow is deployed. The endpoint it resolves is written into the
 rendered workflow (as the \texttt{url} of an HTTP call in a GCP Workflows definition, and as the
 \texttt{FunctionName} ARN of a \texttt{lambda:invoke} task in a Step Functions state machine),
 and the deployed workflow never consults the registry at run time. The binding is therefore
@@ -281,7 +281,7 @@ difference from a conventional call is what is \emph{not} there: no \texttt{host
 \texttt{path}. In their place, \texttt{internalFunction} supplies the \texttt{functionRef}
 \texttt{"quickfaas-test-fn"}, the key under which the endpoint is stored in (or added to) the
 registry, and \texttt{deploymentDescriptorPath}, a path to the QuickFaaS descriptor that is read
-only if the cascade reaches Level~3 and the function has to be deployed. Writing the step this way
+only if the ladder reaches Level~3 and the function has to be deployed. Writing the step this way
 is a statement about ownership rather than about addressing: it says which function to call, and
 leaves it to the deployment to determine where that function is.
 
@@ -349,11 +349,11 @@ val wf = workflow {
 \label{sec:walkthrough}
 
 Deploying the \texttt{FraudPipeline} of Listings~\ref{lst:wf-internal-part}
-and~\ref{lst:wf-external-part} makes the cascade concrete. Suppose \texttt{fraud-check} has never
+and~\ref{lst:wf-external-part} makes the ladder concrete. Suppose \texttt{fraud-check} has never
 been deployed and the registry does not yet exist. OmniFlow first bootstraps the registry (on GCP by listing the project's HTTP-invocable
 services, on AWS by listing the Lambda functions across every region enabled for the account) and then walks the workflow tree. The \texttt{external-risk-api} step carries literal \texttt{host}/\texttt{path} and
 is skipped by the resolver. The \texttt{fraud-check} step carries an \texttt{internalFunction}, so
-the cascade runs: Level~1 misses (empty registry), Level~2 misses (the function does not exist on
+the ladder runs: Level~1 misses (empty registry), Level~2 misses (the function does not exist on
 the provider), and Level~3 runs because the call supplied
 \texttt{"./deploy/fraud-check.json"}. QuickFaaS deploys the function, the returned endpoint (an
 HTTPS URL on GCP, an ARN on AWS) is written to the registry under the key \texttt{fraud-check}, and
