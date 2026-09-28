@@ -14,8 +14,12 @@ class AmazonPassRenderer(private val assignContext: AssignContext) : AmazonRende
         val amazonContext = renderingContext as AmazonRenderingContext
         amazonContext.setVariables(assignContext.variables)
         return render(renderingContext) {
-            addLine(AMAZON_PASS_TYPE)
-            add(AMAZON_START_RESULT)
+            if (amazonContext.isSingleVariableAssign()) {
+                add(AMAZON_PASS_TYPE)
+            } else {
+                addLine(AMAZON_PASS_TYPE)
+                add(AMAZON_START_RESULT)
+            }
         }
     }
 
@@ -23,7 +27,7 @@ class AmazonPassRenderer(private val assignContext: AssignContext) : AmazonRende
         val amazonContext = renderingContext as AmazonRenderingContext
         val nextStepName = amazonContext.getNextStepName()
         return render(renderingContext) {
-            addLine(AMAZON_CLOSE_OBJECT_WITH_COMMA)
+            if (!amazonContext.isSingleVariableAssign()) addLine(AMAZON_CLOSE_OBJECT_WITH_COMMA)
             if (nextStepName == null || nextStepName.isBlank()) {
                 add(AMAZON_END)
             } else {

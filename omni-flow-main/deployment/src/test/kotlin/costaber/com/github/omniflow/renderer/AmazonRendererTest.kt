@@ -268,17 +268,15 @@ internal class AmazonRendererTest {
                                 "AssignIteration1": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "number": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.number",
                                     "Next": "AssignIteration2"
                                 },
                                 "AssignIteration2": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "number": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.number",
                                     "Next": "ForLoop?"
                                 },
                                 "ForLoop?": {
@@ -383,17 +381,15 @@ internal class AmazonRendererTest {
                                 "AssignIteration1": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "number": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.number",
                                     "Next": "AssignIteration2"
                                 },
                                 "AssignIteration2": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "number": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.number",
                                     "Next": "ForLoop?"
                                 },
                                 "ForLoop?": {
@@ -489,9 +485,8 @@ internal class AmazonRendererTest {
                                     "Assign step": {
                                         "Comment": "Initialize variables",
                                         "Type": "Pass",
-                                        "Result": {
-                                            "Hello": "Hello"
-                                        },
+                                        "Result": "Hello",
+                                        "ResultPath": "$.Hello",
                                         "End": true
                                     }
                                 }
@@ -502,9 +497,8 @@ internal class AmazonRendererTest {
                                     "Assign step 2": {
                                         "Comment": "Initialize variables",
                                         "Type": "Pass",
-                                        "Result": {
-                                            "Hello": "Hello"
-                                        },
+                                        "Result": "Hello",
+                                        "ResultPath": "$.Hello",
                                         "End": true
                                     }
                                 }
@@ -587,17 +581,15 @@ internal class AmazonRendererTest {
                                             "AssignParallelIteration1": {
                                                 "Comment": "Initialize variables",
                                                 "Type": "Pass",
-                                                "Result": {
-                                                    "d": "$.key"
-                                                },
+                                                "InputPath": "$.key",
+                                                "ResultPath": "$.d",
                                                 "Next": "AssignParallelIteration2"
                                             },
                                             "AssignParallelIteration2": {
                                                 "Comment": "Initialize variables",
                                                 "Type": "Pass",
-                                                "Result": {
-                                                    "d": "$.key"
-                                                },
+                                                "InputPath": "$.key",
+                                                "ResultPath": "$.d",
                                                 "End": true
                                             }
                                         }
@@ -663,6 +655,101 @@ internal class AmazonRendererTest {
         """.trimIndent()
 
         expectThat(content).isEqualTo(expected)
+    }
+
+    @Test
+    fun `test lambda call step passes query parameters as plain strings`() {
+        val functionArn = "arn:aws:lambda:eu-west-1:123456789012:function:my-fn"
+        val w = createWorkflow(
+            step {
+                name("InvokeLambda")
+                description("Call Lambda directly")
+                context(
+                    call {
+                        method(GET)
+                        host("lambda://$functionArn")
+                        query("amount" to variable("transaction.amount"), "op" to value("add"))
+                        result("lambdaResult")
+                    }
+                )
+            }
+        )
+
+        val content = nodeTraversor.traverse(contextVisitor, w, renderingContext)
+            .filterNot(String::isEmpty)
+            .joinToStringNewLines()
+
+        val expected = """
+            {
+                "Comment": "Description",
+                "StartAt": "InvokeLambda",
+                "States": {
+                    "InvokeLambda": {
+                        "Comment": "Call Lambda directly",
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::lambda:invoke",
+                        "InputPath": "${'$'}",
+                        "Parameters": {
+                            "FunctionName": "$functionArn",
+                            "Payload": {
+                                "queryStringParameters": {
+                                    "amount.${'$'}": "States.Format('{}', ${'$'}.transaction.amount)",
+                                    "op.${'$'}": "States.Format('{}', 'add')"
+                                }
+                            }
+                        },
+                        "ResultSelector": {
+                            "lambdaResult.${'$'}": "${'$'}.Payload"
+                        },
+                        "ResultPath": "${'$'}.InvokeLambda",
+                        "End": true
+                    }
+                }
+            }
+        """.trimIndent()
+
+        expectThat(content).isEqualTo(expected)
+    }
+
+    @Test
+    fun `test single variable assign writes only that variable`() {
+        val w = createWorkflow(
+            step {
+                name("Approve")
+                description("Record the approval")
+                context(assign { variables(variable("decision") equalTo value("approved")) })
+            },
+            step {
+                name("Report")
+                description("Send the transaction")
+                context(
+                    call {
+                        method(POST)
+                        host("example.com")
+                        path("/report")
+                        body(variable("transaction"))
+                        result("reportResult")
+                    }
+                )
+            }
+        )
+
+        val content = nodeTraversor.traverse(contextVisitor, w, renderingContext)
+            .filterNot(String::isEmpty)
+            .joinToStringNewLines()
+
+        expectThat(content)
+            .contains(
+                """
+                    "Approve": {
+                        "Comment": "Record the approval",
+                        "Type": "Pass",
+                        "Result": "approved",
+                        "ResultPath": "${'$'}.decision",
+                        "Next": "Report"
+                    },
+                """.trimIndent().prependIndent("        ")
+            )
     }
 
     @Test
@@ -756,17 +843,15 @@ internal class AmazonRendererTest {
                                 "AssignParallelIteration1": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "d": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.d",
                                     "Next": "AssignParallelIteration2"
                                 },
                                 "AssignParallelIteration2": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "d": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.d",
                                     "End": true
                                 }
                             }
@@ -785,17 +870,15 @@ internal class AmazonRendererTest {
                                 "AssignParallelIteration1": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "d": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.d",
                                     "Next": "AssignParallelIteration2"
                                 },
                                 "AssignParallelIteration2": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "d": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.d",
                                     "End": true
                                 }
                             }
@@ -814,17 +897,15 @@ internal class AmazonRendererTest {
                                 "AssignParallelIteration1": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "d": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.d",
                                     "Next": "AssignParallelIteration2"
                                 },
                                 "AssignParallelIteration2": {
                                     "Comment": "Initialize variables",
                                     "Type": "Pass",
-                                    "Result": {
-                                        "d": "$.key"
-                                    },
+                                    "InputPath": "$.key",
+                                    "ResultPath": "$.d",
                                     "End": true
                                 }
                             }

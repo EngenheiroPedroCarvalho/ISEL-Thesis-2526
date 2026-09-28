@@ -73,9 +73,9 @@ class AmazonCallRenderer(
                         tab {
                             val entries = callContext.query.entries.toList()
                             entries.dropLast(1).forEach {
-                                addLine("${renderMapEntry(it, renderingContext.termContext)},")
+                                addLine("${renderLambdaQueryEntry(it, renderingContext.termContext)},")
                             }
-                            entries.lastOrNull()?.let { addLine(renderMapEntry(it, renderingContext.termContext)) }
+                            entries.lastOrNull()?.let { addLine(renderLambdaQueryEntry(it, renderingContext.termContext)) }
                         }
                         add("}")
                     }
@@ -141,6 +141,16 @@ class AmazonCallRenderer(
             value = "\"States.Array(States.Format('{}', $value))\""
         }
         return "\"${mapEntry.key}.\$\": $value"
+    }
+
+    // The Lambda payload is plain JSON and the QuickFaaS template reads each query parameter as a
+    // single string, so the value is not wrapped in States.Array as API Gateway requires.
+    private fun renderLambdaQueryEntry(mapEntry: Map.Entry<String, Term<*>>, termContext: TermContext): String {
+        val argument = when (val term = mapEntry.value) {
+            is Variable -> amazonTermResolver.translateVariable(term.name).let { if (it.isNotEmpty()) "\$.$it" else "\$" }
+            is Value -> amazonTermResolver.resolve(term, termContext)
+        }
+        return "\"${mapEntry.key}.\$\": \"States.Format('{}', $argument)\""
     }
 
     private fun IndentedRenderingContext.renderBody() {
