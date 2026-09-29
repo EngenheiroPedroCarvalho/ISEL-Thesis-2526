@@ -8,6 +8,16 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Cap. 5 (`chapter6.tex`), secção 5.1: ICT por extenso
+
+- Requisito "An exit strategy": "ICT services" passa a "information and communication technology
+  (ICT) services" (primeira e única ocorrência no texto).
+
+### Glossário (`glossary.tex`): nova entrada "ICT services"
+
+- Definição do DORA, art. 3.º, alínea 21 (citação literal, com `\cite[Art.~3(21)]{dora2022}`), e
+  uma frase a dizer que os serviços cloud do caso de estudo são serviços ICT.
+
 ### Cap. 5 (`chapter6.tex`): as contas de teste e de produção passam para a discussão
 
 - Sai o requisito "One workflow, several accounts" (secção 5.1); ficam dois requisitos (estratégia
