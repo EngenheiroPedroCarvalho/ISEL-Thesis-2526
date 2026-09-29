@@ -8,6 +8,12 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Agradecimentos (`acknowledgments.tex`): texto novo, em inglês
+
+- Os agradecimentos foram reescritos (ISEL e orientadores, Nuno Bartolomeu, Santander e equipa de
+  Enterprise Architecture, Bernardo Cardoso, amigos, família, Mariana) e traduzidos para inglês,
+  a língua da dissertação.
+
 ### Cap. 6 (`chapter7.tex`): tabelas depois da primeira referência
 
 - Tabelas 6.2 (`tab:eval-summary`) e 6.6 (`tab:eval-s1`): `[tbp]` passa a `[hbp]`. Com `[tbp]`,
