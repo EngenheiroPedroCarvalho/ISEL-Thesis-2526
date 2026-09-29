@@ -290,7 +290,7 @@ The deployer stores the ARN, not the Function URL, because internal calls use th
 come from the environment. It adds \texttt{iamRoleArn}, which may be a placeholder to request
 automatic role creation.
 
-\begin{lstlisting}[language=json,caption={Minimal AWS deployment descriptor for an internal function.},label={lst:aws-descriptor},float=htbp]
+\begin{lstlisting}[language=json,caption={Minimal AWS deployment descriptor for an internal function.},label={lst:aws-descriptor}]
 {
   "cloudProvider": "aws",
   "accessToken": "",
@@ -342,7 +342,7 @@ result-passing and error handling apply unchanged; only the \texttt{Resource} an
 }
 \end{lstlisting}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{images/implementation/aws-runtime-invocation.png}
   \caption{Runtime invocation of an internal function on AWS via the native
