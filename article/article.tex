@@ -438,7 +438,8 @@ financial entities~\cite{dora2022}; and a record of which endpoint each deployme
 Two deployments were run on 28 September 2026: one to an AWS account and one to a GCP project. On AWS, with AWS descriptors and the AWS deployer, the registry is bootstrapped from
 the account, and both scoring calls miss at Levels 1 and 2 and reach Level 3. QuickFaaS deploys the
 two Lambda functions, their ARNs are stored in the \texttt{url} field, and the state machine is
-created. On GCP, with GCP descriptors and the GCP deployer, a separate registry is bootstrapped and
+created. To illustrate the exit strategy, the same workflow is also deployed to a second provider:
+on GCP, with GCP descriptors and the GCP deployer, a separate registry is bootstrapped and
 the same \texttt{functionRef}s resolve to \texttt{run.app} URLs, while the workflow definition
 stays unchanged. On each provider, a second deployment bound both calls at Level 1 and left the
 registry byte-identical, and three transactions produced the expected decisions. The registries of
@@ -649,6 +650,10 @@ account's bucket on AWS or the target project on GCP, and uses a registry file o
 bootstrapped from that account, so Level 3 deploys the functions there and no endpoint is copied
 between accounts. The registry must not be shared: on AWS, an entry from another account would
 fail validation, be treated as stale and abort the deployment. No such promotion was run.
+Likewise, the exit to GCP is partial: the workflow definition deploys unchanged, but the functions'
+source was written once per provider (their hooks have different signatures), the runs used
+region-qualified references with each provider's region names, and the renderers expect external
+hosts in different forms.
 
 % =====================================================================
 \section{Conclusions and Future Work}
