@@ -5,7 +5,7 @@ import costaber.com.github.omniflow.internalfunction.quickfaas.AwsLambdaDeployer
 import costaber.com.github.omniflow.model.HttpMethod.*
 import java.nio.file.Path
 
-// Case-study workflow (Listing 5.1) as run against AWS: region-qualified internal references,
+// Case-study workflow (Listing B.2, Appendix B) as run against AWS: region-qualified internal references,
 // transaction fields passed as query parameters (the only input an AWS internal call takes), and
 // the core-banking call aimed at a stub behind an API Gateway HTTP API.
 fun paymentAuthorization(coreBankingHost: String) = workflow {

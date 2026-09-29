@@ -16,7 +16,7 @@ folder holds what was run and what it produced, as evidence for the chapter.
 
 The logs had their ANSI colour codes removed; nothing else was changed.
 
-## How it differs from Listing 5.1
+## How it differs from Listing B.2
 
 - Internal calls use region-qualified references (`"europe-west1/fraud-check"`). In this project
   the region `me-central2` refuses Cloud Run lookups (403 `LOCATION_POLICY_VIOLATED`), so a bare

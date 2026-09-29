@@ -12,7 +12,7 @@ import costaber.com.github.omniflow.traversor.DepthFirstNodeVisitorTraversor
 import costaber.com.github.omniflow.visitor.NodeContextVisitor
 import java.nio.file.Path
 
-// Case-study workflow (Listing 5.1) as run against GCP: region-qualified internal references,
+// Case-study workflow (Listing B.2, Appendix B) as run against GCP: region-qualified internal references,
 // transaction fields passed as query parameters, and the core-banking call aimed at a stub.
 fun paymentAuthorization(coreBankingHost: String) = workflow {
   name("PaymentAuthorization")

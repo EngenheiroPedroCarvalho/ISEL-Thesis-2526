@@ -19,7 +19,7 @@ counterpart of the GCP run in `case-study-gcp/`. It ran with the renderer from b
 The logs had their ANSI colour codes removed; `rendered.asl.json` was pretty-printed. Nothing else
 was changed.
 
-## How it differs from Listing 5.1
+## How it differs from Listing B.2
 
 - Internal calls use region-qualified references (`"eu-west-1/fraud-check"`), as on GCP.
 - The scoring calls pass `amount` and `country` as query parameters: on AWS an internal call takes
