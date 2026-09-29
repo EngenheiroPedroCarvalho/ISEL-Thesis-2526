@@ -435,10 +435,11 @@ one workflow promoted across test and production accounts, whose functions have 
 ARNs; an exit strategy for ICT services supporting critical functions, as DORA requires of EU
 financial entities~\cite{dora2022}; and a record of which endpoint each deployment was bound to.
 
-On the first deployment to the AWS test account, both scoring calls miss at Levels 1 and 2 and
-reach Level 3. QuickFaaS deploys the two Lambda functions, their ARNs are registered, and the state
-machine is created. A second deployment is two Level 1 hits: nothing is deployed and the registry
-is not rewritten. Promoting the workflow to the production account changes only the descriptors
+On the first deployment to the AWS test account, with AWS descriptors and the AWS deployer, the
+registry is bootstrapped from the account, and both scoring calls miss at Levels 1 and 2 and reach
+Level 3. QuickFaaS deploys the two Lambda functions, their ARNs are stored in the \texttt{url}
+field, and the state machine is created. A second deployment is two Level 1 hits: nothing is
+deployed and the registry is not rewritten. Promoting the workflow to the production account changes only the descriptors
 (the account's bucket) and uses a registry of its own, so the functions are deployed there and
 bound to ARNs carrying the production account ID; no endpoint is copied between accounts. Deploying
 the same workflow to GCP, with GCP descriptors and the GCP deployer, produces a separate registry in

@@ -8,6 +8,14 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Cap. 5 (`chapter6.tex`), secção 5.3: parágrafo "AWS test account" como o da GCP
+
+- O parágrafo passa a ter a mesma estrutura do da GCP: descritores e deployer AWS, bootstrap do
+  registry a partir da conta, falha nos Níveis 1 e 2, deployment no Nível 3 pelo fornecedor AWS
+  da QuickFaaS, ARNs guardados no campo `url`.
+- Parágrafo GCP: "from the same ZIP artifact" passa a "packaged in the same ZIP format ... with
+  the provider's hook signature" (o código das funções difere por fornecedor; ver Apêndice B.4).
+
 ### Ortografia: "authorization" (cap. 5 e Apêndice B)
 
 - Cap. 5 (`chapter6.tex`): "authorisation" → "authorization" (introdução) e "authorises" →
