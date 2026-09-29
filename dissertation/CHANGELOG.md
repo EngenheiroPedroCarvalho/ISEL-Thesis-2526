@@ -8,6 +8,12 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Cap. 5 (`chapter6.tex`), secção 5.4: sai a remissão para as pastas do repositório
+
+- Sai a frase "The workflow, functions, scripts and logs are in the repository folders
+  `case-study-aws` and `case-study-gcp`"; a secção abre com as diferenças das execuções em
+  relação à Listagem B.2.
+
 ### Cap. 5 (`chapter6.tex`): a GCP como ilustração da estratégia de saída
 
 - Secção 5.3, parágrafo "GCP.": "For the exit strategy, ..." passa a "To illustrate the

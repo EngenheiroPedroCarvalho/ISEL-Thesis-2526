@@ -76,10 +76,7 @@ workflow definition does not change.
 
 \section{What the Deployments Produce}
 \label{sec:case-artifacts}
-
-The workflow, functions, scripts and logs are in
-the repository folders \texttt{case-study-aws} and \texttt{case-study-gcp}. Both runs differed from
-Listing~\ref{lst:case-payment-workflow} in two ways. The internal references were region-qualified
+Both runs differed from Listing~\ref{lst:case-payment-workflow} in two ways. The internal references were region-qualified
 (\texttt{"eu-west-1/fraud-check"}, \texttt{"europe-west1/fraud-check"}); on GCP this was necessary,
 because one region of the project refuses Cloud Run lookups and a bare reference would abort at
 Level~2 (Section~\ref{subsec:validation-error-semantics}). And \texttt{report-decision} called a
