@@ -7,8 +7,9 @@
 \label{app:listings}
 
 This appendix gives the complete workflows and registries that Chapters~\ref{ch:proposed_solution}
-and~\ref{cha:case-study} show in part, and the code, rendered definitions and inputs of the case
-study (Section~\ref{app:case-code}).
+and~\ref{cha:case-study} show in part, the definitions rendered from the case-study workflow, with
+their flow (Section~\ref{app:case-workflow}), and the case study's code and inputs
+(Section~\ref{app:case-code}).
 
 \section{FraudPipeline Workflow}
 
@@ -47,6 +48,7 @@ val wf = workflow {
 \end{lstlisting}
 
 \section{PaymentAuthorization Workflow}
+\label{app:case-workflow}
 
 Listing~\ref{lst:case-payment-workflow} is the case-study workflow of
 Section~\ref{sec:case-design}.
@@ -130,6 +132,194 @@ val PaymentAuthorization = workflow {
 }
 \end{lstlisting}
 
+
+The runs of Chapter~\ref{cha:case-study} used this workflow with two changes
+(Section~\ref{sec:case-artifacts}): region-qualified internal references, and
+\texttt{report-decision} aimed at a stub of core banking. From it, OmniFlow rendered the Cloud
+Workflows definition of Section~\ref{app:case-rendered-gcp} and the Step Functions state machine of
+Section~\ref{app:case-rendered-aws}. Only the resolved endpoints and the provider's syntax differ.
+Each section first draws the definition as the provider's console does (Figures~\ref{fig:case-flow-gcp}
+and~\ref{fig:case-flow-aws}): the two scoring calls in sequence, a branch on their results, one
+assignment on each path, and the call to core banking.
+
+\subsection{Rendered for GCP}
+\label{app:case-rendered-gcp}
+
+Figure~\ref{fig:case-flow-gcp} shows the flow of the Cloud Workflows definition in
+Listing~\ref{lst:case-rendered-gcp}. The \texttt{switch} jumps to \texttt{decline-transaction} when
+either condition holds, and otherwise continues at \texttt{approve-transaction}; both paths reach
+\texttt{report-decision}, and \texttt{return\_output} returns the decision.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.5\textwidth]{images/case-study/case-flow-gcp.png}
+  \caption{Flow of the Cloud Workflows definition rendered for GCP.}
+  \label{fig:case-flow-gcp}
+\end{figure}
+
+\begin{lstlisting}[language={},caption={Cloud Workflows definition rendered for GCP (YAML).},label={lst:case-rendered-gcp},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+main:
+    params: [ transaction ]
+    steps:
+        - fraud-check:
+            call: http.post
+            args:
+                url: https://fraud-check-jllpr4krfq-ew.a.run.app
+                query:
+                    amount: ${transaction.amount}
+                    country: ${transaction.country}
+            result: fraudResult
+        - risk-score:
+            call: http.post
+            args:
+                url: https://risk-score-jllpr4krfq-ew.a.run.app
+                query:
+                    amount: ${transaction.amount}
+            result: riskResult
+        - decision:
+            switch:
+                - condition:
+                    ${fraudResult.body.flagged == true}
+                  next: decline-transaction
+                - condition:
+                    ${riskResult.body.score > 75}
+                  next: decline-transaction
+            next: approve-transaction
+        - approve-transaction:
+            next: report-decision
+            assign:
+                - decision: 'approved'
+        - decline-transaction:
+            assign:
+                - decision: 'declined'
+        - report-decision:
+            call: http.post
+            args:
+                url: https://core-banking-stub-jllpr4krfq-ew.a.run.app/
+                query:
+                    decision: ${decision}
+                body: ${transaction}
+            result: coreBankingResult
+        - return_output:
+            return: ${decision}
+\end{lstlisting}
+
+\subsection{Rendered for AWS}
+\label{app:case-rendered-aws}
+
+Figure~\ref{fig:case-flow-aws} shows the flow of the Step Functions state machine in
+Listing~\ref{lst:case-rendered-aws}, with the state types the console shows. The two scoring calls
+are \texttt{lambda:invoke} tasks, the \texttt{switch} is a \texttt{Choice} state whose
+\texttt{Default} is \texttt{approve-transaction}, each assignment is a \texttt{Pass} state, and the
+call to core banking is an \texttt{apigateway:invoke} task. The state machine ends after it and
+returns its whole state.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.55\textwidth]{images/case-study/case-flow-aws.png}
+  \caption{Flow of the Step Functions state machine rendered for AWS.}
+  \label{fig:case-flow-aws}
+\end{figure}
+
+\begin{lstlisting}[language=json,caption={Step Functions state machine rendered for AWS (Amazon States Language, JSON).},label={lst:case-rendered-aws},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+{
+    "Comment": "Real-time fraud screening for card payment authorization",
+    "StartAt": "fraud-check",
+    "States": {
+        "fraud-check": {
+            "Comment": "Flag transactions that match known fraud patterns",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:fraud-check",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)",
+                        "country.$": "States.Format('{}', $.transaction.country)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "fraudResult.$": "$.Payload"
+            },
+            "ResultPath": "$.fraud-check",
+            "Next": "risk-score"
+        },
+        "risk-score": {
+            "Comment": "Score the transaction from its features",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:risk-score",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "riskResult.$": "$.Payload"
+            },
+            "ResultPath": "$.risk-score",
+            "Next": "decision"
+        },
+        "decision": {
+            "Comment": "Decline flagged or high-risk transactions",
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.fraud-check.fraudResult.flagged",
+                    "BooleanEquals": true,
+                    "Next": "decline-transaction"
+                },
+                {
+                    "Variable": "$.risk-score.riskResult.score",
+                    "NumericGreaterThan": 75,
+                    "Next": "decline-transaction"
+                }
+            ],
+            "Default": "approve-transaction"
+        },
+        "approve-transaction": {
+            "Comment": "Record the approval",
+            "Type": "Pass",
+            "Result": "approved",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "decline-transaction": {
+            "Comment": "Record the decline",
+            "Type": "Pass",
+            "Result": "declined",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "report-decision": {
+            "Comment": "Report the decision to core banking",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "ApiEndpoint": "9giljyyesc.execute-api.eu-west-1.amazonaws.com",
+                "Method": "POST",
+                "Path": "/",
+                "QueryParameters": {
+                    "decision.$": "States.Array(States.Format('{}', $.decision))"
+                },
+                "RequestBody.$": "$.transaction"
+            },
+            "ResultSelector": {
+                "coreBankingResult.$": "$.ResponseBody"
+            },
+            "ResultPath": "$.report-decision",
+            "End": true
+        }
+    }
+}
+\end{lstlisting}
+
 \section{Registries Produced by the Case Study}
 
 Listings~\ref{lst:case-registry-aws} and~\ref{lst:case-registry-gcp} are the registries left by the
@@ -200,12 +390,11 @@ the functions the bootstrap found already deployed (on AWS, one of them in anoth
 }
 \end{lstlisting}
 
-\section{Case-Study Functions and Rendered Workflows}
+\section{Case-Study Functions and Execution Inputs}
 \label{app:case-code}
 
-This section gives the code of the case-study functions on each provider, the workflow definitions
-OmniFlow rendered from Listing~\ref{lst:case-payment-workflow}, and the inputs of the executions
-(Section~\ref{sec:case-artifacts}). The files are in the repository folders
+This section gives the code of the case-study functions on each provider and the inputs of the
+executions (Section~\ref{sec:case-artifacts}). The files are in the repository folders
 \texttt{case-study-gcp} and \texttt{case-study-aws}.
 
 \subsection{Functions on GCP}
@@ -316,159 +505,6 @@ def handler(event, context):
         "headers": {"Content-Type": "application/json"},
         "body": json.dumps({"recorded": True, "id": transaction.get("id"), "decision": decision}),
     }
-\end{lstlisting}
-
-\subsection{Rendered Workflow Definitions}
-
-Listing~\ref{lst:case-rendered-gcp} is the Cloud Workflows definition (YAML) deployed to GCP, and
-Listing~\ref{lst:case-rendered-aws} the Step Functions state machine (Amazon States Language,
-JSON) deployed to AWS. Both come from the same workflow definition; only the resolved endpoints and
-the provider's syntax differ.
-
-\begin{lstlisting}[language={},caption={Cloud Workflows definition rendered for GCP (YAML).},label={lst:case-rendered-gcp},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
-main:
-    params: [ transaction ]
-    steps:
-        - fraud-check:
-            call: http.post
-            args:
-                url: https://fraud-check-jllpr4krfq-ew.a.run.app
-                query:
-                    amount: ${transaction.amount}
-                    country: ${transaction.country}
-            result: fraudResult
-        - risk-score:
-            call: http.post
-            args:
-                url: https://risk-score-jllpr4krfq-ew.a.run.app
-                query:
-                    amount: ${transaction.amount}
-            result: riskResult
-        - decision:
-            switch:
-                - condition:
-                    ${fraudResult.body.flagged == true}
-                  next: decline-transaction
-                - condition:
-                    ${riskResult.body.score > 75}
-                  next: decline-transaction
-            next: approve-transaction
-        - approve-transaction:
-            next: report-decision
-            assign:
-                - decision: 'approved'
-        - decline-transaction:
-            assign:
-                - decision: 'declined'
-        - report-decision:
-            call: http.post
-            args:
-                url: https://core-banking-stub-jllpr4krfq-ew.a.run.app/
-                query:
-                    decision: ${decision}
-                body: ${transaction}
-            result: coreBankingResult
-        - return_output:
-            return: ${decision}
-\end{lstlisting}
-
-\begin{lstlisting}[language=json,caption={Step Functions state machine rendered for AWS (Amazon States Language, JSON).},label={lst:case-rendered-aws},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
-{
-    "Comment": "Real-time fraud screening for card payment authorization",
-    "StartAt": "fraud-check",
-    "States": {
-        "fraud-check": {
-            "Comment": "Flag transactions that match known fraud patterns",
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "InputPath": "$",
-            "Parameters": {
-                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:fraud-check",
-                "Payload": {
-                    "queryStringParameters": {
-                        "amount.$": "States.Format('{}', $.transaction.amount)",
-                        "country.$": "States.Format('{}', $.transaction.country)"
-                    }
-                }
-            },
-            "ResultSelector": {
-                "fraudResult.$": "$.Payload"
-            },
-            "ResultPath": "$.fraud-check",
-            "Next": "risk-score"
-        },
-        "risk-score": {
-            "Comment": "Score the transaction from its features",
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "InputPath": "$",
-            "Parameters": {
-                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:risk-score",
-                "Payload": {
-                    "queryStringParameters": {
-                        "amount.$": "States.Format('{}', $.transaction.amount)"
-                    }
-                }
-            },
-            "ResultSelector": {
-                "riskResult.$": "$.Payload"
-            },
-            "ResultPath": "$.risk-score",
-            "Next": "decision"
-        },
-        "decision": {
-            "Comment": "Decline flagged or high-risk transactions",
-            "Type": "Choice",
-            "Choices": [
-                {
-                    "Variable": "$.fraud-check.fraudResult.flagged",
-                    "BooleanEquals": true,
-                    "Next": "decline-transaction"
-                },
-                {
-                    "Variable": "$.risk-score.riskResult.score",
-                    "NumericGreaterThan": 75,
-                    "Next": "decline-transaction"
-                }
-            ],
-            "Default": "approve-transaction"
-        },
-        "approve-transaction": {
-            "Comment": "Record the approval",
-            "Type": "Pass",
-            "Result": "approved",
-            "ResultPath": "$.decision",
-            "Next": "report-decision"
-        },
-        "decline-transaction": {
-            "Comment": "Record the decline",
-            "Type": "Pass",
-            "Result": "declined",
-            "ResultPath": "$.decision",
-            "Next": "report-decision"
-        },
-        "report-decision": {
-            "Comment": "Report the decision to core banking",
-            "Type": "Task",
-            "Resource": "arn:aws:states:::apigateway:invoke",
-            "InputPath": "$",
-            "Parameters": {
-                "ApiEndpoint": "9giljyyesc.execute-api.eu-west-1.amazonaws.com",
-                "Method": "POST",
-                "Path": "/",
-                "QueryParameters": {
-                    "decision.$": "States.Array(States.Format('{}', $.decision))"
-                },
-                "RequestBody.$": "$.transaction"
-            },
-            "ResultSelector": {
-                "coreBankingResult.$": "$.ResponseBody"
-            },
-            "ResultPath": "$.report-decision",
-            "End": true
-        }
-    }
-}
 \end{lstlisting}
 
 \subsection{Execution Inputs}

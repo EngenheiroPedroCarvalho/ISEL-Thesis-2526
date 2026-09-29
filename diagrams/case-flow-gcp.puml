@@ -1,0 +1,27 @@
+@startdot case-flow-gcp
+digraph GCP {
+  // Diagram of the payment-authorization workflow, as the Cloud Workflows console draws it
+  graph [rankdir=TB, dpi=200, nodesep=0.5, ranksep=0.45, fontname="Helvetica"];
+  node  [fontname="Helvetica", fontsize=11, shape=box, width=2.4];
+  edge  [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  start [label="", shape=circle, width=0.25, style=filled, fillcolor=black];
+  end   [label="", shape=doublecircle, width=0.2, style=filled, fillcolor=black];
+
+  fraud  [label=<<b>fraud-check</b><br/><font point-size="9">call: http.post</font>>];
+  risk   [label=<<b>risk-score</b><br/><font point-size="9">call: http.post</font>>];
+  sw     [label=<<b>decision</b><br/><font point-size="9">switch</font>>, shape=diamond, width=1.6];
+  approve [label=<<b>approve-transaction</b><br/><font point-size="9">assign</font>>, width=2];
+  decline [label=<<b>decline-transaction</b><br/><font point-size="9">assign</font>>, width=2];
+  report [label=<<b>report-decision</b><br/><font point-size="9">call: http.post</font>>];
+  ret    [label=<<b>return_output</b><br/><font point-size="9">return</font>>];
+
+  start -> fraud -> risk -> sw;
+  sw -> decline [label=" fraudResult.body.flagged\l == true\l"];
+  sw -> decline [label=" riskResult.body.score\l > 75\l"];
+  sw -> approve [label=" next", style=dashed];
+  approve -> report [label=" next"];
+  decline -> report;
+  report -> ret -> end;
+}
+@enddot

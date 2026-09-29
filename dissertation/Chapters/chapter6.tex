@@ -179,8 +179,8 @@ three functions, public, in \texttt{europe-west1}, and the deployed workflow.
 Listing~\ref{lst:case-registry-new} shows the entries each first deployment added, keyed by the
 qualified reference; the complete registries are Listings~\ref{lst:case-registry-aws}
 and~\ref{lst:case-registry-gcp} (Appendix~\ref{app:listings}), which also gives the functions'
-code on each provider and the complete rendered definitions
-(Section~\ref{app:case-code}). The ARN becomes the
+code on each provider (Section~\ref{app:case-code}) and the complete rendered definitions, with
+their flow (Section~\ref{app:case-workflow}). The ARN becomes the
 \texttt{FunctionName} of a \texttt{lambda:invoke} task (Listing~\ref{lst:rendered-lambda}); the
 \texttt{run.app} URL becomes the \texttt{url} of an \texttt{http.post} call.
 

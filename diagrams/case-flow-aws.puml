@@ -1,0 +1,26 @@
+@startdot case-flow-aws
+digraph AWS {
+  // Graph view of the payment-authorization state machine, as the Step Functions console draws it
+  graph [rankdir=TB, dpi=200, nodesep=0.5, ranksep=0.45, fontname="Helvetica"];
+  node  [fontname="Helvetica", fontsize=11, shape=box, style="rounded", width=2.4];
+  edge  [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  start [label="Start", shape=oval, width=0.9];
+  end   [label="End", shape=oval, width=0.9];
+
+  fraud  [label=<<b>fraud-check</b><br/><font point-size="9">Lambda: Invoke</font>>];
+  risk   [label=<<b>risk-score</b><br/><font point-size="9">Lambda: Invoke</font>>];
+  choice [label=<<b>decision</b><br/><font point-size="9">Choice state</font>>, style="rounded,dashed"];
+  approve [label=<<b>approve-transaction</b><br/><font point-size="9">Pass state</font>>, width=2];
+  decline [label=<<b>decline-transaction</b><br/><font point-size="9">Pass state</font>>, width=2];
+  report [label=<<b>report-decision</b><br/><font point-size="9">API Gateway: Invoke</font>>];
+
+  start -> fraud -> risk -> choice;
+  choice -> decline [label=" $.fraud-check.fraudResult.flagged\l == true\l"];
+  choice -> decline [label=" $.risk-score.riskResult.score\l > 75\l"];
+  choice -> approve [label=" Default", style=dashed];
+  approve -> report;
+  decline -> report;
+  report -> end;
+}
+@enddot
