@@ -430,14 +430,11 @@ authenticated with an OIDC token for the workflow's service account.
 A bank authorizes card payments through a \texttt{PaymentAuthorization} workflow. Two internal
 functions owned by its fraud team, \texttt{fraud-check} and \texttt{risk-score}, score each
 transaction; a \texttt{switch} step declines flagged or high-risk transactions; and an external
-call reports the decision to the core banking system. The scenario reflects three requirements:
-one workflow promoted from a test to a production AWS account, since banks commonly keep each
-environment in a separate account and a Lambda ARN contains the account ID, so the same function
-has a different endpoint in each account; an exit strategy for ICT services supporting critical functions, as DORA requires of EU
+call reports the decision to the core banking system. The scenario reflects two requirements:
+an exit strategy for ICT services supporting critical functions, as DORA requires of EU
 financial entities~\cite{dora2022}; and a record of which endpoint each deployment was bound to.
 
-Two deployments were run on 28 September 2026: one to an AWS account used for testing and one to
-a GCP project. On AWS, with AWS descriptors and the AWS deployer, the registry is bootstrapped from
+Two deployments were run on 28 September 2026: one to an AWS account and one to a GCP project. On AWS, with AWS descriptors and the AWS deployer, the registry is bootstrapped from
 the account, and both scoring calls miss at Levels 1 and 2 and reach Level 3. QuickFaaS deploys the
 two Lambda functions, their ARNs are stored in the \texttt{url} field, and the state machine is
 created. On GCP, with GCP descriptors and the GCP deployer, a separate registry is bootstrapped and
@@ -445,14 +442,6 @@ the same \texttt{functionRef}s resolve to \texttt{run.app} URLs, while the workf
 stays unchanged. On each provider, a second deployment bound both calls at Level 1 and left the
 registry byte-identical, and three transactions produced the expected decisions. The registries of
 Listing~\ref{lst:registry} are of this form (abridged, with placeholder identifiers).
-
-The promotion to a production account was not run; it is described to show how the ladder handles
-a second account of the same provider. The workflow is unchanged, the descriptors name the
-production account's bucket, and the deployment uses a registry file of its own, bootstrapped from
-that account. Level 3 then deploys the functions there and binds them to ARNs carrying the
-production account ID, so no endpoint is copied between accounts. The two accounts cannot share a
-registry: a test-account entry would fail validation in production, be treated as stale and abort
-the deployment (Section~\ref{sec:solution}).
 
 The case study also exposed two defects in OmniFlow's AWS renderer, which this work fixed. An
 \texttt{assign} step became a \texttt{Pass} state whose result replaced the whole state document,
@@ -650,6 +639,15 @@ The absolute values characterise one machine and depend mostly on storage speed;
 cost is the robust result. The correctness evidence is also local: the tests establish that each
 resolver decides correctly given what the provider reports, not that the real APIs report what the
 test doubles assume.
+
+The case study used one AWS account and one GCP project, while an organization may keep
+development, testing and production in separate accounts or projects. A function then has a
+different endpoint in each, since an ARN contains the account ID and a \texttt{run.app} URL is
+specific to the project. Promoting the workflow changes only the descriptors, which name the target
+account's bucket on AWS or the target project on GCP, and uses a registry file of its own,
+bootstrapped from that account, so Level 3 deploys the functions there and no endpoint is copied
+between accounts. The registry must not be shared: on AWS, an entry from another account would
+fail validation, be treated as stale and abort the deployment. No such promotion was run.
 
 % =====================================================================
 \section{Conclusions and Future Work}
