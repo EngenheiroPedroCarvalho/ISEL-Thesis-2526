@@ -33,7 +33,7 @@ $(T): $(S)
 
 .PHONY: pdf
 pdf: $(S)
-	$(L) -pdf $(SILENT) $(B)
+	$(L) -pdflua $(SILENT) $(B)
 	@echo $(TIMES)  | tr '\1@\2' '\n\t '
 
 .PHONY: publish
@@ -52,7 +52,7 @@ v view: $(T)
 
 .PHONY: vv verb verbose
 vv verb verbose:
-	$(L) -pdf $(B)
+	$(L) -pdflua $(B)
 	@echo $(TIMES)  | tr '\1@\2' '\n\t '
 
 .PHONY: $(VERSION)

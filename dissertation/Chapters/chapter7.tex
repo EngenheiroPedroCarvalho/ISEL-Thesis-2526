@@ -195,7 +195,7 @@ T14).
   {\captionsetup{textfont=sf}\captionof{table}{T1: resolution time ($\mu$s) of a workflow of $N$ calls, all internal vs.\ all
   external, with $R{=}1$. Both columns include the one registry read the resolver always performs.}
   \label{tab:eval-t1}}
-  \begin{minipage}[c]{0.31\textwidth}
+  \begin{minipage}[c]{0.34\textwidth}
     \centering
     \small
     \begin{tabular}{|r|r|r|}
@@ -220,7 +220,7 @@ T14).
       \hline
     \end{tabular}
   \end{minipage}\hfill
-  \begin{minipage}[c]{0.66\textwidth}
+  \begin{minipage}[c]{0.63\textwidth}
     \centering
     \includegraphics[width=\linewidth]{images/benchmarks/T1_resolution_overhead.png}
   \end{minipage}
@@ -272,7 +272,7 @@ fetched at most once per deployment, lazily, and only calls that miss pay a regi
   \caption{Provider API requests issued per internal call, by ladder path, counted from the
   implementation. $G$ is the number of candidate regions.}
   \label{tab:eval-api-calls}
-  \begin{tabular}{|p{0.30\textwidth}|p{0.30\textwidth}|p{0.30\textwidth}|}
+  \begin{tabular}{|>{\raggedright\arraybackslash}p{0.30\textwidth}|>{\raggedright\arraybackslash}p{0.30\textwidth}|>{\raggedright\arraybackslash}p{0.30\textwidth}|}
     \hline
     \textbf{Path} & \textbf{AWS} & \textbf{GCP} \\
     \hline
@@ -378,7 +378,7 @@ and Azure~\cite{rodrigues2022quickfaas}.
   \small
   \caption{S1: Lambda bundle size, provider-agnostic layer vs.\ native implementation.}
   \label{tab:eval-s1}
-  \begin{tabular}{|l|r|}
+  \begin{tabular}{|>{\raggedright\arraybackslash}p{0.68\textwidth}|r|}
     \hline
     \textbf{Bundle} & \textbf{Size} \\
     \hline

@@ -74,8 +74,12 @@ yet; `changelog.txt` is the template's own history and is unrelated. Whenever yo
 
 ## Build and check
 
-- `make pdf` runs latexmk/pdflatex (with `-shell-escape`, batch mode) and produces `template.pdf`
-  (about 80 pages). The tools are in `/Library/TeX/texbin`.
+- `make pdf` runs latexmk with **LuaLaTeX** (with `-shell-escape`, batch mode) and produces
+  `template.pdf` (about 100 pages). The tools are in `/Library/TeX/texbin`. LuaLaTeX is required
+  for the Verdana the ISEL rules ask for (n.º 10): the `.ttf` files are in
+  `ISELthesis-files/Font-Styles/verdana/`, and under pdfLaTeX the text falls back to Latin Modern
+  Sans. `Config/_packages.tex` loads `fontenc`/`lmodern` only under pdfLaTeX, the one deliberate
+  edit to a template file.
 - After adding or renaming an included file, force a rebuild with `make pdf FLAGS=-g`: latexmk
   only tracks files it has already read, so a plain `make pdf` reports success without picking up
   the new file. That forced run often **exits 2 with every citation undefined and an empty-looking
@@ -89,11 +93,12 @@ yet; `changelog.txt` is the template's own history and is unrelated. Whenever yo
   numbers from earlier runs are kept in `template.aux` and a new entry is printed as `[0]`, with no
   warning in the log. Check with `grep -c abx@aux@number template.aux` (it should equal the number
   of cited entries). To fix, delete `template.aux`, `template.bbl` and `template.fdb_latexmk` (all
-  untracked) and run `pdflatex -shell-escape`, `bibtex`, then `pdflatex` twice; deleting only the
-  `.aux` leaves latexmk's state inconsistent and `make pdf` fails with a BibTeX error.
+  untracked) and run `lualatex -shell-escape`, `bibtex`, then `lualatex` twice; deleting only
+  the `.aux` leaves latexmk's state inconsistent and `make pdf` fails with a BibTeX error.
 - After editing, check the log:
   `grep -nE "undefined|multiply defined|^!" template.log`. A clean build reports none (a
-  `T1/lmss/c/n` font-shape warning is harmless).
+  `TU/Verdana(0)/c/n` font-shape warning from the cover is harmless). Verdana is wide, so also
+  check `grep "Overfull \\\\hbox" template.log`: a clean build has none above 1 pt.
 
 ## Related code (the source of truth for technical claims)
 

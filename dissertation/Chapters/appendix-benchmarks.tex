@@ -22,7 +22,7 @@ interval close to their own value and should be read as noise: T9 at $K{=}10$, $
   \centering
   \captionof{table}{Notation used throughout the evaluation.}
   \label{tab:eval-notation}
-  \begin{tabular}{|c|l|}
+  \begin{tabular}{|c|>{\raggedright\arraybackslash}p{0.8\textwidth}|}
     \hline
     \textbf{Symbol} & \textbf{Meaning} \\
     \hline
@@ -267,8 +267,8 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
     {\captionsetup{textfont=sf}\captionof{table}{T8: total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
     size $R_0$.}
     \label{tab:eval-t8}}
-    \small
-    \setlength{\tabcolsep}{4pt}
+    \footnotesize
+    \setlength{\tabcolsep}{3pt}
     \begin{tabular}{|l|r|r|r|r|r|}
       \hline
       $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
@@ -290,8 +290,8 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
     {\captionsetup{textfont=sf}\captionof{table}{T9: total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
     registry size $R_0$.}
     \label{tab:eval-t9}}
-    \small
-    \setlength{\tabcolsep}{4pt}
+    \footnotesize
+    \setlength{\tabcolsep}{3pt}
     \begin{tabular}{|l|r|r|r|r|r|}
       \hline
       $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\

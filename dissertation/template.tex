@@ -99,13 +99,15 @@
 % punctuation, so entries whose URL ends in a long word stay inside the margin.
 % Dates of access as YYYY-MM-DD (the default MM/DD/YYYY is ambiguous).
 \ExecuteBibliographyOptions{urldate=iso,seconds=false}
+% Names the Verdana line width leaves at a line end.
+\hyphenation{Omni-Flow Quick-FaaS Cloud-Formation}
 \setcounter{biburllcpenalty}{7000}
 \setcounter{biburlucpenalty}{8000}
 \setcounter{biburlnumpenalty}{7000}
 
 % Allow TeX a final, looser pass over paragraphs it cannot break otherwise,
 % instead of letting a long identifier run into the margin.
-\setlength{\emergencystretch}{1em}
+\setlength{\emergencystretch}{3em}
 
 % Normas de escrita e apresentação do TFM (CTC do ISEL, 2025/26), applied here so that the
 % template files stay untouched.
@@ -128,24 +130,28 @@
   {\iselthesis@sectionfont\bfseries\fontsize{11}{13.5}\selectfont\color{\iselthesis@subsectioncolor}}}
 \renewcommand\printchaptertitle[1]{%
   \ifNoChapNumber
-    \begin{tabular}{@{}p{\textwidth}}%
+    \noindent\begin{tabular}{@{}p{\textwidth}@{}}%
       \chaptitlefont\MakeUppercase{#1}%
     \end{tabular}%
   \else
-    \hspace*{-1.5cm}%
-    \begin{tabular}{@{}p{1.0cm}p{\dimexpr\textwidth+1.5cm-1.0cm\relax}}%
+    % n.º 10: number, title and rule stay within the 2.5 cm margins.
+    \noindent\begin{tabular}{@{}p{1.0cm}@{}p{\dimexpr\textwidth-1.0cm\relax}@{}}%
       \chapnumfont\thechapter%
       & \chaptitlefont\MakeUppercase{#1}%
     \end{tabular}%
     \par\vspace{0.05cm}%
-    \hspace*{-3cm}\noindent\rule{\dimexpr\textwidth+3cm\relax}{.5pt}%
+    \noindent\rule{\textwidth}{.5pt}%
   \fi
   \NoChapNumberfalse%
 }
 \makeatother
+% n.º 10: keep the glossary's two columns within the margins.
+\setlength{\glsdescwidth}{0.55\textwidth}
 % n.º 14: figure and table captions in 9 pt.
 \captionsetup{font={footnotesize,sf}}
 \captionsetup[lstlisting]{font={footnotesize,sf}}
+% n.º 10: indent listings so that their line numbers stay within the left margin.
+\lstset{xleftmargin=24pt}
 
 %%==== DANGER ==== DANGER ==== DANGER ==== DANGER ==== DANGER ====
 %%==== DANGER ==== DANGER ==== DANGER ==== DANGER ==== DANGER ====

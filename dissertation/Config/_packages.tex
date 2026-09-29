@@ -40,8 +40,11 @@
 %------------------------------------------------------------------
 % Customization of some packages
 %------------------------------------------------------------------
+% Only for pdfLaTeX: under LuaLaTeX these would replace the Verdana set by fontstyle=verdana.
+\ifxetexorluatex\else
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
+\fi
 %%% ---------------
 
 %%% ------
