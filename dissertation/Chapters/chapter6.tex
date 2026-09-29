@@ -8,7 +8,7 @@
 \label{cha:case-study}
 
 This chapter applies the registry and the resolution ladder to a retail-banking scenario: a
-card-payment authorisation workflow that screens each transaction for fraud before it is settled.
+card-payment authorization workflow that screens each transaction for fraud before it is settled.
 It extends the \texttt{FraudPipeline} of Section~\ref{sec:developer-workflow} and is illustrative,
 not a production deployment. It was deployed and run on an AWS test account and on a GCP project;
 a deployment to a production AWS account is only described.
@@ -21,7 +21,7 @@ Section~\ref{sec:case-discussion} discusses the scenario's limits.
 \section{Scenario and Requirements}
 \label{sec:case-scenario}
 
-A bank authorises card payments through a workflow. Two internal functions, owned by the fraud
+A bank authorizes card payments through a workflow. Two internal functions, owned by the fraud
 team, score each transaction: \texttt{fraud-check} flags known fraud patterns, and
 \texttt{risk-score} computes a numeric risk score. An external call then reports the decision to
 the core banking system, which has its own release cycle and is not managed through the registry.

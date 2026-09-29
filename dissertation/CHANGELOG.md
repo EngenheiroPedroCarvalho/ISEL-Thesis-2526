@@ -8,6 +8,13 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Ortografia: "authorization" (cap. 5 e Apêndice B)
+
+- Cap. 5 (`chapter6.tex`): "authorisation" → "authorization" (introdução) e "authorises" →
+  "authorizes" (secção 5.1), a condizer com `PaymentAuthorization`.
+- Apêndice B (`appendix-listings.tex`, Listagem B.2): caminho `/v1/authorisations` →
+  `/v1/authorizations`.
+
 ### Cap. 5 (`chapter6.tex`): excerto do workflow passa para o apêndice
 
 - Sai a Listagem 5.1 (`lst:case-payment-excerpt`, as duas chamadas internas de

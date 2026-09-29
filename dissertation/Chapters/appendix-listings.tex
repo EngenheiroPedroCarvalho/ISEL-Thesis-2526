@@ -121,7 +121,7 @@ val PaymentAuthorization = workflow {
       context(call {
         method(POST)
         host("core-banking.internal.example")
-        path("/v1/authorisations")
+        path("/v1/authorizations")
         body(variable("transaction"))
         query("decision" to variable("decision"))
         result("coreBankingResult")
