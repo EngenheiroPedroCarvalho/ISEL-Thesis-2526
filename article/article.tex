@@ -310,14 +310,14 @@ change the schema: only the resolver and renderer that interpret the field are p
 
 \begin{lstlisting}[language=json,caption={Registry entries on each provider (abridged).},label={lst:registry}]
 function-registry.aws.json:
-{ "updatedAt": "2026-09-27T22:31:50Z",
-  "functions": { "fraud-check": {
+{ "updatedAt": "2026-09-28T14:18:54Z",
+  "functions": { "eu-west-1/fraud-check": {
     "serviceName": "fraud-check",
     "url": "arn:aws:lambda:eu-west-1:111111111111:
             function:fraud-check" } } }
 function-registry.gcp.json:
-{ "updatedAt": "2026-09-27T22:31:50Z",
-  "functions": { "fraud-check": {
+{ "updatedAt": "2026-09-28T09:50:43Z",
+  "functions": { "europe-west1/fraud-check": {
     "serviceName": "projects/p/locations/
                     europe-west1/services/fraud-check",
     "url": "https://fraud-check-a1b2c3-ew.a.run.app" } } }
@@ -441,9 +441,11 @@ two Lambda functions, their ARNs are stored in the \texttt{url} field, and the s
 created. To illustrate the exit strategy, the same workflow is also deployed to a second provider:
 on GCP, with GCP descriptors and the GCP deployer, a separate registry is bootstrapped and
 the same \texttt{functionRef}s resolve to \texttt{run.app} URLs, while the workflow definition
-stays unchanged. On each provider, a second deployment bound both calls at Level 1 and left the
-registry byte-identical, and three transactions produced the expected decisions. The registries of
-Listing~\ref{lst:registry} are of this form (abridged, with placeholder identifiers).
+stays unchanged. On each provider, a second deployment, run after deleting the workflow because
+OmniFlow's deployers cannot update one, bound both calls at Level 1 and left the registry
+byte-identical, and three transactions produced the expected decisions. The runs used
+region-qualified references, so the registries are keyed as in Listing~\ref{lst:registry}
+(abridged, with placeholder identifiers).
 
 The case study also exposed two defects in OmniFlow's AWS renderer, which this work fixed. An
 \texttt{assign} step became a \texttt{Pass} state whose result replaced the whole state document,
@@ -535,7 +537,7 @@ the production resolvers are the classes OmniFlow runs when it deploys a workflo
 \textbf{Per-call reads versus a single read.} A resolver that re-reads the registry on every call
 pays, per call, about $10.3\,\mu$s of fixed I/O and parsing plus $0.17\,\mu$s per entry, so the
 fixed cost dominates below $R\approx60$. Its total grows with the product $N\cdot R$. Reading the
-registry once into a snapshot makes the cost one read plus about $0.22\,\mu$s per internal call:
+registry once into a snapshot makes the cost one read plus about $0.23\,\mu$s per internal call:
 with $R{=}1000$, resolution stays between $182$ and $184\,\mu$s as $N$ grows from 1 to 200, whereas
 per-call reads reach $36.7$\,ms at $N{=}200$, a $200\times$ speedup.
 
@@ -555,9 +557,7 @@ per-call reads reach $36.7$\,ms at $N{=}200$, a $200\times$ speedup.
 $0.95\,\mu$s on GCP, where every hit goes through the real Cloud Run client (building the request,
 obtaining a token and parsing a locally answered response; only the network round trip is
 excluded). A 200-call workflow against ten functions costs $29.1\,\mu$s on AWS and $199.1\,\mu$s on
-GCP. An earlier measurement was 95\% console output: the resolvers printed progress lines per call,
-which cost more than an order of magnitude above the resolution itself until they were moved to
-debug logging.
+GCP.
 
 \begin{table}[t]
   \centering
@@ -642,9 +642,11 @@ correctly and never deploys on an inconclusive lookup. For RQ2, the local overhe
 to hundreds of microseconds, linear in the number of internal calls, and negligible next to a
 deployment that takes minutes; a current registry keeps provider traffic at one request per call.
 The absolute values characterise one machine and depend mostly on storage speed; the shape of each
-cost is the robust result. The correctness evidence is also local: the tests establish that each
+cost is the robust result. The correctness evidence is mostly local: the tests establish that each
 resolver decides correctly given what the provider reports, not that the real APIs report what the
-test doubles assume.
+test doubles assume. The case study checked this on both providers for the bootstrap, Levels 2
+and 3 and validated Level 1 hits; the abort paths (stale entries, ambiguous names, inaccessible
+regions) remain unchecked against the real APIs.
 
 The case study used one AWS account and one GCP project, while an organization may keep
 development, testing and production in separate accounts or projects. A function then has a
@@ -668,18 +670,20 @@ workflow definition. Internal calls name functions logically, and a per-provider
 and a three-level, fail-fast resolution ladder bind them to endpoints at deployment time,
 deploying a function through QuickFaaS only when its absence is confirmed. QuickFaaS gained an AWS
 Lambda provider, and its GCP provider now deploys Cloud Run functions, so the same definition
-deploys to AWS Step Functions or Google Cloud Workflows, and across accounts, without copying
-endpoints by hand. Resolution adds microseconds of local work that grows linearly with the number
+deploys to AWS Step Functions or Google Cloud Workflows without copying endpoints by hand. Resolution adds microseconds of local work that grows linearly with the number
 of internal calls.
 
-The prototype has clear limits. Binding is static; the ladder never updates an existing function;
+The prototype has clear limits. Binding is static; the ladder never updates an existing function,
+and OmniFlow's deployers cannot update a workflow, which must be deleted before it is deployed
+again;
 the registry is a local, unguarded JSON file with no locking or integrity protection; the AWS path
 creates and mutates IAM roles automatically, and QuickFaaS opens GCP functions to all users;
 QuickFaaS is driven through a subprocess; and the cloud-calling code has no automated tests. Future
 work, in order of increasing effort, includes an update path that redeploys a function when the hash
 of its source changes; an access-controlled, locked and auditable registry backend;
 in-process invocation of QuickFaaS; least-privilege IAM with a dry-run mode; testable cloud
-adapters; validation of every ladder level against live AWS and GCP accounts; and Azure Functions,
+adapters; validation of every ladder level on live providers, beyond the single workflow of the
+case study; and Azure Functions,
 already a QuickFaaS target, as a third provider.
 
 \bibliographystyle{IEEEtran}
