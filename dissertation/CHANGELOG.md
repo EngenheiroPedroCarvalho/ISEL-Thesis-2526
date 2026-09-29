@@ -8,6 +8,37 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Cap. 6 (`chapter7.tex`), secção 6.3 (Methodology): reference resolver e production resolvers
+
+- Novo parágrafo no fim da metodologia: T1, T2, T4, T5 e T10–T14 usam um reference resolver
+  escrito para os benchmarks (duas variantes: lê o registry a cada chamada interna ou uma só vez),
+  que não valida os hits no fornecedor; T3 chama o registry store diretamente; T6 e T7 medem os
+  production resolvers (`AwsInternalFunctionResolver` e `WorkflowInternalFunctionResolver`), as
+  classes que o OmniFlow corre num deployment. Os dois termos eram usados sem definição.
+- Secção 6.2: o parêntese de "Each production resolver (...)", primeiro uso do termo no capítulo,
+  acrescenta "the classes OmniFlow runs when it deploys a workflow".
+
+### Cap. 6 (`chapter7.tex`), secção 6.2: o registry nos testes dos resolvers
+
+- "The registry, in contrast, is a real JSON file in a temporary directory" passa a dizer que o
+  registry não é um test double (os testes usam a mesma classe, `FunctionRegistryStore`, que o
+  OmniFlow usa num deployment) e que o diretório temporário é criado vazio pelo JUnit
+  (`@TempDir`) antes de cada teste e apagado depois, sem tocar nos registries do diretório de
+  trabalho.
+
+### Glossário (`glossary.tex`): nova entrada "Unit test"
+
+- Teste automático que exercita uma unidade de código (classe ou função) isolada, com as
+  dependências externas substituídas por test doubles; corre localmente, depressa e de forma
+  determinista. O termo aparece no resumo em inglês e no Cap. 6 (`chapter7.tex`) sem definição.
+
+### Glossário (`glossary.tex`): nova entrada "Test double"
+
+- Objeto que substitui uma dependência real num teste; nos testes dos resolvers, os test doubles
+  fazem de fornecedor (lookup com respostas fixas por região, lista fixa de regiões, deployer que
+  regista o que lhe pedem para implantar). O termo é usado no Cap. 6
+  (`chapter7.tex`) sem definição.
+
 ### Glossário (`glossary.tex`): nova entrada "ICT concentration risk"
 
 - Definição do DORA, art. 3.º, alínea 29 (citação literal, com `\cite[Art.~3(29)]{dora2022}`), e

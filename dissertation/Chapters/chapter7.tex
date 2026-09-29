@@ -32,14 +32,17 @@ packaging overhead on AWS (Section~\ref{sec:eval-bundle}).
 \label{sec:eval-correctness}
 
 Each production resolver (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}
-and \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) has a unit-test
-suite that resolves a small workflow in each situation the ladder can meet. The provider is
-replaced by test doubles (a lookup that answers ``found'', ``not found'' or ``access denied'' per
+and \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, the classes OmniFlow
+runs when it deploys a workflow) has a unit-test suite that resolves a small workflow in each
+situation the ladder can meet. The provider is replaced by test doubles (a lookup that answers ``found'', ``not found'' or ``access denied'' per
 region, a fixed region list, and a deployer that records what it is asked to deploy). What the tests
 verify is therefore the resolver's decision given a simulated provider answer, not the provider
-itself. The registry, in contrast, is a real JSON file in a temporary directory: reading and writing
-it is local I/O, within the scope of the tests, so the tests exercise the same file code as a real
-deployment. Each test checks the endpoint bound to the call, the registry afterwards and whether
+itself. The registry, in contrast, is not replaced by a test double: the tests use the same registry
+class that OmniFlow uses when it deploys a workflow (\texttt{Function\allowbreak Registry\allowbreak
+Store}), which reads and writes a JSON file in the same format. The file lives in a temporary
+directory that the test framework (JUnit's \texttt{@TempDir}) creates empty before each test and
+deletes afterwards, so every test starts from a known registry and never touches the registries in
+the working directory. Reading and writing this file is local I/O, within the scope of the tests. Each test checks the endpoint bound to the call, the registry afterwards and whether
 a deployment or an abort happened. Table~\ref{tab:eval-correctness} groups the situations by level.
 All 46 resolver tests (23 per provider) and the two bootstrap tests pass.
 
@@ -118,6 +121,15 @@ external; $F$, the number of distinct internal functions; $R$, the number of reg
 for writes, $K$ successive writes to a registry that starts with $R_0$ entries
 (Table~\ref{tab:eval-notation}). $R$ is not $F$: a registry of 1\,000 entries may serve a workflow
 that uses ten.
+
+Two kinds of resolver are measured. T1, T2, T4, T5 and T10--T14 use a reference resolver written
+for the benchmarks, in two variants: one re-reads the registry on every internal call, the other
+reads it once. It resolves calls from the registry as OmniFlow does but never validates a hit
+against the provider, so it measures only the registry and the walk over the workflow. T3 calls the
+registry store directly, without a resolver. T6 and T7 measure the production resolvers
+(\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), the classes
+OmniFlow runs when it deploys a workflow (Section~\ref{sec:eval-real-resolvers}).
 
 \section{Resolution Overhead and Scalability}
 \label{sec:eval-resolution}

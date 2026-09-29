@@ -466,8 +466,9 @@ provider with test doubles, and provider requests are counted from the implement
 \subsection{Correctness of the Ladder (RQ1)}
 Each resolver has a unit-test suite that resolves a small workflow in every situation the ladder
 can meet. The provider is replaced by a lookup that answers \emph{found}, \emph{not found} or
-\emph{access denied} per region and by a deployer that records its invocations; the registry is a
-real file. Table~\ref{tab:correct} lists the situations. All 46 resolver tests (23 per provider)
+\emph{access denied} per region and by a deployer that records its invocations. The registry is not simulated: the
+tests use the same registry code as a real deployment, which reads and writes a JSON file in a
+directory created empty for each test. Table~\ref{tab:correct} lists the situations. All 46 resolver tests (23 per provider)
 and the two bootstrap tests pass: every internal call is bound to the registered, current or
 discovered endpoint, and a function is deployed only when it is absent everywhere and every region
 could be checked.
@@ -527,6 +528,9 @@ Benchmarks use JMH~1.37 in average-time mode, with three forks, three warm-up an
 measurement iterations, on an idle Apple Silicon laptop. For half the measurements the 99.9\%
 confidence interval is under 1\% of the score, and for nine out of ten under 6\%. $N$ denotes the
 number of calls, $I$ the internal ones, $F$ the distinct functions and $R$ the registry entries.
+The comparison of per-call reads and a single read uses a reference resolver written for the
+benchmarks, which resolves calls from the registry without validating them against the provider;
+the production resolvers are the classes OmniFlow runs when it deploys a workflow.
 
 \textbf{Per-call reads versus a single read.} A resolver that re-reads the registry on every call
 pays, per call, about $10.3\,\mu$s of fixed I/O and parsing plus $0.17\,\mu$s per entry, so the
