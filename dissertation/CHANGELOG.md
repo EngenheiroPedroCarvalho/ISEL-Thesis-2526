@@ -8,6 +8,14 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Cap. 5 (`chapter6.tex`): excerto do workflow passa para o apêndice
+
+- Sai a Listagem 5.1 (`lst:case-payment-excerpt`, as duas chamadas internas de
+  `PaymentAuthorization`); o workflow completo já está na Listagem B.2. A secção 5.2 remete para
+  ela e diz em texto que `fraud-check` e `risk-score` declaram `internalFunction` com um descritor.
+  As listagens seguintes do cap. 5 descem um número.
+- Cap. 4 (`chapter5.tex`, "Invocation" na GCP): a referência passa para a Listagem B.2.
+
 ### Apêndice B (`appendix-listings.tex`): definições geradas e diagramas de fluxo do caso de estudo
 
 - A secção B.2 "PaymentAuthorization Workflow" (nova etiqueta `app:case-workflow`) junta a

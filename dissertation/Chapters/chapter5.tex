@@ -217,7 +217,7 @@ An internal call needs no special rendering on GCP: the resolver has already spl
 \texttt{run.app} URL into \texttt{host} and \texttt{path}, so \texttt{GoogleCallRenderer} emits the
 same \texttt{call: http.post} (or the declared verb) as for an external call.
 Listing~\ref{lst:rendered-gcp} shows the step \texttt{fraud-check} renders to in the case study
-(Listing~\ref{lst:case-payment-excerpt}): the resolved \texttt{run.app} URL is the call's
+(Listing~\ref{lst:case-payment-workflow}): the resolved \texttt{run.app} URL is the call's
 \texttt{url}, the query terms become \texttt{query}, and the response is stored in
 \texttt{fraudResult}.
 

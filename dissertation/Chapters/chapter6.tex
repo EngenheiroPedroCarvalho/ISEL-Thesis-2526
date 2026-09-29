@@ -46,38 +46,15 @@ Three requirements motivate the integration:
 \label{sec:case-design}
 
 The complete \texttt{PaymentAuthorization} workflow is Listing~\ref{lst:case-payment-workflow}, in
-Appendix~\ref{app:listings}. Listing~\ref{lst:case-payment-excerpt} shows its two internal calls,
-whose endpoints are resolved at deployment time (Section~\ref{subsec:endpoint-resolution}). Unlike
+Appendix~\ref{app:listings}. Its two internal calls, \texttt{fraud-check} and \texttt{risk-score},
+each declare \texttt{internalFunction} with a deployment descriptor, and their endpoints are
+resolved at deployment time (Section~\ref{subsec:endpoint-resolution}). Unlike
 the partner API of Listing~\ref{lst:wf-external-part}, both functions belong to the bank, so they
 are internal. A \texttt{switch} step, \texttt{decision}, jumps to \texttt{decline-transaction} if
 the transaction was flagged or its score exceeds 75, and otherwise to
 \texttt{approve-transaction}. Both branches record the outcome and reach
 \texttt{report-decision}, an external call to core banking that sends the transaction as the body
 and the decision as a query parameter.
-
-\begin{lstlisting}[language=Kotlin,caption={The two internal scoring calls of \texttt{PaymentAuthorization} (excerpt of Listing~\ref{lst:case-payment-workflow}).},label={lst:case-payment-excerpt},basicstyle=\ttfamily\small,breaklines=false]
-step {
-  name("fraud-check")
-  description("Flag transactions that match known fraud patterns")
-  context(call {
-    method(POST)
-    internalFunction("fraud-check", "./deploy/fraud-check.json")
-    query("amount" to variable("transaction.amount"),
-      "country" to variable("transaction.country"))
-    result("fraudResult")
-  })
-},
-step {
-  name("risk-score")
-  description("Score the transaction from its features")
-  context(call {
-    method(POST)
-    internalFunction("risk-score", "./deploy/risk-score.json")
-    query("amount" to variable("transaction.amount"))
-    result("riskResult")
-  })
-},
-\end{lstlisting}
 
 Two choices keep the definition valid on both providers. The scoring calls pass their inputs as
 query parameters, since on AWS an internal call cannot carry a body
