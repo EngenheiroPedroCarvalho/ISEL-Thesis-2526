@@ -2,17 +2,14 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 11
-title AWS deployment sequence
+title AWS deployment sequence -- (a) overview
 
 participant "AmazonCloudDeployer" as ACD
 participant "FunctionRegistryBootstrapper\n(LambdaFunctionsCatalog)" as BOOT
 participant "AwsInternalFunctionResolver" as R
 participant "FunctionRegistryStore" as REG
 participant "AwsLambdaDeployer" as ALD
-participant "AwsLambdaIamHelper" as IAM
-participant "QuickFaasProcessInvoker" as PI
-participant "QuickFaaS JAR\n(AwsProvider)" as QF
-participant "AWS APIs\n(EC2, IAM, S3, Lambda)" as AWS
+participant "AWS APIs\n(EC2, Lambda)" as AWS
 participant "AWS Step Functions" as SFN
 
 opt workflow has internal calls
@@ -30,7 +27,7 @@ opt workflow has internal calls
       R -> AWS : GetFunction(region from ARN, serviceName)
       note right of R
         drift, rediscovery and stale-entry removal
-        as in the Level 1 sequence diagram (Appendix A)
+        as in the Level 1 diagram (Figure A.3)
       end note
       AWS --> R : FunctionArn
     else Level 2 - registry miss, function found by discovery
@@ -41,26 +38,11 @@ opt workflow has internal calls
       AWS --> R : exactly one FunctionArn
       R -> REG : put(name, metadata)
     else Level 3 - absent in every region, descriptor provided
-      R -> ALD : deployOrUpdate(name, descriptorPath)
-      ALD -> IAM : resolveOrCreateLambdaExecutionRole(iamRoleArn)
-      IAM -> AWS : GetRole / CreateRole + AttachRolePolicy\n(UpdateAssumeRolePolicy if the trust\npolicy does not allow Lambda)
-      AWS --> IAM : execution role ARN
-      ALD -> ALD : patchIamRoleArn(descriptor)\n-> temp descriptor
-      ALD -> ALD : load + validate(descriptor, "aws")
-      ALD -> AWS : GetBucketLocation -> effective region
-      ALD -> PI : invoke(descriptor)\n[<=3 attempts, 20 s backoff\non IAM propagation]
-      PI -> QF : java -jar QuickFaaS.jar
-      QF -> QF : build hook + template,\nzip sources
-      QF -> AWS : GetBucketLocation -> region;\nPutObject (S3 bucket)
-      QF -> AWS : GetFunction (exists?)
-      QF -> AWS : CreateFunction / UpdateFunctionCode\n(SDK waiter until active / updated)
-      QF -> AWS : GetFunctionUrlConfig /\nCreateFunctionUrlConfig
-      QF --> PI : deployment finished
-      ALD -> AWS : GetFunction - poll until\nState = Active (<=180 s, 5 s interval)
-      ALD -> AWS : GetFunction -> FunctionArn
-      ALD -> IAM : grantStepFunctionsInvoke(name, region, roleArn)
-      IAM -> AWS : AddPermission\n(principal = states.amazonaws.com)
-      ALD --> R : FunctionInvocationMetadata\n(serviceName, url = ARN)
+      ref over R, ALD
+        Level 3: deployOrUpdate(name, descriptorPath)
+        -> FunctionInvocationMetadata (url = ARN);
+        QuickFaaS deployment expanded in panel (b)
+      end ref
       R -> REG : put(name, metadata)
     else absent, no descriptor / ambiguous / regions inaccessible
       R --> ACD : IllegalStateException (fail fast)

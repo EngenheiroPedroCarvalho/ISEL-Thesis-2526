@@ -1,0 +1,34 @@
+@startuml aws-deploy-sequence-level3-full
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title AWS deployment sequence -- (b) Level 3 expanded
+
+participant "AwsInternalFunctionResolver" as R
+participant "AwsLambdaDeployer" as ALD
+participant "AwsLambdaIamHelper" as IAM
+participant "QuickFaasProcessInvoker" as PI
+participant "QuickFaaS JAR\n(AwsProvider)" as QF
+participant "AWS APIs\n(IAM, S3, Lambda)" as AWS
+
+R -> ALD : deployOrUpdate(name, descriptorPath)
+ALD -> IAM : resolveOrCreateLambdaExecutionRole(iamRoleArn)
+IAM -> AWS : GetRole / CreateRole + AttachRolePolicy\n(UpdateAssumeRolePolicy if the trust\npolicy does not allow Lambda)
+AWS --> IAM : execution role ARN
+ALD -> ALD : patchIamRoleArn(descriptor)\n-> temp descriptor
+ALD -> ALD : load + validate(descriptor, "aws")
+ALD -> AWS : GetBucketLocation -> effective region
+ALD -> PI : invoke(descriptor)\n[<=3 attempts, 20 s backoff\non IAM propagation]
+PI -> QF : java -jar QuickFaaS.jar
+QF -> QF : build hook + template,\nzip sources
+QF -> AWS : GetBucketLocation -> region;\nPutObject (S3 bucket)
+QF -> AWS : GetFunction (exists?)
+QF -> AWS : CreateFunction / UpdateFunctionCode\n(SDK waiter until active / updated)
+QF -> AWS : GetFunctionUrlConfig /\nCreateFunctionUrlConfig
+QF --> PI : deployment finished
+ALD -> AWS : GetFunction - poll until\nState = Active (<=180 s, 5 s interval)
+ALD -> AWS : GetFunction -> FunctionArn
+ALD -> IAM : grantStepFunctionsInvoke(name, region, roleArn)
+IAM -> AWS : AddPermission\n(principal = states.amazonaws.com)
+ALD --> R : FunctionInvocationMetadata\n(serviceName, url = ARN)
+@enduml
