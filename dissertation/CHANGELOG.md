@@ -1,6 +1,6 @@
 # Alterações aos capítulos da dissertação
 
-Só alterações ainda não enviadas (push). Base: `5c66df7` (último commit em
+Só alterações ainda não enviadas (push). Base: `39e2394` (último commit em
 `origin/claude/progress-report-compliance-e4damf`). Depois de um push, o registo recomeça vazio.
 
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
@@ -8,40 +8,8 @@ este ficheiro.)
 
 ## 2026-09-29
 
-### Cap. 5 (`chapter6.tex`), secção 5.3: parágrafo "AWS test account" como o da GCP
+### Cap. 5 (`chapter6.tex`), secção 5.3: a ressalva da conta de produção passa para o início
 
-- O parágrafo passa a ter a mesma estrutura do da GCP: descritores e deployer AWS, bootstrap do
-  registry a partir da conta, falha nos Níveis 1 e 2, deployment no Nível 3 pelo fornecedor AWS
-  da QuickFaaS, ARNs guardados no campo `url`.
-- Parágrafo GCP: "from the same ZIP artifact" passa a "packaged in the same ZIP format ... with
-  the provider's hook signature" (o código das funções difere por fornecedor; ver Apêndice B.4).
-
-### Ortografia: "authorization" (cap. 5 e Apêndice B)
-
-- Cap. 5 (`chapter6.tex`): "authorisation" → "authorization" (introdução) e "authorises" →
-  "authorizes" (secção 5.1), a condizer com `PaymentAuthorization`.
-- Apêndice B (`appendix-listings.tex`, Listagem B.2): caminho `/v1/authorisations` →
-  `/v1/authorizations`.
-
-### Cap. 5 (`chapter6.tex`): excerto do workflow passa para o apêndice
-
-- Sai a Listagem 5.1 (`lst:case-payment-excerpt`, as duas chamadas internas de
-  `PaymentAuthorization`); o workflow completo já está na Listagem B.2. A secção 5.2 remete para
-  ela e diz em texto que `fraud-check` e `risk-score` declaram `internalFunction` com um descritor.
-  As listagens seguintes do cap. 5 descem um número.
-- Cap. 4 (`chapter5.tex`, "Invocation" na GCP): a referência passa para a Listagem B.2.
-
-### Apêndice B (`appendix-listings.tex`): definições geradas e diagramas de fluxo do caso de estudo
-
-- A secção B.2 "PaymentAuthorization Workflow" (nova etiqueta `app:case-workflow`) junta a
-  definição DSL (Listagem B.2), as duas diferenças das execuções (referências com região e stub)
-  e, por fornecedor, uma nova subsecção: "Rendered for GCP" (Figura B.1, fluxo do Cloud Workflows,
-  e o YAML gerado) e "Rendered for AWS" (Figura B.2, fluxo da state machine com os tipos de estado
-  da consola, e o JSON/ASL gerado).
-- Os diagramas são novos, em PlantUML (`diagrams/case-flow-gcp.puml`, `diagrams/case-flow-aws.puml`;
-  PNG em `images/case-study/`), desenhados a partir das definições geradas à semelhança das
-  consolas.
-- As listagens YAML e JSON saem da antiga B.4.3 "Rendered Workflow Definitions", que desaparece; a
-  secção B.4 passa a "Case-Study Functions and Execution Inputs".
-- Introdução do apêndice e cap. 5 (`chapter6.tex`, secção 5.4): as referências às definições
-  geradas apontam para a secção B.2.
+- Parágrafo "AWS production account": "This deployment was not run" deixa de fechar o parágrafo e
+  passa a abri-lo, com o motivo da descrição ("it is described to show how the ladder handles a
+  second account of the same provider"), para que a promoção não seja lida como executada.
