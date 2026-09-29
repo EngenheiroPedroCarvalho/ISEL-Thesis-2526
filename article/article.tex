@@ -431,26 +431,35 @@ A bank authorizes card payments through a \texttt{PaymentAuthorization} workflow
 functions owned by its fraud team, \texttt{fraud-check} and \texttt{risk-score}, score each
 transaction; a \texttt{switch} step declines flagged or high-risk transactions; and an external
 call reports the decision to the core banking system. The scenario reflects three requirements:
-one workflow promoted across test and production accounts, whose functions have account-specific
-ARNs; an exit strategy for ICT services supporting critical functions, as DORA requires of EU
+one workflow promoted from a test to a production AWS account, since banks commonly keep each
+environment in a separate account and a Lambda ARN contains the account ID, so the same function
+has a different endpoint in each account; an exit strategy for ICT services supporting critical functions, as DORA requires of EU
 financial entities~\cite{dora2022}; and a record of which endpoint each deployment was bound to.
 
-On the first deployment to the AWS test account, with AWS descriptors and the AWS deployer, the
-registry is bootstrapped from the account, and both scoring calls miss at Levels 1 and 2 and reach
-Level 3. QuickFaaS deploys the two Lambda functions, their ARNs are stored in the \texttt{url}
-field, and the state machine is created. A second deployment is two Level 1 hits: nothing is
-deployed and the registry is not rewritten. Promoting the workflow to the production account changes only the descriptors
-(the account's bucket) and uses a registry of its own, so the functions are deployed there and
-bound to ARNs carrying the production account ID; no endpoint is copied between accounts. Deploying
-the same workflow to GCP, with GCP descriptors and the GCP deployer, produces a separate registry in
-which the same \texttt{functionRef}s resolve to \texttt{run.app} URLs, while the workflow
-definition stays unchanged. The registries of Listing~\ref{lst:registry} are of this form, and were
-produced by the resolvers and renderers with the provider replaced by test doubles.
+Two deployments were run on 28 September 2026: one to an AWS account used for testing and one to
+a GCP project. On AWS, with AWS descriptors and the AWS deployer, the registry is bootstrapped from
+the account, and both scoring calls miss at Levels 1 and 2 and reach Level 3. QuickFaaS deploys the
+two Lambda functions, their ARNs are stored in the \texttt{url} field, and the state machine is
+created. On GCP, with GCP descriptors and the GCP deployer, a separate registry is bootstrapped and
+the same \texttt{functionRef}s resolve to \texttt{run.app} URLs, while the workflow definition
+stays unchanged. On each provider, a second deployment bound both calls at Level 1 and left the
+registry byte-identical, and three transactions produced the expected decisions. The registries of
+Listing~\ref{lst:registry} are of this form (abridged, with placeholder identifiers).
 
-The case study also exposed a limitation of OmniFlow's AWS renderer, which this work did not
-change: an \texttt{assign} step becomes a \texttt{Pass} state that replaces the whole state
-document, so the transaction is no longer available to the final call. On AWS, the workflow needs
-that renderer fixed before it can run end to end. The scenario remains illustrative rather than
+The promotion to a production account was not run; it is described to show how the ladder handles
+a second account of the same provider. The workflow is unchanged, the descriptors name the
+production account's bucket, and the deployment uses a registry file of its own, bootstrapped from
+that account. Level 3 then deploys the functions there and binds them to ARNs carrying the
+production account ID, so no endpoint is copied between accounts. The two accounts cannot share a
+registry: a test-account entry would fail validation in production, be treated as stale and abort
+the deployment (Section~\ref{sec:solution}).
+
+The case study also exposed two defects in OmniFlow's AWS renderer, which this work fixed. An
+\texttt{assign} step became a \texttt{Pass} state whose result replaced the whole state document,
+so the transaction was no longer available to the final call; a single-variable \texttt{assign} now
+writes only that variable, while one of several variables still replaces the state. And the query
+parameters of a Lambda call were wrapped in \texttt{States.Array}, so a hook received
+\texttt{"[120]"}; they are now plain strings. The scenario remains illustrative rather than
 production-ready (Section~\ref{sec:concl}).
 
 % =====================================================================
