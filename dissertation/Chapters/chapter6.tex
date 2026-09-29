@@ -125,7 +125,28 @@ deployment bootstrapped the registry with the six functions already in the accou
 Level~3 for both scoring calls: about 17~seconds per function, 48~seconds in all. A second
 deployment bound both calls at Level~1, deployed nothing, took about 1.5~seconds, and left the
 registry byte-identical. Before it, the state machine had to be deleted, since OmniFlow's deployers
-cannot update a workflow.
+cannot update a workflow. Figure~\ref{fig:case-aws-console} shows the result in the AWS console:
+the three Lambda functions, in \texttt{eu-west-1}, and the deployed state machine.
+
+\begin{figure}[tbp]
+  \centering
+  \begin{subfigure}[b]{\textwidth}
+    \centering
+    \includegraphics[width=0.6\textwidth]{images/AWS/img_2.png}
+    \caption{Lambda functions: the two scoring functions and the core banking stub.}
+    \label{fig:case-aws-functions}
+  \end{subfigure}
+
+  \medskip
+  \begin{subfigure}[b]{\textwidth}
+    \centering
+    \includegraphics[width=0.65\textwidth]{images/AWS/img_1.png}
+    \caption{Step Functions: the deployed \texttt{payment-authorization} state machine.}
+    \label{fig:case-aws-workflow}
+  \end{subfigure}
+  \caption{The case study's functions and workflow in the AWS console.}
+  \label{fig:case-aws-console}
+\end{figure}
 
 \paragraph{GCP.} The stub was deployed with QuickFaaS. The first deployment bootstrapped the
 registry with the two services already in the project and reached Level~3 for both scoring calls:

@@ -8,6 +8,13 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Caso de estudo: consola AWS (cap. 5, `chapter6.tex`)
+
+- **Secção 5.4, parágrafo AWS:** nova Figura 5.1 (`fig:case-aws-console`), a par da da GCP (que
+  passa a 5.2), com as duas capturas da consola AWS como subfiguras
+  (`images/AWS/img_2.png`: as três funções Lambda; `images/AWS/img_1.png`: a state machine
+  `payment-authorization`). O parágrafo remete para ela.
+
 ### Apêndice A (`appendix-cascade.tex`): diagramas seguidos e maiores
 
 - Os diagramas deixam de ser floats (`figure`) e passam a vir seguidos (`minipage` com
