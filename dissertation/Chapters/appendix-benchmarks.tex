@@ -2,9 +2,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% appendix-benchmarks.tex
 %% Complete benchmark results summarised in Chapter 6 (Evaluation)
+%% The tables and charts are placed in sequence rather than as floats; each chart sits below its
+%% table at the full text width. \raggedbottom keeps the space a block leaves at the foot of a page
+%% there instead of spreading it between the blocks.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Benchmark Results}
 \label{app:benchmarks}
+\raggedbottom
 
 This appendix gives the complete results of the experiments summarised in
 Table~\ref{tab:eval-summary} (Section~\ref{sec:eval-resolution}), measured as described in
@@ -14,9 +18,9 @@ unless stated otherwise the registry always hits ($R{=}F$). Two points have a 99
 interval close to their own value and should be read as noise: T9 at $K{=}10$, $R_0{=}10$
 ($874 \pm 732\,\mu$s), and T13 at depth~2 ($69.0 \pm 40.8\,\mu$s).
 
-\begin{table}[htbp]
+\noindent\begin{minipage}{\textwidth}
   \centering
-  \caption{Notation used throughout the evaluation.}
+  \captionof{table}{Notation used throughout the evaluation.}
   \label{tab:eval-notation}
   \begin{tabular}{|c|l|}
     \hline
@@ -37,7 +41,7 @@ interval close to their own value and should be read as noise: T9 at $K{=}10$, $
     $R_0$ & number of entries in the registry before the writes (T8, T9) \\
     \hline
   \end{tabular}
-\end{table}
+\end{minipage}
 
 \FloatBlock
 \section{Resolution Against the Reference Resolver (T2--T5)}
@@ -48,14 +52,13 @@ dominates. T3 compares that path with the single read by calling the store's loo
 without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on a real
 \texttt{Workflow} object.
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T2: per-call resolution cost as a function of registry size $R$, with the registry
   re-read on every internal call: total time divided by $N$, averaged over $N \in \{1, 10, 50,
   200\}$.}
   \label{tab:eval-t2}}
-  \begin{minipage}[c]{0.31\textwidth}
-    \centering
     \small
     \begin{tabular}{|r|r|}
       \hline
@@ -72,17 +75,17 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
       1000 & 183.4 \\
       \hline
     \end{tabular}
-  \end{minipage}\hfill
-  \begin{minipage}[c]{0.66\textwidth}
-    \centering
-    \includegraphics[width=\linewidth]{images/benchmarks/T2_registry_scaling.png}
-  \end{minipage}
+  \normalsize
+
+  \medskip
+  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{images/benchmarks/T2_registry_scaling.png}
   {\captionof{figure}{T2: per-call resolution cost as a function of registry size $R$, for $N \in \{1, 10,
   50, 200\}$ internal calls. The external-call control does not read the registry.}
   \label{fig:eval-t2}}
-\end{figure}
+\end{minipage}
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T3: total resolution time ($\mu$s), naive (per-call read) vs.\ optimised (single
   read).}
@@ -105,9 +108,10 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
     optimised, $R{=}1000$ & 182  & 183      & 182      & 184       \\
     \hline
   \end{tabular}
-\end{figure}
+\end{minipage}
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   \begin{minipage}[t]{0.48\textwidth}
     \centering
@@ -157,14 +161,13 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
       \hline
     \end{tabular}
   \end{minipage}
-\end{figure}
+\end{minipage}
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T5: resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
   \label{tab:eval-t5}}
-  \begin{minipage}[c]{0.31\textwidth}
-    \centering
     \small
     \setlength{\tabcolsep}{4pt}
     \begin{tabular}{|r|r|r|r|}
@@ -184,21 +187,21 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
       1000 & 9\,487  & 205  & 46.3 \\
       \hline
     \end{tabular}
-  \end{minipage}\hfill
-  \begin{minipage}[c]{0.66\textwidth}
-    \centering
-    \includegraphics[width=\linewidth]{images/benchmarks/T5_resolution_by_registry.png}
-  \end{minipage}
+  \normalsize
+
+  \medskip
+  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{images/benchmarks/T5_resolution_by_registry.png}
   {\captionof{figure}{T5: resolution time against registry size $R$ with $F{=}10$/$N{=}50$ fixed,
   per-call read against single read (logarithmic vertical axis). Both paths grow with $R$, and the
   gap between them widens with it.}
   \label{fig:eval-t5}}
-\end{figure}
+\end{minipage}
 
 \FloatBlock
 \section{Production Resolvers (T6, T7)}
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   \begin{minipage}[b]{0.48\textwidth}
     \centering
@@ -251,12 +254,13 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
       \hline
     \end{tabular}
   \end{minipage}
-\end{figure}
+\end{minipage}
 
 \FloatBlock
 \section{Registry Write Path (T8, T9)}
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   \begin{minipage}[b]{0.48\textwidth}
     \centering
@@ -304,7 +308,7 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
       \hline
     \end{tabular}
   \end{minipage}
-\end{figure}
+\end{minipage}
 
 \FloatBlock
 \section{Match Strategy and Workflow Shape (T10--T14)}
@@ -313,12 +317,11 @@ T12 (registry size with $I{=}40$ internal calls among mixed calls) and T13 (nest
 no table: T12 goes from $20\,\mu$s at $R{=}10$ to $199\,\mu$s at $R{=}1000$, and T13 stays at
 $15.8$--$19.2\,\mu$s across depths 0--5 with 20 internal calls.
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T10: exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
   \label{tab:eval-t10}}
-  \begin{minipage}[c]{0.31\textwidth}
-    \centering
     \small
     \begin{tabular}{|r|r|r|r|}
       \hline
@@ -337,18 +340,18 @@ $15.8$--$19.2\,\mu$s across depths 0--5 with 20 internal calls.
       1000 & 201  & 391  & 1.95 \\
       \hline
     \end{tabular}
-  \end{minipage}\hfill
-  \begin{minipage}[c]{0.66\textwidth}
-    \centering
-    \includegraphics[width=\linewidth]{images/benchmarks/T10_resolution_key_match_strategy.png}
-  \end{minipage}
+  \normalsize
+
+  \medskip
+  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{images/benchmarks/T10_resolution_key_match_strategy.png}
   {\captionof{figure}{T10: exact against suffix match in the single-read resolver, $F{=}10$/$N{=}50$
   fixed (logarithmic vertical axis). Both grow with $R$ because of the read, and the suffix path adds
   a scan of the loaded map on top of it.}
   \label{fig:eval-t10}}
-\end{figure}
+\end{minipage}
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T11: resolution time ($\mu$s) of a mixed workflow with $I$ internal and
 $E$ external calls, $R{=}F{=}10$ fixed.}
@@ -371,15 +374,14 @@ $E$ external calls, $R{=}F{=}10$ fixed.}
     200 & 55.8 & 55.9 & 56.2 & 67.1 & 57.4 & 56.8 \\
     \hline
   \end{tabular}
-\end{figure}
+\end{minipage}
 
-\begin{figure}[htbp]
+\bigskip
+\noindent\begin{minipage}{\textwidth}
   \centering
   {\captionsetup{textfont=sf}\captionof{table}{T14: resolution time ($\mu$s) vs.\ \texttt{Parallel} branch width,
   $N = 5\times$ width, $R{=}F{=}10$.}
   \label{tab:eval-t14}}
-  \begin{minipage}[c]{0.31\textwidth}
-    \centering
     \small
     \begin{tabular}{|r|r|r|}
       \hline
@@ -400,13 +402,12 @@ $E$ external calls, $R{=}F{=}10$ fixed.}
       100 & 500 & 119  \\
       \hline
     \end{tabular}
-  \end{minipage}\hfill
-  \begin{minipage}[c]{0.66\textwidth}
-    \centering
-    \includegraphics[width=\linewidth]{images/benchmarks/T14_internal_resolution_by_branch_width.png}
-  \end{minipage}
+  \normalsize
+
+  \medskip
+  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{images/benchmarks/T14_internal_resolution_by_branch_width.png}
   {\captionof{figure}{T14: resolution time against \texttt{Parallel} branch width, five internal calls per
   branch and $R{=}F{=}10$ fixed (logarithmic vertical axis). The time follows the total number of
   leaf calls $N = 5\times\text{width}$, not the shape of the tree.}
   \label{fig:eval-t14}}
-\end{figure}
+\end{minipage}

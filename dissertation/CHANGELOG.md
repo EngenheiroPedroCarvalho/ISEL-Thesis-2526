@@ -25,3 +25,13 @@ este ficheiro.)
   com 7 participantes em vez de 10 e o Nível 3 recolhido num bloco `ref`; (b), na página seguinte,
   expande o Nível 3 (nova fonte `diagrams/aws-deploy-sequence-level3-full.puml`). A nota do Nível 1
   aponta para a Figura A.3; a legenda foi reescrita em conformidade.
+
+### Apêndice C (`appendix-benchmarks.tex`): tabelas e gráficos seguidos
+
+- O mesmo tratamento do Apêndice A: as tabelas e os gráficos deixam de ser floats e vêm seguidos,
+  pela ordem do texto (`minipage` com `\captionof`); acabam os vazios entre eles e o gráfico T14
+  isolado numa página.
+- T2, T5, T10 e T14: o gráfico deixa de estar ao lado da tabela, a 66% da largura, e passa para
+  baixo dela, à largura do texto.
+- `\raggedbottom` no apêndice, para o espaço livre ficar no fim da página em vez de se espalhar
+  entre os blocos. O conteúdo das tabelas, legendas e rótulos não muda.
