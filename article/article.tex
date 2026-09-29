@@ -378,7 +378,7 @@ including branches, iterations and parallel blocks, and intercept only calls tha
 resolution into an in-memory snapshot, resolves every call against it, and keeps the snapshot in
 sync with its own writes. If the registry file is missing, a bootstrapper rebuilds it by listing the
 functions already deployed on the provider. When validating a hit, a lookup refused by the provider
-(an authorisation failure) aborts, since it says nothing about whether the function exists.
+(an authorization failure) aborts, since it says nothing about whether the function exists.
 
 \subsection{Cloud Run Functions on GCP}
 The GCP resolver validates and discovers functions through the Cloud Run API, but the original
@@ -427,7 +427,7 @@ authenticated with an OIDC token for the workflow's service account.
 \section{Case Study: Card-Payment Fraud Screening}
 \label{sec:case}
 
-A bank authorises card payments through a \texttt{PaymentAuthorization} workflow. Two internal
+A bank authorizes card payments through a \texttt{PaymentAuthorization} workflow. Two internal
 functions owned by its fraud team, \texttt{fraud-check} and \texttt{risk-score}, score each
 transaction; a \texttt{switch} step declines flagged or high-risk transactions; and an external
 call reports the decision to the core banking system. The scenario reflects three requirements:
