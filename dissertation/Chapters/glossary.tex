@@ -2,6 +2,13 @@
 %================GLOSSARY =================%
 % Terms that are not acronyms. The list is sorted alphabetically by name (or by the sort key).
 
+\newglossaryentry{bare}{
+	name={Bare reference},
+	description={A \texttt{functionRef} written without a region, such as \texttt{"fraud-check"}.
+	On a registry miss it is looked for in every candidate region, unlike the
+	\texttt{"region/functionRef"} form, which is looked for in one.}
+}
+
 \newglossaryentry{blackhole}{
 	name={Blackhole},
 	description={JMH object that consumes the value a benchmark produces, so that the JIT compiler

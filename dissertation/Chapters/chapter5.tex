@@ -323,7 +323,8 @@ integration avoids per-call request signing.
 \texttt{arn:aws:states:::lambda:invoke}, the ARN as \texttt{FunctionName}, and query terms under
 \texttt{Payload.queryStringParameters}; its \texttt{ResultSelector} reads \texttt{\$.Payload} into
 the result variable, stored under a \texttt{ResultPath} named after the step
-(Listing~\ref{lst:rendered-lambda}). Any other host yields the original \texttt{apigateway:invoke}
+(Listing~\ref{lst:rendered-lambda}). \texttt{InputPath} \texttt{"\$"} passes the whole state to
+the task, and \texttt{Next} names the state that follows. Any other host yields the original \texttt{apigateway:invoke}
 task. Since the internal form is a variant of the existing call renderer, OmniFlow's control-flow,
 result-passing and error handling apply unchanged; only the \texttt{Resource} and parameters differ.
 

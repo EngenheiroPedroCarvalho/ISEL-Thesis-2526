@@ -84,11 +84,11 @@ one at deployment time.
 
 \paragraph{Function Registry.}
 A file per provider that maps each \texttt{functionRef} to the values needed to invoke it.
-\texttt{updatedAt} records the last write. The key is the bare reference, or
-\texttt{"region/functionRef"} when the same name exists in more than one region. Each entry has two
-fields: \texttt{serviceName}, the function's name on the provider, and \texttt{url}, what the
-rendered workflow invokes. No credentials are stored. The integration writes both files, by
-default in the working directory.
+\texttt{updatedAt} records the last write. The key is the bare reference (the
+\texttt{functionRef} alone, with no region), or \texttt{"region/functionRef"} when the same name
+exists in more than one region. Each entry has two fields: \texttt{serviceName}, the function's
+name on the provider, and \texttt{url}, what the rendered workflow invokes. No credentials are
+stored. The integration writes both files, by default in the working directory.
 
 On GCP (Listing~\ref{lst:registry-gcp}), \texttt{serviceName} is the full resource name of the
 Cloud Run service, and \texttt{url} its HTTPS endpoint, which the resolver splits into
