@@ -8,6 +8,12 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Cap. 6 (`chapter7.tex`): tabelas depois da primeira referência
+
+- Tabelas 6.2 (`tab:eval-summary`) e 6.6 (`tab:eval-s1`): `[tbp]` passa a `[hbp]`. Com `[tbp]`,
+  as duas iam para o topo da página, antes do parágrafo que as refere (pp. 35 e 38); agora ficam
+  logo a seguir a ele. As Tabelas 6.1, 6.3, 6.4 e 6.5 já ficavam depois da referência.
+
 ### Cap. 6 (`chapter7.tex`), secção 6.3 (Methodology): reference resolver e production resolvers
 
 - Novo parágrafo no fim da metodologia: T1, T2, T4, T5 e T10–T14 usam um reference resolver
