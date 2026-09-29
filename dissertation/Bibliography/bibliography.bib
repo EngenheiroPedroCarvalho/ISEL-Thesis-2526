@@ -1,0 +1,472 @@
+% Web pages and documentation use the "online" entry type with an organisation as the author (double braces, so
+% that biblatex does not split it into first and last name) and urldate for the date of access.
+
+% --- General Cloud & Serverless Context ---
+
+@book{parkhill1966challenge,
+  author    = {Douglas F. Parkhill},
+  title     = {The Challenge of the Computer Utility},
+  publisher = {Addison-Wesley Publishing Company},
+  address   = {Reading, Massachusetts},
+  year      = {1966},
+  isbn      = {9780201057201}
+}
+
+@article{armbrust2010view,
+  author  = {Armbrust, Michael and Fox, Armando and Griffith, Rean and Joseph, Anthony D. and Katz, Randy and Konwinski, Andy and Lee, Gunho and Patterson, David and Rabkin, Ariel and Stoica, Ion and Zaharia, Matei},
+  title   = {A View of Cloud Computing},
+  journal = {Communications of the ACM},
+  volume  = {53},
+  number  = {4},
+  pages   = {50--58},
+  year    = {2010},
+  doi     = {10.1145/1721654.1721672}
+}
+
+@article{buyya2009cloud,
+  author  = {Buyya, Rajkumar and Yeo, Chee Shin and Venugopal, Srikumar and Broberg, James and Brandic, Ivona},
+  title   = {Cloud Computing and Emerging {IT} Platforms: Vision, Hype, and Reality for Delivering Computing as the 5th Utility},
+  journal = {Future Generation Computer Systems},
+  volume  = {25},
+  number  = {6},
+  pages   = {599--616},
+  year    = {2009},
+  doi     = {10.1016/j.future.2008.12.001}
+}
+
+@article{vaquero2008breaks,
+  author  = {Vaquero, Luis M. and Rodero-Merino, Luis and Caceres, Juan and Lindner, Maik},
+  title   = {A Break in the Clouds: Towards a Cloud Definition},
+  journal = {ACM SIGCOMM Computer Communication Review},
+  volume  = {39},
+  number  = {1},
+  pages   = {50--55},
+  year    = {2009},
+  doi     = {10.1145/1496091.1496100}
+}
+
+@article{serverlessComputing,
+  author  = {Shafiei, Hossein and Khonsari, Ahmad and Mousavi, Payam},
+  title   = {Serverless Computing: A Survey of Opportunities, Challenges, and Applications},
+  journal = {ACM Computing Surveys},
+  volume  = {54},
+  number  = {11s},
+  eid     = {239},
+  pages   = {1--32},
+  year    = {2022},
+  doi     = {10.1145/3510611}
+}
+
+@techreport{jonas2019cloudProgramming,
+  author      = {Jonas, Eric and Schleier-Smith, Johann and Sreekanti, Vikram and Tsai, Chia-Che and Khandelwal, Anurag and Pu, Qifan and Shankar, Vaishaal and Carreira, Joao and Krauth, Karl and Yadwadkar, Neeraja and Gonzalez, Joseph E. and Popa, Raluca Ada and Stoica, Ion and Patterson, David A.},
+  title       = {Cloud Programming Simplified: A {Berkeley} View on Serverless Computing},
+  institution = {EECS Department, University of California, Berkeley},
+  number      = {UCB/EECS-2019-3},
+  year        = {2019},
+  eprint      = {1902.03383},
+  eprinttype  = {arxiv}
+}
+
+@online{aws_stepfunctions_concepts,
+  author    = {{Amazon Web Services}},
+  title     = {Learn about state machines in Step Functions},
+  titleaddon = {AWS Step Functions Developer Guide},
+  url       = {https://docs.aws.amazon.com/step-functions/latest/dg/concepts-statemachines.html},
+  urldate   = {2026-01-12}
+}
+
+@online{awsSamStateMachine,
+  author    = {{Amazon Web Services}},
+  title     = {{AWS::Serverless::StateMachine}},
+  titleaddon = {AWS Serverless Application Model Developer Guide},
+  url       = {https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html},
+  urldate   = {2026-09-11}
+}
+
+@online{awsCloudFormationDependsOn,
+  author    = {{Amazon Web Services}},
+  title     = {{DependsOn} attribute},
+  titleaddon = {AWS CloudFormation Template Reference Guide},
+  url       = {https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html},
+  urldate   = {2026-09-20}
+}
+
+@online{serverlessStepFunctionsPlugin,
+  author    = {{Serverless Operations}},
+  title     = {Serverless Step Functions},
+  titleaddon = {GitHub repository},
+  url       = {https://github.com/serverless-operations/serverless-step-functions},
+  urldate   = {2026-09-11}
+}
+
+@online{terraformReferences,
+  author    = {{HashiCorp}},
+  title     = {References to Values},
+  titleaddon = {Terraform Configuration Language documentation},
+  url       = {https://developer.hashicorp.com/terraform/language/expressions/references},
+  urldate   = {2026-09-11}
+}
+
+@online{terraformSfnStateMachine,
+  author    = {{HashiCorp}},
+  title     = {{AWS}: aws\_sfn\_state\_machine},
+  titleaddon = {Terraform AWS Provider documentation},
+  url       = {https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sfn_state_machine},
+  urldate   = {2026-09-11}
+}
+
+@online{pulumiInputsOutputs,
+  author    = {{Pulumi}},
+  title     = {Inputs \& outputs},
+  titleaddon = {Pulumi documentation},
+  url       = {https://www.pulumi.com/docs/iac/concepts/inputs-outputs/},
+  urldate   = {2026-09-11}
+}
+
+@misc{dora2022,
+  author       = {{European Parliament and Council of the European Union}},
+  title        = {Regulation ({EU}) 2022/2554 of the {European} {Parliament} and of the {Council} of
+                  14 {December} 2022 on digital operational resilience for the financial sector
+                  ({DORA})},
+  howpublished = {Official Journal of the European Union, L 333, 27 December 2022, pp. 1--79},
+  year         = {2022},
+  url          = {https://eur-lex.europa.eu/eli/reg/2022/2554/oj},
+  urldate      = {2026-09-11}
+}
+
+@online{gcp_workflows_overview,
+  author    = {{Google Cloud}},
+  title     = {Workflows overview},
+  titleaddon = {Google Cloud Workflows documentation},
+  url       = {https://cloud.google.com/workflows/docs/overview},
+  urldate   = {2026-01-12}
+}
+
+% --- QuickFaaS & OmniFlow Core References ---
+
+@article{rodrigues2022quickfaas,
+  author  = {Rodrigues, Pedro and Freitas, Filipe and Sim{\~a}o, Jos{\'e}},
+  title   = {{QuickFaaS}: Providing Portability and Interoperability between {FaaS} Platforms},
+  journal = {Future Internet},
+  volume  = {14},
+  number  = {12},
+  eid     = {360},
+  year    = {2022},
+  doi     = {10.3390/fi14120360}
+}
+
+@mastersthesis{costa2023omniflow,
+  author = {Costa, Bernardo Jos{\'e} Mateus},
+  title  = {Function Composition in Function-as-a-Service Platforms},
+  school = {Instituto Superior de Engenharia de Lisboa, Instituto Polit{\'e}cnico de Lisboa},
+  address = {Lisboa, Portugal},
+  year   = {2023},
+  type   = {Master's dissertation}
+}
+
+@mastersthesis{silva2025advanced,
+  author  = {Silva, Tiago Lu{\'\i}s Lima da},
+  title   = {Advanced Function Composition in Serverless Platforms},
+  school  = {Instituto Superior de Engenharia de Lisboa, Instituto Polit{\'e}cnico de Lisboa},
+  address = {Lisboa, Portugal},
+  year    = {2025},
+  type    = {Master's dissertation}
+}
+
+% --- Publication resulting from this dissertation ---
+% TODO: add the pages, publisher and DOI once the proceedings are available.
+@inproceedings{carvalho2026towards,
+  author    = {Carvalho, Pedro and Sim{\~a}o, Jos{\'e} and Freitas, Filipe},
+  title     = {Towards Cloud-Agnostic Serverless Applications: Unifying Function Deployment and Workflow Orchestration},
+  booktitle = {Iberian Conference on Information Systems and Technologies ({CISTI})},
+  year      = {2026}
+}
+
+% --- Tooling used by QuickFaaS and OmniFlow ---
+
+@online{jmh,
+  author  = {{OpenJDK}},
+  title   = {{JMH}: Java Microbenchmark Harness},
+  url     = {https://openjdk.org/projects/code-tools/jmh/},
+  urldate = {2026-09-28}
+}
+
+@online{kotlin_lang,
+  author  = {{JetBrains}},
+  title   = {Kotlin Programming Language},
+  url     = {https://kotlinlang.org/},
+  urldate = {2025-12-17}
+}
+
+@online{compose_multiplatform,
+  author  = {{JetBrains}},
+  title   = {Compose Multiplatform: Simplify your UI development},
+  url     = {https://www.jetbrains.com/compose-multiplatform/},
+  urldate = {2025-12-17}
+}
+
+@online{GCP_bucket,
+  author  = {{Google Cloud}},
+  title   = {About Cloud Storage buckets},
+  titleaddon = {Google Cloud Storage documentation},
+  url     = {https://docs.cloud.google.com/storage/docs/buckets},
+  urldate = {2025-12-17}
+}
+
+@online{type-safe_builders,
+  author  = {{JetBrains}},
+  title   = {Type-safe builders},
+  titleaddon = {Kotlin documentation},
+  url     = {https://kotlinlang.org/docs/type-safe-builders.html},
+  urldate = {2025-12-21}
+}
+
+@online{gcpFunctionsVersionComparison,
+  author  = {{Google Cloud}},
+  title   = {Compare {Cloud Run} functions},
+  titleaddon = {Google Cloud documentation},
+  url     = {https://cloud.google.com/functions/docs/concepts/version-comparison},
+  urldate = {2026-09-20}
+}
+
+% --- Related Work ---
+
+@online{serverlessWorkflowSpec,
+  author  = {{Serverless Workflow Community}},
+  title   = {Serverless Workflow Specification},
+  url     = {https://github.com/serverlessworkflow/specification},
+  urldate = {2026-01-02}
+}
+
+@online{serverlessworkflowSynapse,
+  author  = {{Serverless Workflow Community}},
+  title   = {Synapse: Serverless Workflow Management System},
+  url     = {https://github.com/serverlessworkflow/synapse},
+  urldate = {2025-11-25}
+}
+
+@article{ristov2024code,
+  author  = {Ristov, Sashko and Brandacher, Simon and Hautz, Mika and Felderer, Michael and Breu, Ruth},
+  title   = {{CODE}: Code once, deploy everywhere serverless functions in federated {FaaS}},
+  journal = {Future Generation Computer Systems},
+  volume  = {160},
+  pages   = {442--456},
+  year    = {2024},
+  doi     = {10.1016/j.future.2024.06.017}
+}
+
+@inproceedings{park2024faasr,
+  author    = {Park, Sungjae and Thomas, R. Quinn and Carey, Cayelan C. and Delany, Austin D. and Ku, Yun-Jung and Lofton, Mary E. and Figueiredo, Renato J.},
+  title     = {{FaaSr}: Cross-Platform Function-as-a-Service Serverless Scientific Workflows in {R}},
+  booktitle = {2024 IEEE 20th International Conference on e-Science (e-Science)},
+  year      = {2024},
+  pages     = {1--10},
+  doi       = {10.1109/e-Science62913.2024.10678660}
+}
+
+@online{awsCloudFormation,
+  author  = {{Amazon Web Services}},
+  title   = {{AWS CloudFormation}},
+  url     = {https://aws.amazon.com/cloudformation/},
+  urldate = {2026-01-05}
+}
+
+@online{terraform,
+  author  = {{HashiCorp}},
+  title   = {Terraform},
+  url     = {https://www.terraform.io},
+  urldate = {2025-11-20}
+}
+
+@online{serverlessFramework,
+  author  = {{Serverless, Inc.}},
+  title   = {Serverless Framework},
+  url     = {https://www.serverless.com},
+  urldate = {2025-11-20}
+}
+
+@online{pulumi,
+  author  = {{Pulumi}},
+  title   = {Pulumi},
+  url     = {https://www.pulumi.com},
+  urldate = {2025-11-20}
+}
+
+@online{pulumiMagicFunctions,
+  author  = {{Pulumi}},
+  title   = {Lambdas as Lambdas: The Magic of Simple Serverless Functions},
+  titleaddon = {Pulumi blog},
+  url     = {https://www.pulumi.com/blog/lambdas-as-lambdas-the-magic-of-simple-serverless-functions/#magic-functions},
+  urldate = {2025-11-20}
+}
+
+@online{pulumiCloudFramework,
+  author  = {{Pulumi}},
+  title   = {Cloud Framework (Preview)},
+  titleaddon = {Pulumi documentation},
+  url     = {https://www.pulumi.com/docs/tutorials/cloudfx/},
+  urldate = {2025-11-20}
+}
+
+@online{pulumiCloudPkg,
+  author  = {{Pulumi}},
+  title   = {@pulumi/cloud},
+  titleaddon = {npm package},
+  url     = {https://www.npmjs.com/package/@pulumi/cloud},
+  urldate = {2025-11-20}
+}
+
+@online{openFaaS,
+  author  = {{OpenFaaS}},
+  title   = {{OpenFaaS}},
+  url     = {https://www.openfaas.com/},
+  urldate = {2025-11-21}
+}
+
+@online{openFaaSTemplates,
+  author  = {{OpenFaaS}},
+  title   = {{OpenFaaS} templates},
+  titleaddon = {GitHub repository openfaas/templates},
+  url     = {https://github.com/openfaas/templates},
+  urldate = {2025-11-21}
+}
+
+@online{openFaaSTriggers,
+  author  = {{OpenFaaS}},
+  title   = {Triggers},
+  titleaddon = {OpenFaaS documentation},
+  url     = {https://docs.openfaas.com/reference/triggers/#cloudevents},
+  urldate = {2025-11-21}
+}
+
+@online{temporalPlatform,
+  author  = {{Temporal Technologies}},
+  title   = {Temporal Platform},
+  url     = {https://temporal.io/},
+  urldate = {2026-01-07}
+}
+
+@online{spillner2017pythonfaas,
+  author     = {Spillner, Josef},
+  title      = {Transformation of {Python} Applications into Function-as-a-Service Deployments},
+  year       = {2017},
+  eprint     = {1705.08169},
+  eprinttype = {arxiv},
+  doi        = {10.48550/arXiv.1705.08169}
+}
+
+@online{spillnerDorodko2017javaLambda,
+  author     = {Spillner, Josef and Dorodko, Sergey},
+  title      = {Java Code Analysis and Transformation into {AWS} {Lambda} Functions},
+  year       = {2017},
+  eprint     = {1702.05510},
+  eprinttype = {arxiv},
+  doi        = {10.48550/arXiv.1702.05510}
+}
+
+@inproceedings{yussupov2020seaport,
+  author    = {Yussupov, Vladimir and Breitenb{\"u}cher, Uwe and Kaplan, Avshalom and Leymann, Frank},
+  title     = {{SEAPORT}: Assessing the Portability of Serverless Applications},
+  booktitle = {Proceedings of the 10th International Conference on Cloud Computing and Services Science (CLOSER 2020)},
+  year      = {2020},
+  pages     = {456--467},
+  publisher = {SCITEPRESS},
+  doi       = {10.5220/0009574104560467}
+}
+
+@inproceedings{li2022faasflow,
+  author    = {Li, Zijun and Liu, Yushi and Guo, Linsong and Chen, Quan and Cheng, Jiagan and Zheng, Wenli and Guo, Minyi},
+  title     = {{FaaSFlow}: Enable Efficient Workflow Execution for Function-as-a-Service},
+  booktitle = {Proceedings of the 27th ACM International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS '22)},
+  year      = {2022},
+  pages     = {782--796},
+  doi       = {10.1145/3503222.3507717}
+}
+
+@inproceedings{garciaLopez2020triggerflow,
+  author    = {Garc{\'\i}a-L{\'o}pez, Pedro and Arjona, Aitor and Samp{\'e}, Josep and Slominski, Aleksander and Villard, Lionel},
+  title     = {{Triggerflow}: Trigger-based Orchestration of Serverless Workflows},
+  booktitle = {Proceedings of the 14th ACM International Conference on Distributed and Event-Based Systems (DEBS '20)},
+  year      = {2020},
+  pages     = {3--14},
+  doi       = {10.1145/3401025.3401731}
+}
+
+@online{zhao2022supporting,
+  author     = {Zhao, Haidong and Benomar, Zakaria and Pfandzelter, Tobias and Georgantas, Nikolaos},
+  title      = {Supporting Multi-Cloud in Serverless Computing},
+  year       = {2022},
+  eprint     = {2209.09367},
+  eprinttype = {arxiv},
+  doi        = {10.48550/arXiv.2209.09367}
+}
+
+@online{sebsflow_arxiv,
+  author     = {Schmid, Larissa and Copik, Marcin and Calotoiu, Alexandru and Brandner, Laurin and Koziolek, Anne and Hoefler, Torsten},
+  title      = {{SeBS-Flow}: Benchmarking Serverless Cloud Function Workflows},
+  year       = {2024},
+  eprint     = {2410.03480},
+  eprinttype = {arxiv},
+  doi        = {10.48550/arXiv.2410.03480}
+}
+
+@article{ristov2021afcl,
+  author  = {Ristov, Sashko and Pedratscher, Stefan and Fahringer, Thomas},
+  title   = {{AFCL}: An Abstract Function Choreography Language for serverless workflow specification},
+  journal = {Future Generation Computer Systems},
+  volume  = {114},
+  pages   = {368--382},
+  year    = {2021},
+  doi     = {10.1016/j.future.2020.08.012}
+}
+
+@article{ristov2023xafcl,
+  author  = {Ristov, Sashko and Pedratscher, Stefan and Fahringer, Thomas},
+  title   = {{xAFCL}: Run Scalable Function Choreographies Across Multiple {FaaS} Systems},
+  journal = {IEEE Transactions on Services Computing},
+  volume  = {16},
+  number  = {1},
+  pages   = {711--723},
+  year    = {2023},
+  doi     = {10.1109/TSC.2021.3128137}
+}
+
+@online{awsCloudMap,
+  author  = {{Amazon Web Services}},
+  title   = {What Is {AWS} Cloud Map?},
+  titleaddon = {AWS Cloud Map Developer Guide},
+  url     = {https://docs.aws.amazon.com/cloud-map/latest/dg/what-is-cloud-map.html},
+  urldate = {2026-09-27}
+}
+
+@online{consulServiceDiscovery,
+  author  = {{HashiCorp}},
+  title   = {Service Discovery Explained},
+  titleaddon = {Consul documentation},
+  url     = {https://developer.hashicorp.com/consul/docs/concepts/service-discovery},
+  urldate = {2026-09-27}
+}
+
+@online{awsCdk,
+  author  = {{Amazon Web Services}},
+  title   = {What is the {AWS} {CDK}?},
+  titleaddon = {AWS Cloud Development Kit (AWS CDK) v2 Developer Guide},
+  url     = {https://docs.aws.amazon.com/cdk/v2/guide/home.html},
+  urldate = {2026-09-27}
+}
+
+@online{terraformLambdaDataSource,
+  author  = {{HashiCorp}},
+  title   = {aws\_lambda\_function (Data Source)},
+  titleaddon = {Terraform AWS Provider documentation},
+  url     = {https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/lambda_function},
+  urldate = {2026-09-27}
+}
+
+@online{pulumiLambdaGetFunction,
+  author  = {{Pulumi}},
+  title   = {aws.lambda.getFunction},
+  titleaddon = {Pulumi Registry, AWS provider documentation},
+  url     = {https://www.pulumi.com/registry/packages/aws/api-docs/lambda/getfunction/},
+  urldate = {2026-09-27}
+}

@@ -1,0 +1,4 @@
+tx-001: SUCCEEDED
+{"transaction":{"id":"tx-001","amount":120,"country":"PT"},"fraud-check":{"fraudResult":{"flagged":false}},"risk-score":{"riskResult":{"score":2}},"decision":"approved","report-decision":{"coreBankingResult":{"recorded":true,"id":"tx-001","decision":"approved"}}}
+tx-002: SUCCEEDED
+{"transaction":{"id":"tx-002","amount":4800,"country":"ES"},"fraud-check":{"fraudResult":{"flagged":true}},"risk-score":{"riskResult":{"score":96}},"decision":"declined","report-decision":{"coreBankingResult":{"recorded":true,"id":"tx-002","decision":"declined"}}}

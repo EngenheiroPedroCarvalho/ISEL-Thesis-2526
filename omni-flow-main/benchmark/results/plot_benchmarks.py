@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Generate the P1-P5 performance graphs from the JMH CSV results.
+Generate the T1-T18 performance graphs from the JMH CSV results.
 
 Usage:
-    python3 plot_benchmarks.py [jmh-results.csv] [output-dir]
+    python3 plot_benchmarks.py [jmh-results-f3.csv] [output-dir]
 
 Reads the JMH CSV (AverageTime mode, microseconds/op) and produces one PNG per
 experiment. All measurements are LOCAL rendering/resolution (no cloud).
+
+The default CSV is jmh-results-f3.csv, the three-fork run the dissertation
+reports. It does not cover the rendering experiments (T15-T17), which are only
+in the older single-fork jmh-results.csv; those classes fall back to that file.
 """
 import csv
 import os
@@ -17,38 +21,39 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-CSV = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "jmh-results.csv")
+CSV = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "jmh-results-f3.csv")
+FALLBACK_CSV = "jmh-results.csv"   # holds T15-T17, which the three-fork run does not
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.dirname(os.path.abspath(CSV))
 
 # class short name -> (file, title, x-label, {method: series-label})
 PLOTS = {
     "BenchmarkRenderingScalability": (
-        "P1_rendering_scalability.png",
-        "P1 — Tempo de renderização vs número de funções",
-        "Número de funções (passos do workflow)",
+        "T15_rendering_scalability.png",
+        "T15 — Rendering time vs number of functions",
+        "Number of functions (workflow steps)",
         {"renderToAmazon": "AWS (ASL JSON)", "renderToGoogle": "GCP (YAML)"},
     ),
     "BenchmarkRenderingByParameterCount": (
-        "P2_rendering_by_parameters.png",
-        "P2 — Tempo de renderização vs número de inputs da função",
-        "Número de inputs da função (argumentos passados na chamada)",
+        "T16_rendering_by_parameters.png",
+        "T16 — Rendering time vs number of function inputs",
+        "Number of function inputs (arguments passed in the call)",
         {"renderToAmazon": "AWS (ASL JSON)", "renderToGoogle": "GCP (YAML)"},
     ),
     "BenchmarkInternalCallResolution": (
-        "P3_resolution_overhead.png",
-        "P3 — Custo da unificação: resolução de funções internas",
-        "Número de chamadas no workflow",
-        {"resolveAllInternal": "Internas (dispara resolução)",
-         "resolveAllExternal": "Externas (sem resolução)"},
+        "T1_resolution_overhead.png",
+        "T1 — Cost of unification: resolving internal functions",
+        "Number of calls in the workflow",
+        {"resolveAllInternal": "Internal (triggers resolution)",
+         "resolveAllExternal": "External (no resolution)"},
     ),
     "BenchmarkRenderingByNesting": (
-        "P5_rendering_by_nesting.png",
-        "P5 — Tempo de renderização vs profundidade de aninhamento",
-        "Profundidade de aninhamento (parallel/iteration encadeados)",
+        "T17_rendering_by_nesting.png",
+        "T17 — Rendering time vs nesting depth",
+        "Nesting depth (chained parallel/iteration)",
         {"renderToAmazon": "AWS (ASL JSON)", "renderToGoogle": "GCP (YAML)"},
     ),
 }
-YLABEL = "Tempo médio (µs/op)"
+YLABEL = "Mean time (µs/op)"
 
 
 def load(path):
@@ -76,8 +81,8 @@ def load(path):
     return data
 
 
-def load_p6(path):
-    """P6 has two @Param dimensions (n, r); load raw (r, n, method) -> (score, err)."""
+def load_t2(path):
+    """T2 has two @Param dimensions (n, r); load raw (r, n, method) -> (score, err)."""
     rows = list(csv.DictReader(open(path, encoding="utf-8")))
     data = defaultdict(dict)  # data[method][(r, n)] = (score, err)
     for row in rows:
@@ -92,16 +97,16 @@ def load_p6(path):
     return data
 
 
-def plot_p6(csv_path, out_dir):
-    """P6 - per-call registry resolution cost vs registry size (r), one line per
+def plot_t2(csv_path, out_dir):
+    """T2 - per-call registry resolution cost vs registry size (r), one line per
     n. Plotting T(n,r)/n (cost PER resolveUrl call) makes the n-curves collapse
     onto a single curve, which is the direct visual evidence that resolution
     cost factors as n * f(r) - i.e. the O(N*R) mechanism from a per-call,
     unbounded registry re-read/re-parse (no cache)."""
     if not os.path.exists(csv_path):
-        print(f"  [skip] no P6 csv at {csv_path}")
+        print(f"  [skip] no T2 csv at {csv_path}")
         return None
-    data = load_p6(csv_path)
+    data = load_t2(csv_path)
     ns = sorted({n for (_, n) in data.get("resolveAllInternal", {})})
     plt.figure(figsize=(8, 5))
     for n in ns:
@@ -118,21 +123,21 @@ def plot_p6(csv_path, out_dir):
         ys = [p[1] for p in pts]
         plt.plot(xs, ys, marker="s", linestyle="--", color="gray", label=f"external, n={max_n} (control)")
     plt.xscale("log")
-    plt.title("P6 — Custo por chamada de resolveUrl() vs tamanho do registo (r)")
-    plt.xlabel("Funções no registo (r, escala log)")
-    plt.ylabel("Tempo por chamada (µs/op ÷ n)")
+    plt.title("T2 — Per-call cost of resolveUrl() vs registry size (r)")
+    plt.xlabel("Functions in the registry (r, log scale)")
+    plt.ylabel("Time per call (µs/op ÷ n)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend()
     plt.tight_layout()
-    out = os.path.join(out_dir, "P6_registry_scaling.png")
+    out = os.path.join(out_dir, "T2_registry_scaling.png")
     plt.savefig(out, dpi=130)
     plt.close()
     print(f"  [ok] {out}")
     return out
 
 
-def load_p7(path):
-    """P7 has two @Param dimensions (n, r) and two methods (uncached/cached)."""
+def load_t3(path):
+    """T3 has two @Param dimensions (n, r) and two methods (uncached/cached)."""
     rows = list(csv.DictReader(open(path, encoding="utf-8")))
     err_col = next((c for c in rows[0].keys() if "Error" in c), None)
     data = defaultdict(dict)  # data[method][(r, n)] = (score, err)
@@ -148,8 +153,8 @@ def load_p7(path):
     return data
 
 
-def _plot_p7_one(data, method, rs, ns, style, title, fname, out_dir, ylim):
-    """Draw a single P7 strategy (uncached or cached): total resolution time vs N,
+def _plot_t3_one(data, method, rs, ns, style, title, fname, out_dir, ylim):
+    """Draw a single T3 strategy (uncached or cached): total resolution time vs N,
     one curve per registry size R, shared log-y range so the two figures are
     directly comparable."""
     colours = plt.cm.viridis([i / max(1, len(rs) - 1) for i in range(len(rs))])
@@ -162,8 +167,8 @@ def _plot_p7_one(data, method, rs, ns, style, title, fname, out_dir, ylim):
     plt.yscale("log")
     plt.ylim(*ylim)
     plt.title(title)
-    plt.xlabel("Número de chamadas internas (N)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.xlabel("Number of internal calls (N)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -174,14 +179,14 @@ def _plot_p7_one(data, method, rs, ns, style, title, fname, out_dir, ylim):
     return out
 
 
-def plot_p7(csv_path, out_dir):
-    """P7 - before/after of the registry-read optimization, as two separate figures
+def plot_t3(csv_path, out_dir):
+    """T3 - before/after of the registry-read optimization, as two separate figures
     on a shared log-y axis: uncached (per-call read, O(N*R)) vs cached (read once,
     O(N+R)); one curve per registry size R."""
     if not os.path.exists(csv_path):
-        print(f"  [skip] no P7 csv at {csv_path}")
+        print(f"  [skip] no T3 csv at {csv_path}")
         return None
-    data = load_p7(csv_path)
+    data = load_t3(csv_path)
     if not data.get("resolveNaive"):
         return None
     rs = sorted({r for (r, _) in data["resolveNaive"]})
@@ -190,27 +195,27 @@ def plot_p7(csv_path, out_dir):
     scores = [s for meth in ("resolveNaive", "resolveOptimized")
               for (s, _err) in data[meth].values()]
     ylim = (min(scores) / 1.5, max(scores) * 1.5)
-    uncached = _plot_p7_one(
+    uncached = _plot_t3_one(
         data, "resolveNaive", rs, ns,
         {"marker": "o", "linestyle": "--"},
-        "P7a — Resolução sem cache (leitura por chamada, Θ(N·R))",
-        "P7a_resolution_sem_cache.png", out_dir, ylim)
-    cached = _plot_p7_one(
+        "T3a — Resolution without cache (one read per call, Θ(N·R))",
+        "T3a_resolution_sem_cache.png", out_dir, ylim)
+    cached = _plot_t3_one(
         data, "resolveOptimized", rs, ns,
         {"marker": "s", "linestyle": "-"},
-        "P7b — Resolução com cache (leitura única, Θ(N+R))",
-        "P7b_resolution_com_cache.png", out_dir, ylim)
+        "T3b — Resolution with cache (single read, Θ(N+R))",
+        "T3b_resolution_com_cache.png", out_dir, ylim)
     return [uncached, cached]
 
 
 _PIPELINE_SERIES = {
-    "resolveNaive": "Sem cache (leitura por chamada, Θ(N·R))",
-    "resolveOptimized": "Com cache (leitura única, Θ(N+R))",
+    "resolveNaive": "Without cache (one read per call, Θ(N·R))",
+    "resolveOptimized": "With cache (single read, Θ(N+R))",
 }
 
 
 def _plot_pipeline(csv_path, out_dir, cls, title, xlabel, fname, series=None):
-    """P9 - workflow resolution, one CSV with a single @Param. Reuses the generic
+    """T5 - workflow resolution, one CSV with a single @Param. Reuses the generic
     load(); log-y because uncached (Θ(N·R)) vs cached (Θ(N+R)) spans ~2 orders of
     magnitude. `series` maps @Benchmark method -> legend label."""
     if not os.path.exists(csv_path):
@@ -233,7 +238,7 @@ def _plot_pipeline(csv_path, out_dir, cls, title, xlabel, fname, series=None):
     plt.yscale("log")
     plt.title(title)
     plt.xlabel(xlabel)
-    plt.ylabel("Tempo médio (µs/op, escala log)")
+    plt.ylabel("Mean time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend()
     plt.tight_layout()
@@ -244,8 +249,8 @@ def _plot_pipeline(csv_path, out_dir, cls, title, xlabel, fname, series=None):
     return out
 
 
-def load_p8(path):
-    """P8 has two @Param dimensions (f, n) and two methods (uncached/cached)."""
+def load_t4(path):
+    """T4 has two @Param dimensions (f, n) and two methods (uncached/cached)."""
     rows = list(csv.DictReader(open(path, encoding="utf-8")))
     err_col = next((c for c in rows[0].keys() if "Error" in c), None)
     data = defaultdict(dict)  # data[method][(f, n)] = (score, err)
@@ -261,8 +266,8 @@ def load_p8(path):
     return data
 
 
-def _plot_p8_one(data, method, fs, ns, style, title, fname, out_dir, ylim):
-    """Draw a single P8 strategy (uncached or cached): total resolution time vs N,
+def _plot_t4_one(data, method, fs, ns, style, title, fname, out_dir, ylim):
+    """Draw a single T4 strategy (uncached or cached): total resolution time vs N,
     one curve per number of distinct functions F, shared log-y range so the two
     figures are directly comparable."""
     colours = plt.cm.viridis([i / max(1, len(fs) - 1) for i in range(len(fs))])
@@ -275,8 +280,8 @@ def _plot_p8_one(data, method, fs, ns, style, title, fname, out_dir, ylim):
     plt.yscale("log")
     plt.ylim(*ylim)
     plt.title(title)
-    plt.xlabel("Número de chamadas no workflow (N)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.xlabel("Number of calls in the workflow (N)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -287,14 +292,14 @@ def _plot_p8_one(data, method, fs, ns, style, title, fname, out_dir, ylim):
     return out
 
 
-def plot_p8(csv_path, out_dir):
-    """P8 - workflow resolution vs its two axes (F distinct functions x N calls,
+def plot_t4(csv_path, out_dir):
+    """T4 - workflow resolution vs its two axes (F distinct functions x N calls,
     with registry R=F), as two figures on a shared log-y axis: uncached (per-call
     read, O(N*R)) vs cached (read once, O(N+R)); one curve per F."""
     if not os.path.exists(csv_path):
-        print(f"  [skip] no P8 csv at {csv_path}")
+        print(f"  [skip] no T4 csv at {csv_path}")
         return None
-    data = load_p8(csv_path)
+    data = load_t4(csv_path)
     if not data.get("resolveNaive"):
         return None
     fs = sorted({f for (f, _) in data["resolveNaive"]})
@@ -302,25 +307,25 @@ def plot_p8(csv_path, out_dir):
     scores = [s for meth in ("resolveNaive", "resolveOptimized")
               for (s, _err) in data[meth].values()]
     ylim = (min(scores) / 1.5, max(scores) * 1.5)
-    uncached = _plot_p8_one(
+    uncached = _plot_t4_one(
         data, "resolveNaive", fs, ns,
         {"marker": "o", "linestyle": "--"},
-        "P8a — Resolução sem cache (leitura por chamada, Θ(N·R)) — R=F",
-        "P8a_resolution_sem_cache.png", out_dir, ylim)
-    cached = _plot_p8_one(
+        "T4a — Resolution without cache (one read per call, Θ(N·R)) — R=F",
+        "T4a_resolution_sem_cache.png", out_dir, ylim)
+    cached = _plot_t4_one(
         data, "resolveOptimized", fs, ns,
         {"marker": "s", "linestyle": "-"},
-        "P8b — Resolução com cache (leitura única, Θ(N+R)) — R=F",
-        "P8b_resolution_com_cache.png", out_dir, ylim)
+        "T4b — Resolution with cache (single read, Θ(N+R)) — R=F",
+        "T4b_resolution_com_cache.png", out_dir, ylim)
     return [uncached, cached]
 
 
-def plot_p9(csv_path, out_dir):
+def plot_t5(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkResolveWorkflowByRegistrySize",
-        "P9 — Resolução vs tamanho do registo (R) — F=10/N=50 fixos",
-        "Nº de funções no registo (R)",
-        "P9_resolution_by_registry.png")
+        "T5 — Resolution vs registry size (R) — F=10/N=50 fixed",
+        "Functions in the registry (R)",
+        "T5_resolution_by_registry.png")
 
 
 def _load_single_method(csv_path, cls):
@@ -340,10 +345,11 @@ def _load_single_method(csv_path, cls):
 
 
 def _plot_internal_resolution(csv_path, out_dir, cls, title, fname):
-    """P10/P11 - cost of a REAL auto-deploy resolver (not a benchmark-only stand-in like
-    NaiveEndpointResolver) vs N calls x R registry size (R=F), one curve per F. Unlike P8/P9
-    there is only one strategy: neither resolver was ever fixed with the single-read
-    optimization, so this measures the actual production cost of the unification glue."""
+    """T6/T7 - cost of a REAL auto-deploy resolver (not a benchmark-only stand-in like
+    NaiveEndpointResolver/OptimizedEndpointResolver) vs N calls x R registry size (R=F), one
+    curve per F. Unlike T4/T5 there is only one strategy: both resolvers now carry the
+    single-read optimization, so this measures the actual (optimized) production cost of the
+    unification glue."""
     if not os.path.exists(csv_path):
         print(f"  [skip] no csv at {csv_path}")
         return None
@@ -361,8 +367,8 @@ def _plot_internal_resolution(csv_path, out_dir, cls, title, fname):
                  marker="o", linestyle="--", color=colours[i], label=f"F={f}")
     plt.yscale("log")
     plt.title(title)
-    plt.xlabel("Número de chamadas internas (N)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.xlabel("Number of internal calls (N)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
@@ -373,18 +379,18 @@ def _plot_internal_resolution(csv_path, out_dir, cls, title, fname):
     return out
 
 
-def plot_p10(csv_path, out_dir):
+def plot_t6(csv_path, out_dir):
     return _plot_internal_resolution(
         csv_path, out_dir, "BenchmarkAwsInternalFunctionResolution",
-        "P10 — Resolução real AWS (AwsInternalFunctionResolver) — R=F",
-        "P10_aws_internal_resolution.png")
+        "T6 — Real AWS resolution (AwsInternalFunctionResolver) — R=F",
+        "T6_aws_internal_resolution.png")
 
 
-def plot_p11(csv_path, out_dir):
+def plot_t7(csv_path, out_dir):
     return _plot_internal_resolution(
         csv_path, out_dir, "BenchmarkGoogleInternalFunctionResolution",
-        "P11 — Resolução real GCP (WorkflowInternalFunctionResolver) — R=F",
-        "P11_google_internal_resolution.png")
+        "T7 — Real GCP resolution (WorkflowInternalFunctionResolver) — R=F",
+        "T7_google_internal_resolution.png")
 
 
 _BRANCH_WIDTH_SERIES = {
@@ -395,17 +401,17 @@ _BRANCH_WIDTH_SERIES = {
 }
 
 
-def plot_p12(csv_path, out_dir):
+def plot_t18(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkRenderingByBranchWidth",
-        "P12 — Tempo de renderização vs largura de Choice/Parallel",
-        "Nº de condições (Choice) / branches (Parallel)",
-        "P12_rendering_by_branch_width.png",
+        "T18 — Rendering time vs Choice/Parallel width",
+        "Number of conditions (Choice) / branches (Parallel)",
+        "T18_rendering_by_branch_width.png",
         series=_BRANCH_WIDTH_SERIES)
 
 
 def _load_registry_write(csv_path):
-    """P13 has two @Param dimensions (r0, k) and a single method (putKSequential)."""
+    """T8 has two @Param dimensions (r0, k) and a single method (putKSequential)."""
     rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
     err_col = next((c for c in rows[0].keys() if "Error" in c), None)
     data = {}  # data[(r0, k)] = (score, err)
@@ -426,21 +432,21 @@ _KEY_MATCH_SERIES = {
 }
 
 
-def plot_p14(csv_path, out_dir):
+def plot_t10(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkResolutionKeyMatchStrategy",
-        "P14 — Exact vs. suffix match no resolver \"com cache\" — F=10/N=50 fixos",
-        "Nº de funções no registo (R)",
-        "P14_resolution_key_match_strategy.png",
+        "T10 — Exact vs. suffix match in the cached resolver — F=10/N=50 fixed",
+        "Functions in the registry (R)",
+        "T10_resolution_key_match_strategy.png",
         series=_KEY_MATCH_SERIES)
 
 
-def plot_p13(csv_path, out_dir):
-    """P13 - cost of K sequential FunctionRegistryStore.put() calls starting from a registry of
-    R0 entries, one curve per R0. Complements P6-P11 (read side) with the write side: put()
+def plot_t8(csv_path, out_dir):
+    """T8 - cost of K sequential FunctionRegistryStore.put() calls starting from a registry of
+    R0 entries, one curve per R0. Complements T2-T7 (read side) with the write side: put()
     re-reads and rewrites the whole file per call, so K registrations cost Theta(K*R0 + K^2)."""
     if not os.path.exists(csv_path):
-        print(f"  [skip] no P13 csv at {csv_path}")
+        print(f"  [skip] no T8 csv at {csv_path}")
         return None
     data = _load_registry_write(csv_path)
     if not data:
@@ -456,13 +462,13 @@ def plot_p13(csv_path, out_dir):
                  marker="o", linestyle="--", color=colours[i], label=f"R0={r0}")
     plt.yscale("log")
     plt.xscale("log")
-    plt.title("P13 — Custo de escrita incremental no registo (put) — R0 × K")
-    plt.xlabel("Nº de escritas sucessivas (K, escala log)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.title("T8 — Incremental registry write cost (put) — R0 × K")
+    plt.xlabel("Number of successive writes (K, log scale)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
-    out = os.path.join(out_dir, "P13_registry_write_scaling.png")
+    out = os.path.join(out_dir, "T8_registry_write_scaling.png")
     plt.savefig(out, dpi=130)
     plt.close()
     print(f"  [ok] {out}")
@@ -470,8 +476,8 @@ def plot_p13(csv_path, out_dir):
 
 
 def _load_registry_miss_and_deploy(csv_path):
-    """P17 has two @Param dimensions (r0, k) and a single method
-    (missThenDeployKSequential) - same shape as P13's loader."""
+    """T9 has two @Param dimensions (r0, k) and a single method
+    (missThenDeployKSequential) - same shape as T8's loader."""
     rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
     err_col = next((c for c in rows[0].keys() if "Error" in c), None)
     data = {}  # data[(r0, k)] = (score, err)
@@ -486,12 +492,12 @@ def _load_registry_miss_and_deploy(csv_path):
     return data
 
 
-def plot_p17(csv_path, out_dir):
-    """P17 - cost of K sequential (tryResolveEntry miss + put) pairs starting from a registry of
-    R0 entries, one curve per R0. Same (R0, K) grid as P13 (put-only), so the two are directly
+def plot_t9(csv_path, out_dir):
+    """T9 - cost of K sequential (tryResolveEntry miss + put) pairs starting from a registry of
+    R0 entries, one curve per R0. Same (R0, K) grid as T8 (put-only), so the two are directly
     comparable on the same axes - the gap between them is the added cost of the miss lookup."""
     if not os.path.exists(csv_path):
-        print(f"  [skip] no P17 csv at {csv_path}")
+        print(f"  [skip] no T9 csv at {csv_path}")
         return None
     data = _load_registry_miss_and_deploy(csv_path)
     if not data:
@@ -507,13 +513,13 @@ def plot_p17(csv_path, out_dir):
                  marker="o", linestyle="--", color=colours[i], label=f"R0={r0}")
     plt.yscale("log")
     plt.xscale("log")
-    plt.title("P17 — Custo de miss+deploy (tryResolveEntry + put) — R0 × K")
-    plt.xlabel("Nº de funções novas resolvidas+registadas (K, escala log)")
-    plt.ylabel("Tempo total (µs/op, escala log)")
+    plt.title("T9 — Cost of miss+deploy (tryResolveEntry + put) — R0 × K")
+    plt.xlabel("Number of new functions resolved+registered (K, log scale)")
+    plt.ylabel("Total time (µs/op, log scale)")
     plt.grid(True, alpha=0.3, which="both")
     plt.legend(fontsize=8)
     plt.tight_layout()
-    out = os.path.join(out_dir, "P17_registry_miss_and_deploy.png")
+    out = os.path.join(out_dir, "T9_registry_miss_and_deploy.png")
     plt.savefig(out, dpi=130)
     plt.close()
     print(f"  [ok] {out}")
@@ -536,13 +542,13 @@ def _load_ie(csv_path, cls):
     return data
 
 
-def plot_p15(csv_path, out_dir):
-    """P15 - resolution cost of a workflow mixing internal (I) and external (E) calls, N=I+E,
+def plot_t11(csv_path, out_dir):
+    """T11 - resolution cost of a workflow mixing internal (I) and external (E) calls, N=I+E,
     R=F=10 fixed. Only the cached/optimized resolver is measured (naive-vs-optimized already
-    established in P6-P9). One curve per I value, x-axis E, showing whether cost tracks I (the
+    established in T2-T5). One curve per I value, x-axis E, showing whether cost tracks I (the
     only calls that touch the registry) rather than the full N=I+E."""
     if not os.path.exists(csv_path):
-        print(f"  [skip] no P15 csv at {csv_path}")
+        print(f"  [skip] no T11 csv at {csv_path}")
         return None
     data = _load_ie(csv_path, "BenchmarkResolveWorkflowByInternalExternalMix")
     if not data:
@@ -556,44 +562,44 @@ def plot_p15(csv_path, out_dir):
         pts = [(e_val, data[(i_val, e_val)][0]) for e_val in e_values if (i_val, e_val) in data]
         plt.plot([x for x, _ in pts], [y for _, y in pts],
                  marker="o", linestyle="-", color=colours[k], label=f"I={i_val}")
-    plt.title("P15 — Resolução vs mistura interno/externo (I × E) — R=F=10 fixos")
-    plt.xlabel("Nº de chamadas externas (E)")
-    plt.ylabel("Tempo total (µs/op)")
+    plt.title("T11 — Resolution vs internal/external mix (I × E) — R=F=10 fixed")
+    plt.xlabel("Number of external calls (E)")
+    plt.ylabel("Total time (µs/op)")
     plt.grid(True, alpha=0.3)
     plt.legend(fontsize=8)
     plt.tight_layout()
-    out = os.path.join(out_dir, "P15_resolution_internal_external_mix.png")
+    out = os.path.join(out_dir, "T11_resolution_internal_external_mix.png")
     plt.savefig(out, dpi=130)
     plt.close()
     print(f"  [ok] {out}")
     return out
 
 
-def plot_p16(csv_path, out_dir):
+def plot_t12(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkResolveWorkflowByRegistrySizeMixed",
-        "P16 — Resolução vs tamanho do registo (R), workflow misto — I=40/E=10/F=10 fixos",
-        "Nº de funções no registo (R)",
-        "P16_resolution_by_registry_mixed.png",
-        series={"resolveOptimized": "Com cache (workflow misto)"})
+        "T12 — Resolution vs registry size (R), mixed workflow — I=40/E=10/F=10 fixed",
+        "Functions in the registry (R)",
+        "T12_resolution_by_registry_mixed.png",
+        series={"resolveOptimized": "With cache (mixed workflow)"})
 
 
-def plot_p18(csv_path, out_dir):
+def plot_t13(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkInternalResolutionByNesting",
-        "P18 — Resolução interna vs profundidade de aninhamento — 20 chamadas/F=10 fixos",
-        "Profundidade de aninhamento (parallel/iteration encadeados)",
-        "P18_internal_resolution_by_nesting.png",
-        series={"resolveOptimized": "Com cache (workflow aninhado)"})
+        "T13 — Internal resolution vs nesting depth — 20 calls/F=10 fixed",
+        "Nesting depth (chained parallel/iteration)",
+        "T13_internal_resolution_by_nesting.png",
+        series={"resolveOptimized": "With cache (nested workflow)"})
 
 
-def plot_p19(csv_path, out_dir):
+def plot_t14(csv_path, out_dir):
     return _plot_pipeline(
         csv_path, out_dir, "BenchmarkInternalResolutionByBranchWidth",
-        "P19 — Resolução interna vs largura de Parallel — 5 chamadas/branch, F=10 fixos",
-        "Nº de branches do Parallel",
-        "P19_internal_resolution_by_branch_width.png",
-        series={"resolveOptimized": "Com cache (workflow com Parallel largo)"})
+        "T14 — Internal resolution vs Parallel width — 5 calls/branch, F=10 fixed",
+        "Number of Parallel branches",
+        "T14_internal_resolution_by_branch_width.png",
+        series={"resolveOptimized": "With cache (wide-Parallel workflow)"})
 
 
 def plot_artifact_size(csv_path, out_dir):
@@ -608,9 +614,9 @@ def plot_artifact_size(csv_path, out_dir):
     plt.figure(figsize=(8, 5))
     plt.plot(ns, aws, marker="o", label="AWS (ASL JSON)")
     plt.plot(ns, gcp, marker="s", label="GCP (YAML)")
-    plt.title("S2 — Tamanho do artefacto renderizado vs número de funções")
-    plt.xlabel("Número de funções (passos do workflow)")
-    plt.ylabel("Tamanho do artefacto (KB)")
+    plt.title("S2 — Size of the rendered artifact vs number of functions")
+    plt.xlabel("Number of functions (workflow steps)")
+    plt.ylabel("Artifact size (KB)")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
@@ -623,6 +629,15 @@ def plot_artifact_size(csv_path, out_dir):
 
 def main():
     data = load(CSV)
+    missing = [cls for cls in PLOTS if cls not in data]
+    if missing:
+        fallback = os.path.join(os.path.dirname(os.path.abspath(CSV)), FALLBACK_CSV)
+        if os.path.abspath(fallback) != os.path.abspath(CSV) and os.path.exists(fallback):
+            extra = load(fallback)
+            for cls in missing:
+                if cls in extra:
+                    data[cls] = extra[cls]
+                    print(f"  [note] {cls} taken from {FALLBACK_CSV}")
     made = []
     for cls, (fname, title, xlabel, series) in PLOTS.items():
         if cls not in data:
@@ -649,75 +664,75 @@ def main():
         made.append(out)
         print(f"  [ok] {out}")
 
-    p6_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p6.csv")
-    p6_out = plot_p6(p6_csv, OUT)
-    if p6_out:
-        made.append(p6_out)
+    t2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t2.csv")
+    t2_out = plot_t2(t2_csv, OUT)
+    if t2_out:
+        made.append(t2_out)
 
-    p7_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p7.csv")
-    p7_out = plot_p7(p7_csv, OUT)
-    if p7_out:
-        made.extend(p7_out)
+    t3_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t3.csv")
+    t3_out = plot_t3(t3_csv, OUT)
+    if t3_out:
+        made.extend(t3_out)
 
-    p8_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p8.csv")
-    p8_out = plot_p8(p8_csv, OUT)
-    if p8_out:
-        made.extend(p8_out)
+    t4_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t4.csv")
+    t4_out = plot_t4(t4_csv, OUT)
+    if t4_out:
+        made.extend(t4_out)
 
-    p9_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p9.csv")
-    p9_out = plot_p9(p9_csv, OUT)
-    if p9_out:
-        made.append(p9_out)
+    t5_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t5.csv")
+    t5_out = plot_t5(t5_csv, OUT)
+    if t5_out:
+        made.append(t5_out)
 
-    p10_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p10.csv")
-    p10_out = plot_p10(p10_csv, OUT)
-    if p10_out:
-        made.append(p10_out)
+    t6_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t6.csv")
+    t6_out = plot_t6(t6_csv, OUT)
+    if t6_out:
+        made.append(t6_out)
 
-    p11_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p11.csv")
-    p11_out = plot_p11(p11_csv, OUT)
-    if p11_out:
-        made.append(p11_out)
+    t7_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t7.csv")
+    t7_out = plot_t7(t7_csv, OUT)
+    if t7_out:
+        made.append(t7_out)
 
-    p12_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p12.csv")
-    p12_out = plot_p12(p12_csv, OUT)
-    if p12_out:
-        made.append(p12_out)
+    t18_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t18.csv")
+    t18_out = plot_t18(t18_csv, OUT)
+    if t18_out:
+        made.append(t18_out)
 
-    p13_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p13.csv")
-    p13_out = plot_p13(p13_csv, OUT)
-    if p13_out:
-        made.append(p13_out)
+    t8_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t8.csv")
+    t8_out = plot_t8(t8_csv, OUT)
+    if t8_out:
+        made.append(t8_out)
 
-    p14_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p14.csv")
-    p14_out = plot_p14(p14_csv, OUT)
-    if p14_out:
-        made.append(p14_out)
+    t10_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t10.csv")
+    t10_out = plot_t10(t10_csv, OUT)
+    if t10_out:
+        made.append(t10_out)
 
-    p15_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p15.csv")
-    p15_out = plot_p15(p15_csv, OUT)
-    if p15_out:
-        made.append(p15_out)
+    t11_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t11.csv")
+    t11_out = plot_t11(t11_csv, OUT)
+    if t11_out:
+        made.append(t11_out)
 
-    p16_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p16.csv")
-    p16_out = plot_p16(p16_csv, OUT)
-    if p16_out:
-        made.append(p16_out)
+    t12_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t12.csv")
+    t12_out = plot_t12(t12_csv, OUT)
+    if t12_out:
+        made.append(t12_out)
 
-    p17_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p17.csv")
-    p17_out = plot_p17(p17_csv, OUT)
-    if p17_out:
-        made.append(p17_out)
+    t9_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t9.csv")
+    t9_out = plot_t9(t9_csv, OUT)
+    if t9_out:
+        made.append(t9_out)
 
-    p18_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p18.csv")
-    p18_out = plot_p18(p18_csv, OUT)
-    if p18_out:
-        made.append(p18_out)
+    t13_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t13.csv")
+    t13_out = plot_t13(t13_csv, OUT)
+    if t13_out:
+        made.append(t13_out)
 
-    p19_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-p19.csv")
-    p19_out = plot_p19(p19_csv, OUT)
-    if p19_out:
-        made.append(p19_out)
+    t14_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "jmh-results-t14.csv")
+    t14_out = plot_t14(t14_csv, OUT)
+    if t14_out:
+        made.append(t14_out)
 
     s2_csv = os.path.join(os.path.dirname(os.path.abspath(CSV)), "artifact-size.csv")
     s2_out = plot_artifact_size(s2_csv, OUT)

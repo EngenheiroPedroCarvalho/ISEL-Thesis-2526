@@ -26,7 +26,7 @@ import org.openjdk.jmh.infra.Blackhole
 import java.util.concurrent.TimeUnit
 
 /**
- * P5 - Local rendering cost by nesting depth.
+ * T17 - Local rendering cost by nesting depth.
  *
  * Keeps the number of leaf steps FIXED and varies how deeply they are nested
  * inside iteration/parallel containers. Renders LOCALLY to both Amazon and

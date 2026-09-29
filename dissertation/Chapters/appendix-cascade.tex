@@ -1,0 +1,101 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% appendix-cascade.tex
+%% Resolution ladder sequence diagrams (ported from ISEL-Thesis-2526/thesis/appendix.tex)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter{Complete Diagrams}
+\label{app:cascade-sequences}
+
+This appendix gives the complete diagrams that Chapter~\ref{cha:impl} shows in part: the class
+model of the integration layer (Figure~\ref{fig:omniflow-integration-classes}), presented in four
+parts in Section~\ref{sec:function-registry}; the
+AWS deployment sequence (Figure~\ref{fig:aws-deploy-sequence}), whose Level~3 branch is
+Figure~\ref{fig:aws-deploy-level3}, and one diagram per level of the resolution ladder
+(Section~\ref{sec:resolution-cascade}), with the GCP path as panel (a) and the AWS path as panel (b).
+
+% The diagrams are placed in sequence rather than as floats, each at the largest size the page
+% allows; the two panels of Figures A.2 and A.3 are too tall to share a page, so (b) continues the figure.
+\newcommand{\appdiagram}[2][0.85]{%
+  \includegraphics[width=\textwidth,height=#1\textheight,keepaspectratio]{images/implementation/#2.png}}
+
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  \appdiagram[0.75]{omniflow-integration-classes}
+  \captionof{figure}{Class model of the integration layer added to OmniFlow.}
+  \label{fig:omniflow-integration-classes}
+\end{minipage}
+
+\bigskip
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  \appdiagram[0.8]{aws-deploy-sequence}
+  \par (a) Overview
+  \captionof{figure}{Deployment sequence on AWS, from the registry bootstrap to
+  \texttt{Create\allowbreak State\allowbreak Machine}, with one branch per level of the resolution
+  ladder and a fourth for the calls that fail fast (a); the Level~3 branch is expanded in (b), on
+  the next page.}
+  \label{fig:aws-deploy-sequence}
+\end{minipage}
+
+\bigskip
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  \appdiagram[0.8]{aws-deploy-sequence-level3-full}
+  \par (b) Level~3 expanded
+  \captionsetup{type=figure}\ContinuedFloat
+  \caption[]{Deployment sequence on AWS, continued: the Level~3 branch, from
+  \texttt{deploy\allowbreak OrUpdate} to the \texttt{Function\allowbreak Invocation\allowbreak
+  Metadata} it returns.}
+\end{minipage}
+
+\bigskip
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  \appdiagram[0.84]{resolution-cascade-level1-gcp}
+  \par (a) GCP\par
+  \captionof{figure}{Level~1 (Registry): a registry hit is validated against the live Cloud Run
+  service on GCP (a) and against \texttt{GetFunction} on AWS (b, on the next page). On a
+  \texttt{NotFound} result, both paths attempt rediscovery (across every region, or in the one
+  region a \texttt{"region/functionRef"} reference names) before a stale entry is removed.}
+  \label{fig:resolution-cascade-level1}
+\end{minipage}
+
+\bigskip
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  \appdiagram[0.84]{resolution-cascade-level1-aws}
+  \par (b) AWS
+  \captionsetup{type=figure}\ContinuedFloat
+  \caption[]{Level~1 (Registry), continued: the AWS path.}
+\end{minipage}
+
+\bigskip
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  \appdiagram[0.4]{resolution-cascade-level2-gcp}
+  \par (a) GCP\par
+  \medskip
+  \appdiagram[0.4]{resolution-cascade-level2-aws}
+  \par (b) AWS
+  \captionof{figure}{Level~2 (Provider discovery): the target Cloud Run service is searched for
+  across the project's regions on GCP (a) and the target Lambda across every region enabled for the
+  account on AWS (b). On both providers, the fully-qualified \texttt{"region/functionRef"} form is
+  resolved with a single lookup in that region.}
+  \label{fig:resolution-cascade-level2}
+\end{minipage}
+
+\bigskip
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  \appdiagram[0.4]{resolution-cascade-level3-gcp}
+  \par (a) GCP\par
+  \medskip
+  \appdiagram[0.4]{resolution-cascade-level3-aws}
+  \par (b) AWS
+  \captionof{figure}{Level~3 (QuickFaaS deployment): \texttt{QuickFaasDeployer} invokes QuickFaaS,
+  polls the Cloud Functions~v2 API until the function is active and grants the workflow's service
+  account \texttt{roles/\allowbreak run.invoker} on its Cloud Run service on GCP (a).
+  \texttt{AwsLambdaDeployer} invokes QuickFaaS and polls \texttt{GetFunction} until the Lambda is
+  active on AWS (b). The AWS branch is expanded in Figure~\ref{fig:aws-deploy-sequence}.}
+  \label{fig:resolution-cascade-level3}
+\end{minipage}

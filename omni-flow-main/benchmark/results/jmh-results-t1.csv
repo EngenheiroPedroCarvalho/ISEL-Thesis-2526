@@ -1,0 +1,17 @@
+Benchmark,Mode,Threads,Samples,Score,"Score Error (99,9%)",Unit,Param: n
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllExternal,avgt,1,15,10.744539,0.083510,us/op,1
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllExternal,avgt,1,15,10.688365,0.030837,us/op,2
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllExternal,avgt,1,15,10.704144,0.019400,us/op,5
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllExternal,avgt,1,15,10.782542,0.031109,us/op,10
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllExternal,avgt,1,15,10.809743,0.028155,us/op,20
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllExternal,avgt,1,15,10.994671,0.051708,us/op,50
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllExternal,avgt,1,15,11.238903,0.032628,us/op,100
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllExternal,avgt,1,15,11.777256,0.044820,us/op,200
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllInternal,avgt,1,15,11.004060,0.025579,us/op,1
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllInternal,avgt,1,15,11.296848,0.040287,us/op,2
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllInternal,avgt,1,15,12.027576,0.079465,us/op,5
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllInternal,avgt,1,15,13.258635,0.044727,us/op,10
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllInternal,avgt,1,15,15.596853,0.177345,us/op,20
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllInternal,avgt,1,15,22.382789,0.130160,us/op,50
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllInternal,avgt,1,15,33.979556,0.715221,us/op,100
+costaber.com.github.omniflow.metrics.BenchmarkInternalCallResolution.resolveAllInternal,avgt,1,15,56.419246,0.290904,us/op,200

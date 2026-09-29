@@ -1,0 +1,43 @@
+@startuml omniflow-classes-registry
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+hide empty members
+title Part 2: Function Registry (excerpt of the full class model, Appendix A)
+left to right direction
+
+class FunctionRegistryStore {
+  -file : Path
+  +readAll() : Map
+  +tryResolveEntryIn(ref, snapshot) : Pair[0..1]
+  +put(key, metadata)
+  +remove(key)
+}
+
+class FunctionInvocationMetadata {
+  +serviceName : String
+  +url : String
+}
+
+class FunctionRegistryBootstrapper {
+  +bootstrapIfMissing(scope)
+}
+
+interface CloudFunctionsCatalog {
+  +listHttpFunctions(scope) : Map
+}
+class CloudRunV2RestCatalog
+class LambdaFunctionsCatalog
+
+FunctionRegistryStore ..> FunctionInvocationMetadata
+FunctionRegistryBootstrapper --> FunctionRegistryStore
+FunctionRegistryBootstrapper --> CloudFunctionsCatalog
+CloudFunctionsCatalog <|.. CloudRunV2RestCatalog
+CloudFunctionsCatalog <|.. LambdaFunctionsCatalog
+
+note bottom of FunctionInvocationMetadata
+  url holds an HTTPS endpoint on GCP
+  and a Lambda ARN on AWS
+end note
+@enduml

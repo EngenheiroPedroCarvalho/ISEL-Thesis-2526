@@ -2,13 +2,11 @@ package costaber.com.github.omniflow.registry
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.google.api.client.util.Key
 import costaber.com.github.omniflow.jackson.OmniflowObjectMapper
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.sql.Ref
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import kotlin.io.path.createDirectories
@@ -75,9 +73,14 @@ class FunctionRegistryStore(
      * - suffix match: "region/functionRef"
      */
     @Synchronized
-    fun tryResolveEntry(functionRef: String): Pair<String, FunctionInvocationMetadata>? {
-        val all = readAll()
+    fun tryResolveEntry(functionRef: String): Pair<String, FunctionInvocationMetadata>? =
+        tryResolveEntryIn(functionRef, readAll())
 
+    /**
+     * Pure resolution of [functionRef] against an already-loaded registry map [all] (no I/O).
+     * Same rules as [tryResolveEntry]: exact match, then suffix match "region/functionRef".
+     */
+    fun tryResolveEntryIn(functionRef: String, all: Map<String, FunctionInvocationMetadata>): Pair<String, FunctionInvocationMetadata>? {
         all[functionRef]?.let { return functionRef to it }
 
         val matches = all.filterKeys { it.endsWith("/$functionRef") }
@@ -134,7 +137,7 @@ class FunctionRegistryStore(
 
         val node = mapper.readTree(Files.readString(file))
         if (node is ObjectNode) {
-            if (!node.has("updateAt")) node.put("updateAt", Instant.now().toString())
+            if (!node.has("updatedAt")) node.put("updatedAt", Instant.now().toString())
             return node
         }
 

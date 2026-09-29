@@ -1,0 +1,16 @@
+{
+  "cloudProvider": "aws",
+  "accessToken": "",
+  "iamRoleArn": "<REPLACE_WITH_LAMBDA_EXECUTION_ROLE_ARN>",
+  "project": "<REPLACE_WITH_AWS_ACCOUNT_ID>",
+  "function": {
+    "name": "region-b-greeting-fn",
+    "location": "eu-central-1",
+    "bucket": "omniflow-region-b-025064823406",
+    "runtime": "java17",
+    "trigger": {
+      "type": "http"
+    }
+  },
+  "functionFile": "./MyFunctionClass.java"
+}

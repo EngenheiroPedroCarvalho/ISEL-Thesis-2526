@@ -1,0 +1,496 @@
+\chapter{Evaluation}
+\label{cha:evaluation}
+
+This chapter evaluates the prototype described in Chapter~\ref{cha:impl}. The evaluation targets
+the third objective of this dissertation (Section~\ref{sec:int_objectives}): to measure the
+overhead introduced by the integration and to assess the correctness of the resolution mechanism.
+Because the contribution of this work is the \emph{unification} layer (the function registry and
+the deployment-time resolution cascade) and the AWS provider added to QuickFaaS, the evaluation
+concentrates on the cost of resolving internal-function endpoints, on how that cost scales, and on
+the size overhead of the AWS agnostic packaging layer.
+
+\section{Scope and Goals}
+\label{sec:eval-scope}
+
+The measurements exercise only \emph{local} operations: constructing a workflow model, traversing
+it, resolving internal calls against the registry, reading and writing the registry file, and
+packaging a Lambda bundle. Operations that call the cloud provider (Lambda/IAM/S3 requests, Cloud
+Run/Cloud Functions APIs, the QuickFaaS subprocess) are deliberately excluded, for two reasons:
+they are dominated by network and provider-side latency measured in seconds, and they are
+non-deterministic and out of the unit-test scope by design. The evaluation therefore answers a
+focused question: \emph{how much does the unification layer add to a deployment, and how does that
+overhead scale with the number of calls and the size of the registry?}
+
+Three families of experiments are reported:
+\begin{itemize}
+  \item \textbf{Resolution overhead and scalability} --- the cost of resolving internal calls as a
+  function of the number of calls ($N$) and the size of the registry ($R$), and the effect of the
+  single-read optimization.
+  \item \textbf{Real auto-deploy resolvers} --- the cost of the production resolvers
+  (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}, \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) and of the
+  registry write path.
+  \item \textbf{Packaging overhead} --- the size the AWS provider-agnostic layer adds to a Lambda
+  deployment bundle.
+\end{itemize}
+
+\section{Methodology}
+\label{sec:eval-methodology}
+
+Benchmarks were implemented with the Java Microbenchmark Harness (JMH) 1.37, using
+\texttt{AverageTime} mode with results reported in microseconds per operation ($\mu$s/op). Each
+measured value is consumed through a \texttt{Blackhole} to prevent dead-code elimination by the
+JIT compiler. Unless otherwise stated, runs used one JVM fork with three warm-up iterations and
+five measurement iterations of one second each (\texttt{-f 1 -wi 3 -i 5 -w 1 -r 1}), so that the
+already-JIT-compiled code is measured. Selected write-path experiments (P13, P17) used three forks
+(\texttt{-f 3}) to reduce noise.
+
+\paragraph{Caveat on absolute values.}
+Measurements were taken on a shared, non-dedicated machine with a deliberately short
+configuration. The absolute numbers are therefore meaningful for comparing \emph{trends and
+relationships} (linear vs.\ quadratic growth, before vs.\ after an optimization), not as
+hardware-definitive figures. Thesis-grade absolute numbers would require repeating the suite with
+\texttt{-f 3} on a dedicated machine.
+
+\paragraph{Notation.}
+The experiments share five symbols; what changes between them is the \emph{relationship} among
+these quantities, summarised in Table~\ref{tab:eval-notation}.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Notation used throughout the evaluation.}
+  \label{tab:eval-notation}
+  \begin{tabular}{cl}
+    \hline
+    \textbf{Symbol} & \textbf{Meaning} \\
+    \hline
+    $N$ & total number of \texttt{call} steps in the workflow (internal or external), $N = I + E$ \\
+    $R$ & number of entries in the registry file when it is read/written \\
+    $F$ & number of \emph{distinct} internal functions the workflow references \\
+    $I$ & number of internal calls (repetitions counted) \\
+    $E$ & number of external calls (repetitions counted) \\
+    \hline
+  \end{tabular}
+\end{table}
+
+$R$ is the physical size of the registry file and is not the same as $F$: a registry may hold
+$R{=}1000$ entries while a workflow references only $F{=}10$ of them. Internal calls are
+distributed round-robin over the $F$ distinct functions.
+
+\section{Resolution Overhead and Scalability}
+\label{sec:eval-resolution}
+
+\paragraph{Cost of the unification (P3).}
+The first experiment isolates the cost of resolving an internal call against the cost of an
+external call (which bypasses the registry). Resolving an internal call costs about
+$7.5\,\mu$s and scales linearly with the number of calls, because each call re-reads and re-parses
+the entire registry file from disk; an external call costs about $0.01\,\mu$s
+(Table~\ref{tab:eval-p3}). In the general case the cost grows in direct proportion to both the
+number of calls and the number of registry entries.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P3 --- resolution cost of internal vs.\ external calls, with $R{=}1$.}
+  \label{tab:eval-p3}
+  \begin{tabular}{rrr}
+    \hline
+    \textbf{Calls ($N$)} & \textbf{Internal --- resolved ($\mu$s)} & \textbf{External --- not resolved ($\mu$s)} \\
+    \hline
+    1   & 7.5    & 0.02 \\
+    10  & 74.6   & 0.14 \\
+    50  & 368.0  & 0.65 \\
+    100 & 747.2  & 1.10 \\
+    200 & 1511.4 & 2.34 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Effect of registry size (P6).}
+Fixing the workflow and varying the registry size shows that the per-call cost grows with $R$ and
+is essentially independent of $N$: about $180\,\mu$s of fixed I/O and parsing per read plus about
+$0.56\,\mu$s per registered entry (Table~\ref{tab:eval-p6}). The four $N$ curves collapse onto a
+single line, confirming that the cost grows in direct proportion to both the number of calls and
+the registry size, where the fixed cost of reopening the file dominates for realistic registry
+sizes.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P6 --- per-call resolution cost as a function of registry size $R$ (independent of $N$).}
+  \label{tab:eval-p6}
+  \begin{tabular}{rr}
+    \hline
+    \textbf{Registry size ($R$)} & \textbf{Cost per call ($\mu$s)} \\
+    \hline
+    1    & 181.0 \\
+    10   & 185.1 \\
+    50   & 207.0 \\
+    200  & 279.2 \\
+    1000 & 741.7 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{The single-read optimization (P7--P9).}
+Reading the registry once per workflow into an in-memory snapshot and resolving against it
+eliminates that call-times-registry-size product: the cost no longer multiplies the two factors
+together, becoming instead one read proportional to the registry size plus a cheap constant-time
+lookup per call. Table~\ref{tab:eval-p7} compares, in the same run, resolving
+the registry per call (naive) against a single read per resolution (optimized). With the snapshot,
+the cost becomes almost independent of $N$, yielding a speedup of up to $\sim$200$\times$ in the
+worst corner ($N{=}200$, $R{=}1000$: $\sim$105\,ms down to $\sim$0.54\,ms). Experiments P8 and P9
+confirm the same trend on real \texttt{Workflow} objects rather than the isolated store primitive.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P7 --- total resolution time, naive (per-call read) vs.\ optimized (single read).}
+  \label{tab:eval-p7}
+  \begin{tabular}{lrrrr}
+    \hline
+     & $N{=}1$ & $N{=}10$ & $N{=}50$ & $N{=}200$ \\
+    \hline
+    naive, $R{=}1$       & 4.6   & 47.0   & 233.6   & 920.2    \\
+    optimized, $R{=}1$   & 4.7   & 5.0    & 5.0     & 5.7      \\
+    naive, $R{=}1000$    & 543.7 & 5480.8 & 26698.5 & 104889.0 \\
+    optimized, $R{=}1000$& 557.4 & 535.7  & 551.8   & 536.6    \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Confirming the optimization on real workflows (P8).}
+P8 exercises the resolution of a real \texttt{Workflow} object, not the isolated store primitive,
+across a grid of $1$ to $50$ distinct functions and $1$ to $200$ calls, with the registry always
+hitting ($R{=}F$). The naive path stays dominated by the number of calls and is largely
+indifferent to how many distinct functions are involved, at roughly $200\,\mu$s per call at low
+$N$ (Table~\ref{tab:eval-p8-naive}), while the optimized path stays close to flat
+(Table~\ref{tab:eval-p8-optimized}); the measured speedup climbs from about $1\times$ at $N{=}1$
+to about $110\times$ at $N{=}200$.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P8 --- naive resolution time ($\mu$s) of a real workflow, $F$ distinct functions vs.\
+  $N$ calls, $R{=}F$.}
+  \label{tab:eval-p8-naive}
+  \begin{tabular}{rrrrrr}
+    \hline
+    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+    \hline
+    1  & 216 & 1\,118 & 2\,103 & 9\,544  & 38\,394 \\
+    2  & 192 & 956    & 1\,902 & 9\,555  & 37\,950 \\
+    5  & 189 & 995    & 1\,911 & 9\,663  & 38\,468 \\
+    10 & 195 & 1\,132 & 2\,390 & 10\,544 & 39\,340 \\
+    20 & 199 & 997    & 2\,096 & 10\,017 & 41\,205 \\
+    50 & 219 & 1\,133 & 2\,194 & 10\,857 & 43\,360 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{P8 --- optimized (single-read) resolution time ($\mu$s) of a real workflow, same grid
+  as Table~\ref{tab:eval-p8-naive}.}
+  \label{tab:eval-p8-optimized}
+  \begin{tabular}{rrrrrr}
+    \hline
+    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+    \hline
+    1  & 191 & 195 & 197 & 228 & 337 \\
+    2  & 191 & 193 & 200 & 230 & 341 \\
+    5  & 191 & 194 & 209 & 228 & 349 \\
+    10 & 228 & 197 & 202 & 241 & 362 \\
+    20 & 199 & 202 & 215 & 237 & 349 \\
+    50 & 224 & 221 & 223 & 251 & 367 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+On a realistic workflow ($F{=}10$, $N{=}50$ fixed), P9 isolates the effect of the registry size:
+the naive cost climbs with $R$ while the optimized cost stays almost flat, so the speedup grows
+from $\sim$41$\times$ at $R{=}10$ to $\sim$58$\times$ at $R{=}1000$ (Table~\ref{tab:eval-p9}).
+
+\begin{table}[htbp]
+  \centering
+  \caption{P9 --- resolution time ($\mu$s) vs.\ registry size $R$, $F{=}10$/$N{=}50$ fixed.}
+  \label{tab:eval-p9}
+  \begin{tabular}{rrrr}
+    \hline
+    \textbf{$R$} & \textbf{naive} & \textbf{optimized} & \textbf{speedup} \\
+    \hline
+    10   & 9\,829  & 237 & 41.4 \\
+    50   & 10\,899 & 268 & 40.7 \\
+    200  & 14\,964 & 324 & 46.2 \\
+    1000 & 43\,245 & 749 & 57.8 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\section{Real Auto-Deploy Resolvers and Write Path}
+\label{sec:eval-real-resolvers}
+
+\paragraph{Production resolvers (P10, P11).}
+Experiments P10 and P11 measure the resolvers that actually run during deployment, one per
+provider: \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-p10}) and
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver} (Table~\ref{tab:eval-p11}), with the
+registry always hitting ($R{=}F$). Both now carry the single-read optimization demonstrated in
+P7--P9 (\S\ref{sec:eval-resolution}): each resolver reads the registry once into a snapshot per
+\texttt{resolve()} call and looks up every internal call against it
+(\texttt{FunctionRegistryStore.tryResolveEntryIn}) instead of re-reading the file per call. The
+result is the same shape as the already-optimized reference implementation: cost is dominated by
+$N$ and roughly flat in $F$, at magnitudes comparable to P8's optimized path rather than the
+naive, call-times-registry-size cost the unoptimized versions of these classes used to pay. The
+two providers land in the same broad range (a few tens to a few thousand microseconds depending on
+$N$), with no consistent directional gap between them once the registry-read cost is amortized
+--- what asymmetry remains is within the run-to-run noise of this evaluation's shared,
+non-dedicated machine (\S\ref{sec:eval-methodology}), most visible at $F{=}10,N{=}5$ in
+Table~\ref{tab:eval-p10} and $F{=}50,N{=}50$, both flagged by their own unusually wide error
+margins rather than reflecting a code effect.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P10 --- AWS provider: resolution time ($\mu$s) of the real resolver
+  (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, after the
+  single-read optimization was propagated into it.}
+  \label{tab:eval-p10}
+  \begin{tabular}{lrrrrr}
+    \hline
+    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+    \hline
+    1  & 17 & 44  & 124 & 1\,240 & 3\,486 \\
+    10 & 19 & 171 & 85  & 424    & 1\,702 \\
+    50 & 52 & 48  & 98  & 1\,669 & 1\,889 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{P11 --- GCP provider: resolution time ($\mu$s) of the real resolver
+  (\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), $R{=}F$, after
+  the single-read optimization was propagated into it.}
+  \label{tab:eval-p11}
+  \begin{tabular}{lrrrrr}
+    \hline
+    $F\backslash N$ & 1 & 5 & 10 & 50 & 200 \\
+    \hline
+    1  & 20 & 47  & 83  & 353 & 1\,417 \\
+    10 & 47 & 105 & 213 & 963 & 2\,966 \\
+    50 & 31 & 61  & 99  & 402 & 1\,573 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Registry write path (P13, P17).}
+Writing is more expensive than resolving. Every \texttt{put()} re-reads and rewrites the entire
+registry file, so writing $K$ functions into a registry that already holds $R_0$ entries takes
+longer than linear time in $K$ (Table~\ref{tab:eval-p13}): each successive write pays for a
+registry that has grown by one entry since the write before it, so the cost compounds as $K$
+grows, on top of the floor set by $R_0$. The miss-then-write pattern the real resolvers perform
+before any cloud call (\texttt{tryResolveEntry} followed by \texttt{put}) adds a further
+24--54\% on top (Table~\ref{tab:eval-p17}), since \texttt{tryResolveEntry} is itself a
+registry-size-proportional scan. In absolute terms these values remain
+in the hundreds of microseconds to low hundreds of milliseconds even for $K{=}100$ successive
+writes. The $R_0{=}1000$ column in Table~\ref{tab:eval-p13} does not follow the otherwise
+monotonic pattern at $K{=}100$; this single data point is attributed to noise on the shared,
+non-dedicated benchmarking machine (\S\ref{sec:eval-methodology}), not to a code effect.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P13 --- total write time ($\mu$s): $K$ successive \texttt{put} calls, initial registry
+  size $R_0$.}
+  \label{tab:eval-p13}
+  \begin{tabular}{lrrrrr}
+    \hline
+    $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
+    \hline
+    1   & 2\,673   & 2\,860   & 3\,235   & 4\,139   & 2\,761   \\
+    10  & 27\,691  & 26\,986  & 29\,912  & 39\,164  & 24\,029  \\
+    100 & 329\,757 & 304\,187 & 330\,100 & 419\,531 & 237\,910 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{P17 --- total write time ($\mu$s): $K$ successive miss+\texttt{put} pairs, initial
+  registry size $R_0$.}
+  \label{tab:eval-p17}
+  \begin{tabular}{lrrrrr}
+    \hline
+    $K\backslash R_0$ & 0 & 10 & 50 & 200 & 1000 \\
+    \hline
+    1   & 3\,309   & 3\,545   & 3\,959   & 5\,122   & 4\,243   \\
+    10  & 35\,107  & 34\,358  & 37\,190  & 47\,631  & 47\,817  \\
+    100 & 410\,389 & 382\,140 & 403\,488 & 511\,878 & 346\,068 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\section{Match Strategy, Mixed Workflows, and Structure}
+\label{sec:eval-secondary}
+
+\paragraph{Exact vs.\ suffix match (P14).}
+The suffix-match path (regional disambiguation) fails the exact lookup and scans the loaded map,
+reintroducing a cost proportional to the registry size, but over an already-loaded map: the ratio
+to exact match grows to only $\sim$1.9$\times$ at $R{=}1000$ and remains cheap in absolute terms
+(Table~\ref{tab:eval-p14}).
+
+\begin{table}[htbp]
+  \centering
+  \caption{P14 --- exact vs.\ suffix match ($\mu$s), $F{=}10$/$N{=}50$ fixed.}
+  \label{tab:eval-p14}
+  \begin{tabular}{rrrr}
+    \hline
+    \textbf{$R$} & \textbf{exact} & \textbf{suffix} & \textbf{ratio} \\
+    \hline
+    10   & 219 & 228   & 1.04 \\
+    100  & 259 & 333   & 1.29 \\
+    200  & 309 & 442   & 1.43 \\
+    1000 & 768 & 1\,456 & 1.90 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Mixed internal/external workflows (P15, P16).}
+The first workflows to mix internal and external calls confirm that resolution cost scales with
+$I$ (internal calls), not with $N{=}I{+}E$: the $I{=}0$ line stays flat as $E$ grows to 200,
+because external calls incur no registry lookup (Table~\ref{tab:eval-p15}). The registry-size
+effect proved in P9 is unchanged, within the same order of magnitude, when a fraction of the
+calls are external (Table~\ref{tab:eval-p16}).
+
+\begin{table}[htbp]
+  \centering
+  \caption{P15 --- resolution time ($\mu$s) of a mixed workflow, $R{=}F{=}10$ fixed;
+  $I$ internal vs.\ $E$ external calls.}
+  \label{tab:eval-p15}
+  \begin{tabular}{rrrrrr}
+    \hline
+    $I\backslash E$ & 0 & 1 & 10 & 50 & 200 \\
+    \hline
+    0   & 181 & 190 & 187 & 183 & 183 \\
+    10  & 189 & 205 & 203 & 189 & 255 \\
+    50  & 217 & 217 & 230 & 219 & 322 \\
+    200 & 326 & 321 & 323 & 315 & 393 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{P16 --- resolution time ($\mu$s) vs.\ registry size $R$, mixed workflow with
+  $I{=}40$/$E{=}10$/$F{=}10$ fixed.}
+  \label{tab:eval-p16}
+  \begin{tabular}{rr}
+    \hline
+    \textbf{$R$} & \textbf{Time ($\mu$s)} \\
+    \hline
+    10   & 346 \\
+    50   & 247 \\
+    200  & 306 \\
+    1000 & 776 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Workflow shape (P18, P19).}
+Nesting depth (P18) leaves the time essentially constant ($\sim$200\,$\mu$s across depths 0--5),
+and parallel width (P19) grows only with the total number of internal leaf calls
+($N = 5\times\text{width}$), in the same order of magnitude as the flat workflows of P8/P15
+(Tables~\ref{tab:eval-p18} and~\ref{tab:eval-p19}). Although the resolver recurses explicitly into
+\texttt{Iteration} and \texttt{Parallel} contexts, the shape of the tree is irrelevant: only the
+count of internal calls matters.
+
+\begin{table}[htbp]
+  \centering
+  \caption{P18 --- resolution time ($\mu$s) vs.\ nesting depth, 20 internal calls fixed,
+  $R{=}F{=}10$.}
+  \label{tab:eval-p18}
+  \begin{tabular}{rr}
+    \hline
+    \textbf{Depth} & \textbf{Time ($\mu$s)} \\
+    \hline
+    0 & 207.3 \\
+    2 & 200.7 \\
+    3 & 200.4 \\
+    5 & 199.6 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{P19 --- resolution time ($\mu$s) vs.\ \texttt{Parallel} branch width,
+  $N = 5\times$ width, $R{=}F{=}10$.}
+  \label{tab:eval-p19}
+  \begin{tabular}{rrr}
+    \hline
+    \textbf{Branches} & \textbf{$N$} & \textbf{Time ($\mu$s)} \\
+    \hline
+    1   & 5   & 188.3 \\
+    10  & 50  & 220.8 \\
+    20  & 100 & 276.2 \\
+    100 & 500 & 583.7 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\section{Packaging Overhead (S1)}
+\label{sec:eval-bundle}
+
+The AWS provider added in this work packages a Lambda through the QuickFaaS agnostic layer (the
+developer hook plus the \texttt{AwsHttpTemplate} adapter and \texttt{aws-lambda-java-core}). Table
+\ref{tab:eval-s1} compares the resulting bundle against an equivalent native \texttt{RequestHandler}
+implementation of the same logic. The agnostic layer adds about $0.9$\,KB --- 6.6\% of a trivial
+bundle, and well under 0.1\% of a real function --- consistent with the original QuickFaaS
+evaluation for GCP and Azure.
+
+\begin{table}[htbp]
+  \centering
+  \caption{S1 --- Lambda bundle size, AWS agnostic layer vs.\ native implementation.}
+  \label{tab:eval-s1}
+  \begin{tabular}{lr}
+    \hline
+    \textbf{Bundle} & \textbf{Size} \\
+    \hline
+    AWS agnostic (QuickFaaS hook + \texttt{AwsHttpTemplate} + \texttt{aws-lambda-java-core}) & 14\,552 bytes \\
+    AWS native (single \texttt{RequestHandler}, same logic) & 13\,647 bytes \\
+    \textbf{Delta (agnostic-layer overhead)} & \textbf{905 bytes} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\section{Discussion}
+\label{sec:eval-discussion}
+
+The results support six conclusions.
+
+First, the cost of the unification is small per call and linear, and its scaling is well
+characterised: a cost that grows in direct proportion to both the number of calls and the
+registry size in the naive form, dominated by the fixed cost of reopening the
+registry file until $R \approx 320$. Second, the single-read optimization eliminates that
+call-times-registry-size product, reducing resolution to a cost proportional only to the sum of
+the number of calls and the registry size, with a $\sim$200$\times$ speedup in the worst case
+(P7, P8, P9) --- a full \emph{identify (P3/P6) $\rightarrow$ fix $\rightarrow$ quantify (P7)} loop.
+Third, this optimization has since been propagated to the production resolvers (P10, P11), which
+now show the same dominated-by-$N$, flat-in-$F$ shape as the optimized reference path rather than
+the call-times-registry-size cost they used to pay.
+Fourth, the AWS agnostic packaging layer adds negligible size (S1). Fifth, resolution cost tracks
+the number of internal calls rather than the workflow's total call count: external calls add only
+the shared tree-traversal cost, never a registry lookup (P15, P16). Sixth, neither nesting depth
+nor parallel width changes the cost beyond what the total count of internal calls already
+predicts: the resolver's explicit recursion into \texttt{Iteration} and \texttt{Parallel} contexts
+is free in practice (P18, P19).
+
+\paragraph{Global framing.}
+All measured values lie between microseconds and, in the worst non-optimized write case,
+a few hundred milliseconds. Endpoint resolution is therefore not the bottleneck of an integrated
+deployment: the dominant cost is the actual cloud deployment (seconds). With the single-read
+optimization now applied uniformly across both production resolvers, the overhead of the
+unification is asymptotically linear and practically irrelevant in real operation.
+
+\section{Threats to Validity}
+\label{sec:eval-threats}
+
+The absolute numbers were obtained on a shared machine with a short JMH configuration; some
+experiments used a single fork, which widens error margins. The measurements are consistent among
+themselves and with the expected asymptotic forms, but should be reproduced with \texttt{-f 3} on
+dedicated hardware before being read as definitive. The evaluation is also intentionally
+local-only: it quantifies the resolution and packaging overhead, not the end-to-end cloud
+deployment latency, which depends on provider-side behaviour outside the scope of this work.

@@ -1,0 +1,38 @@
+@startuml resolution-cascade-level3-gcp
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title Resolution ladder -- Level 3: QuickFaaS deployment (GCP)
+
+participant "Resolver\n(WorkflowInternalFunctionResolver)" as R
+participant "InternalFunctionDeployer" as D
+participant "QuickFaasDeployer" as QFD
+participant "QuickFaaS JAR\n(subprocess)" as QF
+participant "FunctionRegistryStore" as REG
+
+note over R
+  reached only after a Level 2 miss with a
+  deploymentDescriptorPath supplied
+  (see the Level 2 diagram)
+end note
+
+R -> D : deployOrUpdate(functionName, deploymentDescriptorPath)
+D -> QFD : deployOrUpdate(functionName, descriptorPath)
+QFD -> QFD : load + validate descriptor\n(expectedCloudProvider = "gcp")
+QFD -> QF : invoke(descriptorPath, accessToken)\n[java -jar QuickFaaS.jar]
+note over QF
+  Cloud Functions v2 create;
+  waits until ACTIVE, then grants
+  roles/run.invoker to allUsers
+end note
+QF --> QFD : subprocess completed
+QFD -> QFD : poll Cloud Functions v2 API\nuntil state = ACTIVE\n(readinessTimeoutSeconds / pollIntervalSeconds);\nread serviceConfig.uri and serviceConfig.service
+opt invokerServiceAccount configured
+  QFD -> QFD : grant roles/run.invoker\non the backing Cloud Run service
+end
+QFD --> D : FunctionInvocationMetadata\n(serviceName = projects/.../services/<name>,\nurl = https://<name>-<hash>.a.run.app)
+
+D --> R : FunctionInvocationMetadata
+R -> REG : put(functionName, metadata)
+R --> R : return metadata.url
+@enduml

@@ -1,0 +1,28 @@
+@startuml aws-runtime-invocation
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 12
+title Runtime invocation of an internal function on AWS (lambda:invoke)
+
+actor "Client" as U
+participant "AWS Step Functions" as SFN
+participant "AWS Lambda" as L
+participant "Handler\n(QuickFaaS template + hook)" as H
+
+U -> SFN : StartExecution(input)
+note over SFN
+  Task state
+  Resource: arn:aws:states:::lambda:invoke
+  Parameters: FunctionName = <ARN>
+end note
+SFN -> L : Invoke(FunctionName, Payload)
+L -> H : template entry point -> hook function
+H --> L : response
+L --> SFN : { Payload: ... }
+note over SFN
+  ResultSelector extracts $.Payload
+  into the step's result variable
+end note
+SFN -> SFN : transition to next state
+SFN --> U : ExecutionSucceeded
+@enduml

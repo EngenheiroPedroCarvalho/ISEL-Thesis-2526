@@ -21,10 +21,10 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P13 - Cost of incremental registry writes, [FunctionRegistryStore.put], vs registry size
+ * T8 - Cost of incremental registry writes, [FunctionRegistryStore.put], vs registry size
  * before writing starts (R0) and number of sequential writes (K).
  *
- * P6-P11 measured the READ side (`resolveUrl`/`tryResolveEntry`, re-reads the whole file per
+ * T2-T7 measured the READ side (`resolveUrl`/`tryResolveEntry`, re-reads the whole file per
  * call). `put` has never been measured, and is exercised by the real auto-deploy resolvers
  * (`AwsInternalFunctionResolver`, `WorkflowInternalFunctionResolver`) every time a newly
  * discovered/deployed function is registered. `put` reads the whole file (`readRootOrNew`) then
@@ -56,7 +56,7 @@ open class BenchmarkRegistryWriteScaling {
     // contaminating the measurement.
     @Setup(Level.Invocation)
     fun setupRegistry() {
-        registryFile = Files.createTempFile("omniflow-bench-p13-registry", ".json")
+        registryFile = Files.createTempFile("omniflow-bench-t8-registry", ".json")
         store = FunctionRegistryStore(registryFile)
 
         val baseline = (0 until r0).associate { idx ->

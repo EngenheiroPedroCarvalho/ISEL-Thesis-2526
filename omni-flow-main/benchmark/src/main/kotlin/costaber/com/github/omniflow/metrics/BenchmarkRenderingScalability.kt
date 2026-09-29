@@ -26,7 +26,7 @@ import org.openjdk.jmh.infra.Blackhole
 import java.util.concurrent.TimeUnit
 
 /**
- * P1 - Local rendering scalability.
+ * T15 - Local rendering scalability.
  *
  * Measures how the cost of LOCALLY rendering a workflow to both the Amazon
  * (ASL JSON) and Google (Workflows YAML) targets grows as the number of

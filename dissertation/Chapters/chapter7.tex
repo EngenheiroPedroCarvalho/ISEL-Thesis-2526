@@ -1,0 +1,431 @@
+%
+%  chapter7.tex
+%  ISELthesis
+%
+%  Created by Matilde Pós-de-Mina Pato on 2012/10/09.
+%
+\chapter{Evaluation}
+\label{cha:evaluation}
+
+This chapter answers the research questions of Section~\ref{sec:int_objectives}: whether internal
+calls are bound correctly at deployment time on both providers (RQ1), and how much local work that
+resolution adds and how many provider requests it sends (RQ2).
+
+\section{Scope and Goals}
+\label{sec:eval-scope}
+
+The evaluation covers only \emph{local} operations: building and traversing the workflow model,
+resolving internal calls, reading and writing the registry, and packaging a Lambda bundle.
+Operations that call the provider (Lambda, IAM, S3, Cloud Run and Cloud Functions requests, the
+QuickFaaS subprocess) are excluded. Their cost is dominated by the provider: deploying a workflow
+and its functions takes minutes, with or without this integration, mostly spent building and
+activating each function. They are also non-deterministic, so the correctness tests replace them
+with test doubles. RQ2 is therefore answered by measuring the local work the integration adds and
+how it scales (Sections~\ref{sec:eval-resolution} and~\ref{sec:eval-real-resolvers}), and by
+counting the requests it sends to the provider (Section~\ref{sec:eval-api-calls}). That count is
+analytical: since the benchmarks run without a network, it is derived from the code, path by path
+through the ladder, rather than measured.
+The chapter also counts the manual steps removed (Section~\ref{sec:eval-manual-effort}) and the
+packaging overhead on AWS (Section~\ref{sec:eval-bundle}).
+
+\section{Correctness of the Resolution Ladder}
+\label{sec:eval-correctness}
+
+Each production resolver (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}
+and \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, the classes OmniFlow
+runs when it deploys a workflow) has a unit-test suite that resolves a small workflow in each
+situation the ladder can meet. The provider is replaced by test doubles (a lookup that answers ``found'', ``not found'' or ``access denied'' per
+region, a fixed region list, and a deployer that records what it is asked to deploy). What the tests
+verify is therefore the resolver's decision given a simulated provider answer, not the provider
+itself. The registry, in contrast, is not replaced by a test double: the tests use the same registry
+class that OmniFlow uses when it deploys a workflow (\texttt{Function\allowbreak Registry\allowbreak
+Store}), which reads and writes a JSON file in the same format. The file lives in a temporary
+directory that the test framework (JUnit's \texttt{@TempDir}) creates empty before each test and
+deletes afterwards, so every test starts from a known registry and never touches the registries in
+the working directory. Reading and writing this file is local I/O, within the scope of the tests. Each test checks the endpoint bound to the call, the registry afterwards and whether
+a deployment or an abort happened. Table~\ref{tab:eval-correctness} groups the situations by level.
+All 46 resolver tests (23 per provider) and the two bootstrap tests pass.
+
+The tests do not cover a registry file altered outside OmniFlow, but the code determines what
+happens. A file that is not valid JSON makes the read fail, and the deployment aborts. A valid file
+without a \texttt{functions} object is read as an empty registry, so every call goes to Levels~2
+and~3. An altered \texttt{url} is harmless, because Level~1 looks the function up by its
+\texttt{serviceName} and overwrites the stored endpoint with the live one as drift (on AWS, an ARN
+whose region no longer resolves sends the call to rediscovery instead). An altered
+\texttt{serviceName} that names another existing function is not detected: validation confirms
+that function, and the call is bound to it. The registry has no integrity protection
+(Section~\ref{sec:concl-critical}).
+
+\begin{table}[tbp]
+  \centering
+  \caption{Situations covered by the resolver unit tests, on both AWS and GCP unless marked
+  otherwise, with the expected behaviour. Every test passes.}
+  \label{tab:eval-correctness}
+  \small
+  \begin{tabular}{|c|p{0.40\textwidth}|p{0.43\textwidth}|}
+    \hline
+    \textbf{Level} & \textbf{Situation} & \textbf{Behaviour} \\
+    \hline
+    1 & Entry valid & call bound to the registered endpoint \\
+    \hline
+    1 & Endpoint changed (drift) & entry refreshed; call bound to the current endpoint \\
+    \hline
+    1 & Function gone from its region (stale) & rediscovered and entry replaced; otherwise entry
+    removed and resolution aborts \\
+    \hline
+    1 & Validation refused by the provider & resolution aborts; entry kept \\
+    \hline
+    2 & Found in exactly one region, or in the region a \texttt{region/name} reference names
+    (one lookup) & call bound; function registered \\
+    \hline
+    2 & Found in several regions & resolution aborts (ambiguous name) \\
+    \hline
+    2, 3 & Not found, some or all regions inaccessible & resolution aborts; nothing deployed \\
+    \hline
+    3 & Not found anywhere & with a descriptor, deployed once, registered and bound; without one,
+    resolution aborts \\
+    \hline
+    -- & Internal calls in branches, iterations and parallel steps; external calls & all internal
+    calls resolved; external calls unchanged \\
+    \hline
+    -- & Both \texttt{internalFunction} and \texttt{host}/\texttt{path}; a body on an internal call
+    (AWS only) & rejected before the ladder starts \\
+    \hline
+    -- & Several internal calls; registry file missing; a \texttt{cloudfunctions.net} entry (GCP
+    only) & registry read once; rebuilt from the provider; validated against Cloud Run \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\section{Methodology}
+\label{sec:eval-methodology}
+
+The benchmarks use the Java Microbenchmark Harness (JMH)~\cite{jmh}, version 1.37, in
+\texttt{Average\allowbreak Time} mode, reporting microseconds per operation ($\mu$s/op). Every
+result is passed to a \texttt{Blackhole}, a JMH object that consumes a value so that the JIT
+compiler cannot discard the computation that produced it as dead code. Each value is the mean of
+fifteen one-second iterations over three forks, that is, three separate JVM processes, so that one
+process's compilation and memory layout do not bias the result. Each fork first runs three
+warm-up iterations, which are discarded, so that the code is measured after the JIT compiler has
+optimised it (\texttt{-f 3 -wi 3 -i 5 -w 1 -r 1}). All experiments come from one run, except T1, T6 and T7, measured
+later with the same settings on the same machine. T1 was repeated because one of its points was
+dominated by noise; in the repeated run a registry read takes $10.7\,\mu$s instead of $9.8\,\mu$s,
+so values from different runs agree within about 10\%. The machine is a laptop with an Apple M5 processor (10 cores) and 24\,GB of memory,
+running macOS, idle but not dedicated. The 99.9\%
+confidence interval is under 1\% of the score for half the measurements and under 6\% for nine in
+ten; the few noisy points are marked in Appendix~\ref{app:benchmarks}.
+
+The experiments keep their benchmark-suite identifiers: T1--T14 for resolution and the registry,
+S1 for packaging size. They vary: $N$, the number of call steps, of which $I$ are internal and $E$
+external; $F$, the number of distinct internal functions; $R$, the number of registry entries; and,
+for writes, $K$ successive writes to a registry that starts with $R_0$ entries
+(Table~\ref{tab:eval-notation}). $R$ is not $F$: a registry of 1\,000 entries may serve a workflow
+that uses ten.
+
+Two kinds of resolver are measured. T1, T2, T4, T5 and T10--T14 use a reference resolver written
+for the benchmarks, in two variants: one re-reads the registry on every internal call, the other
+reads it once. It resolves calls from the registry as OmniFlow does but never validates a hit
+against the provider, so it measures only the registry and the walk over the workflow. T3 calls the
+registry store directly, without a resolver. T6 and T7 measure the production resolvers
+(\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
+\texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), the classes
+OmniFlow runs when it deploys a workflow (Section~\ref{sec:eval-real-resolvers}).
+
+\section{Resolution Overhead and Scalability}
+\label{sec:eval-resolution}
+
+Table~\ref{tab:eval-summary} summarises the experiments; the complete results are in
+Appendix~\ref{app:benchmarks}. Three findings matter.
+
+\begin{table}[hbp]
+  \centering
+  \captionsetup{belowskip=0pt}
+  \caption{Summary of the benchmark experiments. Complete results in
+  Appendix~\ref{app:benchmarks}.}
+  \label{tab:eval-summary}
+  \small
+  \begin{tabular}{|l|p{0.28\textwidth}|p{0.52\textwidth}|}
+    \hline
+    \textbf{Exp.} & \textbf{Varies} & \textbf{Result} \\
+    \hline
+    T1 & $N$, all internal vs.\ all external ($R{=}1$) & one registry read ($\approx 10.7\,\mu$s)
+    plus $0.23\,\mu$s per internal and $0.005\,\mu$s per external call \\
+    \hline
+    T2 & $R$, registry re-read per call & $\approx 10.3\,\mu$s per read plus $0.17\,\mu$s per entry;
+    the fixed cost dominates up to $R \approx 60$ \\
+    \hline
+    T3 & $N$ and $R$, per-call read vs.\ single read & single read flat in $N$; up to
+    $200\times$ faster \\
+    \hline
+    T4 & $F$ and $N$, real workflow & speedup $1\times$ at $N{=}1$, $38$--$58\times$ at $N{=}200$ \\
+    \hline
+    T5 & $R$ ($F{=}10$, $N{=}50$) & speedup from $26\times$ ($R{=}10$) to $46\times$
+    ($R{=}1000$) \\
+    \hline
+    T6, T7 & $F$ and $N$, production resolvers & 200 calls, $F{=}10$: $29.1\,\mu$s (AWS),
+    $199.1\,\mu$s (GCP) \\
+    \hline
+    T8 & $K$ writes, initial size $R_0$ & linear in $K$; one write from $45\,\mu$s ($R_0{=}0$) to
+    $490\,\mu$s ($R_0{=}1000$) \\
+    \hline
+    T9 & $K$ miss-then-write pairs & $26$--$62\%$ above T8; the production resolvers avoid it \\
+    \hline
+    T10 & $R$, exact vs.\ suffix match & suffix $1.28$--$1.95\times$ exact; $391\,\mu$s for 50
+    lookups at $R{=}1000$ \\
+    \hline
+    T11, T12 & $I$ and $E$; $R$ with mixed calls & cost follows $I$, not $N$ \\
+    \hline
+    T13, T14 & nesting depth; parallel width & tree shape irrelevant; $0.22\,\mu$s per internal
+    call \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\paragraph{Resolution costs one registry read plus a small constant per internal call (T1).}
+In T1 (Table~\ref{tab:eval-t1}, Figure~\ref{fig:eval-t1}), both variants pay one registry read,
+about $10.7\,\mu$s, which the resolver performs before walking the tree; the production deployers
+skip resolution entirely for a workflow without internal calls. Each internal call then adds
+about $0.23\,\mu$s (snapshot lookup, URL split, rebuilt call node) against $0.005\,\mu$s for an
+external one. A 200-call workflow costs $56.4\,\mu$s. External calls add no registry work (T11,
+T12), and neither nesting depth nor parallel width matters beyond the number of internal calls (T13,
+T14).
+
+\begin{figure}[tbp]
+  \centering
+  {\captionsetup{textfont=sf}\captionof{table}{T1: resolution time ($\mu$s) of a workflow of $N$ calls, all internal vs.\ all
+  external, with $R{=}1$. Both columns include the one registry read the resolver always performs.}
+  \label{tab:eval-t1}}
+  \begin{minipage}[c]{0.34\textwidth}
+    \centering
+    \small
+    \begin{tabular}{|r|r|r|}
+      \hline
+      \textbf{$N$} & \textbf{Internal} & \textbf{External} \\
+      \hline
+      1   & 11.0 & 10.7 \\
+      \hline
+      2   & 11.3 & 10.7 \\
+      \hline
+      5   & 12.0 & 10.7 \\
+      \hline
+      10  & 13.3 & 10.8 \\
+      \hline
+      20  & 15.6 & 10.8 \\
+      \hline
+      50  & 22.4 & 11.0 \\
+      \hline
+      100 & 34.0 & 11.2 \\
+      \hline
+      200 & 56.4 & 11.8 \\
+      \hline
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[c]{0.63\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/benchmarks/T1_resolution_overhead.png}
+  \end{minipage}
+  {\captionof{figure}{T1: resolution time of a workflow of $N$ calls, all internal against all external,
+  with $R{=}1$. Both lines start from the one registry read the resolver always performs, and only
+the internal line then grows with $N$.}
+  \label{fig:eval-t1}}
+\end{figure}
+
+\paragraph{Reading the registry once removes the calls-times-size product (T2--T5).}
+Re-reading the registry on every call, as the store's per-call methods do, costs $N$ reads of an
+$R$-entry file; a single read per resolution makes the cost flat in $N$. The benefit is expected;
+the measurements give its size: up to $200\times$ at $N{=}200$, $R{=}1000$ (T3), and
+$26$--$58\times$ on real workflows (T4, T5). A suffix match (\texttt{"region/name"}) scans the
+loaded map, but remains cheap (T10).
+
+\section{Production Resolvers and Write Path}
+\label{sec:eval-real-resolvers}
+
+\paragraph{Production resolvers (T6, T7).}
+Both production resolvers use the single read and show the same shape: one read plus a constant
+per call, $0.07$--$0.14\,\mu$s on AWS and about $0.95\,\mu$s on GCP. A 200-call workflow with ten
+functions costs $29.1\,\mu$s on AWS and $199.1\,\mu$s on GCP. Neither reaches the provider: on AWS a
+local fake confirms every function; on GCP the real Cloud Run inspector validates every hit, with
+only its HTTP client answered locally, so request building, token handling and JSON parsing are
+measured. This, and the URL split, is why GCP costs more. Either way, a validation's local work is
+about a microsecond, against a network round-trip (Section~\ref{sec:eval-api-calls}).
+
+\paragraph{Registry write path (T8, T9).}
+Every \texttt{put()} rewrites the whole file, so writing costs more than resolving: $K$ writes cost
+$K$ times one write, and one write grows with the file, from $45\,\mu$s on an empty registry to
+$490\,\mu$s at 1\,000 entries (T8). A lookup through the store before each write adds another full
+read, $26$--$62\%$ more (T9). The production resolvers avoid it by looking calls up in the snapshot.
+The most expensive case measured, 100 miss-then-write pairs on a 1\,000-entry registry, takes
+$59$\,ms.
+
+\section{Provider API Calls per Resolution}
+\label{sec:eval-api-calls}
+
+The benchmarks do not include network traffic, so Table~\ref{tab:eval-api-calls} counts, from the
+code, the provider requests each ladder path sends. $G$ is the number of candidate regions (the
+regions enabled for the AWS account, or the Cloud Run locations of the GCP project). A registry hit
+is validated on every internal call, not once per function: the snapshot removes repeated file
+reads, not live lookups, so $I$ calls to the same function send $I$ validations. The region list is
+fetched at most once per deployment, lazily, and only calls that miss pay a region scan.
+
+\begin{table}[tbp]
+  \centering
+  \caption{Provider API requests issued per internal call, by ladder path, counted from the
+  implementation. $G$ is the number of candidate regions.}
+  \label{tab:eval-api-calls}
+  \begin{tabular}{|>{\raggedright\arraybackslash}p{0.30\textwidth}|>{\raggedright\arraybackslash}p{0.30\textwidth}|>{\raggedright\arraybackslash}p{0.30\textwidth}|}
+    \hline
+    \textbf{Path} & \textbf{AWS} & \textbf{GCP} \\
+    \hline
+    Level~1, registry hit validated & 1 (\texttt{GetFunction} in the region taken from the stored
+    ARN) & 1 (Cloud Run \texttt{services.get}) \\
+    \hline
+    Level~1, entry stale & 1 validation $+$ up to $G$ lookups (rediscovery) & 1 validation $+$ up
+    to $G$ lookups \\
+    \hline
+    Level~2, bare \texttt{functionRef} & up to $G$ \texttt{GetFunction} (the scan stops at the
+    second match) & up to $G$ \texttt{services.get} (likewise) \\
+    \hline
+    Level~2, \texttt{"region/name"} reference & 1 & 1 \\
+    \hline
+    Level~3, deployment & $G$ lookups (absence is confirmed in every region) $+$ the deployment
+    below & $G$ lookups $+$ the deployment below \\
+    \hline
+  \end{tabular}
+\end{table}
+
+The region list costs one EC2 \texttt{Describe\allowbreak Regions} on AWS, or one Cloud Run
+\texttt{locations.list} per response page on GCP. The bootstrap, which runs only when the registry
+is missing, adds one catalogue request per region and page (\texttt{ListFunctions},
+\texttt{services.list}). A Level~3 deployment is dominated by the deployment itself (permissions,
+upload, creation and polling until active), whose request count depends on how long the provider
+takes, so it has no fixed count.
+
+A deployment of $I$ internal calls therefore sends between $I$ requests, when every call hits a
+valid entry, and $1 + I \cdot G$, when the registry is empty and references are bare names. The
+registry keeps the count linear in $I$; a region-qualified reference does the same for a call that
+misses.
+
+\section{Manual Effort Before and After}
+\label{sec:eval-manual-effort}
+
+Table~\ref{tab:eval-manual-effort} compares the steps needed to make one function available to one
+workflow on GCP with the two tools used separately (Section~\ref{subsec:quickfaas-example}) and
+with the integration (Section~\ref{sec:developer-workflow}). It is a procedural comparison, not a
+user study. The difference lies in the values the developer carries by hand from one step to the
+next: four when the tools are used separately (the OAuth client ID and secret, the access token and
+the trigger URL), none with the integration, where credentials come from Application Default
+Credentials, the deployer grants the invoker permission, and the endpoint goes from the provider to
+the registry to the rendered workflow. A mistyped URL is the costliest error, since the workflow
+deploys and fails only at run time.
+
+\begin{table}[tbp]
+  \centering
+  \caption{Developer actions required to make one function available to one workflow on GCP.
+  ``Carried by hand'' counts values produced by one step that the developer must read and re-enter
+  in another.}
+  \label{tab:eval-manual-effort}
+  \begin{tabular}{|p{0.45\textwidth}|p{0.45\textwidth}|}
+    \hline
+    \textbf{QuickFaaS and OmniFlow used separately} & \textbf{Integrated (this work)} \\
+    \hline
+    Create an OAuth 2.0 client in the console and copy its client ID and secret \emph{(2 carried by
+    hand)} & Not needed (the deployer uses Application Default Credentials, configured once per machine)
+    \\
+    \hline
+    Run the auxiliary server, complete the OAuth flow, copy the \texttt{access\_token} into the
+    descriptor \emph{(1 carried by hand)} & Not needed \\
+    \hline
+    Write \texttt{func-deployment.json} & Write \texttt{func-deployment.json} (same fields, without
+    \texttt{accessToken}) \\
+    \hline
+    Write the cloud-agnostic function class & Write the cloud-agnostic function class \\
+    \hline
+    Run QuickFaaS to deploy the function & Not needed (the deployment is triggered by the workflow
+    deployment, and only if the function is absent) \\
+    \hline
+    Grant the function public or invoker access in the console & Not needed (granted by the deployer) \\
+    \hline
+    Read the generated trigger URL from the console or terminal & Not needed \\
+    \hline
+    Write the workflow, pasting that URL as \texttt{host}/\texttt{path} \emph{(1 carried by hand)} &
+    Write the workflow, naming the function:
+    \texttt{internalFunction("name", "func-deployment.json")} \\
+    \hline
+    Run OmniFlow to deploy the workflow & Run OmniFlow to deploy the workflow \\
+    \hline
+    \textbf{9 steps, 4 values carried by hand} & \textbf{4 steps, 0 values carried by hand} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+The integration relocates configuration rather than removing it: the descriptor is still written
+and credentials must still exist. What it saves is the copying, per function and per endpoint
+change, so the saving grows with the number of functions and deployment targets
+(Chapter~\ref{cha:case-study}).
+
+\section{Packaging Overhead (S1)}
+\label{sec:eval-bundle}
+
+Packaging a Lambda through QuickFaaS's provider-agnostic layer (hook, \texttt{AwsHttpTemplate} and
+\texttt{aws-lambda-java-core}) adds 905 bytes, about 0.9\,KB or 6.6\% of a trivial bundle, to an
+equivalent native \texttt{RequestHandler} (Table~\ref{tab:eval-s1}), and proportionally less for a
+function with real dependencies. This is consistent with the original QuickFaaS evaluation for GCP
+and Azure~\cite{rodrigues2022quickfaas}.
+
+\begin{table}[hbp]
+  \centering
+  \captionsetup{belowskip=0pt}
+  \small
+  \caption{S1: Lambda bundle size, provider-agnostic layer vs.\ native implementation.}
+  \label{tab:eval-s1}
+  \begin{tabular}{|>{\raggedright\arraybackslash}p{0.68\textwidth}|r|}
+    \hline
+    \textbf{Bundle} & \textbf{Size} \\
+    \hline
+    Provider-agnostic (QuickFaaS hook + \texttt{AwsHttpTemplate} + \texttt{aws-lambda-java-core}) & 14\,552 bytes \\
+    \hline
+    AWS native (single \texttt{RequestHandler}, same logic) & 13\,647 bytes \\
+    \hline
+    \textbf{Delta (provider-agnostic layer overhead)} & \textbf{905 bytes} \\
+    \hline
+  \end{tabular}
+\end{table}
+
+\section{Discussion}
+\label{sec:eval-discussion}
+
+\paragraph{Answer to RQ1.}
+In every situation of Table~\ref{tab:eval-correctness}, both resolvers take the expected decision:
+each call is bound to the registered, current or discovered endpoint, and a function is deployed
+only when it is in neither the registry nor any region and every region could be checked. Stale
+entries, ambiguous names and inaccessible regions abort the resolution instead of binding a guess
+or deploying a duplicate. The answer is positive for the resolution logic on both providers, with
+the evidence coming from tests that simulate the provider.
+
+\paragraph{Answer to RQ2.}
+Locally, resolution costs one registry read plus about $0.23\,\mu$s per internal call. Reading the registry
+once instead of per call removes the product of calls and registry size, a speedup of up to
+$200\times$. The production resolvers take $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a 200-call
+workflow. The cost follows the number of internal calls, not external calls or the shape of the
+workflow. On the provider side, resolution sends one request per internal call when the registry
+is current, and up to one per candidate region for each call that must be discovered.
+
+\paragraph{Global framing.}
+All measured costs lie between microseconds and, for the worst write case, $59$\,ms. They are the
+local part of resolution only; the network requests are counted, not timed. Resolution is not the
+bottleneck of a deployment: the cloud deployment itself takes minutes.
+
+\section{Threats to Validity}
+\label{sec:eval-threats}
+
+The absolute values belong to one laptop. Since file I/O dominates several experiments, slower
+storage would raise every read and write, but the shape of each cost and the relationships between
+experiments, measured under the same conditions, would hold. T1, T6 and T7 come from later sessions,
+so their comparison with the other experiments is an order-of-magnitude one.
+
+The correctness evidence is mostly local: the tests show that each resolver decides correctly given
+what the provider reports, not that the real APIs report what the doubles assume. The case study
+(Section~\ref{sec:case-artifacts}) checks this on both providers for the bootstrap, Levels~2 and~3
+and validated Level~1 hits. The abort paths (stale entries, ambiguous names, inaccessible regions)
+remain unchecked against the real APIs; testing them is future work
+(Section~\ref{sec:concl-future}).

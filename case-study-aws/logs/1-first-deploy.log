@@ -1,0 +1,161 @@
+[36m[1m[DEPLOY][0m Checking if function-registry exists at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/function-registry.aws.json'...
+[33m  ![0m Function-registry not found — bootstrapping from AWS Lambda APIs for region 'eu-west-1'...
+15:18:07.517 [main] WARN  - Function Registry not found at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/function-registry.aws.json'. Bootstrapping registry from AWS Lambda APIs for region 'eu-west-1'...
+[32m  ✓[0m Function-registry created and populated at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/function-registry.aws.json'
+15:18:20.073 [main] INFO  - Function Registry created and populated at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/function-registry.aws.json'.
+[36m[1m[DEPLOY][0m Detected [1m2[0m internal Lambda function(s) — resolving...
+[33m  ![0m 'eu-west-1/fraud-check' not in registry — searching AWS Lambda across regions...
+[36m[1m[QUICKFAAS-AWS][0m Lambda '[1meu-west-1/fraud-check[0m' not deployed — using QuickFaaS to deploy...
+15:18:20.356 [main] INFO  - Lambda 'eu-west-1/fraud-check' not deployed. Triggering QuickFaaS deployment...
+15:18:20.356 [main] INFO  - Deploying Lambda 'eu-west-1/fraud-check' via QuickFaaS (descriptor=./functions/fraud-check/func-deployment.json)
+  ! No valid Lambda execution role configured — auto-creating 'OmniFlowLambdaExecutionRole'...
+  ✓ Role 'OmniFlowLambdaExecutionRole' already exists → arn:aws:iam::025064823406:role/OmniFlowLambdaExecutionRole
+  → Loading deployment descriptor from './functions/fraud-check/func-deployment.json'...
+15:18:20.935 [main] INFO  - Descriptor validated: provider=aws, function=fraud-check, runtime=java17, location=eu-west-1
+  ✓ Descriptor validated (provider=aws, runtime=java17)
+  → Invoking QuickFaaS subprocess to deploy 'eu-west-1/fraud-check' on AWS Lambda...
+[34m  →[0m Copying deployment descriptor to QuickFaaS JAR directory...
+[34m  →[0m Copying function source 'MyFunctionClass.java' to JAR directory...
+15:18:21.648 [main] INFO  - Copied function file 'MyFunctionClass.java' to JAR directory
+[34m  →[0m Starting QuickFaaS process: [1mjava -jar QuickFaaS-Deployment-1.0-fat.jar[0m
+15:18:21.648 [main] INFO  - Invoking QuickFaaS: java -jar /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/qf/QuickFaaS-Deployment-1.0-fat.jar (workDir=/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/qf)
+[33m  ![0m QuickFaaS exited with code 1 but deployment marker found — treating as success
+15:18:31.724 [main] WARN  - QuickFaaS exited with code 1 but deployment marker was found; treating as success (QuickFaaS bug: doesn't wait for async Cloud Functions operation).
+  ✓ QuickFaaS subprocess completed for 'eu-west-1/fraud-check'
+  → Waiting for Lambda 'eu-west-1/fraud-check' to become Active...
+  ✓ Lambda 'eu-west-1/fraud-check' is Active
+  → Retrieving Lambda ARN for 'eu-west-1/fraud-check'...
+  ✓ Lambda ARN: arn:aws:lambda:eu-west-1:025064823406:function:fraud-check
+  → Granting Step Functions invoke permission on 'fraud-check'...
+  ✓ Step Functions invoke permission granted on 'fraud-check'
+15:18:37.627 [main] INFO  - AwsLambdaDeployer completed for 'eu-west-1/fraud-check'. ARN: arn:aws:lambda:eu-west-1:025064823406:function:fraud-check
+[32m  ✓[0m Lambda '[1meu-west-1/fraud-check[0m' deployed → arn:aws:lambda:eu-west-1:025064823406:function:fraud-check
+[33m  ![0m 'eu-west-1/risk-score' not in registry — searching AWS Lambda across regions...
+[36m[1m[QUICKFAAS-AWS][0m Lambda '[1meu-west-1/risk-score[0m' not deployed — using QuickFaaS to deploy...
+15:18:37.957 [main] INFO  - Lambda 'eu-west-1/risk-score' not deployed. Triggering QuickFaaS deployment...
+15:18:37.957 [main] INFO  - Deploying Lambda 'eu-west-1/risk-score' via QuickFaaS (descriptor=./functions/risk-score/func-deployment.json)
+  ! No valid Lambda execution role configured — auto-creating 'OmniFlowLambdaExecutionRole'...
+  ✓ Role 'OmniFlowLambdaExecutionRole' already exists → arn:aws:iam::025064823406:role/OmniFlowLambdaExecutionRole
+  → Loading deployment descriptor from './functions/risk-score/func-deployment.json'...
+15:18:38.396 [main] INFO  - Descriptor validated: provider=aws, function=risk-score, runtime=java17, location=eu-west-1
+  ✓ Descriptor validated (provider=aws, runtime=java17)
+  → Invoking QuickFaaS subprocess to deploy 'eu-west-1/risk-score' on AWS Lambda...
+[34m  →[0m Copying deployment descriptor to QuickFaaS JAR directory...
+[34m  →[0m Copying function source 'MyFunctionClass.java' to JAR directory...
+15:18:38.830 [main] INFO  - Copied function file 'MyFunctionClass.java' to JAR directory
+[34m  →[0m Starting QuickFaaS process: [1mjava -jar QuickFaaS-Deployment-1.0-fat.jar[0m
+15:18:38.830 [main] INFO  - Invoking QuickFaaS: java -jar /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/qf/QuickFaaS-Deployment-1.0-fat.jar (workDir=/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/b7cb038a-4ce8-4bd2-9b86-40cb8e976120/scratchpad/aws-case/work/qf)
+[33m  ![0m QuickFaaS exited with code 1 but deployment marker found — treating as success
+15:18:48.596 [main] WARN  - QuickFaaS exited with code 1 but deployment marker was found; treating as success (QuickFaaS bug: doesn't wait for async Cloud Functions operation).
+  ✓ QuickFaaS subprocess completed for 'eu-west-1/risk-score'
+  → Waiting for Lambda 'eu-west-1/risk-score' to become Active...
+  ✓ Lambda 'eu-west-1/risk-score' is Active
+  → Retrieving Lambda ARN for 'eu-west-1/risk-score'...
+  ✓ Lambda ARN: arn:aws:lambda:eu-west-1:025064823406:function:risk-score
+  → Granting Step Functions invoke permission on 'risk-score'...
+  ✓ Step Functions invoke permission granted on 'risk-score'
+15:18:54.522 [main] INFO  - AwsLambdaDeployer completed for 'eu-west-1/risk-score'. ARN: arn:aws:lambda:eu-west-1:025064823406:function:risk-score
+[32m  ✓[0m Lambda '[1meu-west-1/risk-score[0m' deployed → arn:aws:lambda:eu-west-1:025064823406:function:risk-score
+
+--- Generated State Machine JSON ---
+{
+    "Comment": "Real-time fraud screening for card payment authorization",
+    "StartAt": "fraud-check",
+    "States": {
+        "fraud-check": {
+            "Comment": "Flag transactions that match known fraud patterns",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:fraud-check",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)",
+                        "country.$": "States.Format('{}', $.transaction.country)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "fraudResult.$": "$.Payload"
+            },
+            "ResultPath": "$.fraud-check",
+            "Next": "risk-score"
+        },
+        "risk-score": {
+            "Comment": "Score the transaction from its features",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:eu-west-1:025064823406:function:risk-score",
+                "Payload": {
+                    "queryStringParameters": {
+                        "amount.$": "States.Format('{}', $.transaction.amount)"
+                    }
+                }
+            },
+            "ResultSelector": {
+                "riskResult.$": "$.Payload"
+            },
+            "ResultPath": "$.risk-score",
+            "Next": "decision"
+        },
+        "decision": {
+            "Comment": "Decline flagged or high-risk transactions",
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.fraud-check.fraudResult.flagged",
+                    "BooleanEquals": true,
+                    "Next": "decline-transaction"
+                },
+                {
+                    "Variable": "$.risk-score.riskResult.score",
+                    "NumericGreaterThan": 75,
+                    "Next": "decline-transaction"
+                }
+            ],
+            "Default": "approve-transaction"
+        },
+        "approve-transaction": {
+            "Comment": "Record the approval",
+            "Type": "Pass",
+            "Result": "approved",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "decline-transaction": {
+            "Comment": "Record the decline",
+            "Type": "Pass",
+            "Result": "declined",
+            "ResultPath": "$.decision",
+            "Next": "report-decision"
+        },
+        "report-decision": {
+            "Comment": "Report the decision to core banking",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::apigateway:invoke",
+            "InputPath": "$",
+            "Parameters": {
+                "ApiEndpoint": "9giljyyesc.execute-api.eu-west-1.amazonaws.com",
+                "Method": "POST",
+                "Path": "/",
+                "QueryParameters": {
+                    "decision.$": "States.Array(States.Format('{}', $.decision))"
+                },
+                "RequestBody.$": "$.transaction"
+            },
+            "ResultSelector": {
+                "coreBankingResult.$": "$.ResponseBody"
+            },
+            "ResultPath": "$.report-decision",
+            "End": true
+        }
+    }
+}
+--- End JSON ---
+
+15:18:54.562 [main] INFO  - Creating deployment request for State Machine payment-authorization
+15:18:55.023 [main] INFO  - State Machine creation result: CreateStateMachineResponse(StateMachineArn=arn:aws:states:eu-west-1:025064823406:stateMachine:payment-authorization, CreationDate=2026-09-28T14:18:54.954Z)
+[32m  ✓[0m State Machine 'payment-authorization' deployed to AWS Step Functions

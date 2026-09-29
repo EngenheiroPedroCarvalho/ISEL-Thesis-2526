@@ -1,0 +1,7 @@
+Benchmark,Mode,Threads,Samples,Score,Score Error (99.9%),Unit,Param: r
+costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySizeMixed.resolveOptimized,avgt,1,15,20.361902,0.221766,us/op,10
+costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySizeMixed.resolveOptimized,avgt,1,15,22.218336,0.401268,us/op,20
+costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySizeMixed.resolveOptimized,avgt,1,15,27.296640,0.146268,us/op,50
+costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySizeMixed.resolveOptimized,avgt,1,15,36.186390,0.440564,us/op,100
+costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySizeMixed.resolveOptimized,avgt,1,15,53.683153,0.931870,us/op,200
+costaber.com.github.omniflow.metrics.BenchmarkResolveWorkflowByRegistrySizeMixed.resolveOptimized,avgt,1,15,198.649382,2.539660,us/op,1000

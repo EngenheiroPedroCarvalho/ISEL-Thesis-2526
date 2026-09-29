@@ -6,6 +6,11 @@ package model.resources.functions
 
 import controller.General
 import controller.General.logMessage
+import io.ktor.client.call.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import kotlinx.coroutines.delay
+import kotlinx.serialization.Serializable
 import model.Utils
 import model.Utils.FUNC_TEMPLATES
 import model.Utils.PROVIDER_CONFIGS
@@ -21,6 +26,12 @@ import model.resources.functions.triggers.HttpTrigger
 import model.resources.functions.triggers.StorageTrigger
 import model.resources.functions.triggers.StorageTrigger.EventType
 
+@Serializable
+data class GcpServiceConfigData(val uri: String = "", val service: String = "")
+
+@Serializable
+data class GcpFunctionData(val state: String = "", val serviceConfig: GcpServiceConfigData? = null)
+
 class GcpFunction : CloudFunction {
     override var name = ""
     override var hookFunction = HookFunction()
@@ -33,8 +44,18 @@ class GcpFunction : CloudFunction {
     override var location = ""
     override val triggers = listOf(HttpTrigger(), StorageTrigger())
     override var trigger = triggers[0]
-    override val runtimes = arrayOf(RuntimeVersion.JAVA11, RuntimeVersion.JAVA17, RuntimeVersion.NODEJS14)
+    // java11 and nodejs14 were decommissioned by Google (2025-10-31 and 2025-01-30)
+    override val runtimes = arrayOf(RuntimeVersion.JAVA17)
     override var runtimeVersion: RuntimeVersion? = null
+
+    // 2nd gen functions are served on a generated 'run.app' URL, so it cannot be composed
+    // offline. It is read from the deployed function and kept here for getTriggerUrl.
+    private var deployedUri = ""
+
+    private companion object {
+        const val READINESS_TIMEOUT_MS = 600_000L  // Cloud Build makes 2nd gen deployments slow
+        const val READINESS_POLL_MS = 5_000L
+    }
 
     override suspend fun deployZip(zipFilePath: String, projData: ProjectData): DeploymentTimeData {
         val deploymentInfo = DeploymentTimeData()
@@ -43,13 +64,22 @@ class GcpFunction : CloudFunction {
         val projectId = (projData as GcpProjectData).projectId
         val faasJson = getJsonConfigs(projectId, zipFilePath.substringAfterLast('/'))
         logMessage("Deploying function '$name'...", 2)
-        if (!GcpRequests.checkCloudFunctionExistence(projectId, location, name)) {
-            deploymentInfo.deploymentStartDate =
-                GcpRequests.deployCloudFunction(projectId, location, faasJson).requestTime
+        val response = if (!GcpRequests.checkCloudFunctionExistence(projectId, location, name)) {
+            GcpRequests.deployCloudFunction(projectId, location, name, faasJson)
+                .also { deploymentInfo.deploymentStartDate = it.requestTime }
         } else {
             GcpRequests.updateCloudFunction(projectId, location, name, faasJson)
         }
-        GcpRequests.setCloudFunctionInvokePolicy(projectId, location, name)
+        if (!response.status.isSuccess()) {
+            logMessage("Deployment of function '$name' was rejected: ${response.bodyAsText()}", 1)
+        }
+        // The v2 deployment is a long-running operation: the backing Cloud Run service only
+        // exists once the build finishes, so both the URL and the IAM policy have to wait.
+        val deployed = awaitActiveFunction(projectId)
+        deployedUri = deployed.serviceConfig?.uri.orEmpty()
+        deployed.serviceConfig?.service?.takeIf { it.isNotEmpty() }?.let { service ->
+            GcpRequests.setCloudFunctionInvokePolicy(service)
+        }
         deploymentInfo.zipUploadTime = calculateHttpDuration(zipUpload)
         return deploymentInfo
     }
@@ -57,14 +87,34 @@ class GcpFunction : CloudFunction {
     override fun getEntryPoint(): String = "Gcp${hookFunction.templateFile}"
 
     override fun getTriggerUrl(projData: ProjectData): Pair<String, String> {
-        val projectId = (projData as GcpProjectData).projectId
         return when (trigger) {
-            is HttpTrigger -> Pair("", "https://$location-$projectId.cloudfunctions.net/$name")
+            is HttpTrigger -> Pair("", deployedUri)
             is StorageTrigger -> Pair(
                 "https://console.cloud.google.com/storage/browser", "https://console.cloud.google.com/storage/browser"
             )
             else -> Pair("", "")
         }
+    }
+
+    /**
+     * Polls the deployed function until it reports an ACTIVE state, and returns it.
+     */
+    private suspend fun awaitActiveFunction(projectId: String): GcpFunctionData {
+        logMessage("Waiting for function '$name' to become ACTIVE...", 2)
+        val deadline = System.currentTimeMillis() + READINESS_TIMEOUT_MS
+        while (System.currentTimeMillis() < deadline) {
+            val response = GcpRequests.getCloudFunction(projectId, location, name)
+            if (response.status == HttpStatusCode.OK) {
+                val function: GcpFunctionData = response.body()
+                when (function.state) {
+                    "ACTIVE" -> return function
+                    "FAILED" -> logMessage("Deployment of function '$name' failed.", 1)
+                }
+            }
+            delay(READINESS_POLL_MS)
+        }
+        logMessage("Timed out waiting for function '$name' to become ACTIVE.", 1)
+        return GcpFunctionData()  // Unreachable: logMessage(.., 1) terminates the process
     }
 
     private fun getJsonConfigs(projectId: String, zipFile: String): String {
@@ -83,10 +133,11 @@ class GcpFunction : CloudFunction {
             is StorageTrigger -> {
                 val storageTrigger = trigger as StorageTrigger
                 faasJson = faasJson.replace("<trigger_bucket>", storageTrigger.bucketData!!.name).replace(
+                    // 2nd gen routes storage events through Eventarc, which uses CloudEvents types
                     "<event_type>", when (storageTrigger.eventType) {
-                        EventType.CREATE -> "google.storage.object.finalize"
-                        EventType.DELETE -> "google.storage.object.delete"
-                        EventType.UPDATE -> "google.storage.object.metadataUpdate"
+                        EventType.CREATE -> "google.cloud.storage.object.v1.finalized"
+                        EventType.DELETE -> "google.cloud.storage.object.v1.deleted"
+                        EventType.UPDATE -> "google.cloud.storage.object.v1.metadataUpdated"
                     }
                 )
             }

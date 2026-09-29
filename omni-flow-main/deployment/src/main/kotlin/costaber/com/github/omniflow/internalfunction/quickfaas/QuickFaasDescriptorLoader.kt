@@ -11,7 +11,9 @@ class QuickFaasDescriptorLoader {
         private val logger = KotlinLogging.logger {}
         private val mapper = ObjectMapper()
 
-        private val GCP_VALID_RUNTIMES = setOf("java11", "java17", "java21", "nodejs14", "nodejs20", "nodejs22")
+        // The only runtime that both Google still accepts and QuickFaaS can build: java11 and
+        // nodejs14 are decommissioned, and RuntimeVersion defines no java21/nodejs20/nodejs22.
+        private val GCP_VALID_RUNTIMES = setOf("java17")
         private val AWS_VALID_RUNTIMES = setOf("java11", "java17", "java21", "nodejs18.x", "nodejs20.x", "python3.11", "python3.12")
 
         fun load(path: Path): QuickFaasDescriptor {

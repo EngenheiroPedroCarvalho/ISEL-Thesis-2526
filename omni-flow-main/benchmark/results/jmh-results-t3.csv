@@ -1,0 +1,25 @@
+Benchmark,Mode,Threads,Samples,Score,Score Error (99.9%),Unit,Param: n,Param: r
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,9.823852,0.049334,us/op,1,1
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,17.945406,0.068189,us/op,1,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,183.483093,0.757022,us/op,1,1000
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,98.018792,0.580791,us/op,10,1
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,180.049391,1.297442,us/op,10,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,1838.845523,13.553705,us/op,10,1000
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,491.534136,4.659972,us/op,50,1
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,901.439319,5.569259,us/op,50,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,9238.915600,194.472590,us/op,50,1000
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,1999.011183,29.545174,us/op,200,1
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,3629.516469,20.134413,us/op,200,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveNaive,avgt,1,15,36670.467860,277.581558,us/op,200,1000
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,9.997357,0.088610,us/op,1,1
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,18.435385,0.208608,us/op,1,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,182.252891,0.323919,us/op,1,1000
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,9.983046,0.089402,us/op,10,1
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,18.323884,0.152707,us/op,10,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,182.929344,0.423323,us/op,10,1000
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,10.080300,0.119630,us/op,50,1
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,18.485105,0.145409,us/op,50,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,181.775674,0.834497,us/op,50,1000
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,10.334522,0.075713,us/op,200,1
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,18.500687,0.233757,us/op,200,50
+costaber.com.github.omniflow.metrics.BenchmarkResolutionOptimization.resolveOptimized,avgt,1,15,183.699981,1.350686,us/op,200,1000

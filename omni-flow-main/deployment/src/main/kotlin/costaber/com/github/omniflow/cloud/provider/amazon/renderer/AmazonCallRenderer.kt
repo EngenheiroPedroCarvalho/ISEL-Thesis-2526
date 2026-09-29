@@ -73,9 +73,9 @@ class AmazonCallRenderer(
                         tab {
                             val entries = callContext.query.entries.toList()
                             entries.dropLast(1).forEach {
-                                addLine("${renderMapEntry(it, renderingContext.termContext)},")
+                                addLine("${renderLambdaQueryEntry(it, renderingContext.termContext)},")
                             }
-                            entries.lastOrNull()?.let { addLine(renderMapEntry(it, renderingContext.termContext)) }
+                            entries.lastOrNull()?.let { addLine(renderLambdaQueryEntry(it, renderingContext.termContext)) }
                         }
                         add("}")
                     }
@@ -123,7 +123,6 @@ class AmazonCallRenderer(
             addEmptyLine()
             addLine(title)
             tab {
-                AMAZON_START_RESULT_PATH
                 val mutableMap = mapToRender.toMutableMap()
                 val last = mutableMap.entries.lastOrNull()
                 last?.let { mutableMap.remove(last.key) }
@@ -144,8 +143,28 @@ class AmazonCallRenderer(
         return "\"${mapEntry.key}.\$\": $value"
     }
 
+    // The Lambda payload is plain JSON and the QuickFaaS template reads each query parameter as a
+    // single string, so the value is not wrapped in States.Array as API Gateway requires.
+    private fun renderLambdaQueryEntry(mapEntry: Map.Entry<String, Term<*>>, termContext: TermContext): String {
+        val argument = when (val term = mapEntry.value) {
+            is Variable -> amazonTermResolver.translateVariable(term.name).let { if (it.isNotEmpty()) "\$.$it" else "\$" }
+            is Value -> amazonTermResolver.resolve(term, termContext)
+        }
+        return "\"${mapEntry.key}.\$\": \"States.Format('{}', $argument)\""
+    }
+
     private fun IndentedRenderingContext.renderBody() {
-        if (callContext.bodyRaw.isNotEmpty()) {
+        val bodyTerm = callContext.bodyTerm
+        if (bodyTerm != null && callContext.bodyRaw.isEmpty()) {
+            append(",")
+            addEmptyLine()
+            when (bodyTerm) {
+                is Variable -> add(
+                    "\"RequestBody.\$\": \"\$.${amazonTermResolver.resolveVariable(bodyTerm, Notation.DOT_NOTATION)}\""
+                )
+                is Value<*> -> add("$AMAZON_REQUEST_BODY${objectMapper.writeValueAsString(bodyTerm.value)}")
+            }
+        } else if (callContext.bodyRaw.isNotEmpty()) {
             append(",")
             addEmptyLine()
             add(AMAZON_REQUEST_BODY)

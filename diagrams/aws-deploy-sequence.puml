@@ -1,0 +1,57 @@
+@startuml aws-deploy-sequence
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontSize 11
+title AWS deployment sequence -- (a) overview
+
+participant "AmazonCloudDeployer" as ACD
+participant "FunctionRegistryBootstrapper\n(LambdaFunctionsCatalog)" as BOOT
+participant "AwsInternalFunctionResolver" as R
+participant "FunctionRegistryStore" as REG
+participant "AwsLambdaDeployer" as ALD
+participant "AWS APIs\n(EC2, Lambda)" as AWS
+participant "AWS Step Functions" as SFN
+
+opt workflow has internal calls
+  opt registry file missing
+    ACD -> BOOT : bootstrapIfMissing(region)
+    BOOT -> AWS : DescribeRegions + ListFunctions\n(every enabled region)
+    BOOT -> REG : writeNew(functions)
+  end
+  ACD -> R : resolve(workflow)
+  R -> REG : readAll()
+  REG --> R : snapshot
+  loop for each CallContext with internalFunction
+    R -> R : tryResolveEntryIn(name, snapshot)
+    alt Level 1 - registry hit
+      R -> AWS : GetFunction(region from ARN, serviceName)
+      note right of R
+        drift, rediscovery and stale-entry removal
+        as in the Level 1 diagram (Figure A.3)
+      end note
+      AWS --> R : FunctionArn
+    else Level 2 - registry miss, function found by discovery
+      R -> AWS : DescribeRegions (enabled regions)
+      loop for each region, preferred first, until >1 match
+        R -> AWS : GetFunction(region, name)
+      end
+      AWS --> R : exactly one FunctionArn
+      R -> REG : put(name, metadata)
+    else Level 3 - absent in every region, descriptor provided
+      ref over R, ALD
+        Level 3: deployOrUpdate(name, descriptorPath)
+        -> FunctionInvocationMetadata (url = ARN);
+        QuickFaaS deployment expanded in panel (b)
+      end ref
+      R -> REG : put(name, metadata)
+    else absent, no descriptor / ambiguous / regions inaccessible
+      R --> ACD : IllegalStateException (fail fast)
+    end
+    R -> R : call.copy(host = "lambda://" + ARN,\npath = "")
+  end
+  R --> ACD : resolved workflow
+end
+ACD -> ACD : render -> ASL with Resource\n"arn:aws:states:::lambda:invoke"
+ACD -> SFN : CreateStateMachine(name, roleArn, definition)
+SFN --> ACD : StateMachineArn
+@enduml

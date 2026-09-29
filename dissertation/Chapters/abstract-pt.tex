@@ -1,0 +1,35 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% abstrac-pt.tex
+%% ISEL thesis document file
+%%
+%% Abstract in Portuguese
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Implantar uma aplicação \emph{serverless} significa implantar as funções que fazem o trabalho e o
+\emph{workflow} que as orquestra, em geral com ferramentas diferentes. As duas não são
+independentes: um \emph{workflow} invoca uma função através do \emph{endpoint} que o fornecedor lhe
+atribui quando a implanta (um URL do Cloud Run, um ARN do Lambda), e esse \emph{endpoint} depende da
+conta, do projeto e da região. O programador copia cada \emph{endpoint} à mão, para cada destino de
+implantação, e um \emph{endpoint} errado só é detetado na execução.
+
+Esta dissertação elimina esse passo manual unificando o QuickFaaS, que implanta funções
+\emph{serverless} portáveis, com o OmniFlow, uma DSL em Kotlin que gera e implanta \emph{workflows}
+no AWS Step Functions e no Google Cloud Workflows. Cada chamada nomeia a função por um identificador
+lógico estável, que o OmniFlow liga a um \emph{endpoint} quando implanta o \emph{workflow}, por uma
+escada de três níveis: um registo de funções validado contra a função existente, uma procura nas
+regiões do fornecedor e, só com a ausência confirmada, uma implantação através do QuickFaaS. O
+QuickFaaS, até aqui limitado ao Google Cloud e ao Azure, foi também estendido com um fornecedor para
+o AWS Lambda, cobrindo assim as duas \emph{clouds} do OmniFlow.
+
+Quarenta e seis testes unitários cobrem todos os caminhos da escada nos dois fornecedores, e um caso
+de estudo foi implantado e executado no AWS e no Google Cloud. As medições mostram que o trabalho local de
+resolver um \emph{workflow} com duzentas chamadas internas custa dezenas de microssegundos,
+crescendo linearmente com o número de chamadas, e que a resolução envia ao fornecedor um pedido por
+chamada interna quando o registo está atualizado. É, assim, exequível implantar a aplicação a partir
+de uma única definição, com um custo desprezável face a uma implantação na \emph{cloud}, que se mede
+em minutos.
+% Palavras-chave do resumo em Português
+\begin{keywords}
+Computação \emph{serverless}, \emph{Function-as-a-Service}, Orquestração de \emph{workflows},
+Portabilidade \emph{multi-cloud}, Ligação de \emph{endpoints} em tempo de implantação
+\end{keywords}

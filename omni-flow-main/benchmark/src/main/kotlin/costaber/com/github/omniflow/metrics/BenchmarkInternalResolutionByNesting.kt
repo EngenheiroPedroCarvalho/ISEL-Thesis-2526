@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -25,19 +24,19 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P18 - Internal function resolution cost vs. NESTING DEPTH, the structural axis P5 measured only
+ * T13 - Internal function resolution cost vs. NESTING DEPTH, the structural axis T17 measured only
  * for rendering (external-only workflows, never touching the registry).
  *
- * [WorkflowInternalCallEndpointResolver.resolveContext] recurses explicitly into
- * IterationRangeContext/ParallelBranchContext/etc., but every prior resolution benchmark (P3,
- * P6-P17) only ever built FLAT call sequences - that recursive path was never exercised. Mirrors
+ * [OptimizedEndpointResolver]'s `resolveContext` recurses explicitly into
+ * IterationRangeContext/ParallelBranchContext/etc., but every prior resolution benchmark (T1-T12)
+ * only ever built FLAT call sequences - that recursive path was never exercised. Mirrors
  * [WorkflowGenerator.withNestedSteps]'s structure exactly (FIXED_LEAF_STEPS leaves, [depth]
  * levels alternating iteration/parallel wrappers), but the leaves are INTERNAL calls (round-robin
- * over FIXED_FUNCTIONS distinct functions, R=F, as in P8/P15) instead of independent external
+ * over FIXED_FUNCTIONS distinct functions, R=F, as in T4/T11) instead of independent external
  * calls. If resolution cost tracks total call count regardless of tree shape, all depths should
  * measure the same - confirming the recursive traversal adds no cost beyond the leaves it visits.
  * Only the ALREADY-OPTIMIZED resolver is measured (single registry read) - the naive-vs-optimized
- * comparison is already exhaustively established in P6/P7/P8/P9. Pure local file I/O - no AWS/GCP
+ * comparison is already exhaustively established in T2/T3/T4/T5. Pure local file I/O - no AWS/GCP
  * SDK, no network.
  */
 @BenchmarkMode(Mode.AverageTime)
@@ -53,7 +52,7 @@ open class BenchmarkInternalResolutionByNesting {
     var depth: Int = 0
 
     private lateinit var registryFile: Path
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
+    private lateinit var store: FunctionRegistryStore
     private lateinit var workflow: Workflow
 
     private val internalCallExtractor: (CallContext) -> String? =
@@ -61,8 +60,8 @@ open class BenchmarkInternalResolutionByNesting {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p18-registry", ".json")
-        val store = FunctionRegistryStore(registryFile)
+        registryFile = Files.createTempFile("omniflow-bench-t13-registry", ".json")
+        store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the FIXED_FUNCTIONS functions the internal calls reference (R=F).
         val functions = (0 until FIXED_FUNCTIONS).associate { idx ->
@@ -73,7 +72,6 @@ open class BenchmarkInternalResolutionByNesting {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         workflow = WorkflowGenerator.withNestedInternalCalls(FIXED_LEAF_STEPS, depth, FIXED_FUNCTIONS, BASE)
     }
@@ -86,7 +84,7 @@ open class BenchmarkInternalResolutionByNesting {
     /** Optimized resolution (single registry read, then per-call lookups) of a nested workflow. */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
-        blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
+        blackhole.consume(OptimizedEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
     companion object {

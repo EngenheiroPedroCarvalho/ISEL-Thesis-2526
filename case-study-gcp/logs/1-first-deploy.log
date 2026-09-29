@@ -1,0 +1,121 @@
+10:47:42.281 ain] INFO  - Starting to convert Workflow into a Workflow
+[DEPLOY] Checking if function-registry exists at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/function-registry.gcp.json'...
+  ! Function-registry not found — bootstrapping from Cloud Run APIs for project 'tfm26-509910'...
+10:47:42.283 ain] WARN  - Function Registry not found at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/function-registry.gcp.json'. Bootstrapping registry from Cloud Run APIs for project 'tfm26-509910'...
+10:48:14.182 ain] WARN  - Skipping Cloud Run region 'me-central2' during registry bootstrap: {
+  "error": {
+    "code": 403,
+    "message": "Permission denied on 'locations/me-central2' (or it may not exist).",
+    "status": "PERMISSION_DENIED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "LOCATION_POLICY_VIOLATED",
+        "domain
+  ✓ Function-registry created and populated at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/function-registry.gcp.json'
+10:48:27.510 ain] INFO  - Function Registry created and populated at '/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/function-registry.gcp.json'.
+[DEPLOY] Detected 2 internal function(s) in workflow definition
+[DEPLOY] Resolving internal functions (registry lookup → Cloud Run discovery → QuickFaaS deploy)...
+  ! Function 'europe-west1/fraud-check' not in registry — searching Cloud Run services...
+[QUICKFAAS] Function 'europe-west1/fraud-check' not deployed — using QuickFaaS to deploy function...
+10:48:28.033 ain] INFO  - Function 'europe-west1/fraud-check' not deployed. Triggering QuickFaaS deployment...
+10:48:28.034 ain] INFO  - Deploying internal function 'europe-west1/fraud-check' via QuickFaaS (descriptor=./functions/fraud-check/func-deployment.json)
+  → Loading deployment descriptor from './functions/fraud-check/func-deployment.json'...
+10:48:28.076 ain] INFO  - Descriptor validated: provider=gcp, function=fraud-check, runtime=java17, location=europe-west1
+  ✓ Descriptor validated (provider=gcp, runtime=java17)
+  → Invoking QuickFaaS subprocess to deploy 'europe-west1/fraud-check'...
+  → Copying deployment descriptor to QuickFaaS JAR directory...
+  ✓ Injected fresh OAuth token into descriptor copy
+10:48:28.078 ain] INFO  - Injected fresh OAuth token into descriptor copy
+  → Copying function source 'MyFunctionClass.java' to JAR directory...
+10:48:28.079 ain] INFO  - Copied function file 'MyFunctionClass.java' to JAR directory
+  → Starting QuickFaaS process: java -jar QuickFaaS-Deployment-1.0-fat.jar
+10:48:28.079 ain] INFO  - Invoking QuickFaaS: java -jar /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/QuickFaaS-Deployment-1.0-fat.jar (workDir=/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf)
+  ! QuickFaaS exited with code 1 but deployment marker found — treating as success
+10:49:22.102 ain] WARN  - QuickFaaS exited with code 1 but deployment marker was found; treating as success (QuickFaaS bug: doesn't wait for async Cloud Functions operation).
+  ✓ QuickFaaS subprocess completed for 'europe-west1/fraud-check'
+  → Polling Cloud Functions API — waiting for 'europe-west1/fraud-check' to become ACTIVE...
+10:49:22.105 ain] INFO  - Waiting for function 'fraud-check' to become ACTIVE (timeout: 180s)...
+10:49:22.483 ain] INFO  - Function 'fraud-check' is ACTIVE and ready.
+  ✓ Function 'europe-west1/fraud-check' is ACTIVE
+  → Granting roles/run.invoker to service account on 'europe-west1/fraud-check'...
+10:49:22.484 ain] INFO  - Granting roles/run.invoker to 'workflow-test@tfm26-509910.iam.gserviceaccount.com' on 'europe-west1/fraud-check'...
+  ✓ Granted roles/run.invoker to service account on 'europe-west1/fraud-check'
+  → Waiting 10s for IAM propagation...
+10:49:23.469 ain] INFO  - Granted roles/run.invoker to 'workflow-test@tfm26-509910.iam.gserviceaccount.com' on 'europe-west1/fraud-check'. Waiting for IAM propagation...
+  ✓ IAM propagation wait complete
+10:49:33.474 ain] INFO  - IAM propagation wait complete.
+10:49:33.475 ain] INFO  - QuickFaaS deployment completed for 'europe-west1/fraud-check'. Registered URL: https://fraud-check-jllpr4krfq-ew.a.run.app
+  ✓ Function 'europe-west1/fraud-check' deployed and registered → https://fraud-check-jllpr4krfq-ew.a.run.app
+10:49:33.479 ain] INFO  - Function 'europe-west1/fraud-check' deployed and registered (url=https://fraud-check-jllpr4krfq-ew.a.run.app)
+  ! Function 'europe-west1/risk-score' not in registry — searching Cloud Run services...
+[QUICKFAAS] Function 'europe-west1/risk-score' not deployed — using QuickFaaS to deploy function...
+10:49:33.808 ain] INFO  - Function 'europe-west1/risk-score' not deployed. Triggering QuickFaaS deployment...
+10:49:33.808 ain] INFO  - Deploying internal function 'europe-west1/risk-score' via QuickFaaS (descriptor=./functions/risk-score/func-deployment.json)
+  → Loading deployment descriptor from './functions/risk-score/func-deployment.json'...
+10:49:33.812 ain] INFO  - Descriptor validated: provider=gcp, function=risk-score, runtime=java17, location=europe-west1
+  ✓ Descriptor validated (provider=gcp, runtime=java17)
+  → Invoking QuickFaaS subprocess to deploy 'europe-west1/risk-score'...
+  → Copying deployment descriptor to QuickFaaS JAR directory...
+  ✓ Injected fresh OAuth token into descriptor copy
+10:49:33.814 ain] INFO  - Injected fresh OAuth token into descriptor copy
+  → Copying function source 'MyFunctionClass.java' to JAR directory...
+10:49:33.815 ain] INFO  - Copied function file 'MyFunctionClass.java' to JAR directory
+  → Starting QuickFaaS process: java -jar QuickFaaS-Deployment-1.0-fat.jar
+10:49:33.815 ain] INFO  - Invoking QuickFaaS: java -jar /private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf/QuickFaaS-Deployment-1.0-fat.jar (workDir=/private/tmp/claude-501/-Users-pedrocarvalho-IdeaProjects-ISEL-Thesis-2526/7741b342-4e02-42e4-8777-c6e929dcbaa7/scratchpad/case/work/qf)
+  ! QuickFaaS exited with code 1 but deployment marker found — treating as success
+10:50:32.147 ain] WARN  - QuickFaaS exited with code 1 but deployment marker was found; treating as success (QuickFaaS bug: doesn't wait for async Cloud Functions operation).
+  ✓ QuickFaaS subprocess completed for 'europe-west1/risk-score'
+  → Polling Cloud Functions API — waiting for 'europe-west1/risk-score' to become ACTIVE...
+10:50:32.147 ain] INFO  - Waiting for function 'risk-score' to become ACTIVE (timeout: 180s)...
+10:50:32.357 ain] INFO  - Function 'risk-score' is ACTIVE and ready.
+  ✓ Function 'europe-west1/risk-score' is ACTIVE
+  → Granting roles/run.invoker to service account on 'europe-west1/risk-score'...
+10:50:32.358 ain] INFO  - Granting roles/run.invoker to 'workflow-test@tfm26-509910.iam.gserviceaccount.com' on 'europe-west1/risk-score'...
+  ✓ Granted roles/run.invoker to service account on 'europe-west1/risk-score'
+  → Waiting 10s for IAM propagation...
+10:50:33.365 ain] INFO  - Granted roles/run.invoker to 'workflow-test@tfm26-509910.iam.gserviceaccount.com' on 'europe-west1/risk-score'. Waiting for IAM propagation...
+  ✓ IAM propagation wait complete
+10:50:43.370 ain] INFO  - IAM propagation wait complete.
+10:50:43.370 ain] INFO  - QuickFaaS deployment completed for 'europe-west1/risk-score'. Registered URL: https://risk-score-jllpr4krfq-ew.a.run.app
+  ✓ Function 'europe-west1/risk-score' deployed and registered → https://risk-score-jllpr4krfq-ew.a.run.app
+10:50:43.372 ain] INFO  - Function 'europe-west1/risk-score' deployed and registered (url=https://risk-score-jllpr4krfq-ew.a.run.app)
+  ✓ All internal functions resolved to live URLs
+[DEPLOY] Rendering workflow DSL to Google Workflows YAML...
+  ✓ Workflow YAML generated (44 lines)
+[DEPLOY] Deploying workflow 'payment-authorization' to Google Cloud Workflows...
+  → Creating Google Workflows client...
+10:50:43.412 ain] INFO  - Creating deployment request for Workflow payment-authorization
+  → Building workflow definition (project=tfm26-509910, zone=europe-west1)...
+  → Sending workflow 'payment-authorization' to Google Cloud Workflows API (async)...
+  → Waiting for workflow creation to complete...
+  ✓ Workflow 'payment-authorization' created successfully on Google Cloud
+10:50:48.922 ain] INFO  - Workflow creation result name: "projects/tfm26-509910/locations/europe-west1/workflows/payment-authorization"
+description: "Case study: real-time fraud detection for card payments"
+state: ACTIVE
+revision_id: "000001-c83"
+create_time {
+  seconds: 1790589044
+  nanos: 705028189
+}
+update_time {
+  seconds: 1790589044
+  nanos: 705028189
+}
+revision_create_time {
+  seconds: 1790589044
+  nanos: 734564133
+}
+labels {
+  key: "app"
+  value: "omni-flow"
+}
+labels {
+  key: "case-study"
+  value: "payment-authorization"
+}
+service_account: "projects/tfm26-509910/serviceAccounts/workflow-test@tfm26-509910.iam.gserviceaccount.com"
+source_contents: "main:\n    params: [ transaction ]\n    steps:\n        - fraud-check:\n            call: http.post\n            args:\n                url: https://fraud-check-jllpr4krfq-ew.a.run.app\n                query:\n                    amount: ${transaction.amount}\n                    country: ${transaction.country}\n            result: fraudResult\n        - risk-score:\n            call: http.post\n            args:\n                url: https://risk-score-jllpr4krfq-ew.a.run.app\n                query:\n                    amount: ${transaction.amount}\n            result: riskResult\n        - decision:\n            switch:\n                - condition:\n                    ${fraudResult.body.flagged == true}\n                  next: decline-transaction\n                - condition:\n                    ${riskResult.body.score > 75}\n                  next: decline-transaction\n            next: approve-transaction\n        - approve-transaction:\n            next: report-decision\n            assign:\n                - decision: \'approved\'\n        - decline-transaction:\n            assign:\n                - decision: \'declined\'\n        - report-decision:\n            call: http.post\n            args:\n                url: https://core-banking-stub-jllpr4krfq-ew.a.run.app/\n                query:\n                    decision: ${decision}\n                body: ${transaction}\n            result: coreBankingResult\n        - return_output:\n            return: ${decision}"
+
+10:50:48.923 ain] INFO  - Metadata: ListenableFutureToApiFuture{delegate=TransformFuture@e111c7c[status=SUCCESS, result=[com.google.cloud.workflows.v1.OperationMetadata@4d0e54e0]]}
+  ✓ Workflow 'payment-authorization' deployed successfully to Google Cloud Workflows

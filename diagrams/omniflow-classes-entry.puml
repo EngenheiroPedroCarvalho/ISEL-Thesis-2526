@@ -1,0 +1,30 @@
+@startuml omniflow-classes-entry
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+hide empty members
+title Part 1: entry points (excerpt of the full class model, Appendix A)
+left to right direction
+
+class GoogleCloudDeployer {
+  +deploy(workflow, deployContext)
+}
+class AmazonCloudDeployer {
+  +deploy(workflow, deployContext)
+}
+class FunctionRegistryBootstrapper
+class WorkflowInternalFunctionResolver
+class AwsInternalFunctionResolver
+
+GoogleCloudDeployer --> FunctionRegistryBootstrapper
+AmazonCloudDeployer --> FunctionRegistryBootstrapper
+GoogleCloudDeployer --> WorkflowInternalFunctionResolver
+AmazonCloudDeployer --> AwsInternalFunctionResolver
+
+note bottom of GoogleCloudDeployer
+  only when the workflow has internal calls:
+  bootstrap the registry, then resolve;
+  finally render and deploy the workflow
+end note
+@enduml

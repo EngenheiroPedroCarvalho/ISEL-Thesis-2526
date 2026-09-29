@@ -1,0 +1,44 @@
+main:
+    params: [ transaction ]
+    steps:
+        - fraud-check:
+            call: http.post
+            args:
+                url: https://fraud-check-jllpr4krfq-ew.a.run.app
+                query:
+                    amount: ${transaction.amount}
+                    country: ${transaction.country}
+            result: fraudResult
+        - risk-score:
+            call: http.post
+            args:
+                url: https://risk-score-jllpr4krfq-ew.a.run.app
+                query:
+                    amount: ${transaction.amount}
+            result: riskResult
+        - decision:
+            switch:
+                - condition:
+                    ${fraudResult.body.flagged == true}
+                  next: decline-transaction
+                - condition:
+                    ${riskResult.body.score > 75}
+                  next: decline-transaction
+            next: approve-transaction
+        - approve-transaction:
+            next: report-decision
+            assign:
+                - decision: 'approved'
+        - decline-transaction:
+            assign:
+                - decision: 'declined'
+        - report-decision:
+            call: http.post
+            args:
+                url: https://core-banking-stub-jllpr4krfq-ew.a.run.app/
+                query:
+                    decision: ${decision}
+                body: ${transaction}
+            result: coreBankingResult
+        - return_output:
+            return: ${decision}

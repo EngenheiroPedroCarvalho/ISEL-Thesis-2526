@@ -36,6 +36,7 @@ class  CallContextBuilder : ContextBuilder {
     private val query: MutableMap<String, Term<*>> = mutableMapOf()
     private val body: MutableMap<String, Any> = mutableMapOf()
     private var bodyRaw: String? = null
+    private var bodyTerm: Term<*>? = null
     private var authenticationBuilder: AuthenticationBuilder? = null
     private var timeout: Long? = null
 
@@ -120,6 +121,9 @@ class  CallContextBuilder : ContextBuilder {
         value.forEach { body[it.first] = it.second }
     }
 
+    /** Uses a variable (or value) as the whole request body, instead of serialising the term itself. */
+    fun body(value: Term<*>) = apply { this.bodyTerm = value }
+
     fun body(value: Map<String, Any>) = apply {
         value.forEach { body[it.key] = it.value }
     }
@@ -170,6 +174,7 @@ class  CallContextBuilder : ContextBuilder {
                 query = query,
                 body = body,
                 bodyRaw = bodyRaw ?: "",
+                bodyTerm = bodyTerm,
                 authentication = authenticationBuilder?.build(),
                 timeoutInSeconds = timeout,
                 result = result,
@@ -193,6 +198,7 @@ class  CallContextBuilder : ContextBuilder {
             query = query,
             body = body,
             bodyRaw = bodyRaw ?: "",
+            bodyTerm = bodyTerm,
             authentication = authenticationBuilder?.build(),
             timeoutInSeconds = timeout,
             result = result,

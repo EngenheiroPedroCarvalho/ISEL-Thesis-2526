@@ -1,0 +1,385 @@
+\chapter{Serverless Portability: Background and State of the Art}
+\label{cha:background}
+
+Section~\ref{sec:background} presents the foundations of this work: serverless computing and
+Function-as-a-Service (FaaS), workflow orchestration, and the forms of vendor lock-in each
+introduces. It then presents the two tools this dissertation extends: \textbf{QuickFaaS}, for
+portable function deployment, and \textbf{OmniFlow}, for portable workflow definition.
+Section~\ref{ch:related-works} reviews related research and industry tools and identifies the gap
+this work addresses.
+
+\section{Background}
+\label{sec:background}
+
+\subsection{Serverless Computing and FaaS}
+\label{sec:serverless_computing_faas}
+In serverless computing, the provider allocates resources, patches the operating system and
+scales the infrastructure, and users pay only for the time their code
+runs~\cite{serverlessComputing}. Function-as-a-Service (FaaS) is its main form: developers deploy
+single-purpose, stateless functions triggered by events such as HTTP requests. Because FaaS is not
+standardised across providers (AWS Lambda, Google Cloud Functions, Azure Functions), function code
+becomes coupled to provider-specific SDKs and deployment artifacts~\cite{rodrigues2022quickfaas}.
+
+This coupling has two axes. The \emph{programming model}: each provider defines its own function
+signature and request/response types. The \emph{packaging and deployment}: providers accept code
+through different mechanisms, with different naming, permission and trigger conventions. QuickFaaS
+addresses both (Section~\ref{sec:background_quickfaas}). Since a function holds no state between
+invocations and cannot directly call another, applications move their control flow and data flow
+into an external orchestrator, the workflow layer~\cite{serverlessComputing}.
+
+\subsection{Workflows and Orchestration}
+\label{sec:workflows}
+
+A \textit{workflow} describes a process as a sequence of steps. In the cloud, workflows are
+commonly modelled as \textit{state machines}, where each state performs work, makes a decision or
+controls the flow, and passes data to the next~\cite{aws_stepfunctions_concepts}. The workflow
+holds the control flow, data flow and error handling of a multi-function
+application~\cite{sebsflow_arxiv}: sequencing, branching, parallelism, retries and waits; data
+passed and transformed between steps; and execution tracking.
+
+AWS Step Functions and Google Cloud Workflows provide this as managed
+services~\cite{aws_stepfunctions_concepts,gcp_workflows_overview}. Each binds the workflow to its
+own language and schema, a second layer of vendor lock-in: a workflow must be rewritten to move to
+another provider. Vendor-neutral specifications aim to decouple workflow definitions from the
+execution backend~\cite{serverlessWorkflowSpec}.
+
+\subsection{QuickFaaS: Portable Function Deployment}
+\label{sec:background_quickfaas}
+QuickFaaS lets developers write a function once and deploy it to several providers without
+changing its source code~\cite{rodrigues2022quickfaas}. It is a Kotlin~\cite{kotlin_lang} desktop
+application with a Compose for Desktop~\cite{compose_multiplatform} interface, and a headless entry
+point that deploys the function described by a JSON descriptor, which is the one this work uses.
+
+\subsubsection{Uniform Programming Model}
+QuickFaaS hides provider-specific function signatures (e.g., AWS Lambda's \texttt{Context} vs.\
+GCP's \texttt{HttpRequest}) with the Template Method pattern:
+
+\begin{itemize}
+	\item \textbf{Hook function:} the developer implements one cloud-agnostic interface, using
+	generic request/response objects (e.g., \texttt{HttpRequestQf}) independent of any vendor SDK.
+	\item \textbf{Template function:} per provider, QuickFaaS supplies the entry point the provider
+	invokes. It adapts the provider's request to the generic format and calls the hook.
+\end{itemize}
+
+\subsubsection{FaaS Deployment Model: The ZIP Strategy}
+A compressed source archive (ZIP) is the deployment format that AWS, Google Cloud and Azure all
+accept, so QuickFaaS uses it and does not build containers locally. For a Java function on GCP,
+QuickFaaS places the developer's hook (e.g., \texttt{MyFunctionClass.java}) next to the provider's
+template (\texttt{GcpHttpTemplate.java}) and the QuickFaaS libraries, packages them with Maven,
+zips the result and uploads it to the Cloud Storage bucket named in the
+descriptor~\cite{GCP_bucket}, from which the provider builds the function.
+
+The original QuickFaaS deploys \emph{first-generation} Cloud Functions, reachable at
+\texttt{https://\allowbreak <region>-\allowbreak <project-id>.\allowbreak cloudfunctions.\allowbreak net/\allowbreak <name>},
+which, unlike second-generation functions, are not Cloud Run
+services~\cite{gcpFunctionsVersionComparison}. (Google now calls them \emph{Cloud Run function
+(1st gen)} and \emph{Cloud Run function}; this dissertation keeps the generation names, which
+match the two APIs the code calls.) Because the Function Registry validates and discovers GCP
+functions through the Cloud Run API, this work moves QuickFaaS's GCP provider to the second
+generation (Section~\ref{subsec:gcp-cloud-run-functions}).
+
+\subsubsection{QuickFaaS function deployment example}
+\label{subsec:quickfaas-example}
+Deploying a function to GCP with the original QuickFaaS takes these steps:
+
+\begin{enumerate}
+	\item \textbf{Credentials:} create an OAuth 2.0 client in the Google Cloud Console, registering
+	the redirect URL (e.g., \url{http://localhost:8080/quickfaas/gcp/callback}) and JavaScript
+	origins, and copy its client ID and secret.
+	\item \textbf{Authentication:} put the client ID and secret into the authentication module and
+	run the auxiliary Node.js server, which completes the OAuth flow and returns an
+	\texttt{access\_token}.
+	\item \textbf{Deployment descriptor:} write \texttt{func-deployment.json}
+	(Listing~\ref{lst:quickfaas_json_config}): the provider, project and access token; the
+	function's name, region (\texttt{location}), staging bucket, runtime and trigger; and, in
+	\texttt{functionFile}, the hook to deploy. The last two fields (extra Maven dependencies and
+	runtime configuration) are optional.
+
+	\begin{lstlisting}[language=json, caption={Configuration JSON for QuickFaaS function deployment.}, label={lst:quickfaas_json_config}]
+		{
+			"cloudProvider": "gcp",
+			"accessToken": "access-token-received",
+			"project": "tfm26-509910",
+			"function": {
+				"name": "quickfaas-test-fn",
+				"location": "europe-west1",
+				"bucket": "tfm26-quickfaas-deploy",
+				"runtime": "java17",
+				"trigger": {
+					"type": "http"
+				}
+			},
+			"functionFile": "./MyFunctionClass.java",
+			"dependenciesFile": "",
+			"configurationsFile": ""
+		}
+	\end{lstlisting}
+
+	\item \textbf{Hook function:} write the cloud-agnostic class (Listing~\ref{lst:hook_function}),
+	using the generic \texttt{HttpRequestQf} and \texttt{HttpResponseQf} types.
+
+	\begin{lstlisting}[language=Java, caption={Cloud-agnostic hook function implementation.}, label={lst:hook_function}]
+	import quickfaas.triggers.http.HttpRequestQf;
+	import quickfaas.triggers.http.HttpResponseQf;
+
+	public class MyFunctionClass {
+
+		public void myFunction(HttpRequestQf req, HttpResponseQf res) {
+			res.send(200, "Hello world!");
+		}
+	}
+	\end{lstlisting}
+
+	\item \textbf{Deployment and verification:} run QuickFaaS, which packages the function and
+	deploys it through the Google Cloud APIs. Then grant public access, read the generated trigger
+	URL and test the function.
+\end{enumerate}
+
+\subsection{OmniFlow: Portable Workflow Orchestration}
+\label{sec:background_omniflow}
+
+OmniFlow is a Kotlin library and Domain-Specific Language (DSL) for defining serverless workflows
+independently of any provider's schema. The developer writes the workflow once, and OmniFlow
+translates it into the format of the chosen provider (e.g., Google Cloud Workflows) and deploys it,
+which reduces orchestration-level lock-in~\cite{costa2023omniflow,silva2025advanced}.
+
+\subsubsection{Components Overview}
+OmniFlow is a client-side library with four components that run in
+sequence~\cite{silva2025advanced}:
+
+\begin{enumerate}
+	\item \textbf{DSL:} the developer defines workflows with Kotlin \emph{type-safe
+	builders}~\cite{type-safe_builders}.
+	\item \textbf{Internal model:} the DSL builds a provider-agnostic tree, with the workflow as root
+	and each step as a child node; some steps contain nested steps~\cite{silva2025advanced}.
+	\item \textbf{Renderer:} a depth-first traversal of the tree selects a \texttt{NodeRenderer} for
+	each node type and produces the provider-specific artifact (e.g., YAML for Google Cloud
+	Workflows), propagating a rendering context so that nested steps are correctly
+	scoped~\cite{silva2025advanced}.
+	\item \textbf{Deployment services:} a provider adapter deploys the rendered definition through
+	the provider's API~\cite{costa2023omniflow}.
+\end{enumerate}
+
+\subsubsection{Workflow Entity Model}
+A \textbf{Workflow} has a \texttt{name}, a \texttt{description}, one input and one output, and is
+composed of steps~\cite{silva2025advanced}. Each \textbf{Step} has a \texttt{name}, a
+\texttt{description} and a \emph{context}, and belongs to one of four categories:
+\textbf{execution} (HTTP calls, variable assignments), \textbf{conditional} (switch-like
+branching), \textbf{iteration} (a nested block repeated over a range or collection) and
+\textbf{parallel} (branches run concurrently).
+
+\subsubsection{Example: Function Chaining}
+In Listing~\ref{lst:omniflow_chain}, a \texttt{call} step sends the workflow input to a literal
+\texttt{host} and \texttt{path} and stores the response in \texttt{firstResult}. An
+\texttt{assign} step then copies the response body into \texttt{processedData}, which the workflow
+returns.
+
+\begin{lstlisting}[language=Kotlin, caption={OmniFlow Function Chaining Definition.}, label={lst:omniflow_chain}]
+val ChainWorkflow = workflow {
+  name("FunctionChain")
+  description("Sequential execution of cloud functions")
+  params("args")
+  steps(
+    step {
+      name("first-call")
+      description("Send the input data to the processing API")
+      context(
+        call {
+          method(POST)
+          host("example-api.com")
+          path("/v1/process")
+          body(variable("args.data"))
+          result("firstResult")
+        }
+      )
+    },
+    step {
+      name("process-logic")
+      description("Keep the body of the first response")
+      context(
+        assign {
+          variables(variable("processedData") equalTo variable("firstResult.body"))
+        }
+      )
+    }
+  )
+  result("processedData")
+}
+\end{lstlisting}
+
+A call step therefore needs a concrete \texttt{host} and \texttt{path}~\cite{silva2025advanced}:
+the functions it calls must be deployed first and their endpoints copied into the definition. This
+is the manual synchronisation of Section~\ref{sec:int_cha_int_uni_multi} that the proposed
+solution removes.
+
+\section{Related Work}
+\label{ch:related-works}
+
+The integration sits between two problem areas: deploying workflows without embedding
+provider-specific specifications, and deploying functions with less provider coupling. Although
+each deployment in this work targets a single provider (Section~\ref{sec:int_cha_int_uni_multi}),
+portability still matters: developers want to avoid hard-coded endpoints and to re-deploy the same
+application on another provider with minimal changes. This section reviews the work surveyed by
+QuickFaaS~\cite{rodrigues2022quickfaas} and OmniFlow~\cite{costa2023omniflow,silva2025advanced},
+together with more recent work, in five groups.
+
+\subsection{Infrastructure-as-Code and Deployment-Oriented Tooling}
+
+\textbf{AWS CloudFormation}~\cite{awsCloudFormation} models AWS resources only.
+\textbf{Terraform}~\cite{terraform} manages many providers with one tool, but function packaging,
+permissions and event bindings are still written with provider-specific parameters. The
+\textbf{Serverless Framework}~\cite{serverlessFramework} describes applications in YAML, but still
+in terms of provider-specific services, and its portability depends on per-provider plugins.
+\textbf{Pulumi}~\cite{pulumi} uses general-purpose languages and offers serverless abstractions
+(\textit{Magic Functions}~\cite{pulumiMagicFunctions}, the \textit{Cloud
+Framework}~\cite{pulumiCloudFramework} and \texttt{@pulumi/cloud}~\cite{pulumiCloudPkg}), limited by
+provider coverage and by triggers and permissions that remain provider-specific. The \textbf{AWS
+Cloud Development Kit (CDK)}~\cite{awsCdk}, closest in style to OmniFlow's Kotlin DSL, is
+synthesised into a CloudFormation template and is therefore limited to AWS.
+
+\textbf{CODE}~\cite{ristov2024code} targets \emph{federated FaaS}: one DSL declaration deploys a
+function to several regions of AWS and GCP, with up to 9.23$\times$ fewer lines of code than
+Terraform or the Serverless Framework, backed by a storage library that moves deployment packages
+between the two providers. CODE addresses the \textit{function} half of this work's problem, on the
+same providers, but not the workflow: its authors list the deployment of workflows on top of CODE
+as future work. That step is what this dissertation addresses.
+
+These tools already bind workflows to functions at deployment time. In AWS SAM, a state machine's
+\texttt{DefinitionSubstitutions} can map a placeholder to \texttt{!GetAtt MyFunction.Arn}, the ARN
+of a function in the same template~\cite{awsSamStateMachine}; the Step Functions plugin for the
+Serverless Framework and Terraform offer equivalent
+references~\cite{serverlessStepFunctionsPlugin,terraformSfnStateMachine}. Each reference is also an
+implicit dependency, so the function is created before the
+workflow~\cite{awsCloudFormationDependsOn,terraformReferences}, and Pulumi orders resources the same
+way~\cite{pulumiInputsOutputs}. This is the static binding of the resolution ladder
+(Section~\ref{sec:resolution-cascade}), and these tools also update changed functions, which this
+work does not. But they bind only functions declared in the same configuration, or, in Terraform
+and Pulumi, named explicitly through a data source in the configured
+region~\cite{terraformLambdaDataSource,pulumiLambdaGetFunction}. The resolution ladder searches the
+provider's regions for a function given only by name, and deploys it when absent. Above all, none
+of these tools offers a provider-independent workflow: the state machine is written in the Amazon
+States Language, and a GCP workflow would be a separate definition.
+
+\subsection{Portable Execution Layers and Code Transformation to FaaS}
+
+\textbf{OpenFaaS}~\cite{openFaaS} runs functions on container orchestration platforms, with
+language templates~\cite{openFaaSTemplates} and triggers~\cite{openFaaSTriggers}. It is portable,
+but it is a parallel FaaS platform with limited access to provider-native event sources.
+Spillner~\cite{spillner2017pythonfaas} (with the \textit{Lambada} tool) and Spillner and
+Dorodko~\cite{spillnerDorodko2017javaLambda} transform Python and Java code into FaaS functions,
+but target one platform (e.g., AWS Lambda) and can add execution overhead. Neither approach keeps
+functions on the providers' own FaaS services with provider-agnostic development artifacts, which
+is this work's goal.
+
+\subsection{Assessing Portability Instead of Enabling It}
+
+\textbf{SEAPORT}~\cite{yussupov2020seaport} assesses the portability of a serverless application
+against a target provider by transforming its deployment model into a canonical representation
+(CASE). It measures how portable an application is, but does not make it portable.
+
+\subsection{Workflow Composition and Orchestration Frameworks}
+
+\textbf{FaaSFlow}~\cite{li2022faasflow} improves the runtime efficiency of serverless workflows by
+moving scheduling to worker-side logic and reducing data movement; it does not address deployment
+portability. \textbf{Triggerflow}~\cite{garciaLopez2020triggerflow} is an event-condition-action
+orchestration service: a workflow control plane of its own, not a generator of provider-native
+workflows.
+
+\textbf{AFCL}, from the same group as CODE, is a YAML language for serverless workflows, which its
+authors call function choreographies~\cite{ristov2021afcl}, and \textbf{xAFCL} executes one
+choreography across several FaaS systems, among them AWS Lambda and Google Cloud
+Functions~\cite{ristov2023xafcl}. It is the closest to OmniFlow in intent, but its binding is
+manual: each function carries its concrete endpoint (a Lambda ARN, a function URL) as a
+\texttt{resource} property, the functions must be deployed beforehand, and the workflow runs on
+xAFCL's middleware rather than on Step Functions or Cloud Workflows.
+
+\textbf{Serverless Workflow}~\cite{serverlessWorkflowSpec} is a vendor-neutral workflow
+specification, with \textbf{Synapse}~\cite{serverlessworkflowSynapse} as a runtime, and
+\textbf{Temporal}~\cite{temporalPlatform} executes \textit{workflows-as-code} on its own cluster.
+Both run workflows on a dedicated runtime that must be operated, instead of a provider-native
+service. \textbf{FaaSr}~\cite{park2024faasr} composes R functions into DAGs for scientific
+workflows, coordinated through object storage rather than a workflow engine. \textbf{Serverless
+Multicloud}~\cite{zhao2022supporting} abstracts serverless services across vendors behind a
+library, with a cost and performance evaluation component, rather than translating a workflow DSL.
+
+\subsection{Service Registries}
+
+Mapping a logical name to an endpoint has established solutions. \textbf{AWS Cloud Map} returns
+the location of registered resources through an API call or DNS query, optionally only for healthy
+instances~\cite{awsCloudMap}, and \textbf{Consul} keeps a service catalog with health checks and
+DNS lookup~\cite{consulServiceDiscovery}. A service registry is consulted at run time, by the
+caller, and holds only what registers with it. The Function Registry is consulted once, at
+deployment time, and its result is written into the workflow, so neither the workflow engine nor
+the function knows it exists; and when a name is missing, the ladder searches the provider and may
+deploy the function. Conversely, a service registry is shared and kept current, which the Function
+Registry, a local file validated on each deployment, is not (Section~\ref{sec:concl-critical}).
+
+\subsection{Positioning of This Work}
+
+Table~\ref{tab:related-comparison} compares the surveyed work on six dimensions; \emph{Discov.}\
+marks whether a function deployed by other means can be bound by name alone. Deployment automation
+(IaC) does not make workflows portable, and the tools that do (Serverless Workflow, Temporal,
+Triggerflow, xAFCL) run workflows on their own runtime. Deployment-time binding exists in the IaC
+tools, and name-to-endpoint mapping in service registries, at run time. No surveyed work combines
+deployment-time binding, a workflow deployable to more than one provider-native service, functions
+written against a provider-agnostic model, and on-demand deployment of missing functions. The
+table also marks this work's limits: two providers, and discovery confined to one account or
+project, with no shared registry.
+
+\begin{table}[tbp]
+  \centering
+  \footnotesize
+  \caption{Positioning of the surveyed families against this thesis's dimensions
+  (Y = yes, P = partial, -- = no).}
+  \label{tab:related-comparison}
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{|>{\raggedright\arraybackslash}p{0.30\textwidth}|c|c|c|c|c|c|}
+    \hline
+    \textbf{Approach} & \textbf{Deploy.} & \textbf{Func.} & \textbf{Workflow} & \textbf{Deploy-time} & \textbf{Discov.} & \textbf{Provider-} \\
+     & \textbf{autom.} & \textbf{portab.} & \textbf{portab.} & \textbf{binding} & & \textbf{native} \\
+     \hline
+    CloudFormation / AWS SAM~\cite{awsCloudFormation,awsSamStateMachine} & Y & -- & -- & Y & -- & Y \\
+    \hline
+    AWS CDK~\cite{awsCdk} & Y & -- & -- & Y & -- & Y \\
+    \hline
+    Terraform~\cite{terraform,terraformSfnStateMachine}  & Y & P & -- & Y & P & Y \\
+    \hline
+    Serverless Framework + Step Functions plugin~\cite{serverlessFramework,serverlessStepFunctionsPlugin} & Y & P & -- & Y & -- & Y \\
+    \hline
+    Pulumi~\cite{pulumi,pulumiInputsOutputs}             & Y & P & -- & Y & P & Y \\
+    \hline
+    CODE~\cite{ristov2024code}                          & Y & Y & -- & -- & -- & Y \\
+    \hline
+    OpenFaaS~\cite{openFaaS}                            & Y & Y & -- & -- & -- & -- \\
+    \hline
+    Code transformation~\cite{spillner2017pythonfaas,spillnerDorodko2017javaLambda} & P & P & -- & -- & -- & Y \\
+    \hline
+    SEAPORT~\cite{yussupov2020seaport}                  & -- & -- & -- & -- & -- & -- \\
+    \hline
+    FaaSFlow~\cite{li2022faasflow}                      & -- & -- & P & -- & -- & -- \\
+    \hline
+    Triggerflow~\cite{garciaLopez2020triggerflow}       & -- & -- & Y & -- & -- & -- \\
+    \hline
+    AFCL / xAFCL~\cite{ristov2021afcl,ristov2023xafcl}  & -- & -- & Y & -- & -- & -- \\
+    \hline
+    Serverless Workflow / Synapse~\cite{serverlessWorkflowSpec,serverlessworkflowSynapse} & -- & -- & Y & -- & -- & -- \\
+    \hline
+    Temporal~\cite{temporalPlatform}                    & -- & -- & Y & -- & -- & -- \\
+    \hline
+    FaaSr~\cite{park2024faasr}                          & P & P & Y & -- & -- & -- \\
+    \hline
+    Serverless Multicloud~\cite{zhao2022supporting}     & -- & Y & P & -- & -- & -- \\
+    \hline
+    AWS Cloud Map / Consul~\cite{awsCloudMap,consulServiceDiscovery} & -- & -- & -- & -- & Y & -- \\
+    \hline
+    \textbf{OmniFlow + QuickFaaS (this work)}           & Y & Y\textsuperscript{a} & P\textsuperscript{a} & Y & P\textsuperscript{b} & Y \\
+    \hline
+  \end{tabular}
+
+  \smallskip
+  \parbox{\textwidth}{\footnotesize \textsuperscript{a}\,Inherited from QuickFaaS (function
+  portability) and OmniFlow (workflow portability). Workflow portability is partial because the
+  integration covers two providers, AWS and GCP.
+  \textsuperscript{b}\,A function is found by name across the regions of one account or project,
+  on GCP only among Cloud Run services. There is no shared registry.}
+\end{table}

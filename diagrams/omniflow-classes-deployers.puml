@@ -1,0 +1,43 @@
+@startuml omniflow-classes-deployers
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+hide empty members
+title Part 4: function deployment strategy (excerpt of the full class model, Appendix A)
+
+interface InternalFunctionDeployer {
+  +deployOrUpdate(functionName, deploymentDescriptorPath) : FunctionInvocationMetadata
+}
+
+class NoopInternalFunctionDeployer <<object>> {
+  +deployOrUpdate(...) : throws UnsupportedOperationException
+}
+
+class QuickFaasDeployer {
+  -quickFaasJarPath : Path
+  -projectId : String
+  -region : String
+  -invokerServiceAccount : String[0..1]
+  -readinessTimeoutSeconds : Long
+  -readinessPollIntervalSeconds : Long
+  +deployOrUpdate(...) : FunctionInvocationMetadata
+}
+
+class AwsLambdaDeployer {
+  -quickFaasJarPath : Path
+  -region : String
+  -roleArn : String
+  -readinessTimeoutSeconds : Long
+  -readinessPollIntervalSeconds : Long
+  +deployOrUpdate(...) : FunctionInvocationMetadata
+  -patchIamRoleArn(path, roleArn) : Path
+  -invokeWithRoleRetry(invoker, path)
+  -waitForLambdaActive(name, region)
+  -resolveBucketRegion(bucket) : String
+}
+
+InternalFunctionDeployer <|.. NoopInternalFunctionDeployer
+InternalFunctionDeployer <|.. QuickFaasDeployer
+InternalFunctionDeployer <|.. AwsLambdaDeployer
+@enduml

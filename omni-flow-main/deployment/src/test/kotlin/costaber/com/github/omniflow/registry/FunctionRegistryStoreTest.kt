@@ -5,6 +5,7 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
 import strikt.api.expectThat
 import strikt.assertions.containsKey
+import strikt.assertions.contains
 import strikt.assertions.hasSize
 import strikt.assertions.isEmpty
 import strikt.assertions.isEqualTo
@@ -261,5 +262,85 @@ internal class FunctionRegistryStoreTest {
         assertThrows<IllegalStateException> {
             store.resolveEntry("missing")
         }
+    }
+
+    @Test
+    fun `tryResolveEntryIn returns exact match pair against a pre-loaded map`() {
+        val all = mapOf("greeting-fn" to FunctionInvocationMetadata("svc", "https://h/p"))
+
+        val entry = store().tryResolveEntryIn("greeting-fn", all)
+
+        expectThat(entry).isNotNull().and {
+            get { first }.isEqualTo("greeting-fn")
+            get { second.url }.isEqualTo("https://h/p")
+        }
+    }
+
+    @Test
+    fun `tryResolveEntryIn resolves regional suffix against a pre-loaded map`() {
+        val all = mapOf("eu-west-1/greeting-fn" to FunctionInvocationMetadata("svc", "https://h/p"))
+
+        val entry = store().tryResolveEntryIn("greeting-fn", all)
+
+        expectThat(entry).isNotNull().and {
+            get { first }.isEqualTo("eu-west-1/greeting-fn")
+            get { second.url }.isEqualTo("https://h/p")
+        }
+    }
+
+    @Test
+    fun `tryResolveEntryIn returns null when missing from the pre-loaded map`() {
+        val all = mapOf("present" to FunctionInvocationMetadata("svc", "https://h/p"))
+
+        expectThat(store().tryResolveEntryIn("missing", all)).isEqualTo(null)
+    }
+
+    @Test
+    fun `tryResolveEntryIn throws when ambiguous in the pre-loaded map`() {
+        val all = mapOf(
+            "eu-west-1/greeting-fn" to FunctionInvocationMetadata("svc", "https://a/invoke"),
+            "us-east-1/greeting-fn" to FunctionInvocationMetadata("svc", "https://b/invoke")
+        )
+
+        assertThrows<IllegalStateException> {
+            store().tryResolveEntryIn("greeting-fn", all)
+        }
+    }
+
+    @Test
+    fun `tryResolveEntry delegates to tryResolveEntryIn against a fresh read`() {
+        val store = store()
+        store.writeNew(mapOf("greeting-fn" to FunctionInvocationMetadata("svc", "https://h/p")))
+
+        expectThat(store.tryResolveEntry("greeting-fn")).isEqualTo(store.tryResolveEntryIn("greeting-fn", store.readAll()))
+    }
+
+    @Test
+    fun `put on an existing file does not add a stray updateAt key`() {
+        val store = store()
+        store.writeNew(mapOf("a" to FunctionInvocationMetadata("svcA", "https://a/p")))
+
+        store.put("b", FunctionInvocationMetadata("svcB", "https://b/p"))
+
+        val raw = Files.readString(tempDir.resolve("function-registry.json"))
+        expectThat(raw).contains("\"updatedAt\"")
+        expectThat(raw.contains("\"updateAt\"")).isFalse()
+    }
+
+    @Test
+    fun `remove on an existing file does not add a stray updateAt key`() {
+        val store = store()
+        store.writeNew(
+            mapOf(
+                "a" to FunctionInvocationMetadata("svcA", "https://a/p"),
+                "b" to FunctionInvocationMetadata("svcB", "https://b/p")
+            )
+        )
+
+        store.remove("a")
+
+        val raw = Files.readString(tempDir.resolve("function-registry.json"))
+        expectThat(raw).contains("\"updatedAt\"")
+        expectThat(raw.contains("\"updateAt\"")).isFalse()
     }
 }

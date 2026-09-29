@@ -26,14 +26,14 @@ import org.openjdk.jmh.infra.Blackhole
 import java.util.concurrent.TimeUnit
 
 /**
- * P12 - Local rendering cost vs. Choice/Parallel branch width.
+ * T18 - Local rendering cost vs. Choice/Parallel branch width.
  *
- * P1/P2/P4/P5 only ever vary CALL step count, per-call parameter count, or nesting depth - never
+ * T15/T16/T17 only ever vary CALL step count, per-call parameter count, or nesting depth - never
  * the width of a Choice (nº of conditions) or a Parallel (nº of branches). `GoogleParallelRenderer
  * .internalEndRender` computes a set intersection of shared variable names between the branch and
  * outer scope, which reading the source suggested might scale worse than the Amazon side as
  * branch count grows - but measured results show both providers scaling near-linearly with AWS
- * slightly, not more, expensive (see RESULTS.md P12): the generated workflows have no variables
+ * slightly, not more, expensive (see RESULTS.md T18): the generated workflows have no variables
  * in scope (leaf steps are plain `independent()` calls), so that intersection stays O(1) per
  * branch regardless of width. Isolating branch-count cost from variables-in-scope cost is exactly
  * what this benchmark measures; the latter is a separate, still-unmeasured axis. Renders LOCALLY

@@ -22,6 +22,7 @@ object StepContextGenerator {
             null,
             body = mapOf("firstName" to "John", "lastName" to "Johnson"),
             "",
+            null,
             headers,
             queries,
             5L,
@@ -41,6 +42,7 @@ object StepContextGenerator {
             null,
             mapOf("firstName" to "John", "lastName" to "Johnson"),
             "",
+            null,
             emptyMap(),
             queries,
             5L,
@@ -103,6 +105,7 @@ object StepContextGenerator {
                 "targetLanguageCode" to "ru-RU"
             ),
             "",
+            null,
             emptyMap(),
             emptyMap(),
             null,
@@ -126,6 +129,7 @@ object StepContextGenerator {
             Authentication("IAM_ROLE", null, null, null),
             emptyMap(),
             "$.NewPet",
+            null,
             emptyMap(),
             emptyMap(),
             null,
@@ -150,6 +154,7 @@ object StepContextGenerator {
             Authentication("IAM_ROLE", null, null, null),
             emptyMap(),
             "",
+            null,
             emptyMap(),
             emptyMap(),
             null,
@@ -165,6 +170,7 @@ object StepContextGenerator {
             Authentication("IAM_ROLE", null, null, null),
             emptyMap(),
             "Add pet to store status code - $.StatusCode",
+            null,
             emptyMap(),
             emptyMap(),
             null,
@@ -209,7 +215,7 @@ object StepContextGenerator {
     }
 
     // ---------------------------------------------------------------------
-    // Additions for parameter-count (P2) and internal-call (P3) benchmarks.
+    // Additions for parameter-count (T16) and internal-call (T1) benchmarks.
     // All helpers below build plain in-memory model objects only (no I/O,
     // no network, no cloud SDK).
     // ---------------------------------------------------------------------
@@ -217,7 +223,7 @@ object StepContextGenerator {
     /**
      * Builds an external [CallContext] carrying exactly [parameterCount]
      * query parameters, [parameterCount] header parameters and
-     * [parameterCount] body parameters. Used by the P2 parameter-count
+     * [parameterCount] body parameters. Used by the T16 parameter-count
      * scalability benchmark to vary the per-call payload size while keeping
      * the number of steps fixed.
      *
@@ -237,6 +243,7 @@ object StepContextGenerator {
             null,
             body,
             "",
+            null,
             headers,
             queries,
             5L,
@@ -256,6 +263,7 @@ object StepContextGenerator {
             null,
             emptyMap(),
             "",
+            null,
             emptyMap(),
             emptyMap(),
             5L,
@@ -286,7 +294,7 @@ object StepContextGenerator {
     }
 
     /**
-     * P12 helper. Parametrized version of [ifElseSwitch]/[multipleSwitch] (fixed at 1 and 3
+     * T18 helper. Parametrized version of [ifElseSwitch]/[multipleSwitch] (fixed at 1 and 3
      * conditions respectively): builds a [ConditionalContext] with exactly [conditionCount]
      * conditions, isolating the "Choice width" render-cost axis. Target/default step names are
      * arbitrary - renderers only serialize them as strings, they don't need to resolve to real

@@ -1,0 +1,55 @@
+@startuml omniflow-classes-resolvers
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+hide empty members
+title Part 3: resolvers and provider lookups (excerpt of the full class model, Appendix A)
+left to right direction
+
+class WorkflowInternalFunctionResolver {
+  -projectId : String
+  -preferredRegion : String[0..1]
+  +resolve(workflow) : Workflow
+  -resolveOrDiscoverInternal(ref, fn, snapshot) : String
+  -discoverServiceForRef(ref) : List
+}
+
+class AwsInternalFunctionResolver {
+  -preferredRegion : String[0..1]
+  +resolve(workflow) : Workflow
+  -resolveOrDeploy(ref, fn, snapshot) : String
+  -discoverFunctionForRef(ref) : List
+}
+
+class CloudRunV2ServiceInspector {
+  +lookupByServiceName(serviceName) : LookupResult
+  +lookup(projectId, region, serviceId) : LookupResult
+}
+class CloudRunLocationsV1RestClient {
+  +listProjectLocations(projectId) : List<String>
+}
+interface LambdaFunctionInspector {
+  +lookup(region, functionName) : LookupResult
+}
+interface AwsRegionsLister {
+  +listRegions(bootstrapRegion) : List<String>
+}
+class FunctionRegistryStore
+interface InternalFunctionDeployer
+
+WorkflowInternalFunctionResolver --> CloudRunV2ServiceInspector
+WorkflowInternalFunctionResolver --> CloudRunLocationsV1RestClient
+AwsInternalFunctionResolver --> LambdaFunctionInspector
+AwsInternalFunctionResolver --> AwsRegionsLister
+WorkflowInternalFunctionResolver --> FunctionRegistryStore
+AwsInternalFunctionResolver --> FunctionRegistryStore
+WorkflowInternalFunctionResolver --> InternalFunctionDeployer
+AwsInternalFunctionResolver --> InternalFunctionDeployer
+
+note bottom of FunctionRegistryStore
+  each resolve() reads the registry once
+  into a snapshot and keeps it in sync
+  with every put/remove
+end note
+@enduml

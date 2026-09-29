@@ -5,7 +5,6 @@ import costaber.com.github.omniflow.model.CallContext
 import costaber.com.github.omniflow.model.Workflow
 import costaber.com.github.omniflow.registry.FunctionInvocationMetadata
 import costaber.com.github.omniflow.registry.FunctionRegistryStore
-import costaber.com.github.omniflow.registry.WorkflowInternalCallEndpointResolver
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.Fork
@@ -25,7 +24,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
 /**
- * P19 - Internal function resolution cost vs. PARALLEL BRANCH WIDTH, the structural axis P12
+ * T14 - Internal function resolution cost vs. PARALLEL BRANCH WIDTH, the structural axis T18
  * measured only for rendering (and only for the Parallel/Choice renderers, external-only
  * workflows).
  *
@@ -33,13 +32,13 @@ import java.util.concurrent.TimeUnit
  * Condition/target-name pairs, never nested CALL steps, so internal function resolution has
  * nothing to recurse into there - Choice stays a rendering-only axis for this contribution.
  * Parallel, however, DOES nest real Step lists per branch, and
- * [WorkflowInternalCallEndpointResolver]'s `resolveContext` recurses into ParallelBranchContext
- * explicitly - a path never exercised by P3/P6-P17's flat workflows. Mirrors
+ * [OptimizedEndpointResolver]'s `resolveContext` recurses into ParallelBranchContext
+ * explicitly - a path never exercised by T1-T12's flat workflows. Mirrors
  * [WorkflowGenerator.withParallelBranchWidth] (a single Parallel block, [branchWidth] swept,
  * FIXED_LEAVES_PER_BRANCH leaves per branch), but the leaves are INTERNAL calls (round-robin over
- * FIXED_FUNCTIONS distinct functions, R=F, as in P8/P15) instead of independent external calls.
+ * FIXED_FUNCTIONS distinct functions, R=F, as in T4/T11) instead of independent external calls.
  * Only the ALREADY-OPTIMIZED resolver is measured (single registry read) - the naive-vs-optimized
- * comparison is already exhaustively established in P6/P7/P8/P9. Pure local file I/O - no AWS/GCP
+ * comparison is already exhaustively established in T2/T3/T4/T5. Pure local file I/O - no AWS/GCP
  * SDK, no network.
  */
 @BenchmarkMode(Mode.AverageTime)
@@ -55,7 +54,7 @@ open class BenchmarkInternalResolutionByBranchWidth {
     var branchWidth: Int = 0
 
     private lateinit var registryFile: Path
-    private lateinit var resolver: WorkflowInternalCallEndpointResolver
+    private lateinit var store: FunctionRegistryStore
     private lateinit var workflow: Workflow
 
     private val internalCallExtractor: (CallContext) -> String? =
@@ -63,8 +62,8 @@ open class BenchmarkInternalResolutionByBranchWidth {
 
     @Setup(Level.Trial)
     fun setupWorkflow() {
-        registryFile = Files.createTempFile("omniflow-bench-p19-registry", ".json")
-        val store = FunctionRegistryStore(registryFile)
+        registryFile = Files.createTempFile("omniflow-bench-t14-registry", ".json")
+        store = FunctionRegistryStore(registryFile)
 
         // Registry holds exactly the FIXED_FUNCTIONS functions the internal calls reference (R=F).
         val functions = (0 until FIXED_FUNCTIONS).associate { idx ->
@@ -75,7 +74,6 @@ open class BenchmarkInternalResolutionByBranchWidth {
             )
         }
         store.writeNew(functions)
-        resolver = WorkflowInternalCallEndpointResolver(store)
 
         workflow = WorkflowGenerator.withParallelBranchWidthInternalCalls(
             branchWidth, FIXED_LEAVES_PER_BRANCH, FIXED_FUNCTIONS, BASE
@@ -90,7 +88,7 @@ open class BenchmarkInternalResolutionByBranchWidth {
     /** Optimized resolution (single registry read, then per-call lookups) of a wide-Parallel workflow. */
     @Benchmark
     fun resolveOptimized(blackhole: Blackhole) {
-        blackhole.consume(resolver.resolve(workflow, internalCallExtractor))
+        blackhole.consume(OptimizedEndpointResolver.resolve(workflow, store, internalCallExtractor))
     }
 
     companion object {
