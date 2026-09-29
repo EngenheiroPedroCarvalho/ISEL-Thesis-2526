@@ -8,8 +8,13 @@ este ficheiro.)
 
 ## 2026-09-29
 
-### Cap. 5 (`chapter6.tex`), secção 5.3: a ressalva da conta de produção passa para o início
+### Cap. 5 (`chapter6.tex`): as contas de teste e de produção passam para a discussão
 
-- Parágrafo "AWS production account": "This deployment was not run" deixa de fechar o parágrafo e
-  passa a abri-lo, com o motivo da descrição ("it is described to show how the ladder handles a
-  second account of the same provider"), para que a promoção não seja lida como executada.
+- Sai o requisito "One workflow, several accounts" (secção 5.1); ficam dois requisitos (estratégia
+  de saída e auditabilidade).
+- Secção 5.3 "Deploying Across Accounts and Providers" passa a "Deploying to AWS and GCP": o
+  parágrafo "AWS test account" passa a "AWS." (como o da GCP) e sai o parágrafo "AWS production
+  account". A introdução do capítulo deixa de falar em conta de teste e de produção.
+- Secção 5.5 (Discussão): novo parágrafo "Several accounts" com o conteúdo que saiu (endpoint
+  diferente por conta ou projeto, só os descritores mudam, um registry por conta, não partilhar o
+  registry), agora também para projetos GCP, e a nota de que nenhuma promoção foi executada.

@@ -10,12 +10,11 @@
 This chapter applies the registry and the resolution ladder to a retail-banking scenario: a
 card-payment authorization workflow that screens each transaction for fraud before it is settled.
 It extends the \texttt{FraudPipeline} of Section~\ref{sec:developer-workflow} and is illustrative,
-not a production deployment. It was deployed and run on an AWS test account and on a GCP project;
-a deployment to a production AWS account is only described.
+not a production deployment. It was deployed and run on an AWS account and on a GCP project.
 
 Section~\ref{sec:case-scenario} states the requirements, Section~\ref{sec:case-design} defines the
-workflow, Section~\ref{sec:case-deployment} follows the ladder through deployments to two accounts
-and two providers, Section~\ref{sec:case-artifacts} reports the two runs, and
+workflow, Section~\ref{sec:case-deployment} follows the ladder through the deployments to the two
+providers, Section~\ref{sec:case-artifacts} reports the two runs, and
 Section~\ref{sec:case-discussion} discusses the scenario's limits.
 
 \section{Scenario and Requirements}
@@ -25,13 +24,9 @@ A bank authorizes card payments through a workflow. Two internal functions, owne
 team, score each transaction: \texttt{fraud-check} flags known fraud patterns, and
 \texttt{risk-score} computes a numeric risk score. An external call then reports the decision to
 the core banking system, which has its own release cycle and is not managed through the registry.
-Three requirements motivate the integration:
+Two requirements motivate the integration:
 
 \begin{itemize}
-    \item \textbf{One workflow, several accounts.} If development, testing and production are
-    separate cloud accounts, a function has a different endpoint in each (its ARN contains the
-    account ID). With endpoints in the definition, every promotion would mean deploying the
-    functions and editing the workflow by hand (Section~\ref{sec:int_cha_int_uni_multi}).
     \item \textbf{An exit strategy.} The Digital Operational Resilience Act (DORA) requires EU
     financial entities to have exit strategies for ICT services supporting critical or important
     functions, and to assess ICT concentration risk~\cite[Arts.~28(8) and~29]{dora2022}. Exiting a
@@ -63,22 +58,14 @@ conditions name a result field with \texttt{withKey}, which each renderer turns 
 path. The workflow names no provider, region or endpoint: these come from the descriptors and the
 choice of deployer.
 
-\section{Deploying Across Accounts and Providers}
+\section{Deploying to AWS and GCP}
 \label{sec:case-deployment}
 
-\paragraph{AWS test account.} The workflow is deployed with AWS descriptors and the AWS deployer.
+\paragraph{AWS.} The workflow is deployed with AWS descriptors and the AWS deployer.
 The registry is bootstrapped from the account; neither function exists yet, so both calls miss at
 Levels~1 and~2 (Section~\ref{sec:walkthrough}), and Level~3 deploys them as Lambda functions
 through the AWS provider added to QuickFaaS (Figure~\ref{fig:aws-deploy-level3}). Their ARNs are
 stored in the \texttt{url} field, and the state machine is deployed.
-
-\paragraph{AWS production account.} This deployment was not run; it is described to show how the
-ladder handles a second account of the same provider. The workflow is unchanged; only the
-descriptors change, to name the production bucket (and, optionally, role). The deployment uses its
-own registry file (the deployers accept a registry path), bootstrapped from the production account,
-and Level~3 deploys both functions there. No endpoint is copied between accounts. The registry must
-not be shared: a test-account entry would fail validation in production, be treated as stale, and
-abort the deployment (Section~\ref{sec:walkthrough}).
 
 \paragraph{GCP.} For the exit strategy, the same workflow is deployed with GCP descriptors and the
 GCP deployer. The GCP registry is bootstrapped separately, both calls miss at Levels~1 and~2, and
@@ -208,6 +195,18 @@ on GCP.
 
 \section{Discussion}
 \label{sec:case-discussion}
+
+\paragraph{Several accounts.} Each run used one account or project, but an organization may keep
+development, testing and production in separate ones. A function then has a different endpoint in
+each: its ARN contains the account ID, and a \texttt{run.app} URL is specific to the project. With
+endpoints in the definition, every promotion would mean deploying the functions and editing the
+workflow by hand (Section~\ref{sec:int_cha_int_uni_multi}). With the ladder, the workflow is
+unchanged; only the descriptors change, to name the target account's bucket (and, optionally,
+role) on AWS or the target project on GCP. Each account uses its own registry file (the deployers
+accept a registry path), bootstrapped from that account, and Level~3 deploys the functions there,
+so no endpoint is copied between accounts. The registry must not be shared: on AWS, an entry from
+another account would fail validation, be treated as stale, and abort the deployment
+(Section~\ref{sec:walkthrough}). No deployment to a second account or project was run.
 
 Promoting the workflow across accounts and providers needs no edit to its definition. Updating the
 fraud model is different: a retrained \texttt{fraud-check} redeployed in place keeps its endpoint
