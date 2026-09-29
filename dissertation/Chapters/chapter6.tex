@@ -67,8 +67,8 @@ Levels~1 and~2 (Section~\ref{sec:walkthrough}), and Level~3 deploys them as Lamb
 through the AWS provider added to QuickFaaS (Figure~\ref{fig:aws-deploy-level3}). Their ARNs are
 stored in the \texttt{url} field, and the state machine is deployed.
 
-\paragraph{GCP.} For the exit strategy, the same workflow is deployed with GCP descriptors and the
-GCP deployer. The GCP registry is bootstrapped separately, both calls miss at Levels~1 and~2, and
+\paragraph{GCP.} To illustrate the exit-strategy requirement (Section~\ref{sec:case-scenario}),
+the same workflow is also deployed to a second provider, with GCP descriptors and the GCP deployer. The GCP registry is bootstrapped separately, both calls miss at Levels~1 and~2, and
 Level~3 deploys Cloud Run functions (Section~\ref{subsec:gcp-cloud-run-functions}), packaged in the
 same ZIP format (Section~\ref{sec:background_quickfaas}) with the provider's hook signature. The same \texttt{functionRef} resolves to an
 ARN on AWS and to a \texttt{run.app} URL on GCP, both stored in the \texttt{url} field, so the
@@ -222,6 +222,10 @@ the value is a variable). A multi-variable \texttt{assign} still replaces the st
 JSONPath \texttt{ResultPath} writes one place; Cloud Workflows has no such limit. Second, the query
 parameters of a Lambda call were wrapped in \texttt{States.Array}, as \texttt{apigateway:invoke}
 requires, so a hook received \texttt{"[120]"}; they are now plain strings in the Lambda payload.
+
+\paragraph{Exit strategy.} The workflow definition (Listing~\ref{lst:case-payment-workflow}) deploys
+to GCP unchanged, but the exit is partial: the functions' source, the region-qualified references
+and the external calls had to be adapted per provider (limits 1, 3 and~4 below).
 
 \paragraph{Limits found on the live providers.}
 \begin{enumerate}

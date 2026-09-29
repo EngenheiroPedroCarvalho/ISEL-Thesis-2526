@@ -8,6 +8,15 @@ este ficheiro.)
 
 ## 2026-09-29
 
+### Cap. 5 (`chapter6.tex`): a GCP como ilustração da estratégia de saída
+
+- Secção 5.3, parágrafo "GCP.": "For the exit strategy, ..." passa a "To illustrate the
+  exit-strategy requirement (Section 5.1), the same workflow is also deployed to a second
+  provider, ...".
+- Secção 5.5: novo parágrafo "Exit strategy." antes dos limites: a definição do workflow passa
+  para a GCP sem alterações, mas a saída é parcial (código das funções, referências com região e
+  chamadas externas adaptados por fornecedor; limites 1, 3 e 4).
+
 ### Cap. 5 (`chapter6.tex`), secção 5.1: ICT por extenso
 
 - Requisito "An exit strategy": "ICT services" passa a "information and communication technology
