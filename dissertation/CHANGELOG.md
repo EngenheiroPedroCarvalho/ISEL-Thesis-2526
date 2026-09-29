@@ -19,6 +19,9 @@ este ficheiro.)
 - Tabelas 6.2 (`tab:eval-summary`) e 6.6 (`tab:eval-s1`): `[tbp]` passa a `[hbp]`. Com `[tbp]`,
   as duas iam para o topo da página, antes do parágrafo que as refere (pp. 35 e 38); agora ficam
   logo a seguir a ele. As Tabelas 6.1, 6.3, 6.4 e 6.5 já ficavam depois da referência.
+- As mesmas duas tabelas: `\captionsetup{belowskip=0pt}`. O template põe 1 cm acima da legenda
+  das tabelas (`packages.clo`), que no meio do texto se somava ao espaço do float (cerca de 42 pt
+  entre o parágrafo e a legenda); agora ficam cerca de 13 pt.
 
 ### Cap. 6 (`chapter7.tex`), secção 6.3 (Methodology): reference resolver e production resolvers
 
