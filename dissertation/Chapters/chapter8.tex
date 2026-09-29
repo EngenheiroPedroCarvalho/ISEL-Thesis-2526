@@ -87,7 +87,8 @@ The implementation is a prototype, with these limitations:
   different signatures, so each internal function is written once per provider
   (Section~\ref{sec:case-discussion}).
   \item \textbf{Unguarded registry.} A flat JSON file with no cache, no integrity guarantee and no
-  cross-process locking: concurrent writers race, and a tampered \texttt{url} would be trusted.
+  cross-process locking: concurrent writers race, and a tampered \texttt{serviceName} that names
+  another existing function would be accepted (a tampered \texttt{url} is corrected by validation).
   \item \textbf{A per-machine index, not a shared store.} Each developer has their own registry.
   The shared record is the provider itself, against which every hit is validated and from which a
   missing registry is rebuilt, so developers converge on the same bindings, each through their own

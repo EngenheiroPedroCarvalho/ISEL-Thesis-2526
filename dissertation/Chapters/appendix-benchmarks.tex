@@ -10,10 +10,9 @@ This appendix gives the complete results of the experiments summarised in
 Table~\ref{tab:eval-summary} (Section~\ref{sec:eval-resolution}), measured as described in
 Section~\ref{sec:eval-methodology}. All times are in microseconds per operation. Table~\ref{tab:eval-notation}
 lists the symbols. Internal calls are distributed round-robin over the $F$ distinct functions, and
-unless stated otherwise the registry always hits ($R{=}F$). Three points have a 99.9\% confidence
-interval close to their own value and should be read as noise: T1 at $N{=}10$
-($16.9 \pm 16.8\,\mu$s), T9 at $K{=}10$, $R_0{=}10$ ($874 \pm 732\,\mu$s), and T13 at depth~2
-($69.0 \pm 40.8\,\mu$s).
+unless stated otherwise the registry always hits ($R{=}F$). Two points have a 99.9\% confidence
+interval close to their own value and should be read as noise: T9 at $K{=}10$, $R_0{=}10$
+($874 \pm 732\,\mu$s), and T13 at depth~2 ($69.0 \pm 40.8\,\mu$s).
 
 \begin{table}[htbp]
   \centering
@@ -41,10 +40,13 @@ interval close to their own value and should be read as noise: T1 at $N{=}10$
 \end{table}
 
 \FloatBlock
-\section{Resolution Against the Reference Resolver (T2, T4, T5)}
+\section{Resolution Against the Reference Resolver (T2--T5)}
 
-T2 re-reads the registry on every internal call (naive path); T4 and T5 compare it with the
-single read on a real 	exttt{Workflow} object.
+T2 re-reads the registry on every internal call (naive path): each read costs about $10.3\,\mu$s
+plus $0.17\,\mu$s per entry, so up to $R \approx 60$ the fixed cost of opening and parsing the file
+dominates. T3 compares that path with the single read by calling the store's lookup $N$ times,
+without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on a real
+\texttt{Workflow} object.
 
 \begin{figure}[htbp]
   \centering
@@ -78,6 +80,31 @@ single read on a real 	exttt{Workflow} object.
   {\captionof{figure}{T2: per-call resolution cost as a function of registry size $R$, for $N \in \{1, 10,
   50, 200\}$ internal calls. The external-call control does not read the registry.}
   \label{fig:eval-t2}}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  {\captionsetup{textfont=sf}\captionof{table}{T3: total resolution time ($\mu$s), naive (per-call read) vs.\ optimised (single
+  read).}
+  \label{tab:eval-t3}}
+  \small
+  \begin{tabular}{|l|r|r|r|r|}
+    \hline
+     & $N{=}1$ & $N{=}10$ & $N{=}50$ & $N{=}200$ \\
+     \hline
+    naive, $R{=}1$        & 9.8  & 98.0     & 492      & 1\,999    \\
+    \hline
+    optimised, $R{=}1$    & 10.0 & 10.0     & 10.1     & 10.3      \\
+    \hline
+    naive, $R{=}50$       & 17.9 & 180      & 901      & 3\,630    \\
+    \hline
+    optimised, $R{=}50$   & 18.4 & 18.3     & 18.5     & 18.5      \\
+    \hline
+    naive, $R{=}1000$     & 183  & 1\,839   & 9\,239   & 36\,670   \\
+    \hline
+    optimised, $R{=}1000$ & 182  & 183      & 182      & 184       \\
+    \hline
+  \end{tabular}
 \end{figure}
 
 \begin{figure}[htbp]

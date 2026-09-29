@@ -137,7 +137,8 @@ drift as text is edited, so search for the quoted phrases.
       table from it, then delete the provenance paragraph now in "Threats to Validity".
 - [x] Re-run JMH with `-f 3` — feito 2026-09-12. Margens de erro: intervalo de confiança a 99,9%
       abaixo de 1% do valor em metade das medições e abaixo de 6% em nove em cada dez; os poucos
-      pontos ruidosos (T1 N=10, T9 K=10/R0=10, T13 depth=2) estão identificados no texto. O caveat
+      pontos ruidosos (T9 K=10/R0=10, T13 depth=2) estão identificados no texto; o T1 foi
+      medido de novo com `-f 3` em 2026-09-29, a pedido do orientador, e o ponto N=10 deixou de ser ruído. O caveat
       "not thesis-grade" saiu; a Metodologia agora descreve a máquina (portátil Apple Silicon, ocioso
       mas não dedicado) e diz que o fator de hardware dominante é a velocidade do disco.
       Receita usada, confirmada na prática (manter para futuras repetições). **A corrida demorou

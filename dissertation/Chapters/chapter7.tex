@@ -8,8 +8,8 @@
 \label{cha:evaluation}
 
 This chapter answers the research questions of Section~\ref{sec:int_objectives}: whether internal
-calls are bound correctly at deployment time on both providers (RQ1), and how much that resolution
-costs (RQ2).
+calls are bound correctly at deployment time on both providers (RQ1), and how much local work that
+resolution adds and how many provider requests it sends (RQ2).
 
 \section{Scope and Goals}
 \label{sec:eval-scope}
@@ -22,7 +22,9 @@ and its functions takes minutes, with or without this integration, mostly spent 
 activating each function. They are also non-deterministic, so the correctness tests replace them
 with test doubles. RQ2 is therefore answered by measuring the local work the integration adds and
 how it scales (Sections~\ref{sec:eval-resolution} and~\ref{sec:eval-real-resolvers}), and by
-counting, from the code, the requests it sends to the provider (Section~\ref{sec:eval-api-calls}).
+counting the requests it sends to the provider (Section~\ref{sec:eval-api-calls}). That count is
+analytical: since the benchmarks run without a network, it is derived from the code, path by path
+through the ladder, rather than measured.
 The chapter also counts the manual steps removed (Section~\ref{sec:eval-manual-effort}) and the
 packaging overhead on AWS (Section~\ref{sec:eval-bundle}).
 
@@ -33,10 +35,23 @@ Each production resolver (\texttt{Aws\allowbreak Internal\allowbreak Function\al
 and \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}) has a unit-test
 suite that resolves a small workflow in each situation the ladder can meet. The provider is
 replaced by test doubles (a lookup that answers ``found'', ``not found'' or ``access denied'' per
-region, a fixed region list, and a deployer that records what it is asked to deploy); the registry
-is a real file. Each test checks the endpoint bound to the call, the registry afterwards and whether
+region, a fixed region list, and a deployer that records what it is asked to deploy). What the tests
+verify is therefore the resolver's decision given a simulated provider answer, not the provider
+itself. The registry, in contrast, is a real JSON file in a temporary directory: reading and writing
+it is local I/O, within the scope of the tests, so the tests exercise the same file code as a real
+deployment. Each test checks the endpoint bound to the call, the registry afterwards and whether
 a deployment or an abort happened. Table~\ref{tab:eval-correctness} groups the situations by level.
 All 46 resolver tests (23 per provider) and the two bootstrap tests pass.
+
+The tests do not cover a registry file altered outside OmniFlow, but the code determines what
+happens. A file that is not valid JSON makes the read fail, and the deployment aborts. A valid file
+without a \texttt{functions} object is read as an empty registry, so every call goes to Levels~2
+and~3. An altered \texttt{url} is harmless, because Level~1 looks the function up by its
+\texttt{serviceName} and overwrites the stored endpoint with the live one as drift (on AWS, an ARN
+whose region no longer resolves sends the call to rediscovery instead). An altered
+\texttt{serviceName} that names another existing function is not detected: validation confirms
+that function, and the call is bound to it. The registry has no integrity protection
+(Section~\ref{sec:concl-critical}).
 
 \begin{table}[tbp]
   \centering
@@ -83,12 +98,17 @@ All 46 resolver tests (23 per provider) and the two bootstrap tests pass.
 \label{sec:eval-methodology}
 
 The benchmarks use the Java Microbenchmark Harness (JMH)~\cite{jmh}, version 1.37, in
-\texttt{Average\allowbreak Time} mode, reporting microseconds per operation ($\mu$s/op), with every
-result consumed by a \texttt{Blackhole} to prevent dead-code elimination. Each value is the mean of
-fifteen one-second iterations over three JVM forks, after three warm-up iterations
-(\texttt{-f 3 -wi 3 -i 5 -w 1 -r 1}). All experiments come from one run, except T6 and T7, measured
-later with the same settings on the same machine; where the runs overlap, they agree within a few
-percent. The machine is an Apple Silicon laptop running macOS, idle but not dedicated. The 99.9\%
+\texttt{Average\allowbreak Time} mode, reporting microseconds per operation ($\mu$s/op). Every
+result is passed to a \texttt{Blackhole}, a JMH object that consumes a value so that the JIT
+compiler cannot discard the computation that produced it as dead code. Each value is the mean of
+fifteen one-second iterations over three forks, that is, three separate JVM processes, so that one
+process's compilation and memory layout do not bias the result. Each fork first runs three
+warm-up iterations, which are discarded, so that the code is measured after the JIT compiler has
+optimised it (\texttt{-f 3 -wi 3 -i 5 -w 1 -r 1}). All experiments come from one run, except T1, T6 and T7, measured
+later with the same settings on the same machine. T1 was repeated because one of its points was
+dominated by noise; in the repeated run a registry read takes $10.7\,\mu$s instead of $9.8\,\mu$s,
+so values from different runs agree within about 10\%. The machine is a laptop with an Apple M5 processor (10 cores) and 24\,GB of memory,
+running macOS, idle but not dedicated. The 99.9\%
 confidence interval is under 1\% of the score for half the measurements and under 6\% for nine in
 ten; the few noisy points are marked in Appendix~\ref{app:benchmarks}.
 
@@ -115,8 +135,8 @@ Appendix~\ref{app:benchmarks}. Three findings matter.
     \hline
     \textbf{Exp.} & \textbf{Varies} & \textbf{Result} \\
     \hline
-    T1 & $N$, all internal vs.\ all external ($R{=}1$) & one registry read ($\approx 9.8\,\mu$s)
-    plus $0.22\,\mu$s per internal and $0.006\,\mu$s per external call \\
+    T1 & $N$, all internal vs.\ all external ($R{=}1$) & one registry read ($\approx 10.7\,\mu$s)
+    plus $0.23\,\mu$s per internal and $0.005\,\mu$s per external call \\
     \hline
     T2 & $R$, registry re-read per call & $\approx 10.3\,\mu$s per read plus $0.17\,\mu$s per entry;
     the fixed cost dominates up to $R \approx 60$ \\
@@ -150,10 +170,10 @@ Appendix~\ref{app:benchmarks}. Three findings matter.
 
 \paragraph{Resolution costs one registry read plus a small constant per internal call (T1).}
 In T1 (Table~\ref{tab:eval-t1}, Figure~\ref{fig:eval-t1}), both variants pay one registry read,
-about $9.8\,\mu$s, which the resolver performs before walking the tree; the production deployers
+about $10.7\,\mu$s, which the resolver performs before walking the tree; the production deployers
 skip resolution entirely for a workflow without internal calls. Each internal call then adds
-about $0.22\,\mu$s (snapshot lookup, URL split, rebuilt call node) against $0.006\,\mu$s for an
-external one. A 200-call workflow costs $54.9\,\mu$s. External calls add no registry work (T11,
+about $0.23\,\mu$s (snapshot lookup, URL split, rebuilt call node) against $0.005\,\mu$s for an
+external one. A 200-call workflow costs $56.4\,\mu$s. External calls add no registry work (T11,
 T12), and neither nesting depth nor parallel width matters beyond the number of internal calls (T13,
 T14).
 
@@ -169,21 +189,21 @@ T14).
       \hline
       \textbf{$N$} & \textbf{Internal} & \textbf{External} \\
       \hline
-      1   & 10.1 & 9.8  \\
+      1   & 11.0 & 10.7 \\
       \hline
-      2   & 10.4 & 9.8  \\
+      2   & 11.3 & 10.7 \\
       \hline
-      5   & 11.1 & 9.8  \\
+      5   & 12.0 & 10.7 \\
       \hline
-      10  & 16.9 & 9.8  \\
+      10  & 13.3 & 10.8 \\
       \hline
-      20  & 14.5 & 9.8  \\
+      20  & 15.6 & 10.8 \\
       \hline
-      50  & 21.3 & 10.0 \\
+      50  & 22.4 & 11.0 \\
       \hline
-      100 & 32.2 & 10.3 \\
+      100 & 34.0 & 11.2 \\
       \hline
-      200 & 54.9 & 10.9 \\
+      200 & 56.4 & 11.8 \\
       \hline
     \end{tabular}
   \end{minipage}\hfill
@@ -193,44 +213,16 @@ T14).
   \end{minipage}
   {\captionof{figure}{T1: resolution time of a workflow of $N$ calls, all internal against all external,
   with $R{=}1$. Both lines start from the one registry read the resolver always performs, and only
-the internal line then grows with $N$. The error bar at $N{=}10$ reaches almost down to zero.}
+the internal line then grows with $N$.}
   \label{fig:eval-t1}}
 \end{figure}
 
 \paragraph{Reading the registry once removes the calls-times-size product (T2--T5).}
 Re-reading the registry on every call, as the store's per-call methods do, costs $N$ reads of an
-$R$-entry file, each about $10.3\,\mu$s plus $0.17\,\mu$s per entry (T2). Up to $R \approx 60$,
-which covers a realistic few dozen functions, the fixed cost of opening and parsing the file
-dominates, so the number of reads is what matters. With a single read per resolution the cost
-becomes flat in $N$ (Table~\ref{tab:eval-t3}), and the speedup grows with $N \cdot R$, up to
-$200\times$ ($N{=}200$, $R{=}1000$: $36.7$\,ms down to $0.18$\,ms). On real workflows, the speedup is
-$38$--$58\times$ at 200 calls (T4) and $26$--$46\times$ at 50 calls as $R$ grows (T5). A suffix match
-(\texttt{"region/name"}) scans the loaded map, but remains cheap (T10).
-
-\begin{figure}[tbp]
-  \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T3: total resolution time ($\mu$s), naive (per-call read) vs.\ optimised (single
-  read).}
-  \label{tab:eval-t3}}
-  \small
-  \begin{tabular}{|l|r|r|r|r|}
-    \hline
-     & $N{=}1$ & $N{=}10$ & $N{=}50$ & $N{=}200$ \\
-     \hline
-    naive, $R{=}1$        & 9.8  & 98.0     & 492      & 1\,999    \\
-    \hline
-    optimised, $R{=}1$    & 10.0 & 10.0     & 10.1     & 10.3      \\
-    \hline
-    naive, $R{=}50$       & 17.9 & 180      & 901      & 3\,630    \\
-    \hline
-    optimised, $R{=}50$   & 18.4 & 18.3     & 18.5     & 18.5      \\
-    \hline
-    naive, $R{=}1000$     & 183  & 1\,839   & 9\,239   & 36\,670   \\
-    \hline
-    optimised, $R{=}1000$ & 182  & 183      & 182      & 184       \\
-    \hline
-  \end{tabular}
-\end{figure}
+$R$-entry file; a single read per resolution makes the cost flat in $N$. The benefit is expected;
+the measurements give its size: up to $200\times$ at $N{=}200$, $R{=}1000$ (T3), and
+$26$--$58\times$ on real workflows (T4, T5). A suffix match (\texttt{"region/name"}) scans the
+loaded map, but remains cheap (T10).
 
 \section{Production Resolvers and Write Path}
 \label{sec:eval-real-resolvers}
@@ -397,7 +389,7 @@ or deploying a duplicate. The answer is positive for the resolution logic on bot
 the evidence coming from tests that simulate the provider.
 
 \paragraph{Answer to RQ2.}
-Resolution costs one registry read plus about $0.22\,\mu$s per internal call. Reading the registry
+Locally, resolution costs one registry read plus about $0.23\,\mu$s per internal call. Reading the registry
 once instead of per call removes the product of calls and registry size, a speedup of up to
 $200\times$. The production resolvers take $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a 200-call
 workflow. The cost follows the number of internal calls, not external calls or the shape of the
@@ -414,8 +406,8 @@ bottleneck of a deployment: the cloud deployment itself takes minutes.
 
 The absolute values belong to one laptop. Since file I/O dominates several experiments, slower
 storage would raise every read and write, but the shape of each cost and the relationships between
-experiments, measured under the same conditions, would hold. T6 and T7 come from a later session,
-so their comparison with T4 is an order-of-magnitude one.
+experiments, measured under the same conditions, would hold. T1, T6 and T7 come from later sessions,
+so their comparison with the other experiments is an order-of-magnitude one.
 
 The correctness evidence is mostly local: the tests show that each resolver decides correctly given
 what the provider reports, not that the real APIs report what the doubles assume. The case study

@@ -33,7 +33,7 @@ chamadas à nuvem. Geradas com JMH a partir do módulo `benchmark/`.
 - **Margens de erro:** o intervalo de confiança a 99,9% fica abaixo de 1% do valor em metade das
   medições e abaixo de 6% em nove em cada dez. Os poucos pontos ruidosos estão assinalados na
   secção respetiva; não sustentam nenhuma conclusão.
-- **Dados brutos:** `jmh-results-f3.csv` (a execução completa; o T1 lê-se daqui) e os ficheiros
+- **Dados brutos:** `jmh-results-f3.csv` (a execução completa) e os ficheiros
   `jmh-results-p*.csv`, derivados dela por experiência. Gráficos: `T1_*.png`, `T2_*.png … T14_*.png`
   (T3 e T4 em duas figuras cada, `P7a`/`P7b` e `P8a`/`P8b`), regeneráveis com
   `python3 plot_benchmarks.py jmh-results-f3.csv .`.
@@ -103,25 +103,33 @@ num relance, o *formato* do teste — para não confundir testes parecidos:
 
 | Nº de chamadas | Internas — resolução (µs) | Externas — sem resolução (µs) |
 |---:|---:|---:|
-| 1 | 10,1 | 9,8 |
-| 2 | 10,4 | 9,8 |
-| 5 | 11,1 | 9,8 |
-| 10 | 16,9 | 9,8 |
-| 20 | 14,5 | 9,8 |
-| 50 | 21,3 | 10,0 |
-| 100 | 32,2 | 10,3 |
-| 200 | 54,9 | 10,9 |
+| 1 | 11,0 | 10,7 |
+| 2 | 11,3 | 10,7 |
+| 5 | 12,0 | 10,7 |
+| 10 | 13,3 | 10,8 |
+| 20 | 15,6 | 10,8 |
+| 50 | 22,4 | 11,0 |
+| 100 | 34,0 | 11,2 |
+| 200 | 56,4 | 11,8 |
 
 ![T1 — Custo da unificação: resolução de funções internas](T1_resolution_overhead.png)
 
 **Resumo.** Mede o custo de resolver endpoints de funções internas (a unificação
 OmniFlow+QuickFaaS) contra o de uma chamada que não precisa de resolução. As duas variantes pagam
 **uma** leitura do registo — o resolver de referência lê o ficheiro antes de percorrer a árvore,
-haja ou não o que resolver — e é isso que a linha N=1 mede: ~9,8 µs. O que separa as duas colunas é
-o trabalho por chamada: ~0,22 µs para uma chamada interna (*lookup* no snapshot, divisão do URL em
-host/path, reconstrução do nó) contra ~0,006 µs para uma externa, que é copiada tal como está.
-Resolver um workflow de 200 chamadas custa 54,9 µs, dos quais a leitura é cerca de um quinto. O ponto
-N=10 é ruído: o seu intervalo de confiança (±16,8 µs) é maior que o próprio valor.
+haja ou não o que resolver — e é isso que a linha N=1 mede: ~10,7 µs. O que separa as duas colunas é
+o trabalho por chamada: ~0,23 µs para uma chamada interna (*lookup* no snapshot, divisão do URL em
+host/path, reconstrução do nó) contra ~0,005 µs para uma externa, que é copiada tal como está.
+Resolver um workflow de 200 chamadas custa 56,4 µs, dos quais a leitura é cerca de um quinto.
+
+**Execução repetida (2026-09-29).** Na execução completa, o ponto N=10 das internas era ruído
+(16,9 ± 16,8 µs). O T1 foi repetido sozinho com as mesmas definições (`-f 3`), na mesma máquina, e
+todos os valores acima vêm dessa repetição (`jmh-results-t1.csv`; o gráfico é gerado com
+`python3 plot_benchmarks.py jmh-results-t1.csv <pasta>`). O ponto N=10 passou a 13,3 ± 0,05 µs. A
+curva toda subiu cerca de 0,9 µs (a leitura passou de 9,8 para 10,7 µs), por isso compara-se o T1
+com as outras experiências só em ordem de grandeza. Para compilar o módulo `benchmark`, o
+`StepContextGenerator.kt` passou a passar `null` (o `bodyTerm`) nas chamadas posicionais ao
+`CallContext`, que ganhou esse parâmetro em `4ca34e9`.
 
 ---
 
@@ -535,8 +543,8 @@ re-execução.)
 
 ## Síntese e discussão
 
-1. O custo da unificação é pequeno por chamada e linear (T1): uma leitura do registo (~9,8 µs com
-   R=1) mais ~0,22 µs por chamada interna, contra ~0,006 µs por chamada externa.
+1. O custo da unificação é pequeno por chamada e linear (T1): uma leitura do registo (~10,7 µs com
+   R=1) mais ~0,23 µs por chamada interna, contra ~0,005 µs por chamada externa.
 2. O tamanho do registo (T2) é uma dimensão de custo independente de N: ~10,5 µs fixos de I/O e
    parsing + ~0,17 µs por entrada. Os dois termos igualam-se em R ≈ 60, pelo que num registo
    realista domina o custo fixo — o que se ganha é lendo menos vezes, não tendo um registo menor.
