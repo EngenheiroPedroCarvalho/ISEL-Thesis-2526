@@ -114,12 +114,12 @@
 \makeatletter
 % n.º 6-7: the abstract in Portuguese comes before the one in English.
 \abstractorder(en):={pt,en}
-% n.º 12-13: chapter, section and subsection titles in black; sections 12 pt, subsections 11 pt.
-\renewcommand{\iselthesis@titlecolor}{black}
-\renewcommand{\iselthesis@subtitlecolor}{black}
-\renewcommand{\iselthesis@sectioncolor}{black}
-\renewcommand{\iselthesis@subsectioncolor}{black}
-\renewcommand{\iselthesis@subsubsectioncolor}{black}
+% n.º 12-13: sections 12 pt, subsections 10.5 pt. Sizes and title colours follow the TFM Word
+% template (2025-12-17): chapters orange (iselorange), sections and subsections bordeaux
+% (iselpurple), as set by the isel chapstyle.
+% Config/_packages.tex redefines iselpurple as #622B72 for the Gantt chart; restore the ISEL
+% bordeaux #5F1437 (cover text and section titles) after it is loaded.
+\AtEndPreamble{\definecolor{iselpurple}{HTML}{5F1437}}
 \renewcommand\section{\@startsection{section}{1}{0pt}%
   {-3.5ex plus -0.5ex minus -.2ex}%
   {2.3ex \@plus.2ex}%
@@ -127,14 +127,15 @@
 \renewcommand\subsection{\@startsection{subsection}{2}{0pt}%
   {-2.5ex plus -0.5ex minus -.2ex}%
   {1.5ex \@plus .2ex}%
-  {\iselthesis@sectionfont\bfseries\fontsize{11}{13.5}\selectfont\color{\iselthesis@subsectioncolor}}}
+  {\iselthesis@sectionfont\bfseries\fontsize{10.5}{13}\selectfont\color{\iselthesis@subsectioncolor}}}
 \renewcommand\printchaptertitle[1]{%
   \ifNoChapNumber
     \noindent\begin{tabular}{@{}p{\textwidth}@{}}%
-      \chaptitlefont\MakeUppercase{#1}%
+      \color{iselorange}\chaptitlefont\MakeUppercase{#1}%
     \end{tabular}%
   \else
     % n.º 10: number, title and rule stay within the 2.5 cm margins.
+    \color{iselorange}%
     \noindent\begin{tabular}{@{}p{1.0cm}@{}p{\dimexpr\textwidth-1.0cm\relax}@{}}%
       \chapnumfont\thechapter%
       & \chaptitlefont\MakeUppercase{#1}%
