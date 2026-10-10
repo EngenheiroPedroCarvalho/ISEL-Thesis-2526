@@ -107,9 +107,10 @@ registry through the store, looks functions up on its provider, and delegates Le
 service up by full name (validation) or by project, region and name (discovery).
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} does the same on the Lambda
 API through \texttt{Lambda\allowbreak Function\allowbreak Inspector}, taking the region to validate
-from the stored ARN. The AWS clients read credentials only from environment variables
-(\texttt{AWS\_ACCESS\_KEY\_ID}, \texttt{AWS\_SECRET\_ACCESS\_KEY}), not from profiles or SSO
-sessions.
+from the stored ARN. The Cloud Run inspector takes its HTTP client as a constructor argument; the
+Lambda inspector is an interface whose implementation builds an SDK client per lookup. The AWS
+clients read credentials only from environment variables (\texttt{AWS\_ACCESS\_KEY\_ID},
+\texttt{AWS\_SECRET\_ACCESS\_KEY}), not from profiles or SSO sessions.
 
 Candidate regions come from GCP's locations API
 (\texttt{Cloud\allowbreak Run\allowbreak Locations\allowbreak V1\allowbreak Rest\allowbreak Client})

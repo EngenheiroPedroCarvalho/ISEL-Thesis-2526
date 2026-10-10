@@ -17,16 +17,22 @@ resolution adds and how many provider requests it sends (RQ2).
 The evaluation covers only \emph{local} operations: building and traversing the workflow model,
 resolving internal calls, reading and writing the registry, and packaging a Lambda bundle.
 Operations that call the provider (Lambda, IAM, S3, Cloud Run and Cloud Functions requests, the
-QuickFaaS subprocess) are excluded. Their cost is dominated by the provider: deploying a workflow
-and its functions takes minutes, with or without this integration, mostly spent building and
-activating each function. They are also non-deterministic, so the correctness tests replace them
-with test doubles. RQ2 is therefore answered by measuring the local work the integration adds and
-how it scales (Sections~\ref{sec:eval-resolution} and~\ref{sec:eval-real-resolvers}), and by
-counting the requests it sends to the provider (Section~\ref{sec:eval-api-calls}). That count is
-analytical: since the benchmarks run without a network, it is derived from the code, path by path
-through the ladder, rather than measured.
-The chapter also counts the manual steps removed (Section~\ref{sec:eval-manual-effort}) and the
-packaging overhead on AWS (Section~\ref{sec:eval-bundle}).
+QuickFaaS subprocess) are excluded: deploying a workflow and its functions takes minutes, with or
+without this integration, and is non-deterministic. Each question is answered as follows:
+
+\begin{itemize}
+  \item \textbf{RQ1, correct binding on both providers:} resolver unit tests, with the provider
+  replaced by test doubles (Section~\ref{sec:eval-correctness}).
+  \item \textbf{RQ2, local work added by resolution:} JMH benchmarks of a reference resolver and of
+  the production resolvers (Sections~\ref{sec:eval-resolution} and~\ref{sec:eval-real-resolvers}).
+  \item \textbf{RQ2, requests sent to the provider:} an analytical count, derived from the code
+  path by path through the ladder, since the benchmarks run without a network
+  (Section~\ref{sec:eval-api-calls}).
+  \item \textbf{Manual steps removed:} a procedural comparison of developer actions
+  (Section~\ref{sec:eval-manual-effort}).
+  \item \textbf{Cost of portability on AWS:} Lambda bundle size, provider-agnostic vs.\ native
+  (Section~\ref{sec:eval-bundle}).
+\end{itemize}
 
 \section{Correctness of the Resolution Ladder}
 \label{sec:eval-correctness}
@@ -47,13 +53,20 @@ a deployment or an abort happened. Table~\ref{tab:eval-correctness} groups the s
 All 46 resolver tests (23 per provider) and the two bootstrap tests pass.
 
 The tests do not cover a registry file altered outside OmniFlow, but the code determines what
-happens. A file that is not valid JSON makes the read fail, and the deployment aborts. A valid file
-without a \texttt{functions} object is read as an empty registry, so every call goes to Levels~2
-and~3. An altered \texttt{url} is harmless, because Level~1 looks the function up by its
-\texttt{serviceName} and overwrites the stored endpoint with the live one as drift (on AWS, an ARN
-whose region no longer resolves sends the call to rediscovery instead). An altered
-\texttt{serviceName} that names another existing function is not detected: validation confirms
-that function, and the call is bound to it. The registry has no integrity protection
+happens:
+
+\begin{itemize}
+  \item \textbf{File is not valid JSON:} the read fails and the deployment aborts.
+  \item \textbf{Valid file without a \texttt{functions} object:} it is read as an empty registry,
+  so every call goes to Levels~2 and~3.
+  \item \textbf{Altered \texttt{url}:} harmless, because Level~1 looks the function up by its
+  \texttt{serviceName} and overwrites the stored endpoint with the live one as drift (on AWS, an
+  ARN whose region no longer resolves sends the call to rediscovery instead).
+  \item \textbf{Altered \texttt{serviceName} naming another existing function:} not detected.
+  Validation confirms that function, and the call is bound to it.
+\end{itemize}
+
+\noindent Only the last case goes undetected: the registry has no integrity protection
 (Section~\ref{sec:concl-critical}).
 
 \begin{table}[tbp]
@@ -100,33 +113,35 @@ that function, and the call is bound to it. The registry has no integrity protec
 \section{Methodology}
 \label{sec:eval-methodology}
 
-The benchmarks use the Java Microbenchmark Harness (JMH)~\cite{jmh}, version 1.37, in
-\texttt{Average\allowbreak Time} mode, reporting microseconds per operation ($\mu$s/op). Every
-result is passed to a \texttt{Blackhole}, a JMH object that consumes a value so that the JIT
-compiler cannot discard the computation that produced it as dead code. Each value is the mean of
-fifteen one-second iterations over three forks, that is, three separate JVM processes, so that one
-process's compilation and memory layout do not bias the result. Each fork first runs three
-warm-up iterations, which are discarded, so that the code is measured after the JIT compiler has
-optimised it (\texttt{-f 3 -wi 3 -i 5 -w 1 -r 1}). All experiments come from one run, except T1, T6 and T7, measured
-later with the same settings on the same machine. T1 was repeated because one of its points was
-dominated by noise; in the repeated run a registry read takes $10.7\,\mu$s instead of $9.8\,\mu$s,
-so values from different runs agree within about 10\%. The machine is a laptop with an Apple M5 processor (10 cores) and 24\,GB of memory,
-running macOS, idle but not dedicated. The 99.9\%
-confidence interval is under 1\% of the score for half the measurements and under 6\% for nine in
-ten; the few noisy points are marked in Appendix~\ref{app:benchmarks}.
+The benchmarks use the Java Microbenchmark Harness (JMH)~\cite{jmh} with the following settings
+(\texttt{-f 3 -wi 3 -i 5 -w 1 -r 1}):
+
+\begin{itemize}
+  \item \textbf{Harness:} JMH 1.37 in \texttt{Average\allowbreak Time} mode, reporting
+  microseconds per operation ($\mu$s/op).
+  \item \textbf{Dead-code guard:} every result is passed to a \texttt{Blackhole}, a JMH object that
+  consumes a value so that the JIT compiler cannot discard the computation that produced it.
+  \item \textbf{Forks:} three separate JVM processes, so that one process's compilation and memory
+  layout do not bias the result.
+  \item \textbf{Warm-up:} three one-second iterations per fork, discarded, so that the code is
+  measured after the JIT compiler has optimised it.
+  \item \textbf{Measurement:} five one-second iterations per fork; each value is the mean of the
+  fifteen.
+  \item \textbf{Machine:} a laptop with an Apple M5 processor (10 cores) and 24\,GB of memory,
+  running macOS, idle but not dedicated.
+  \item \textbf{Precision:} the 99.9\% confidence interval is under 1\% of the score for half the
+  measurements and under 6\% for nine in ten; the few noisy points are marked in
+  Appendix~\ref{app:benchmarks}.
+\end{itemize}
 
 The experiments keep their benchmark-suite identifiers: T1--T14 for resolution and the registry,
-S1 for packaging size. They vary: $N$, the number of call steps, of which $I$ are internal and $E$
-external; $F$, the number of distinct internal functions; $R$, the number of registry entries; and,
-for writes, $K$ successive writes to a registry that starts with $R_0$ entries
-(Table~\ref{tab:eval-notation}). $R$ is not $F$: a registry of 1\,000 entries may serve a workflow
-that uses ten.
+S1 for packaging size. The symbols they vary are defined in Table~\ref{tab:eval-notation}.
 
 Two kinds of resolver are measured. T1, T2, T4, T5 and T10--T14 use a reference resolver written
 for the benchmarks, in two variants: one re-reads the registry on every internal call, the other
 reads it once. It resolves calls from the registry as OmniFlow does but never validates a hit
-against the provider, so it measures only the registry and the walk over the workflow. T3 calls the
-registry store directly, without a resolver. T6 and T7 measure the production resolvers
+against the provider, so it measures only the registry and the traversal of the workflow's steps.
+T3 calls the registry store directly, without a resolver. T6 and T7 measure the production resolvers
 (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), the classes
 OmniFlow runs when it deploys a workflow (Section~\ref{sec:eval-real-resolvers}).
@@ -134,8 +149,12 @@ OmniFlow runs when it deploys a workflow (Section~\ref{sec:eval-real-resolvers})
 \section{Resolution Overhead and Scalability}
 \label{sec:eval-resolution}
 
-Table~\ref{tab:eval-summary} summarises the experiments; the complete results are in
-Appendix~\ref{app:benchmarks}. Three findings matter.
+Table~\ref{tab:eval-summary} lists every experiment with its main result; the complete results are
+in Appendix~\ref{app:benchmarks}. This section covers resolution and the registry read path (T1--T5,
+T10--T14); Section~\ref{sec:eval-real-resolvers} covers the production resolvers and the write path
+(T6--T9). Two findings stand out: resolution costs one registry read plus a small constant per
+internal call, and reading the registry once instead of per call removes the product of calls and
+registry size.
 
 \begin{table}[hbp]
   \centering
@@ -182,57 +201,33 @@ Appendix~\ref{app:benchmarks}. Three findings matter.
 \end{table}
 
 \paragraph{Resolution costs one registry read plus a small constant per internal call (T1).}
-In T1 (Table~\ref{tab:eval-t1}, Figure~\ref{fig:eval-t1}), both variants pay one registry read,
-about $10.7\,\mu$s, which the resolver performs before walking the tree; the production deployers
-skip resolution entirely for a workflow without internal calls. Each internal call then adds
-about $0.23\,\mu$s (snapshot lookup, URL split, rebuilt call node) against $0.005\,\mu$s for an
-external one. A 200-call workflow costs $56.4\,\mu$s. External calls add no registry work (T11,
-T12), and neither nesting depth nor parallel width matters beyond the number of internal calls (T13,
-T14).
+In T1 (Table~\ref{tab:eval-t1} and Figure~\ref{fig:eval-t1}, in Appendix~\ref{app:benchmarks}),
+both variants pay one registry read, about $10.7\,\mu$s, which the resolver performs before it
+traverses the workflow's steps. A workflow without internal calls skips resolution entirely: the
+provider deployers (\texttt{Google\allowbreak Cloud\allowbreak Deployer} and
+\texttt{Amazon\allowbreak Cloud\allowbreak Deployer}, Chapter~\ref{cha:impl}) do not call the
+resolver.
+Each internal call then adds about $0.23\,\mu$s, the slope of the internal line, for three
+in-memory operations:
 
-\begin{figure}[tbp]
-  \centering
-  {\captionsetup{textfont=sf}\captionof{table}{T1: resolution time ($\mu$s) of a workflow of $N$ calls, all internal vs.\ all
-  external, with $R{=}1$. Both columns include the one registry read the resolver always performs.}
-  \label{tab:eval-t1}}
-  \begin{minipage}[c]{0.34\textwidth}
-    \centering
-    \small
-    \begin{tabular}{|r|r|r|}
-      \hline
-      \textbf{$N$} & \textbf{Internal} & \textbf{External} \\
-      \hline
-      1   & 11.0 & 10.7 \\
-      \hline
-      2   & 11.3 & 10.7 \\
-      \hline
-      5   & 12.0 & 10.7 \\
-      \hline
-      10  & 13.3 & 10.8 \\
-      \hline
-      20  & 15.6 & 10.8 \\
-      \hline
-      50  & 22.4 & 11.0 \\
-      \hline
-      100 & 34.0 & 11.2 \\
-      \hline
-      200 & 56.4 & 11.8 \\
-      \hline
-    \end{tabular}
-  \end{minipage}\hfill
-  \begin{minipage}[c]{0.63\textwidth}
-    \centering
-    \includegraphics[width=\linewidth]{images/benchmarks/T1_resolution_overhead.png}
-  \end{minipage}
-  {\captionof{figure}{T1: resolution time of a workflow of $N$ calls, all internal against all external,
-  with $R{=}1$. Both lines start from the one registry read the resolver always performs, and only
-the internal line then grows with $N$.}
-  \label{fig:eval-t1}}
-\end{figure}
+\begin{itemize}
+  \item \textbf{Lookup:} the function's name is looked up in the snapshot, a hash map, so the cost
+  does not depend on $R$;
+  \item \textbf{URL split:} the stored URL is split into the \texttt{host} and \texttt{path} fields
+  of the call;
+  \item \textbf{Rebuilt call node:} a copy of the call is built with that endpoint, since the
+  workflow model is immutable.
+\end{itemize}
+
+\noindent An external call skips all three: the resolver sees that it has no
+\texttt{internalFunction} and keeps it unchanged, for about $0.005\,\mu$s. A workflow of 200
+internal calls costs $56.4\,\mu$s. External calls add no registry work (T11, T12), and neither nesting depth nor parallel
+width matters beyond the number of internal calls (T13, T14).
 
 \paragraph{Reading the registry once removes the calls-times-size product (T2--T5).}
-Re-reading the registry on every call, as the store's per-call methods do, costs $N$ reads of an
-$R$-entry file; a single read per resolution makes the cost flat in $N$. The benefit is expected;
+Re-reading the registry on every internal call, as the store's per-call methods do, costs $I$ reads
+of an $R$-entry file; a single read per resolution replaces them with one read plus a small constant
+per call. The benefit is expected;
 the measurements give its size: up to $200\times$ at $N{=}200$, $R{=}1000$ (T3), and
 $26$--$58\times$ on real workflows (T4, T5). A suffix match (\texttt{"region/name"}) scans the
 loaded map, but remains cheap (T10).
@@ -242,11 +237,11 @@ loaded map, but remains cheap (T10).
 
 \paragraph{Production resolvers (T6, T7).}
 Both production resolvers use the single read and show the same shape: one read plus a constant
-per call, $0.07$--$0.14\,\mu$s on AWS and about $0.95\,\mu$s on GCP. A 200-call workflow with ten
-functions costs $29.1\,\mu$s on AWS and $199.1\,\mu$s on GCP. Neither reaches the provider: on AWS a
-local fake confirms every function; on GCP the real Cloud Run inspector validates every hit, with
-only its HTTP client answered locally, so request building, token handling and JSON parsing are
-measured. This, and the URL split, is why GCP costs more. Either way, a validation's local work is
+per call, $0.07$--$0.14\,\mu$s on AWS and about $0.95\,\mu$s on GCP. A workflow of 200 internal
+calls to ten distinct functions costs $29.1\,\mu$s on AWS and $199.1\,\mu$s on GCP. Neither reaches
+the provider. T6 replaces the whole Lambda inspector, so it excludes the SDK's local work; T7 keeps
+the real Cloud Run inspector and replaces only its HTTP client, so request building, token handling
+and JSON parsing are measured. This, and the URL split, is why GCP costs more. Either way, a validation's local work is
 about a microsecond, against a network round-trip (Section~\ref{sec:eval-api-calls}).
 
 \paragraph{Registry write path (T8, T9).}
@@ -405,8 +400,8 @@ the evidence coming from tests that simulate the provider.
 \paragraph{Answer to RQ2.}
 Locally, resolution costs one registry read plus about $0.23\,\mu$s per internal call. Reading the registry
 once instead of per call removes the product of calls and registry size, a speedup of up to
-$200\times$. The production resolvers take $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a 200-call
-workflow. The cost follows the number of internal calls, not external calls or the shape of the
+$200\times$. The production resolvers take $29\,\mu$s (AWS) and $199\,\mu$s (GCP) for a workflow
+of 200 internal calls. The cost follows the number of internal calls, not external calls or the shape of the
 workflow. On the provider side, resolution sends one request per internal call when the registry
 is current, and up to one per candidate region for each call that must be discovered.
 
@@ -418,14 +413,18 @@ bottleneck of a deployment: the cloud deployment itself takes minutes.
 \section{Threats to Validity}
 \label{sec:eval-threats}
 
-The absolute values belong to one laptop. Since file I/O dominates several experiments, slower
-storage would raise every read and write, but the shape of each cost and the relationships between
-experiments, measured under the same conditions, would hold. T1, T6 and T7 come from later sessions,
-so their comparison with the other experiments is an order-of-magnitude one.
-
-The correctness evidence is mostly local: the tests show that each resolver decides correctly given
-what the provider reports, not that the real APIs report what the doubles assume. The case study
-(Section~\ref{sec:case-artifacts}) checks this on both providers for the bootstrap, Levels~2 and~3
-and validated Level~1 hits. The abort paths (stale entries, ambiguous names, inaccessible regions)
-remain unchecked against the real APIs; testing them is future work
-(Section~\ref{sec:concl-future}).
+\begin{itemize}
+  \item \textbf{One laptop:} the absolute values belong to that machine. Since file I/O dominates
+  several experiments, slower storage would raise every read and write, but the shape of each cost
+  and the relationships between experiments, measured under the same conditions, would hold.
+  \item \textbf{Later sessions:} T1, T6 and T7 were measured in a later session with the same
+  settings on the same machine; a repeated T1 agrees within about 10\%, so their comparison with
+  the other experiments is an order-of-magnitude one.
+  \item \textbf{Provider replaced by test doubles:} the tests show that each resolver decides
+  correctly given what the provider reports, not that the real APIs report what the doubles
+  assume. The case study (Section~\ref{sec:case-artifacts}) checks this on both providers for the
+  bootstrap, Levels~2 and~3 and validated Level~1 hits.
+  \item \textbf{Abort paths not run live:} stale entries, ambiguous names and inaccessible regions
+  remain unchecked against the real APIs; testing them is future work
+  (Section~\ref{sec:concl-future}).
+\end{itemize}

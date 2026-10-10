@@ -44,6 +44,51 @@ interval close to their own value and should be read as noise: T9 at $K{=}10$, $
 \end{minipage}
 
 \FloatBlock
+\section{Resolution Overhead (T1)}
+
+T1 resolves a workflow of $N$ calls, all internal or all external, against a one-entry registry.
+Both variants pay the one registry read the resolver performs before it traverses the workflow's
+steps; only internal calls then add work.
+
+\bigskip
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  {\captionsetup{textfont=sf}\captionof{table}{T1: resolution time ($\mu$s) of a workflow of $N$ calls, all internal vs.\ all
+  external, with $R{=}1$. Both columns include the one registry read the resolver always performs.}
+  \label{tab:eval-t1}}
+  \small
+  \begin{tabular}{|r|r|r|}
+    \hline
+    \textbf{$N$} & \textbf{Internal} & \textbf{External} \\
+    \hline
+    1   & 11.0 & 10.7 \\
+    \hline
+    2   & 11.3 & 10.7 \\
+    \hline
+    5   & 12.0 & 10.7 \\
+    \hline
+    10  & 13.3 & 10.8 \\
+    \hline
+    20  & 15.6 & 10.8 \\
+    \hline
+    50  & 22.4 & 11.0 \\
+    \hline
+    100 & 34.0 & 11.2 \\
+    \hline
+    200 & 56.4 & 11.8 \\
+    \hline
+  \end{tabular}
+  \normalsize
+
+  \medskip
+  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{images/benchmarks/T1_resolution_overhead.png}
+  {\captionof{figure}{T1: resolution time of a workflow of $N$ calls, all internal against all external,
+  with $R{=}1$. Both lines start from the one registry read the resolver always performs, and only
+  the internal line then grows with $N$.}
+  \label{fig:eval-t1}}
+\end{minipage}
+
+\FloatBlock
 \section{Resolution Against the Reference Resolver (T2--T5)}
 
 T2 re-reads the registry on every internal call (naive path): each read costs about $10.3\,\mu$s
