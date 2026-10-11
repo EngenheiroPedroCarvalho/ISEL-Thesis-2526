@@ -6,6 +6,11 @@
 %
 \chapter{Evaluation}
 \label{cha:evaluation}
+% Let the tall Table 6.1 sit at the top of a page with text below it, instead of alone on a float
+% page; restored at the end of the chapter.
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.8}
 
 This chapter answers the research questions of Section~\ref{sec:int_objectives}: whether internal
 calls are bound correctly at deployment time on both providers (RQ1), and how much local work that
@@ -28,10 +33,9 @@ without this integration, and is non-deterministic. Each question is answered as
   \item \textbf{RQ2, requests sent to the provider:} an analytical count, derived from the code
   path by path through the ladder, since the benchmarks run without a network
   (Section~\ref{sec:eval-api-calls}).
-  \item \textbf{Manual steps removed:} a procedural comparison of developer actions
+  \item \textbf{Manual steps removed and cost of portability on AWS:} a procedural comparison of
+  developer actions, and the Lambda bundle size, provider-agnostic vs.\ native
   (Section~\ref{sec:eval-manual-effort}).
-  \item \textbf{Cost of portability on AWS:} Lambda bundle size, provider-agnostic vs.\ native
-  (Section~\ref{sec:eval-bundle}).
 \end{itemize}
 
 \section{Correctness of the Resolution Ladder}
@@ -69,43 +73,57 @@ happens:
 \noindent Only the last case goes undetected: the registry has no integrity protection
 (Section~\ref{sec:concl-critical}).
 
-\begin{table}[tbp]
+\begin{table}[!htbp]
   \centering
-  \caption{Situations covered by the resolver unit tests, on both AWS and GCP unless marked
-  otherwise, with the expected behaviour. Every test passes.}
+  \caption{Resolver unit tests by ladder level (``--'': whole workflow), on AWS and GCP unless
+  marked otherwise. Every test passes.}
   \label{tab:eval-correctness}
   \small
-  \begin{tabular}{|c|p{0.40\textwidth}|p{0.43\textwidth}|}
+  \begin{tabular}{|c|>{\raggedright\arraybackslash}p{0.40\textwidth}|>{\raggedright\arraybackslash}p{0.43\textwidth}|}
     \hline
-    \textbf{Level} & \textbf{Situation} & \textbf{Behaviour} \\
+    \textbf{Level} & \textbf{Situation set up by the test} & \textbf{Expected outcome} \\
     \hline
-    1 & Entry valid & call bound to the registered endpoint \\
+    1 & The registry has an entry, and the provider confirms the function at that endpoint &
+    The call is bound to the registered endpoint; the registry is unchanged \\
     \hline
-    1 & Endpoint changed (drift) & entry refreshed; call bound to the current endpoint \\
+    1 & The registry has an entry, but the provider reports a different endpoint (drift) &
+    The entry is updated, and the call is bound to the current endpoint \\
     \hline
-    1 & Function gone from its region (stale) & rediscovered and entry replaced; otherwise entry
-    removed and resolution aborts \\
+    1 & The registry has an entry, but the function no longer exists in that region (stale
+    entry) & The other regions are searched: if the function is found, the entry is replaced and
+    the call bound to it; if not, the entry is removed and resolution aborts, even with a
+    descriptor \\
     \hline
-    1 & Validation refused by the provider & resolution aborts; entry kept \\
+    1 & The provider refuses access when the entry is validated & Resolution aborts; the entry is
+    kept \\
     \hline
-    2 & Found in exactly one region, or in the region a \texttt{region/name} reference names
-    (one lookup) & call bound; function registered \\
+    2 & No entry; the function exists in exactly one region, or in the region named by a
+    \texttt{region/name} reference (the only region looked up) & The call is bound to that
+    function, and an entry is added to the registry \\
     \hline
-    2 & Found in several regions & resolution aborts (ambiguous name) \\
+    2 & No entry; a function with that name exists in several regions & Resolution aborts (the
+    name is ambiguous) \\
     \hline
-    2, 3 & Not found, some or all regions inaccessible & resolution aborts; nothing deployed \\
+    2, 3 & No entry; the function is not found, but some or all regions refused access &
+    Resolution aborts and nothing is deployed, because absence is not confirmed \\
     \hline
-    3 & Not found anywhere & with a descriptor, deployed once, registered and bound; without one,
-    resolution aborts \\
+    3 & No entry; the function is confirmed absent from every region & With a descriptor: deployed
+    once through QuickFaaS, registered and bound. Without one: resolution aborts \\
     \hline
-    -- & Internal calls in branches, iterations and parallel steps; external calls & all internal
-    calls resolved; external calls unchanged \\
+    -- & Internal calls inside branches, iterations and parallel steps & Every internal call is
+    resolved \\
     \hline
-    -- & Both \texttt{internalFunction} and \texttt{host}/\texttt{path}; a body on an internal call
-    (AWS only) & rejected before the ladder starts \\
+    -- & External calls (literal \texttt{host}/\texttt{path}) & Left unchanged \\
     \hline
-    -- & Several internal calls; registry file missing; a \texttt{cloudfunctions.net} entry (GCP
-    only) & registry read once; rebuilt from the provider; validated against Cloud Run \\
+    -- & A call with both \texttt{internalFunction} and \texttt{host}/\texttt{path}; (AWS only) an
+    internal call with a body & Rejected before the ladder starts \\
+    \hline
+    -- & A workflow with several internal calls & The registry file is read once \\
+    \hline
+    -- & The registry file is missing & It is rebuilt from the functions the provider lists \\
+    \hline
+    -- & (GCP only) An entry with a first-generation \texttt{cloudfunctions.net} URL & Validated
+    against Cloud Run like any other entry \\
     \hline
   \end{tabular}
 \end{table}
@@ -150,52 +168,57 @@ OmniFlow runs when it deploys a workflow (Section~\ref{sec:eval-real-resolvers})
 \label{sec:eval-resolution}
 
 Table~\ref{tab:eval-summary} lists every experiment with its main result; the complete results are
-in Appendix~\ref{app:benchmarks}. This section covers resolution and the registry read path (T1--T5,
-T10--T14); Section~\ref{sec:eval-real-resolvers} covers the production resolvers and the write path
+in Appendix~\ref{app:benchmarks}. This section covers resolution and registry reads (T1--T5,
+T10--T14); Section~\ref{sec:eval-real-resolvers} covers the production resolvers and registry writes
 (T6--T9). Two findings stand out: resolution costs one registry read plus a small constant per
 internal call, and reading the registry once instead of per call removes the product of calls and
 registry size.
 
-\begin{table}[hbp]
+\begin{table}[!htbp]
   \centering
   \captionsetup{belowskip=0pt}
-  \caption{Summary of the benchmark experiments. Complete results in
-  Appendix~\ref{app:benchmarks}.}
+  \caption{Summary of the benchmark experiments. Notation in Table~\ref{tab:eval-notation};
+  complete results in Appendix~\ref{app:benchmarks}.}
   \label{tab:eval-summary}
   \small
-  \begin{tabular}{|l|p{0.28\textwidth}|p{0.52\textwidth}|}
+  \begin{tabular}{|l|>{\raggedright\arraybackslash}p{0.39\textwidth}|>{\raggedright\arraybackslash}p{0.42\textwidth}|}
     \hline
-    \textbf{Exp.} & \textbf{Varies} & \textbf{Result} \\
+    \textbf{Exp.} & \textbf{What is measured} & \textbf{Main result} \\
     \hline
-    T1 & $N$, all internal vs.\ all external ($R{=}1$) & one registry read ($\approx 10.7\,\mu$s)
-    plus $0.23\,\mu$s per internal and $0.005\,\mu$s per external call \\
+    T1 & Resolving a workflow of $N$ calls, all internal or all external, with a one-entry
+    registry & One registry read ($\approx 10.7\,\mu$s), plus $0.23\,\mu$s per internal call and
+    $0.005\,\mu$s per external call \\
     \hline
-    T2 & $R$, registry re-read per call & $\approx 10.3\,\mu$s per read plus $0.17\,\mu$s per entry;
-    the fixed cost dominates up to $R \approx 60$ \\
+    T2 & Per-call read, as the registry grows ($R$) & Each read costs $\approx 10.3\,\mu$s plus
+    $0.17\,\mu$s per entry; the fixed part dominates up to $R \approx 60$ \\
     \hline
-    T3 & $N$ and $R$, per-call read vs.\ single read & single read flat in $N$; up to
-    $200\times$ faster \\
+    T3 & $N$ registry lookups without a workflow, per-call read vs.\ single read & With a single
+    read the time no longer grows with $N$; up to $200\times$ faster \\
     \hline
-    T4 & $F$ and $N$, real workflow & speedup $1\times$ at $N{=}1$, $38$--$58\times$ at $N{=}200$ \\
+    T4 & The same comparison on a real workflow, varying $F$ and $N$ & No gain at $N{=}1$;
+    single read $38$--$58\times$ faster at $N{=}200$ \\
     \hline
-    T5 & $R$ ($F{=}10$, $N{=}50$) & speedup from $26\times$ ($R{=}10$) to $46\times$
-    ($R{=}1000$) \\
+    T5 & The same comparison as the registry grows ($F{=}10$, $N{=}50$) & Single read $26\times$
+    faster at $R{=}10$, $46\times$ at $R{=}1000$ \\
     \hline
-    T6, T7 & $F$ and $N$, production resolvers & 200 calls, $F{=}10$: $29.1\,\mu$s (AWS),
-    $199.1\,\mu$s (GCP) \\
+    T6, T7 & The production resolvers (AWS, GCP), provider replaced by test doubles, varying $F$
+    and $N$ & 200 calls to 10 functions: $29.1\,\mu$s on AWS, $199.1\,\mu$s on GCP \\
     \hline
-    T8 & $K$ writes, initial size $R_0$ & linear in $K$; one write from $45\,\mu$s ($R_0{=}0$) to
-    $490\,\mu$s ($R_0{=}1000$) \\
+    T8 & Writing $K$ entries to a registry of $R_0$ entries & Time grows linearly with $K$; one write
+    costs $45\,\mu$s at $R_0{=}0$ and $490\,\mu$s at $R_0{=}1000$ \\
     \hline
-    T9 & $K$ miss-then-write pairs & $26$--$62\%$ above T8; the production resolvers avoid it \\
+    T9 & As T8, with a lookup through the store before each write & $26$--$62\%$ slower than T8;
+    the production resolvers avoid the extra lookup \\
     \hline
-    T10 & $R$, exact vs.\ suffix match & suffix $1.28$--$1.95\times$ exact; $391\,\mu$s for 50
-    lookups at $R{=}1000$ \\
+    T10 & Call by bare name, registry keys \texttt{name} (exact match) vs.\ \texttt{region/name}
+    (suffix scan), as $R$ grows & Suffix scan costs
+    $1.28$--$1.95\times$ the exact match; 50 lookups at $R{=}1000$ take $391\,\mu$s \\
     \hline
-    T11, T12 & $I$ and $E$; $R$ with mixed calls & cost follows $I$, not $N$ \\
+    T11, T12 & Workflows mixing $I$ internal and $E$ external calls; T12 also varies $R$ & The
+    time depends on $I$ only; external calls add no registry work \\
     \hline
-    T13, T14 & nesting depth; parallel width & tree shape irrelevant; $0.22\,\mu$s per internal
-    call \\
+    T13, T14 & Nesting depth of the calls; width of a \texttt{Parallel} step & The workflow's shape
+    does not matter: $\approx 0.22\,\mu$s per internal call \\
     \hline
   \end{tabular}
 \end{table}
@@ -229,10 +252,13 @@ Re-reading the registry on every internal call, as the store's per-call methods 
 of an $R$-entry file; a single read per resolution replaces them with one read plus a small constant
 per call. The benefit is expected;
 the measurements give its size: up to $200\times$ at $N{=}200$, $R{=}1000$ (T3), and
-$26$--$58\times$ on real workflows (T4, T5). A suffix match (\texttt{"region/name"}) scans the
-loaded map, but remains cheap (T10).
+$26$--$58\times$ on real workflows (T4, T5). When the registry keys include the region
+(\texttt{region/name}) but the call gives only the name, the exact lookup misses and the resolver
+scans every key of the loaded map for one ending in \texttt{/name}. This costs at most
+$1.95\times$ the exact lookup: $391\,\mu$s for 50 lookups at $R{=}1000$, under $8\,\mu$s per
+call (T10).
 
-\section{Production Resolvers and Write Path}
+\section{Cost of the Production Resolvers and of Registry Writes}
 \label{sec:eval-real-resolvers}
 
 \paragraph{Production resolvers (T6, T7).}
@@ -244,10 +270,15 @@ the real Cloud Run inspector and replaces only its HTTP client, so request build
 and JSON parsing are measured. This, and the URL split, is why GCP costs more. Either way, a validation's local work is
 about a microsecond, against a network round-trip (Section~\ref{sec:eval-api-calls}).
 
-\paragraph{Registry write path (T8, T9).}
-Every \texttt{put()} rewrites the whole file, so writing costs more than resolving: $K$ writes cost
-$K$ times one write, and one write grows with the file, from $45\,\mu$s on an empty registry to
-$490\,\mu$s at 1\,000 entries (T8). A lookup through the store before each write adds another full
+\paragraph{Registry writes (T8, T9).}
+Every \texttt{put()} reads the whole file, adds the entry and writes the whole file back, so one
+write costs more the larger the registry: from $45\,\mu$s on an empty registry to $490\,\mu$s at
+1\,000 entries (T8). Writing therefore costs more than resolving, which only reads the file: a
+read with one lookup costs $10.5\,\mu$s on a one-entry registry and $183\,\mu$s at 1\,000 entries
+(T2). The resolvers register each function with its own \texttt{put()}, so registering $K$
+functions reads and rewrites the file $K$ times, and the time grows linearly with $K$: 100 writes
+take 5.9\,ms on an empty registry and 36\,ms at 1\,000 entries. The bootstrap, which builds a
+missing registry, writes all its entries at once. A lookup through the store before each write adds another full
 read, $26$--$62\%$ more (T9). The production resolvers avoid it by looking calls up in the snapshot.
 The most expensive case measured, 100 miss-then-write pairs on a 1\,000-entry registry, takes
 $59$\,ms.
@@ -257,12 +288,17 @@ $59$\,ms.
 
 The benchmarks do not include network traffic, so Table~\ref{tab:eval-api-calls} counts, from the
 code, the provider requests each ladder path sends. $G$ is the number of candidate regions (the
-regions enabled for the AWS account, or the Cloud Run locations of the GCP project). A registry hit
-is validated on every internal call, not once per function: the snapshot removes repeated file
-reads, not live lookups, so $I$ calls to the same function send $I$ validations. The region list is
-fetched at most once per deployment, lazily, and only calls that miss pay a region scan.
+regions enabled for the AWS account, or the Cloud Run locations of the GCP project). If the
+registry has an entry for the called function, the resolver confirms with the provider that the
+function still exists and reads its current endpoint. It does this for every internal call, not once per function: the
+snapshot avoids re-reading the registry file, but it does not record which functions the provider has already confirmed. A
+workflow with $I$ internal calls to the same function therefore sends $I$ validation requests. The
+resolver fetches the list of regions from the provider only when a call first needs to search
+them, and at most once per deployment. The search sends up to one request per region, and only
+two kinds of call need it: those whose function is not in the registry, and those whose entry points to
+a function that no longer exists.
 
-\begin{table}[tbp]
+\begin{table}[!htbp]
   \centering
   \caption{Provider API requests issued per internal call, by ladder path, counted from the
   implementation. $G$ is the number of candidate regions.}
@@ -300,9 +336,10 @@ valid entry, and $1 + I \cdot G$, when the registry is empty and references are 
 registry keeps the count linear in $I$; a region-qualified reference does the same for a call that
 misses.
 
-\section{Manual Effort Before and After}
+\section{Developer Effort and Packaging Overhead}
 \label{sec:eval-manual-effort}
 
+\paragraph{Manual effort (Table~\ref{tab:eval-manual-effort}).}
 Table~\ref{tab:eval-manual-effort} compares the steps needed to make one function available to one
 workflow on GCP with the two tools used separately (Section~\ref{subsec:quickfaas-example}) and
 with the integration (Section~\ref{sec:developer-workflow}). It is a procedural comparison, not a
@@ -313,11 +350,9 @@ Credentials, the deployer grants the invoker permission, and the endpoint goes f
 the registry to the rendered workflow. A mistyped URL is the costliest error, since the workflow
 deploys and fails only at run time.
 
-\begin{table}[tbp]
+\begin{table}[!htbp]
   \centering
-  \caption{Developer actions required to make one function available to one workflow on GCP.
-  ``Carried by hand'' counts values produced by one step that the developer must read and re-enter
-  in another.}
+  \caption{Developer steps to make one function available to one workflow on GCP.}
   \label{tab:eval-manual-effort}
   \begin{tabular}{|p{0.45\textwidth}|p{0.45\textwidth}|}
     \hline
@@ -358,16 +393,14 @@ and credentials must still exist. What it saves is the copying, per function and
 change, so the saving grows with the number of functions and deployment targets
 (Chapter~\ref{cha:case-study}).
 
-\section{Packaging Overhead (S1)}
-\label{sec:eval-bundle}
-
+\paragraph{Packaging overhead on AWS (S1).}
 Packaging a Lambda through QuickFaaS's provider-agnostic layer (hook, \texttt{AwsHttpTemplate} and
 \texttt{aws-lambda-java-core}) adds 905 bytes, about 0.9\,KB or 6.6\% of a trivial bundle, to an
 equivalent native \texttt{RequestHandler} (Table~\ref{tab:eval-s1}), and proportionally less for a
 function with real dependencies. This is consistent with the original QuickFaaS evaluation for GCP
 and Azure~\cite{rodrigues2022quickfaas}.
 
-\begin{table}[hbp]
+\begin{table}[!htbp]
   \centering
   \captionsetup{belowskip=0pt}
   \small
@@ -417,14 +450,20 @@ bottleneck of a deployment: the cloud deployment itself takes minutes.
   \item \textbf{One laptop:} the absolute values belong to that machine. Since file I/O dominates
   several experiments, slower storage would raise every read and write, but the shape of each cost
   and the relationships between experiments, measured under the same conditions, would hold.
-  \item \textbf{Later sessions:} T1, T6 and T7 were measured in a later session with the same
-  settings on the same machine; a repeated T1 agrees within about 10\%, so their comparison with
-  the other experiments is an order-of-magnitude one.
+  \item \textbf{Later sessions:} T1, T6 and T7 were measured in later sessions, with the same
+  settings on the same machine. T1 was run twice: one registry read took $9.8\,\mu$s in the first
+  run and $10.7\,\mu$s in the second, about 10\% apart. Differences of that size between these
+  three experiments and the others may come from the change of session rather than from the code
+  being measured.
   \item \textbf{Provider replaced by test doubles:} the tests show that each resolver decides
   correctly given what the provider reports, not that the real APIs report what the doubles
   assume. The case study (Section~\ref{sec:case-artifacts}) checks this on both providers for the
   bootstrap, Levels~2 and~3 and validated Level~1 hits.
-  \item \textbf{Abort paths not run live:} stale entries, ambiguous names and inaccessible regions
-  remain unchecked against the real APIs; testing them is future work
-  (Section~\ref{sec:concl-future}).
+  \item \textbf{Aborts not tested on the real providers:} the situations in which resolution
+  aborts (stale entries, ambiguous names and inaccessible regions) were tested only with test
+  doubles, not against the real APIs; testing them is future work (Section~\ref{sec:concl-future}).
 \end{itemize}
+
+\renewcommand{\topfraction}{0.7}
+\renewcommand{\textfraction}{0.2}
+\renewcommand{\floatpagefraction}{0.5}
