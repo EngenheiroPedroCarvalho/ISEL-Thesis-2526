@@ -12,6 +12,8 @@ parts in Section~\ref{sec:function-registry}; the
 AWS deployment sequence (Figure~\ref{fig:aws-deploy-sequence}), whose Level~3 branch is
 Figure~\ref{fig:aws-deploy-level3}, and one diagram per level of the resolution ladder
 (Section~\ref{sec:resolution-cascade}), with the GCP path as panel (a) and the AWS path as panel (b).
+It ends with the runtime invocation of an internal function on AWS
+(Figure~\ref{fig:aws-runtime-invocation}), described in Section~\ref{sec:runtime-invocation}.
 
 % The diagrams are placed in sequence rather than as floats, each at the largest size the page
 % allows; the two panels of Figures A.2 and A.3 are too tall to share a page, so (b) continues the figure.
@@ -98,4 +100,13 @@ Figure~\ref{fig:aws-deploy-level3}, and one diagram per level of the resolution 
   \texttt{AwsLambdaDeployer} invokes QuickFaaS and polls \texttt{GetFunction} until the Lambda is
   active on AWS (b). The AWS branch is expanded in Figure~\ref{fig:aws-deploy-sequence}.}
   \label{fig:resolution-cascade-level3}
+\end{minipage}
+
+\bigskip
+\noindent\begin{minipage}{\textwidth}
+  \centering
+  \appdiagram[0.5]{aws-runtime-invocation}
+  \captionof{figure}{Runtime invocation of an internal function on AWS via the native
+  \texttt{lambda:invoke} integration.}
+  \label{fig:aws-runtime-invocation}
 \end{minipage}

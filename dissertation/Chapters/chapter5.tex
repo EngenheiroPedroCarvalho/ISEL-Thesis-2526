@@ -310,7 +310,8 @@ automatic role creation.
 
 \paragraph{Invocation.}
 \label{sec:runtime-invocation}
-Step Functions (Figure~\ref{fig:aws-runtime-invocation}) invokes the Lambda function
+Step Functions (Figure~\ref{fig:aws-runtime-invocation}, in Appendix~\ref{app:cascade-sequences})
+invokes the Lambda function
 through the native \texttt{arn:\allowbreak aws:\allowbreak states:::\allowbreak lambda:\allowbreak invoke} integration, with the ARN fixed at
 deployment. \texttt{AwsHttpTemplate} reads only the \texttt{query\allowbreak String\allowbreak Parameters} of the event and
 passes them to the hook as a map; the response is returned under \texttt{\$.Payload}. An internal
@@ -342,11 +343,3 @@ result-passing and error handling apply unchanged; only the \texttt{Resource} an
   "Next": "external-risk-api"
 }
 \end{lstlisting}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=\textwidth]{images/implementation/aws-runtime-invocation.png}
-  \caption{Runtime invocation of an internal function on AWS via the native
-  \texttt{lambda:invoke} integration.}
-  \label{fig:aws-runtime-invocation}
-\end{figure}

@@ -84,6 +84,13 @@
 	QuickFaaS.}
 }
 
+\newglossaryentry{externalfunction}{
+	name={External function},
+	description={Function or API that the workflow developer does not own. It is called through a
+	literal \texttt{host}/\texttt{path}, is never deployed by QuickFaaS and is never recorded in the
+	Function Registry.}
+}
+
 \newglossaryentry{firstgen}{
 	name={First-generation Cloud Function},
 	description={GCP function created through the first-generation Cloud Functions API, with a URL
@@ -142,6 +149,14 @@
 	description={Call step that declares its target with \texttt{internalFunction} instead of a
 	literal endpoint. It targets a function the developer owns, whose endpoint is resolved at
 	deployment time.}
+}
+
+\newglossaryentry{internalfunction}{
+	name={Internal function},
+	description={Function whose code the workflow developer owns and may deploy, declared in the
+	workflow with \texttt{internalFunction} and named by a \texttt{functionRef}. OmniFlow binds it
+	to an endpoint at deployment time and, when it is absent and a deployment descriptor is
+	supplied, deploys it through QuickFaaS.}
 }
 
 \newglossaryentry{metadata}{
