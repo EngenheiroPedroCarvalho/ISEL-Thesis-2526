@@ -135,12 +135,12 @@ val PaymentAuthorization = workflow {
 
 The runs of Chapter~\ref{cha:case-study} used this workflow with two changes
 (Section~\ref{sec:case-artifacts}): region-qualified internal references, and
-\texttt{report-decision} aimed at a stub of core banking. From it, OmniFlow rendered the Cloud
-Workflows definition of Section~\ref{app:case-rendered-gcp} and the Step Functions state machine of
-Section~\ref{app:case-rendered-aws}. Only the resolved endpoints and the provider's syntax differ.
+\texttt{report-decision} aimed at a stub of the downstream system. From it, OmniFlow rendered the
+Cloud Workflows definition of Section~\ref{app:case-rendered-gcp} and the Step Functions state
+machine of Section~\ref{app:case-rendered-aws}. Only the resolved endpoints and the provider's syntax differ.
 Each section first draws the definition as the provider's console does (Figures~\ref{fig:case-flow-gcp}
 and~\ref{fig:case-flow-aws}): the two scoring calls in sequence, a branch on their results, one
-assignment on each path, and the call to core banking.
+assignment on each path, and the call to the downstream system.
 
 \subsection{Rendered for GCP}
 \label{app:case-rendered-gcp}
@@ -211,8 +211,8 @@ Figure~\ref{fig:case-flow-aws} shows the flow of the Step Functions state machin
 Listing~\ref{lst:case-rendered-aws}, with the state types the console shows. The two scoring calls
 are \texttt{lambda:invoke} tasks, the \texttt{switch} is a \texttt{Choice} state whose
 \texttt{Default} is \texttt{approve-transaction}, each assignment is a \texttt{Pass} state, and the
-call to core banking is an \texttt{apigateway:invoke} task. The state machine ends after it and
-returns its whole state.
+call to the downstream system is an \texttt{apigateway:invoke} task. The state machine ends after
+it and returns its whole state.
 
 \begin{figure}[H]
   \centering
@@ -438,7 +438,7 @@ public class MyFunctionClass {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[language=Java,caption={Core banking stub on GCP.},label={lst:case-gcp-stub},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+\begin{lstlisting}[language=Java,caption={Downstream system stub on GCP.},label={lst:case-gcp-stub},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
 import com.google.gson.JsonParser;
 import quickfaas.triggers.http.HttpRequestQf;
 import quickfaas.triggers.http.HttpResponseQf;
@@ -490,7 +490,7 @@ public class MyFunctionClass {
 }
 \end{lstlisting}
 
-\begin{lstlisting}[language=Python,caption={Core banking stub on AWS (Python, behind API Gateway).},label={lst:case-aws-stub},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
+\begin{lstlisting}[language=Python,caption={Downstream system stub on AWS (Python, behind API Gateway).},label={lst:case-aws-stub},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
 import base64
 import json
 

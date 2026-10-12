@@ -153,15 +153,19 @@ is absent.
 \subsection{Evolution of the Registry Design}
 \label{subsec:registry-evolution}
 
-The registry evolved in three ways. First, the endpoint became a single opaque \texttt{url} field
-(an HTTPS URL on GCP, an ARN on AWS), so the schema did not change when AWS was added: only the
-resolver and the renderer are provider-aware. Second, a file the developer would edit by hand
-became one the integration maintains (Section~\ref{subsec:registry-updates}), and the single-read
-snapshot replaced a read per lookup, first in a reference resolver used by the benchmarks and then
-in both production resolvers. Third, the AWS resolver initially trusted a hit without a live check.
-\texttt{Lambda\allowbreak Function\allowbreak Inspector} closed that gap, so a hit is now validated
-on both providers, as on GCP from the start. The registry still names what to look up; the live
-check only confirms the binding.
+The registry evolved in three ways:
+\begin{enumerate}
+  \item The endpoint became a single opaque \texttt{url} field (an HTTPS URL on GCP, an ARN on
+  AWS), so the schema did not change when AWS was added: only the resolver and the renderer are
+  provider-aware.
+  \item A file the developer would edit by hand became one the integration maintains
+  (Section~\ref{subsec:registry-updates}), and the single-read snapshot replaced a read per lookup,
+  first in a reference resolver used by the benchmarks and then in both production resolvers.
+  \item The AWS resolver initially trusted a hit without a live check.
+  \texttt{Lambda\allowbreak Function\allowbreak Inspector} closed that gap, so a hit is now validated
+  on both providers, as on GCP from the start. The registry still names what to look up; the live
+  check only confirms the binding.
+\end{enumerate}
 
 \section{Function Deployment and Invocation}
 \label{sec:function-deployment}

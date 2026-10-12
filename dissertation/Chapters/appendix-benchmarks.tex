@@ -48,7 +48,8 @@ interval close to their own value and should be read as noise: T9 at $K{=}10$, $
 
 T1 resolves a workflow of $N$ calls, all internal or all external, against a one-entry registry.
 Both variants pay the one registry read the resolver performs before it traverses the workflow's
-steps; only internal calls then add work.
+steps; only internal calls then add work. The chart is Figure~\ref{fig:eval-t1}, in
+Section~\ref{sec:eval-resolution}.
 
 \bigskip
 \noindent\begin{minipage}{\textwidth}
@@ -79,13 +80,6 @@ steps; only internal calls then add work.
     \hline
   \end{tabular}
   \normalsize
-
-  \medskip
-  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{images/benchmarks/T1_resolution_overhead.png}
-  {\captionof{figure}{T1: resolution time of a workflow of $N$ calls, all internal against all external,
-  with $R{=}1$. Both lines start from the one registry read the resolver always performs, and only
-  the internal line then grows with $N$.}
-  \label{fig:eval-t1}}
 \end{minipage}
 
 \FloatBlock
@@ -95,7 +89,8 @@ T2 re-reads the registry on every internal call (naive path): each read costs ab
 plus $0.17\,\mu$s per entry, so up to $R \approx 60$ the fixed cost of opening and parsing the file
 dominates. T3 compares that path with the single read by calling the store's lookup $N$ times,
 without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on a real
-\texttt{Workflow} object.
+\texttt{Workflow} object. The chart of T5 is Figure~\ref{fig:eval-t5}, in
+Section~\ref{sec:eval-resolution}.
 
 \bigskip
 \noindent\begin{minipage}{\textwidth}
@@ -233,13 +228,6 @@ without building a workflow (Table~\ref{tab:eval-t3}); T4 and T5 do the same on 
       \hline
     \end{tabular}
   \normalsize
-
-  \medskip
-  \includegraphics[width=\textwidth,height=0.45\textheight,keepaspectratio]{images/benchmarks/T5_resolution_by_registry.png}
-  {\captionof{figure}{T5: resolution time against registry size $R$ with $F{=}10$/$N{=}50$ fixed,
-  per-call read against single read (logarithmic vertical axis). Both paths grow with $R$, and the
-  gap between them widens with it.}
-  \label{fig:eval-t5}}
 \end{minipage}
 
 \FloatBlock

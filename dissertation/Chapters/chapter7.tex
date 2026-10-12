@@ -224,9 +224,11 @@ registry size.
 \end{table}
 
 \paragraph{Resolution costs one registry read plus a small constant per internal call (T1).}
-In T1 (Table~\ref{tab:eval-t1} and Figure~\ref{fig:eval-t1}, in Appendix~\ref{app:benchmarks}),
-both variants pay one registry read, about $10.7\,\mu$s, which the resolver performs before it
-traverses the workflow's steps. A workflow without internal calls skips resolution entirely: the
+T1 resolves, with the reference resolver, a workflow of $N$ calls, all internal or all external,
+against a one-entry registry ($R{=}1$; Figure~\ref{fig:eval-t1}, with the values in
+Table~\ref{tab:eval-t1}, Appendix~\ref{app:benchmarks}). Both variants pay one registry read,
+about $10.7\,\mu$s, which the resolver performs before it traverses the workflow's steps, so both
+lines of the figure start from the same point. A workflow without internal calls skips resolution entirely: the
 provider deployers (\texttt{Google\allowbreak Cloud\allowbreak Deployer} and
 \texttt{Amazon\allowbreak Cloud\allowbreak Deployer}, Chapter~\ref{cha:impl}) do not call the
 resolver.
@@ -243,20 +245,38 @@ in-memory operations:
 \end{itemize}
 
 \noindent An external call skips all three: the resolver sees that it has no
-\texttt{internalFunction} and keeps it unchanged, for about $0.005\,\mu$s. A workflow of 200
+\texttt{internalFunction} and keeps it unchanged, for about $0.005\,\mu$s, so the external line
+stays almost flat. A workflow of 200
 internal calls costs $56.4\,\mu$s. External calls add no registry work (T11, T12), and neither nesting depth nor parallel
 width matters beyond the number of internal calls (T13, T14).
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/benchmarks/T1_resolution_overhead.png}
+  \caption{T1: resolution time, internal against external calls.}
+  \label{fig:eval-t1}
+\end{figure}
 
 \paragraph{Reading the registry once removes the calls-times-size product (T2--T5).}
 Re-reading the registry on every internal call, as the store's per-call methods do, costs $I$ reads
 of an $R$-entry file; a single read per resolution replaces them with one read plus a small constant
 per call. The benefit is expected;
 the measurements give its size: up to $200\times$ at $N{=}200$, $R{=}1000$ (T3), and
-$26$--$58\times$ on real workflows (T4, T5). When the registry keys include the region
+$26$--$58\times$ on real workflows (T4, T5). Figure~\ref{fig:eval-t5} shows T5, where the
+reference resolver resolves a workflow of 50 calls to ten functions ($N{=}50$, $F{=}10$) as the
+registry grows: the per-call read (``without cache'' in the chart) and the single read (``with
+cache'') both grow with $R$, and the gap between them widens. When the registry keys include the region
 (\texttt{region/name}) but the call gives only the name, the exact lookup misses and the resolver
 scans every key of the loaded map for one ending in \texttt{/name}. This costs at most
 $1.95\times$ the exact lookup: $391\,\mu$s for 50 lookups at $R{=}1000$, under $8\,\mu$s per
 call (T10).
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{images/benchmarks/T5_resolution_by_registry.png}
+  \caption{T5: resolution time against registry size, per-call read against single read.}
+  \label{fig:eval-t5}
+\end{figure}
 
 \section{Cost of the Production Resolvers and of Registry Writes}
 \label{sec:eval-real-resolvers}

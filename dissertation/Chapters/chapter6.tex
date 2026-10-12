@@ -4,11 +4,11 @@
 %
 %  Created by Matilde Pós-de-Mina Pato on 2012/10/09.
 %
-\chapter{Case Study: Real-Time Fraud Detection for Card Payments}
+\chapter{Case Study: A Payment Authorization Workflow}
 \label{cha:case-study}
 
-This chapter applies the registry and the resolution ladder to a retail-banking scenario: a
-workflow that authorizes card payments and screens each one for fraud. It extends the
+This chapter applies the registry and the resolution ladder to a workflow that authorizes
+payments and scores each one with two functions before deciding. It extends the
 \texttt{FraudPipeline} of Section~\ref{sec:developer-workflow}. The scenario is illustrative, not a
 production system, but the workflow was deployed and run on an AWS account and on a GCP project.
 
@@ -20,18 +20,16 @@ the results and their limits.
 \section{Scenario and Requirements}
 \label{sec:case-scenario}
 
-A bank authorizes card payments through a workflow. Two internal functions, owned by the fraud
-team, score each transaction: \texttt{fraud-check} flags known fraud patterns, and
-\texttt{risk-score} computes a risk score. An external call then reports the decision to the core
-banking system, which has its own release cycle and is not managed through the registry. The
+An organization authorizes payments through a workflow. Two internal functions, owned by the
+same team as the workflow, score each transaction: \texttt{fraud-check} flags suspicious patterns,
+and \texttt{risk-score} computes a risk score. An external call then reports the decision to a
+downstream system, which has its own release cycle and is not managed through the registry. The
 scenario has two requirements:
 
 \begin{itemize}
-    \item \textbf{An exit strategy.} The Digital Operational Resilience Act (DORA) requires EU
-    financial entities to have exit strategies for information and communication technology (ICT)
-    services that support critical or important functions, and to assess ICT concentration
-    risk~\cite[Arts.~28(8) and~29]{dora2022}. Leaving a provider is easier if the workflow and its
-    functions can be deployed on another one.
+    \item \textbf{Portability across providers.} The workflow and its functions should deploy to
+    another provider from the same definition, so that moving the application does not mean
+    rewriting it.
     \item \textbf{Auditability of bindings.} Change management needs a record of the endpoint each
     deployment used. The registry keeps only the current binding and, in \texttt{updatedAt}, the
     time of the last write (Section~\ref{sec:dsl-extensions}), not which deployment wrote each
@@ -43,14 +41,14 @@ scenario has two requirements:
 
 Listing~\ref{lst:case-payment-workflow}, in Appendix~\ref{app:listings}, gives the complete
 \texttt{PaymentAuthorization} workflow. Its two scoring calls, \texttt{fraud-check} and
-\texttt{risk-score}, are internal: both functions belong to the bank, unlike the partner API of
-Listing~\ref{lst:wf-external-part}. Each call declares \texttt{internalFunction} with a deployment
-descriptor, so its endpoint is resolved at deployment time
+\texttt{risk-score}, are internal: both functions belong to the organization, unlike the partner
+API of Listing~\ref{lst:wf-external-part}. Each call declares \texttt{internalFunction} with a
+deployment descriptor, so its endpoint is resolved at deployment time
 (Section~\ref{subsec:endpoint-resolution}). A \texttt{switch} step, \texttt{decision}, goes to
 \texttt{decline-transaction} if the transaction was flagged or its score is above 75, and to
 \texttt{approve-transaction} otherwise. Both branches record the decision and continue to
-\texttt{report-decision}, an external call to core banking that sends the transaction as the body
-and the decision as a query parameter.
+\texttt{report-decision}, an external call to the downstream system that sends the transaction as
+the body and the decision as a query parameter.
 
 Two choices keep the definition valid on both providers. The scoring calls pass their inputs as
 query parameters: on AWS an internal call cannot carry a body (Section~\ref{sec:runtime-invocation}),
@@ -68,7 +66,7 @@ Levels~1 and~2 (Section~\ref{sec:walkthrough}), and Level~3 deploys them as Lamb
 through the AWS provider added to QuickFaaS (Figure~\ref{fig:aws-deploy-level3}). Their ARNs are
 stored in the \texttt{url} field, and the state machine is deployed.
 
-\paragraph{GCP.} For the exit-strategy requirement (Section~\ref{sec:case-scenario}), the same
+\paragraph{GCP.} For the portability requirement (Section~\ref{sec:case-scenario}), the same
 workflow is deployed to a second provider, with GCP descriptors and the GCP deployer. A separate GCP
 registry is bootstrapped, both calls miss at Levels~1 and~2, and Level~3 deploys them as Cloud Run
 functions (Section~\ref{subsec:gcp-cloud-run-functions}). They use the same ZIP package format as
@@ -84,7 +82,7 @@ references were region-qualified (\texttt{"eu-west-1/fraud-check"},
 \texttt{"europe-west1/fraud-check"}). On GCP this was required: one region of the project refuses
 Cloud Run lookups, so a bare reference would abort at Level~2
 (Section~\ref{subsec:validation-error-semantics}). Second, \texttt{report-decision} called a stub of
-core banking, deployed outside the ladder.
+the downstream system, \texttt{core-banking-stub}, deployed outside the ladder.
 
 \paragraph{AWS.} The stub was a Lambda function behind an API Gateway HTTP API, created with the
 AWS CLI, because the renderer turns an external call into an \texttt{apigateway:invoke} task and a
@@ -102,7 +100,7 @@ in \texttt{eu-west-1} and the state machine.
   \centering
   \begin{subfigure}[b]{0.6\textwidth}
     \includegraphics[width=\linewidth]{images/AWS/img_2.png}
-    \caption{Lambda functions: the two scoring functions and the core banking stub.}
+    \caption{Lambda functions: the two scoring functions and the downstream system's stub.}
     \label{fig:case-aws-functions}
   \end{subfigure}
 
@@ -126,7 +124,7 @@ in the Google Cloud console: the three public functions in \texttt{europe-west1}
   \centering
   \begin{subfigure}[b]{0.9\textwidth}
     \includegraphics[width=\linewidth]{images/GCP/img.png}
-    \caption{Cloud Run functions: the two scoring functions and the core banking stub.}
+    \caption{Cloud Run functions: the two scoring functions and the downstream system's stub.}
     \label{fig:case-gcp-functions}
   \end{subfigure}
 
@@ -247,8 +245,8 @@ payload.
 "amount.$" : "States.Format('{}', $.transaction.amount)"
 \end{lstlisting}
 
-\paragraph{Exit strategy.} The workflow definition (Listing~\ref{lst:case-payment-workflow})
-deploys to GCP unchanged, but the exit is only partial: the functions' source, the
+\paragraph{Portability.} The workflow definition (Listing~\ref{lst:case-payment-workflow})
+deploys to GCP unchanged, but the move is only partial: the functions' source, the
 region-qualified references and the external calls had to be adapted for each provider (limits 1,
 3 and~4 below).
 
@@ -269,6 +267,6 @@ region-qualified references and the external calls had to be adapted for each pr
   the body itself.
 \end{enumerate}
 
-The scenario remains illustrative: a bank would not accept an unguarded registry and broad,
-automatically granted IAM roles (Section~\ref{sec:concl-critical}) for a function that screens
-payment data. Section~\ref{sec:concl-future} sets out the hardening needed.
+The scenario remains illustrative: a production deployment would not accept an unguarded
+registry and broad, automatically granted IAM roles (Section~\ref{sec:concl-critical}) for a
+function that handles payment data. Section~\ref{sec:concl-future} sets out the hardening needed.

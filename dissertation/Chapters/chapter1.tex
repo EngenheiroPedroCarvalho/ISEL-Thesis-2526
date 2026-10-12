@@ -34,6 +34,9 @@ invokes only functions deployed on that same provider. Unifying the two tools ra
 challenges.
 
 \subsection{Disjointed Function Deployment Lifecycle}
+QuickFaaS deploys the functions and OmniFlow deploys the workflow that calls them, but neither tool
+knows about the other. Deploying an application therefore takes two separate steps, and the
+developer has to connect them by hand:
 \begin{itemize}
 	\item \textbf{Manual pre-deployment:} an OmniFlow workflow can only call functions that already
 	exist. The developer must deploy each one first (e.g., with QuickFaaS,
@@ -45,6 +48,9 @@ challenges.
 \end{itemize}
 
 \subsection{Provider-Specific Function Identification and Invocation Binding}
+A workflow step invokes a function through a concrete endpoint, and it is the provider, not the
+developer, that decides what that endpoint is. This makes the binding between a call and its
+function hard to write in advance:
 \begin{itemize}
 	\item \textbf{The endpoint exists only after deployment} and depends on where the function was
 	deployed. On AWS, a Lambda function is invoked through an Amazon Resource Name (ARN) that
@@ -60,7 +66,9 @@ challenges.
 \end{itemize}
 
 \subsection{Automated Artifact and Metadata Generation}
-When a referenced function does not exist, the workflow tooling must be able to have it deployed.
+With logical identifiers, a workflow may name a function that has not been deployed yet. The
+workflow tooling must then be able to have it deployed, which requires an agreed format for the
+request and a place to keep the result:
 \begin{itemize}
 	\item \textbf{Artifact standardisation:} the workflow tooling must hand the function deployment
 	tool a deployable artifact and its configuration in a consistent format, so that the request can
@@ -90,7 +98,9 @@ therefore:
 \section{Research Questions and Objectives}
 \label{sec:int_objectives}
 
-Two research questions guide the work:
+The challenges in Section~\ref{sec:int_cha_int_uni_multi} and the goals in
+Section~\ref{sec:int_motivation} lead to two research questions, one on whether the integration
+works and one on what it costs:
 
 \begin{description}
 	\item[RQ1 (feasibility and correctness):] can OmniFlow, from a single workflow definition, bind
@@ -119,7 +129,8 @@ To answer them, this work aims to:
 \section{Contributions}
 \label{sec:int_contributions}
 
-The contributions of this dissertation are the following:
+Pursuing the objectives in Section~\ref{sec:int_objectives} produced five contributions: three
+in the design and implementation of the integration, and two that validate it.
 
 \begin{enumerate}
 	\item \textbf{A call model that separates internal from external functions.} The OmniFlow
@@ -151,6 +162,9 @@ resolution ladder, the AWS Lambda support, the case study and the quantitative e
 \section{Structure of the Work}
 \label{sec:int_structure}
 
+The remaining chapters go from the background of the work to its design, implementation and
+evaluation:
+
 \begin{itemize}
   \item \textbf{Chapter 2} presents the background (serverless computing, workflows, QuickFaaS and
   OmniFlow) and the related work.
@@ -158,8 +172,8 @@ resolution ladder, the AWS Lambda support, the case study and the quantitative e
   Function Registry, the \texttt{internalFunction} construct and the resolution ladder.
   \item \textbf{Chapter 4} describes the implementation: the registry and resolvers, function
   deployment and invocation on each provider (including AWS Lambda support in QuickFaaS).
-  \item \textbf{Chapter 5} presents a case study, real-time fraud detection for card payments, run
-  on AWS and on GCP.
+  \item \textbf{Chapter 5} presents a case study, a payment authorization workflow, run on AWS
+  and on GCP.
   \item \textbf{Chapter 6} evaluates the prototype and answers the two research questions.
   \item \textbf{Chapter 7} concludes and outlines future work.
 \end{itemize}
