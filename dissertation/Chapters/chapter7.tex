@@ -159,6 +159,14 @@ Two kinds of resolver are measured. T1, T2, T4, T5 and T10--T14 use a reference 
 for the benchmarks, in two variants: one re-reads the registry on every internal call, the other
 reads it once. It resolves calls from the registry as OmniFlow does but never validates a hit
 against the provider, so it measures only the registry and the traversal of the workflow's steps.
+It is used for two reasons. First, the production resolvers validate every registry hit against
+the provider, so measuring them means either sending network requests, which the evaluation
+excludes, or replacing the provider with a test double, and the point where the double replaces it
+changes how much local work is measured (T6 and T7 replace it at different points). The reference
+resolver measures the resolution alone, in the same way for both providers. Second, the production
+resolvers only read the registry once, so comparing the two ways of reading it needs two resolvers
+that differ only in that respect. Both variants produce the same resolved workflow, so the
+difference measured between them comes from the registry reads alone.
 T3 calls the registry store directly, without a resolver. T6 and T7 measure the production resolvers
 (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} and
 \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}), the classes
@@ -244,18 +252,18 @@ in-memory operations:
   workflow model is immutable.
 \end{itemize}
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.7\textwidth]{images/benchmarks/T1_resolution_overhead.png}
+  \caption{T1: resolution time, internal against external calls.}
+  \label{fig:eval-t1}
+\end{figure}
+
 \noindent An external call skips all three: the resolver sees that it has no
 \texttt{internalFunction} and keeps it unchanged, for about $0.005\,\mu$s, so the external line
 stays almost flat. A workflow of 200
 internal calls costs $56.4\,\mu$s. External calls add no registry work (T11, T12), and neither nesting depth nor parallel
 width matters beyond the number of internal calls (T13, T14).
-
-\begin{figure}[tbp]
-  \centering
-  \includegraphics[width=0.85\textwidth]{images/benchmarks/T1_resolution_overhead.png}
-  \caption{T1: resolution time, internal against external calls.}
-  \label{fig:eval-t1}
-\end{figure}
 
 \paragraph{Reading the registry once removes the calls-times-size product (T2--T5).}
 Re-reading the registry on every internal call, as the store's per-call methods do, costs $I$ reads
@@ -265,18 +273,20 @@ the measurements give its size: up to $200\times$ at $N{=}200$, $R{=}1000$ (T3),
 $26$--$58\times$ on real workflows (T4, T5). Figure~\ref{fig:eval-t5} shows T5, where the
 reference resolver resolves a workflow of 50 calls to ten functions ($N{=}50$, $F{=}10$) as the
 registry grows: the per-call read (``without cache'' in the chart) and the single read (``with
-cache'') both grow with $R$, and the gap between them widens. When the registry keys include the region
+cache'') both grow with $R$, and the gap between them widens.
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.7\textwidth]{images/benchmarks/T5_resolution_by_registry.png}
+  \caption{T5: resolution time against registry size, per-call read against single read.}
+  \label{fig:eval-t5}
+\end{figure}
+
+\noindent When the registry keys include the region
 (\texttt{region/name}) but the call gives only the name, the exact lookup misses and the resolver
 scans every key of the loaded map for one ending in \texttt{/name}. This costs at most
 $1.95\times$ the exact lookup: $391\,\mu$s for 50 lookups at $R{=}1000$, under $8\,\mu$s per
 call (T10).
-
-\begin{figure}[tbp]
-  \centering
-  \includegraphics[width=0.85\textwidth]{images/benchmarks/T5_resolution_by_registry.png}
-  \caption{T5: resolution time against registry size, per-call read against single read.}
-  \label{fig:eval-t5}
-\end{figure}
 
 \section{Cost of the Production Resolvers and of Registry Writes}
 \label{sec:eval-real-resolvers}
