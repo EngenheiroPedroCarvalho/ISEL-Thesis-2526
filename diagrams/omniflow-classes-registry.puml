@@ -10,6 +10,7 @@ left to right direction
 class FunctionRegistryStore {
   -file : Path
   +readAll() : Map
+  +tryResolveEntry(ref) : Pair[0..1]
   +tryResolveEntryIn(ref, snapshot) : Pair[0..1]
   +put(key, metadata)
   +remove(key)

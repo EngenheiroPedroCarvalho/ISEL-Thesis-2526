@@ -94,9 +94,10 @@ renderer recognises.
   (\texttt{resolveUrl()} and \texttt{resolveUrlIn()} are split the same way);
   \item \texttt{put()} inserts or refreshes an entry, and \texttt{remove()} deletes one.
 \end{itemize}
-The store keeps no state between calls, so each read re-parses the file. The resolvers avoid this:
-each reads the registry once, at the start of \texttt{resolve()}, into a snapshot, resolves every
-call against it, and keeps it in sync with each \texttt{put()} and \texttt{remove()}.
+The store keeps no state between calls, so each read reads the whole file and rebuilds
+the map. The resolvers avoid this: each reads the registry once, at the start of
+\texttt{resolve()}, into a snapshot, resolves every call against it, and keeps it in sync with
+each \texttt{put()} and \texttt{remove()}.
 Chapter~\ref{cha:evaluation} measures both paths.
 
 Figure~\ref{fig:omniflow-classes-resolvers} shows the two resolvers. Each reads and writes the
