@@ -13,3 +13,9 @@ este ficheiro.)
   secção, dentro de uma `minipage`, e abre a pág. 29 no topo. Um `\newpage` antes dela deixa o
   espaço livre no fundo da pág. 28, em vez de esticar o intervalo entre a Listagem 4.2 e o
   parágrafo "Invocation".
+
+## 2026-10-14 — Cap. 7, alinhado com a revisão do Cap. 3
+
+- `chapter8.tex` (limitações, "operation"): "The integration boundary is brittle" passa a dizer
+  que OmniFlow corre o QuickFaaS como processo separado, em vez de o chamar como biblioteca, como
+  na §3.4 depois da revisão do orientador.

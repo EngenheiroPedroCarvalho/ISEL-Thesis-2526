@@ -87,8 +87,8 @@ The fourth is operation. IAM changes are broad and automatic: on AWS, a shared e
 created or modified and invoke permissions are granted as side effects; on GCP, QuickFaaS opens
 every function to all users, making the grant to the workflow's service account redundant
 (Section~\ref{subsec:gcp-cloud-run-functions}). Neither suits a least-privilege environment. The
-integration boundary is brittle, since QuickFaaS runs as a subprocess whose output is parsed
-(Section~\ref{sec:design-rationale}). And, by design, the classes that call cloud SDKs have no
+integration between the two tools is loose: OmniFlow runs QuickFaaS as a separate process rather
+than calling it as a library, and parses its output (Section~\ref{sec:design-rationale}). And, by design, the classes that call cloud SDKs have no
 automated tests, so the integration edges are the least tested part of the code.
 
 \section{Future Work}
