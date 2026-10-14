@@ -20,12 +20,14 @@ single-purpose, stateless functions triggered by events such as HTTP requests. B
 standardised across providers (AWS Lambda, Google Cloud Functions, Azure Functions), function code
 becomes coupled to provider-specific SDKs and deployment artifacts~\cite{rodrigues2022quickfaas}.
 
-This coupling has two axes. The \emph{programming model}: each provider defines its own function
-signature and request/response types. The \emph{packaging and deployment}: providers accept code
-through different mechanisms, with different naming, permission and trigger conventions. QuickFaaS
-addresses both (Section~\ref{sec:background_quickfaas}). Since a function holds no state between
-invocations and cannot directly call another, applications move their control flow and data flow
-into an external orchestrator, the workflow layer~\cite{serverlessComputing}.
+Function code depends on the provider in two ways. The \emph{programming model}: each provider
+defines its own function signature and request/response types. The \emph{packaging and
+deployment}: providers accept code through different mechanisms, with different naming, permission
+and trigger conventions. QuickFaaS addresses both (Section~\ref{sec:background_quickfaas}).
+
+Since a function holds no state between invocations and cannot directly call another, applications
+move their control flow and data flow into an external orchestrator, the workflow
+layer~\cite{serverlessComputing}.
 
 \subsection{Workflows and Orchestration}
 \label{sec:workflows}

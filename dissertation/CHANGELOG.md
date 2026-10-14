@@ -40,3 +40,9 @@ este ficheiro.)
   baixo, as caixas GCP e AWS ficam lado a lado e sai o título interno (repetia a legenda); a
   imagem fica mais estreita e, por isso, maior na página.
 - **Capa** (`Config/_cover.tex`): data de entrega 16 October 2026.
+
+## 2026-10-14 — Cap. 2, §2.1.1
+
+- `chapter2.tex`: "This coupling has two axes" passa a "Function code depends on the provider in
+  two ways"; as duas frases sobre a passagem do fluxo de controlo para um orquestrador ficam num
+  parágrafo próprio.
