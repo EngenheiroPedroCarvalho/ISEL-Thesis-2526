@@ -48,7 +48,16 @@ deployment descriptor, so its endpoint is resolved at deployment time
 \texttt{decline-transaction} if the transaction was flagged or its score is above 75, and to
 \texttt{approve-transaction} otherwise. Both branches record the decision and continue to
 \texttt{report-decision}, an external call to the downstream system that sends the transaction as
-the body and the decision as a query parameter.
+the body and the decision as a query parameter. Figure~\ref{fig:case-flow-gcp} shows this flow as
+rendered for GCP (Section~\ref{app:case-rendered-gcp}); the AWS state machine has the same steps,
+without the final \texttt{return\_output} (Figure~\ref{fig:case-flow-aws}).
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.45\textwidth]{images/case-study/case-flow-gcp.png}
+  \caption{Flow of the \texttt{PaymentAuthorization} workflow, as rendered for GCP.}
+  \label{fig:case-flow-gcp}
+\end{figure}
 
 Two choices keep the definition valid on both providers. The scoring calls pass their inputs as
 query parameters: on AWS an internal call cannot carry a body (Section~\ref{sec:runtime-invocation}),

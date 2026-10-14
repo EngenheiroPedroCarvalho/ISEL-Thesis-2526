@@ -8,6 +8,25 @@ este ficheiro.)
 
 ## 2026-10-14
 
+### Cap. 7 Conclusions (`Chapters/chapter8.tex`)
+
+- Secções 7.1–7.3 passam de listas a texto corrido, sem mudar factos, números nem referências:
+  as contribuições num parágrafo; as RQ e os objetivos em dois parágrafos; as 12 limitações do
+  Critical Assessment agrupadas em quatro parágrafos (ciclo de vida, portabilidade, registry,
+  operação).
+- Secção 7.4 (Future Work): mantém-se em lista, a única do capítulo.
+- Secção 7.5 (Final Remarks): passa de um para quatro parágrafos. Os novos descrevem o que muda
+  para quem faz o deploy (antes e depois da integração, e o AWS no QuickFaaS) e as duas decisões
+  de desenho (ferramentas separadas, um deployer por provider; escada conservadora).
+
+### Cap. 5 Case Study (`Chapters/chapter6.tex`) e Apêndice B (`Chapters/appendix-listings.tex`)
+
+- Secção 5.2 (Workflow Design): nova Figura 5.1 com o fluxo do `PaymentAuthorization` renderizado
+  para GCP (`fig:case-flow-gcp`), e uma frase que a refere e nota que no AWS o fluxo tem os mesmos
+  passos, sem o `return_output` final.
+- Apêndice B: a figura do fluxo GCP sai do apêndice (era a B.1); o texto da secção "Rendered for
+  GCP" e a introdução remetem agora para a Figura 5.1. A figura do fluxo AWS passa de B.2 a B.1.
+
 ### Cap. 4 Implementation (`Chapters/chapter5.tex`)
 
 - Secção 4.2 (Function Deployment and Invocation): removido o parágrafo de introdução às

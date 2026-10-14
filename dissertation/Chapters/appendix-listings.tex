@@ -138,24 +138,17 @@ The runs of Chapter~\ref{cha:case-study} used this workflow with two changes
 \texttt{report-decision} aimed at a stub of the downstream system. From it, OmniFlow rendered the
 Cloud Workflows definition of Section~\ref{app:case-rendered-gcp} and the Step Functions state
 machine of Section~\ref{app:case-rendered-aws}. Only the resolved endpoints and the provider's syntax differ.
-Each section first draws the definition as the provider's console does (Figures~\ref{fig:case-flow-gcp}
-and~\ref{fig:case-flow-aws}): the two scoring calls in sequence, a branch on their results, one
-assignment on each path, and the call to the downstream system.
+Figure~\ref{fig:case-flow-gcp} (Section~\ref{sec:case-design}) and Figure~\ref{fig:case-flow-aws}
+draw the definition as the provider's console does: the two scoring calls in sequence, a branch on
+their results, one assignment on each path, and the call to the downstream system.
 
 \subsection{Rendered for GCP}
 \label{app:case-rendered-gcp}
 
-Figure~\ref{fig:case-flow-gcp} shows the flow of the Cloud Workflows definition in
-Listing~\ref{lst:case-rendered-gcp}. The \texttt{switch} jumps to \texttt{decline-transaction} when
+Figure~\ref{fig:case-flow-gcp}, in Section~\ref{sec:case-design}, shows the flow of the Cloud
+Workflows definition in Listing~\ref{lst:case-rendered-gcp}. The \texttt{switch} jumps to \texttt{decline-transaction} when
 either condition holds, and otherwise continues at \texttt{approve-transaction}; both paths reach
 \texttt{report-decision}, and \texttt{return\_output} returns the decision.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.5\textwidth]{images/case-study/case-flow-gcp.png}
-  \caption{Flow of the Cloud Workflows definition rendered for GCP.}
-  \label{fig:case-flow-gcp}
-\end{figure}
 
 \begin{lstlisting}[language={},caption={Cloud Workflows definition rendered for GCP (YAML).},label={lst:case-rendered-gcp},basicstyle=\ttfamily\fontsize{7.2}{8.6}\selectfont,breaklines=true]
 main:
