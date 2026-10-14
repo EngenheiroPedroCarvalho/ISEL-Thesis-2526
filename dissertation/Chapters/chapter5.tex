@@ -186,22 +186,12 @@ if invoked, so that nothing is deployed unless a deployer is configured;
   \label{fig:omniflow-classes-deployers}
 \end{figure}
 
-\paragraph{Why one deployer per provider.}
+\paragraph{One deployer per provider.}
 The integration was built for GCP first: \texttt{QuickFaasDeployer} was written and tested
 against GCP before AWS support began. AWS was then added as a second implementation of the same
 interface, \texttt{AwsLambdaDeployer}, rather than as a branch inside \texttt{QuickFaasDeployer},
 so that the GCP deployer, already working, was left unchanged. A single class could have served
-both providers, choosing the steps from the descriptor's \texttt{cloudProvider}. It was not built
-that way because the two deployers share little beyond the subprocess call and the descriptor
-handling, which already sit in \texttt{Quick\allowbreak Faas\allowbreak Process\allowbreak Invoker}
-and \texttt{Quick\allowbreak Faas\allowbreak Descriptor\allowbreak Loader} and are used by both.
-Every other step differs: the credentials (an access token injected into the descriptor on GCP,
-environment credentials on AWS), the IAM work before the deployment (none on GCP, the Lambda
-execution role on AWS) and after it (\texttt{roles/\allowbreak run.invoker} on the Cloud Run
-service, or permission for Step Functions to invoke the function), the readiness check (the Cloud
-Functions~v2 API or \texttt{GetFunction}) and the value bound to the workflow (a \texttt{run.app}
-URL or an ARN). A single class would branch on the provider at each of these steps, take
-constructor parameters that only one provider uses, and depend on the clients of both.
+both providers, choosing the steps from the descriptor's \texttt{cloudProvider}.
 
 Keeping one deployer per provider has three advantages. The tested GCP deployer was not modified
 when AWS was added, so the AWS work could not break it. Each deployer takes only the configuration
@@ -210,13 +200,6 @@ compiler checks that it is supplied. And each entry-point deployer is wired to i
 so supporting a further provider, such as Azure, which QuickFaaS already targets, means adding one
 class that implements \texttt{Internal\allowbreak Function\allowbreak Deployer}, alongside its
 resolver, without changing the existing ones.
-
-On GCP, deployment required moving QuickFaaS to second-generation functions
-(Section~\ref{subsec:gcp-cloud-run-functions}); on AWS, a new QuickFaaS provider and an OmniFlow
-deployer that prepares the IAM role and permissions (Section~\ref{subsec:aws-lambda-deployment}).
-Each subsection ends with how the deployed workflow invokes the function at run time. In both
-cases the endpoint is the one written into the workflow at deployment, and the registry is not
-consulted.
 
 \subsection{Cloud Run Functions on GCP}
 \label{subsec:gcp-cloud-run-functions}
