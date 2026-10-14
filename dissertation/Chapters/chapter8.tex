@@ -17,20 +17,20 @@ definition, without function endpoints being coordinated by hand.
 The work delivered the five contributions of Section~\ref{sec:int_contributions}. The first is the
 \texttt{internalFunction} construct, which separates internal from external calls
 (Section~\ref{sec:dsl-extensions}). The second, the core of the unification, is a per-provider
-Function Registry and a three-level resolution ladder that binds each internal call at deployment
+Function Registry and a three-level resolution sequence that binds each internal call at deployment
 time (Sections~\ref{sec:resolution-cascade} and~\ref{sec:function-registry}). The third extends the
-ladder's reach: an AWS Lambda provider in QuickFaaS, with the matching OmniFlow deployer, and the
-move of QuickFaaS's GCP provider to second-generation functions, so that the ladder covers the
+sequence's reach: an AWS Lambda provider in QuickFaaS, with the matching OmniFlow deployer, and the
+move of QuickFaaS's GCP provider to second-generation functions, so that the sequence covers the
 functions it deploys (Section~\ref{sec:function-deployment}). The last two put the result to the
-test: a prototype and a card-payment fraud detection case study, run on AWS and GCP
-(Chapter~\ref{cha:case-study}), and an evaluation of the ladder's decisions and of the cost of
+test: a prototype and a case study of a payment authorization workflow, run on AWS and GCP
+(Chapter~\ref{cha:case-study}), and an evaluation of the sequence's decisions and of the cost of
 resolution (Chapter~\ref{cha:evaluation}).
 
 \section{Objectives Revisited}
 \label{sec:concl-objectives}
 
 The first research question, on feasibility and correctness, is answered positively for the
-resolution logic. On both providers the ladder binds each internal call to the right endpoint,
+resolution logic. On both providers the sequence binds each internal call to the right endpoint,
 deploys a function only when its absence is confirmed, and aborts on stale entries, ambiguous names
 and inaccessible regions (Section~\ref{sec:eval-correctness}), with the limits stated below for the
 fourth objective. The answer to the second, on overhead, is that it is small. The production
@@ -60,7 +60,7 @@ The implementation is a prototype, and its limitations fall into four groups.
 
 The first is the life cycle of what is deployed. Binding is static: an endpoint that changes after
 deployment reaches the workflow only when the workflow is deployed again
-(Section~\ref{sec:resolution-cascade}). The ladder deploys only missing functions, so a code change
+(Section~\ref{sec:resolution-cascade}). The sequence deploys only missing functions, so a code change
 must be deployed separately, for example with QuickFaaS directly. And OmniFlow's deployers cannot
 update a workflow, which must be deleted before being deployed again
 (Section~\ref{sec:case-artifacts}).
@@ -108,7 +108,7 @@ From the smallest change with the clearest payoff to the larger ones:
   changes instead of applying them.
   \item \textbf{Testable cloud code:} SDK interactions behind narrow interfaces, so the deployment,
   IAM and readiness logic can be tested against fakes.
-  \item \textbf{Validate the ladder on live providers} at every level, beyond the single workflow of
+  \item \textbf{Validate the sequence on live providers} at every level, beyond the single workflow of
   Chapter~\ref{cha:case-study}, so that the evidence of Section~\ref{sec:eval-correctness} rests on
   the providers' own responses.
   \item \textbf{Add Azure Functions}, already a QuickFaaS target, through the existing extension
@@ -119,7 +119,7 @@ From the smallest change with the clearest payoff to the larger ones:
 \label{sec:concl-final}
 
 Function deployment and workflow orchestration can be driven from a single, provider-agnostic
-definition, with endpoints bound at deployment time by an explicit resolution ladder. The local
+definition, with endpoints bound at deployment time by an explicit resolution sequence. The local
 overhead is small and, with the single registry read, grows linearly.
 
 Without the integration, a developer deploys each function with QuickFaaS, copies its endpoint into
@@ -131,7 +131,7 @@ although each function's source is still written per provider.
 
 Two design decisions shaped the result. The tools stay separate: OmniFlow drives QuickFaaS as an
 external process, through one deployer per provider, so each keeps its own build and toolchain, and
-another provider means one more deployer and resolver. And the ladder is conservative: it deploys a
+another provider means one more deployer and resolver. And the sequence is conservative: it deploys a
 function only when its absence is confirmed and aborts on anything uncertain, preferring a failed
 deployment to a workflow bound to the wrong function. Most of the limitations above call for
 engineering work rather than new design.

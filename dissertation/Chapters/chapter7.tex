@@ -31,20 +31,20 @@ without this integration, and is non-deterministic. Each question is answered as
   \item \textbf{RQ2, local work added by resolution:} JMH benchmarks of a reference resolver and of
   the production resolvers (Sections~\ref{sec:eval-resolution} and~\ref{sec:eval-real-resolvers}).
   \item \textbf{RQ2, requests sent to the provider:} an analytical count, derived from the code
-  path by path through the ladder, since the benchmarks run without a network
+  path by path through the sequence, since the benchmarks run without a network
   (Section~\ref{sec:eval-api-calls}).
   \item \textbf{Manual steps removed and cost of portability on AWS:} a procedural comparison of
   developer actions, and the Lambda bundle size, provider-agnostic vs.\ native
   (Section~\ref{sec:eval-manual-effort}).
 \end{itemize}
 
-\section{Correctness of the Resolution Ladder}
+\section{Correctness of the Resolution Sequence}
 \label{sec:eval-correctness}
 
 Each production resolver (\texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver}
 and \texttt{Workflow\allowbreak Internal\allowbreak Function\allowbreak Resolver}, the classes OmniFlow
 runs when it deploys a workflow) has a unit-test suite that resolves a small workflow in each
-situation the ladder can meet. The provider is replaced by test doubles (a lookup that answers ``found'', ``not found'' or ``access denied'' per
+situation the sequence can meet. The provider is replaced by test doubles (a lookup that answers ``found'', ``not found'' or ``access denied'' per
 region, a fixed region list, and a deployer that records what it is asked to deploy). What the tests
 verify is therefore the resolver's decision given a simulated provider answer, not the provider
 itself. The registry, in contrast, is not replaced by a test double: the tests use the same registry
@@ -75,7 +75,7 @@ happens:
 
 \begin{table}[!htbp]
   \centering
-  \caption{Resolver unit tests by ladder level (``--'': whole workflow), on AWS and GCP unless
+  \caption{Resolver unit tests by sequence level (``--'': whole workflow), on AWS and GCP unless
   marked otherwise. Every test passes.}
   \label{tab:eval-correctness}
   \small
@@ -116,7 +116,7 @@ happens:
     -- & External calls (literal \texttt{host}/\texttt{path}) & Left unchanged \\
     \hline
     -- & A call with both \texttt{internalFunction} and \texttt{host}/\texttt{path}; (AWS only) an
-    internal call with a body & Rejected before the ladder starts \\
+    internal call with a body & Rejected before the sequence starts \\
     \hline
     -- & A workflow with several internal calls & The registry file is read once \\
     \hline
@@ -317,7 +317,7 @@ $59$\,ms.
 \label{sec:eval-api-calls}
 
 The benchmarks do not include network traffic, so Table~\ref{tab:eval-api-calls} counts, from the
-code, the provider requests each ladder path sends. $G$ is the number of candidate regions (the
+code, the provider requests each sequence path sends. $G$ is the number of candidate regions (the
 regions enabled for the AWS account, or the Cloud Run locations of the GCP project). If the
 registry has an entry for the called function, the resolver confirms with the provider that the
 function still exists and reads its current endpoint. It does this for every internal call, not once per function: the
@@ -330,7 +330,7 @@ a function that no longer exists.
 
 \begin{table}[!htbp]
   \centering
-  \caption{Provider API requests issued per internal call, by ladder path, counted from the
+  \caption{Provider API requests issued per internal call, by sequence path, counted from the
   implementation. $G$ is the number of candidate regions.}
   \label{tab:eval-api-calls}
   \begin{tabular}{|>{\raggedright\arraybackslash}p{0.30\textwidth}|>{\raggedright\arraybackslash}p{0.30\textwidth}|>{\raggedright\arraybackslash}p{0.30\textwidth}|}

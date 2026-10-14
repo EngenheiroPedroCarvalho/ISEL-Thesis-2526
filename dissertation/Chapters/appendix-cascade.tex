@@ -1,7 +1,7 @@
 %!TEX root = ../template.tex
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% appendix-cascade.tex
-%% Resolution ladder sequence diagrams (ported from ISEL-Thesis-2526/thesis/appendix.tex)
+%% Resolution sequence diagrams (ported from ISEL-Thesis-2526/thesis/appendix.tex)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \chapter{Complete Diagrams}
 \label{app:cascade-sequences}
@@ -10,7 +10,7 @@ This appendix gives the complete diagrams that Chapter~\ref{cha:impl} shows in p
 model of the integration layer (Figure~\ref{fig:omniflow-integration-classes}), presented in four
 parts in Section~\ref{sec:function-registry}; the
 AWS deployment sequence (Figure~\ref{fig:aws-deploy-sequence}), whose Level~3 branch is
-Figure~\ref{fig:aws-deploy-level3}, and one diagram per level of the resolution ladder
+Figure~\ref{fig:aws-deploy-level3}, and one diagram per level of the resolution sequence
 (Section~\ref{sec:resolution-cascade}), with the GCP path as panel (a) and the AWS path as panel (b).
 It ends with the runtime invocation of an internal function on AWS
 (Figure~\ref{fig:aws-runtime-invocation}), described in Section~\ref{sec:runtime-invocation}.
@@ -34,7 +34,7 @@ It ends with the runtime invocation of an internal function on AWS
   \par (a) Overview
   \captionof{figure}{Deployment sequence on AWS, from the registry bootstrap to
   \texttt{Create\allowbreak State\allowbreak Machine}, with one branch per level of the resolution
-  ladder and a fourth for the calls that fail fast (a); the Level~3 branch is expanded in (b), on
+  sequence and a fourth for the calls that fail fast (a); the Level~3 branch is expanded in (b), on
   the next page.}
   \label{fig:aws-deploy-sequence}
 \end{minipage}

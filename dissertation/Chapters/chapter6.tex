@@ -7,7 +7,7 @@
 \chapter{Case Study: A Payment Authorization Workflow}
 \label{cha:case-study}
 
-This chapter applies the registry and the resolution ladder to a workflow that authorizes
+This chapter applies the registry and the resolution sequence to a workflow that authorizes
 payments and scores each one with two functions before deciding. It extends the
 \texttt{FraudPipeline} of Section~\ref{sec:developer-workflow}. The scenario is illustrative, not a
 production system, but the workflow was deployed and run on an AWS account and on a GCP project.
@@ -91,7 +91,7 @@ references were region-qualified (\texttt{"eu-west-1/fraud-check"},
 \texttt{"europe-west1/fraud-check"}). On GCP this was required: one region of the project refuses
 Cloud Run lookups, so a bare reference would abort at Level~2
 (Section~\ref{subsec:validation-error-semantics}). Second, \texttt{report-decision} called a stub of
-the downstream system, \texttt{core-banking-stub}, deployed outside the ladder.
+the downstream system, \texttt{core-banking-stub}, deployed outside the resolution sequence.
 
 \paragraph{AWS.} The stub was a Lambda function behind an API Gateway HTTP API, created with the
 AWS CLI, because the renderer turns an external call into an \texttt{apigateway:invoke} task and a
@@ -206,7 +206,7 @@ keep development, testing and production in separate ones. A function then has a
 endpoint in each: its ARN contains the account ID, and its \texttt{run.app} URL is specific to the
 project. With endpoints written in the definition, each promotion would mean deploying the
 functions and editing the workflow by hand (Section~\ref{sec:int_cha_int_uni_multi}). With the
-ladder, the workflow stays the same and only the descriptors change: they name the target
+sequence, the workflow stays the same and only the descriptors change: they name the target
 account's bucket (and, optionally, role) on AWS, or the target project on GCP. Each account has its
 own registry file (the deployers accept a registry path), bootstrapped from that account, and
 Level~3 deploys the functions there. No endpoint is copied between accounts. The registry must not

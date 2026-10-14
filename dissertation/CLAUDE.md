@@ -10,7 +10,7 @@ ISEL MSc dissertation (English, `docdegree=msc`, `lang=en`) on integrating **Omn
 DSL that renders and deploys workflows to AWS Step Functions and GCP Workflows) with **QuickFaaS**
 (portable deployment of serverless functions). The contribution has two parts:
 
-1. **Unification:** a Function Registry and a three-level *resolution ladder* (registry →
+1. **Unification:** a Function Registry and a three-level *resolution sequence* (registry →
    provider discovery → QuickFaaS deployment), triggered by
    `internalFunction(name, deploymentDescriptorPath)` on the OmniFlow `call` step.
 2. **AWS support:** an AWS Lambda provider added to QuickFaaS.
@@ -34,7 +34,7 @@ Build output (`template.pdf`, `pdfa.xmpi`), the template `.zip` and `outputs/` a
 | `Chapters/chapter6.tex` | 5 Case Study | `cha:case-study` |
 | `Chapters/chapter7.tex` | 6 Evaluation | `cha:evaluation` |
 | `Chapters/chapter8.tex` | 7 Conclusions | `cha:conclusions` |
-| `Chapters/appendix-cascade.tex` | Appendix A: Complete Diagrams (full class model, full AWS deployment sequence, ladder levels, AWS runtime invocation) | `app:cascade-sequences` |
+| `Chapters/appendix-cascade.tex` | Appendix A: Complete Diagrams (full class model, full AWS deployment sequence, sequence levels, AWS runtime invocation) | `app:cascade-sequences` |
 | `Chapters/appendix-listings.tex` | Appendix B: Complete Listings (workflows and registries shown as excerpts in Ch. 3 and 5) | `app:listings` |
 | `Chapters/appendix-benchmarks.tex` | Appendix C: Benchmark Results (full T1–T14 tables/figures summarised in Ch. 6) | `app:benchmarks` |
 
@@ -142,9 +142,11 @@ Key classes, under `../omni-flow-main/deployment/src/main/kotlin/costaber/com/gi
   with `\hline`, with thousands written as `1\,234`.
 - Newer prose is hard-wrapped at about 100 columns.
 - Terminology: an *internal call* uses `internalFunction`; an *external call* has a literal
-  `host`/`path`. Also `functionRef`, *Function Registry*, and *resolution ladder* with Level 1/2/3
-  (renamed from "resolution cascade" on 2026-09-28; don't reintroduce "cascade" in the prose, but
-  labels and file names such as `sec:resolution-cascade` and `appendix-cascade.tex` keep it).
+  `host`/`path`. Also `functionRef`, *Function Registry*, and *resolution sequence* with Level 1/2/3
+  (*sequência* in the Resumo). It was "resolution cascade" until 2026-09-28 and "resolution
+  ladder" until 2026-10-14, when the supervisor asked for "sequence"; don't reintroduce either in
+  the prose. Labels and file names such as `sec:resolution-cascade` and `appendix-cascade.tex` keep
+  the old name. The code and `../CLAUDE.md` still say "ladder".
 - Technical claims must match the code. When discussing them with the user, cite `file:line`.
 - When evaluation numbers change, update the table and the prose together; the Discussion and
   Conclusions restate numbers.

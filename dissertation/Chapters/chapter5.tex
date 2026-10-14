@@ -63,7 +63,7 @@ maintains the registry itself:
     \texttt{Cloud\allowbreak Functions\allowbreak Catalog} interface
     (\texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Rest\allowbreak Catalog} on GCP,
     \texttt{Lambda\allowbreak Functions\allowbreak Catalog} on AWS, which scans every enabled
-    region). Unlike the ladder, the bootstrap skips a region it cannot list, with a warning: the
+    region). Unlike the sequence, the bootstrap skips a region it cannot list, with a warning: the
     registry is an index that later resolutions validate, so an incomplete one is not unsafe.
     \item \textbf{Registration:} a function found by discovery (Level~2) or deployed (Level~3) is
     written to the registry immediately.
@@ -76,7 +76,7 @@ Every write refreshes \texttt{updatedAt}.
 \subsection{Deployment-Time Endpoint Resolution}
 \label{subsec:endpoint-resolution}
 Before rendering, OmniFlow traverses the workflow tree, including branches, iterations and parallel
-blocks, and puts every \texttt{CallContext} with an \texttt{internalFunction} through the ladder;
+blocks, and puts every \texttt{CallContext} with an \texttt{internalFunction} through the sequence;
 external calls are left untouched. The resolved endpoint is injected into the call: on GCP as the
 \texttt{host} and \texttt{path} of the URL, on AWS as a \texttt{lambda://<arn>} host that the
 renderer recognises.
@@ -103,7 +103,7 @@ Chapter~\ref{cha:evaluation} measures both paths.
 Figure~\ref{fig:omniflow-classes-resolvers} shows the two resolvers. Each reads and writes the
 registry through the store, looks functions up on its provider, and delegates Level~3 to an
 \texttt{Internal\allowbreak Function\allowbreak Deployer}.
-\texttt{WorkflowInternalFunctionResolver} (GCP) implements the ladder on the Cloud Run API through
+\texttt{WorkflowInternalFunctionResolver} (GCP) implements the sequence on the Cloud Run API through
 \texttt{Cloud\allowbreak Run\allowbreak V2\allowbreak Service\allowbreak Inspector}, which looks a
 service up by full name (validation) or by project, region and name (discovery).
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} does the same on the Lambda
@@ -330,7 +330,7 @@ deployment. \texttt{AwsHttpTemplate} reads only the \texttt{query\allowbreak Str
 passes them to the hook as a map; the response is returned under \texttt{\$.Payload}. An internal
 call on AWS therefore passes its inputs with \texttt{query(\ldots)}, and
 \texttt{Aws\allowbreak Internal\allowbreak Function\allowbreak Resolver} rejects one that declares a
-body before the ladder runs, rather than render a state machine that would drop it. The native
+body before the sequence runs, rather than render a state machine that would drop it. The native
 integration avoids per-call request signing.
 
 \texttt{AmazonCall\allowbreak Renderer} tells internal from external calls by the injected host. A

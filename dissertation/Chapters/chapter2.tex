@@ -251,11 +251,11 @@ Serverless Framework and Terraform offer equivalent
 references~\cite{serverlessStepFunctionsPlugin,terraformSfnStateMachine}. Each reference is also an
 implicit dependency, so the function is created before the
 workflow~\cite{awsCloudFormationDependsOn,terraformReferences}, and Pulumi orders resources the same
-way~\cite{pulumiInputsOutputs}. This is the static binding of the resolution ladder
+way~\cite{pulumiInputsOutputs}. This is the static binding of the resolution sequence
 (Section~\ref{sec:resolution-cascade}), and these tools also update changed functions, which this
 work does not. But they bind only functions declared in the same configuration, or, in Terraform
 and Pulumi, named explicitly through a data source in the configured
-region~\cite{terraformLambdaDataSource,pulumiLambdaGetFunction}. The resolution ladder searches the
+region~\cite{terraformLambdaDataSource,pulumiLambdaGetFunction}. The resolution sequence searches the
 provider's regions for a function given only by name, and deploys it when absent. Above all, none
 of these tools offers a provider-independent workflow: the state machine is written in the Amazon
 States Language, and a GCP workflow would be a separate definition.
@@ -310,7 +310,7 @@ instances~\cite{awsCloudMap}, and \textbf{Consul} keeps a service catalog with h
 DNS lookup~\cite{consulServiceDiscovery}. A service registry is consulted at run time, by the
 caller, and holds only what registers with it. The Function Registry is consulted once, at
 deployment time, and its result is written into the workflow, so neither the workflow engine nor
-the function knows it exists; and when a name is missing, the ladder searches the provider and may
+the function knows it exists; and when a name is missing, the sequence searches the provider and may
 deploy the function. Conversely, a service registry is shared and kept current, which the Function
 Registry, a local file validated on each deployment, is not (Section~\ref{sec:concl-critical}).
 

@@ -63,8 +63,6 @@ skinparam legend {
   FontSize 11
 }
 
-title Unified Deployment from a Single Workflow Definition
-
 actor "Developer" as D2
 component "OmniFlow DSL\n(+ ""internalFunction"" construct)" as DSL2 <<extended>>
 
@@ -102,15 +100,15 @@ AIFR --> ALD
 QFD ..> JAR : subprocess
 ALD ..> JAR : subprocess
 
-JAR --> GFN
-JAR --> LAM
+GFN <-- JAR
+LAM <-- JAR
 
 GCD2 --> GCW2 : YAML
 ACD2 --> SF2 : ASL JSON
-GCW2 --> GFN : HTTP call (run.app URL)
-SF2 --> LAM : lambda:invoke (ARN)
+GCW2 --> GFN : HTTP\n(run.app URL)
+SF2 --> LAM : lambda:invoke\n(ARN)
 
-legend right
+legend bottom right
   |= Marker |= Meaning |
   |<#E7EFFB> «new» | new component (this work) |
   |<#FBEEE0> «extended» | extended component (this work) |

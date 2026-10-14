@@ -16,18 +16,18 @@ Esta dissertação elimina esse passo manual unificando o QuickFaaS, que implant
 \emph{serverless} portáveis, com o OmniFlow, uma DSL em Kotlin que gera e implanta \emph{workflows}
 no AWS Step Functions e no Google Cloud Workflows. Cada chamada nomeia a função por um identificador
 lógico estável, que o OmniFlow liga a um \emph{endpoint} quando implanta o \emph{workflow}, por uma
-escada de três níveis: um registo de funções validado contra a função existente, uma procura nas
+sequência de três níveis: um registo de funções validado contra a função existente, uma procura nas
 regiões do fornecedor e, só com a ausência confirmada, uma implantação através do QuickFaaS. O
 QuickFaaS, até aqui limitado ao Google Cloud e ao Azure, foi também estendido com um fornecedor para
 o AWS Lambda, cobrindo assim as duas \emph{clouds} do OmniFlow.
 
-Quarenta e seis testes unitários cobrem todos os caminhos da escada nos dois fornecedores, e um caso
+Quarenta e seis testes unitários cobrem todos os caminhos da sequência nos dois fornecedores, e um caso
 de estudo foi implantado e executado no AWS e no Google Cloud. As medições mostram que o trabalho local de
 resolver um \emph{workflow} com duzentas chamadas internas custa dezenas de microssegundos,
 crescendo linearmente com o número de chamadas, e que a resolução envia ao fornecedor um pedido por
 chamada interna quando o registo está atualizado. É, assim, exequível implantar a aplicação a partir
-de uma única definição, com um custo desprezável face a uma implantação na \emph{cloud}, que se mede
-em minutos.
+de uma única definição, com um custo mínimo e muito inferior ao da própria implantação na
+\emph{cloud}, que se mede em minutos.
 % Palavras-chave do resumo em Português
 \begin{keywords}
 Computação \emph{serverless}, \emph{Function-as-a-Service}, Orquestração de \emph{workflows},

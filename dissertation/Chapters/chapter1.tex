@@ -19,7 +19,11 @@ without the developer managing servers or runtimes. The provider scales them wit
 charges only for the time they run. Open challenges remain, among them state management, cold
 starts and unpredictable performance~\cite{serverlessComputing}, and Jonas et al.\ identify the
 limitations serverless computing must overcome to become the default way of programming the
-cloud~\cite{jonas2019cloudProgramming}.
+cloud~\cite{jonas2019cloudProgramming}. Another is vendor lock-in: each provider exposes its own
+function and workflow services, so an application built for one does not deploy unchanged to
+another~\cite{rodrigues2022quickfaas,costa2023omniflow}. In this dissertation, multi-cloud means
+that the same workflow definition can be deployed to more than one provider, not that a single
+workflow spans providers; each deployment targets one cloud.
 
 \section{Challenges in Unified Serverless Workflow Orchestration}
 \label{sec:int_cha_int_uni_multi}
@@ -138,26 +142,27 @@ in the design and implementation of the integration, and two that validate it.
 	developer owns and may point to the QuickFaaS descriptor that builds it. A call is either
 	internal (a logical name, resolved at deployment time) or external (a literal \texttt{host} and
 	\texttt{path}), never both.
-	\item \textbf{A function registry and a deployment-time resolution ladder.} A per-provider
-	registry stores the invocation metadata of each internal function. A three-level ladder binds
+	\item \textbf{A function registry and a deployment-time resolution sequence.} A per-provider
+	registry stores the invocation metadata of each internal function. A three-level sequence binds
 	each logical name to an endpoint before the workflow is rendered: a registry entry validated
 	against the live function, provider discovery across regions, and deployment through QuickFaaS
 	when the function is confirmed absent and a descriptor was supplied. An inconclusive lookup
 	aborts the deployment instead of deploying a function that may already exist.
-	\item \textbf{AWS Lambda support in QuickFaaS}, with the matching deployer in OmniFlow.
+	\item \textbf{AWS Lambda support in QuickFaaS}, with the matching deployer in OmniFlow, and the
+	move of its GCP provider to second-generation functions.
 	\item \textbf{A prototype and a case study.} A single workflow definition deploys, with its
-	internal functions, to AWS or to GCP. A card-payment fraud detection scenario was deployed and
+	internal functions, to AWS or to GCP. A payment authorization workflow was deployed and
 	run on both providers.
-	\item \textbf{An evaluation} of the ladder's decisions on both providers, of its cost and
+	\item \textbf{An evaluation} of the sequence's decisions on both providers, of its cost and
 	scalability, of registry writes, and of the packaging overhead on AWS.
 \end{enumerate}
 
-Part of this work was published, with the supervisors of this dissertation, at the Iberian
-Conference on Information Systems and Technologies (CISTI), as ``Towards Cloud-Agnostic Serverless
-Applications: Unifying Function Deployment and Workflow Orchestration''~\cite{carvalho2026towards}.
+Part of this work was published at the Iberian Conference on Information Systems and Technologies
+(CISTI), as ``Towards Cloud-Agnostic Serverless Applications: Unifying Function Deployment and
+Workflow Orchestration''~\cite{carvalho2026towards}.
 That paper presents the motivation, the layered architecture, the internal/external call
 distinction and the Function Registry. This dissertation completes the design and adds the
-resolution ladder, the AWS Lambda support, the case study and the quantitative evaluation.
+resolution sequence, the AWS Lambda support, the case study and the quantitative evaluation.
 
 \section{Structure of the Work}
 \label{sec:int_structure}
@@ -169,7 +174,7 @@ evaluation:
   \item \textbf{Chapter 2} presents the background (serverless computing, workflows, QuickFaaS and
   OmniFlow) and the related work.
   \item \textbf{Chapter 3} presents the proposed solution: logical function references, the
-  Function Registry, the \texttt{internalFunction} construct and the resolution ladder.
+  Function Registry, the \texttt{internalFunction} construct and the resolution sequence.
   \item \textbf{Chapter 4} describes the implementation: the registry and resolvers, function
   deployment and invocation on each provider (including AWS Lambda support in QuickFaaS).
   \item \textbf{Chapter 5} presents a case study, a payment authorization workflow, run on AWS
