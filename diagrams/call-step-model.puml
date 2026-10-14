@@ -4,8 +4,6 @@ skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam defaultFontSize 12
 left to right direction
-title Extended model of the call execution step
-
 interface StepContext
 
 class CallContext {

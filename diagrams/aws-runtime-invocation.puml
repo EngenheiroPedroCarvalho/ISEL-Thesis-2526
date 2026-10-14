@@ -2,8 +2,6 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 12
-title Runtime invocation of an internal function on AWS (lambda:invoke)
-
 actor "Client" as U
 participant "AWS Step Functions" as SFN
 participant "AWS Lambda" as L

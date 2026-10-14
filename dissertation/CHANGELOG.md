@@ -1,21 +1,21 @@
 # Alterações aos capítulos da dissertação
 
-Só alterações ainda não enviadas (push). Base: `727a8f0` (último commit em
+Só alterações ainda não enviadas (push). Base: `25017ec` (último commit em
 `origin/claude/progress-report-compliance-e4damf`). Depois de um push, o registo recomeça vazio.
 
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
 este ficheiro.)
 
-## 2026-10-14 — Cap. 4, Listagem 4.3
+## 2026-10-14 — Diagramas sem título
 
-- `chapter5.tex`: a Listagem 4.3 (estado de Step Functions para uma chamada Lambda interna) deixa
-  de ser *float*: sozinha numa página de *floats* ficava centrada na vertical; agora fica no fim da
-  secção, dentro de uma `minipage`, e abre a pág. 29 no topo. Um `\newpage` antes dela deixa o
-  espaço livre no fundo da pág. 28, em vez de esticar o intervalo entre a Listagem 4.2 e o
-  parágrafo "Invocation".
+- Os 17 diagramas PlantUML que tinham título (`../diagrams/*.puml`) deixam de o ter, já que a
+  legenda de cada figura o repete; os PNG em `images/architecture/`, `images/dsl-extension/` e
+  `images/implementation/` foram regenerados. Nenhum diagrama mudou de conteúdo.
 
-## 2026-10-14 — Cap. 7, alinhado com a revisão do Cap. 3
+## 2026-10-14 — Resumo com *deployment*
 
-- `chapter8.tex` (limitações, "operation"): "The integration boundary is brittle" passa a dizer
-  que OmniFlow corre o QuickFaaS como processo separado, em vez de o chamar como biblioteca, como
-  na §3.4 depois da revisão do orientador.
+- `abstract-pt.tex`: "implantar"/"implantação" passam a *deployment* (em itálico, como *workflow*
+  e *endpoint*), também na palavra-chave "Ligação de *endpoints* em tempo de *deployment*". A
+  frase sobre o AWS passa a "O QuickFaaS, que até aqui suportava apenas o Google Cloud e o Azure,
+  ganhou também suporte para o AWS Lambda, pelo que a integração abrange as duas *clouds* do
+  OmniFlow".

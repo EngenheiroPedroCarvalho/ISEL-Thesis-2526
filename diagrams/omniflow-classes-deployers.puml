@@ -4,8 +4,6 @@ skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam defaultFontSize 12
 hide empty members
-title Part 4: function deployment strategy (excerpt of the full class model, Appendix A)
-
 interface InternalFunctionDeployer {
   +deployOrUpdate(functionName, deploymentDescriptorPath) : FunctionInvocationMetadata
 }

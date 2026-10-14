@@ -3,7 +3,6 @@ skinparam monochrome true
 skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam defaultFontSize 12
-title Integration layer added to OmniFlow
 hide empty members
 skinparam nodesep 25
 skinparam ranksep 40

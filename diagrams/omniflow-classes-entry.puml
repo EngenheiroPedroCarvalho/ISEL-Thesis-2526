@@ -4,7 +4,6 @@ skinparam shadowing false
 skinparam classAttributeIconSize 0
 skinparam defaultFontSize 12
 hide empty members
-title Part 1: entry points (excerpt of the full class model, Appendix A)
 left to right direction
 
 class GoogleCloudDeployer {

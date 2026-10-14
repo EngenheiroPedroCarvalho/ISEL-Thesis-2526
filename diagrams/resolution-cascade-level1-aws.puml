@@ -2,8 +2,6 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 11
-title Resolution sequence -- Level 1: Registry lookup and live validation (AWS)
-
 participant "Resolver\n(AwsInternalFunctionResolver)" as R
 participant "FunctionRegistryStore" as REG
 participant "LambdaFunctionInspector" as AI

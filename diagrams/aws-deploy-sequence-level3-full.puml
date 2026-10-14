@@ -2,8 +2,6 @@
 skinparam monochrome true
 skinparam shadowing false
 skinparam defaultFontSize 11
-title AWS deployment sequence -- (b) Level 3 expanded
-
 participant "AwsInternalFunctionResolver" as R
 participant "AwsLambdaDeployer" as ALD
 participant "AwsLambdaIamHelper" as IAM
