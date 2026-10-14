@@ -343,7 +343,9 @@ the task, and \texttt{Next} names the state that follows. Any other host yields 
 task. Since the internal form is a variant of the existing call renderer, OmniFlow's control-flow,
 result-passing and error handling apply unchanged; only the \texttt{Resource} and parameters differ.
 
-\begin{lstlisting}[language=json,caption={Step Functions state rendered for an internal Lambda call.},label={lst:rendered-lambda},float=htbp]
+\newpage
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=json,caption={Step Functions state rendered for an internal Lambda call.},label={lst:rendered-lambda}]
 "fraud-check": {
   "Type": "Task",
   "Resource": "arn:aws:states:::lambda:invoke",
@@ -356,3 +358,4 @@ result-passing and error handling apply unchanged; only the \texttt{Resource} an
   "Next": "external-risk-api"
 }
 \end{lstlisting}
+\end{minipage}
