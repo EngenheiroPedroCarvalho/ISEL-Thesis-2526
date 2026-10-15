@@ -41,7 +41,7 @@
                         % elegant ell ger hansen isel(*) jenor lyhne 
                         % madsen pedersen veelo vz14 vz34 vz43
   otherlistsat=front,   % front(*), back
-  linkscolor=darkblue,  % darkblue, black (Set to 'black' for PRINTING)
+  linkscolor=black,     % darkblue, black (Set to 'black' for PRINTING); n.º 10: black text
   printcommittee=true,  % set to 'false' from submitted versions who should not have 
                         % the list of committee memebers
   biblatex={            % Options for biblatex (see biblatex documentation)
@@ -114,7 +114,48 @@
 \makeatletter
 % n.º 6-7: the abstract in Portuguese comes before the one in English.
 \abstractorder(en):={pt,en}
-% n.º 12-13: sections 12 pt, subsections 10.5 pt. Sizes and title colours follow the TFM Word
+% n.º 3 / Anexo II (EN): labels of the examination committee on the title page.
+\committeetitlestr(en):={Jury}
+\committeestr(r,1,m,en):={Member of the Committee}
+\committeestr(r,1,f,en):={Member of the Committee}
+\committeestr(r,2,m,en):={Members of the Committee}
+\committeestr(r,2,f,en):={Members of the Committee}
+% n.º 2-3 / Anexos I e II: font sizes of the cover and title page (title 17 pt, author and degree
+% 12 pt, everything else 9 pt; only the title and the date in bold). Same items and spacing as ISELthesis-files/Default/defaults.clo,
+% which is left untouched; only the sizes and weights change.
+\csdef{iselthesis@fstcoveritem@list}{}
+\csdef{iselthesis@scdcoveritem@list}{}
+\newcommand{\iselthesis@coverdate}{%
+  \fontsize{9}{11}\selectfont%
+  \ifdraftdoc\textbf{DRAFT: \today}%
+  \else\textbf{\thedatemonth{ }of{ }\thedateyear}\fi}
+\newcommand{\iselthesis@coverauthor}{%
+  \fontsize{12}{13}\selectfont\iselthesis@printauthors%
+  (\thedocauthor(degree,\iselthesis@opt@coverlang))}
+% The class prints the role titles (SUPERVISORS, JURY, ...) with \textbf/\bfseries; inside a
+% cover item (a minipage, so the change stays local) they are set in the regular weight.
+\newcommand{\iselthesis@covermedium}{\let\textbf\textmd\let\bfseries\mdseries}
+% Cover (Anexo I)
+\addcoveritem[c]{8cm}{%
+  \fontsize{17}{18}\selectfont\bfseries\thedoctitle(\iselthesis@opt@coverlang,main,cover)}(cover)
+\addcoveritem[c]{2cm}{\iselthesis@coverauthor}(cover)
+\addcoveritem[c]{1.5cm}{\fontsize{9}{11}\selectfont\thepresentationtext}(cover)
+\addcoveritem[c]{2cm}{%
+  \setprintaffiliation{0}\iselthesis@covermedium\fontsize{9}{11}\selectfont\printadvisers}(cover)
+\addcoveritem[c]{1}{\iselthesis@coverdate}(cover)
+% Title page (Anexo II)
+\addcoveritem[c]{8cm}{%
+  \fontsize{17}{18}\selectfont\textbf{\thedoctitle(\iselthesis@opt@coverlang,main,cover)}}(secondcover)
+\addcoveritem[c]{1}{\iselthesis@coverauthor}(secondcover)
+\addcoveritem[c]{1}{\fontsize{9}{11}\selectfont\thepresentationtext}(secondcover)
+\addcoveritem[c]{2}{%
+  \setprintaffiliation{1}\iselthesis@covermedium\fontsize{9}{11}\selectfont\printadvisers}(secondcover)
+\addcoveritem[c]{1}{%
+  \setprintaffiliation{1}\iselthesis@covermedium%
+  \committeestrfont(\iselthesis@opt@coverlang)={\fontsize{9}{11}\selectfont}%
+  \fontsize{9}{11}\selectfont\printcommittee}(secondcover)
+\addcoveritem[c]{1}{\iselthesis@coverdate}(secondcover)
+% n.º 12-13: sections 12 pt, subsections 11 pt. Sizes and title colours follow the TFM Word
 % template (2025-12-17): chapters orange (iselorange), sections and subsections bordeaux
 % (iselpurple), as set by the isel chapstyle.
 % Config/_packages.tex redefines iselpurple as #622B72 for the Gantt chart; restore the ISEL
@@ -127,7 +168,7 @@
 \renewcommand\subsection{\@startsection{subsection}{2}{0pt}%
   {-2.5ex plus -0.5ex minus -.2ex}%
   {1.5ex \@plus .2ex}%
-  {\iselthesis@sectionfont\bfseries\fontsize{10.5}{13}\selectfont\color{\iselthesis@subsectioncolor}}}
+  {\iselthesis@sectionfont\bfseries\fontsize{11}{13.5}\selectfont\color{\iselthesis@subsectioncolor}}}
 \renewcommand\printchaptertitle[1]{%
   \ifNoChapNumber
     \noindent\begin{tabular}{@{}p{\textwidth}@{}}%
@@ -145,7 +186,33 @@
   \fi
   \NoChapNumberfalse%
 }
+% n.º 10: listings in black; the syntax colours set by the listing languages are ignored.
+\newcommand\iselthesis@nocolor[2][]{\normalcolor}
+\lst@AddToHook{Init}{\let\color\iselthesis@nocolor}
+% Order of the n.º 4-7 front matter: no copyright page between the statement and the Resumo.
+\renewcommand{\printcopyrightpage}{}
+% n.º 9: the dedication page is numbered like the rest of the front matter. Same as the class's
+% \dedicatory, without \thispagestyle{empty}.
+\def\dedicatory{%
+  \cleardoublepage%
+  ~\\[2cm]%
+  \begin{flushright}%
+  \begin{minipage}{100mm}%
+  \quotefonti%
+  \begin{flushright}%
+}
 \makeatother
+% n.º 15: paragraphs indented by 16 pt, including the first one after a heading.
+\setlength{\parindent}{16bp}
+\usepackage{indentfirst}
+% n.º 10: line spacing of 1.5 lines as in Word: 1.5 x Verdana's line height (2489/2048 em) at
+% 11 pt = 20.05 pt between baselines. The class's \OnehalfSpacing gives 16.5 pt (1.5 x the font
+% size); 20.05 / 13.6 pt (memoir's 11 pt baselineskip) = 1.474. The bibliography, appendices and
+% annexes keep the class's single spacing (allowed by n.º 10).
+\setSpacing{1.474}
+% n.º 10: room in the table of contents for the widest roman page numbers (bold "xviii").
+\setpnumwidth{2.6em}
+\setrmarg{3.2em}
 % n.º 10: keep the glossary's two columns within the margins.
 \setlength{\glsdescwidth}{0.55\textwidth}
 % n.º 14: figure and table captions in 9 pt.
