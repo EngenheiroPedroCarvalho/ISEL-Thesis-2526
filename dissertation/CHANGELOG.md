@@ -34,4 +34,22 @@ este ficheiro.)
   trata só da eficiência de execução e não fala de portabilidade.
 - `bibliography.bib`: nomes de autores como nas fontes: "García López" sem hífen (Triggerflow),
   "Sasko" Ristov no AFCL e no xAFCL (no CODE assina "Sashko") e "Serhii" Dorodko.
+- Imprecisões menores face às fontes:
+  - `chapter1.tex` (Secção 1): o EC2 tornou a *cloud* "commercially viable", não "the dominant
+    commercial model", que Armbrust et al. não afirmam.
+  - `chapter2.tex` (Secção 2.2.1): o CloudFormation "is tied to AWS" (gere também recursos de
+    terceiros publicados no Registry); a procura por nome no Terraform e no Pulumi é feita "in a
+    single region" (o argumento `region` é opcional).
+  - `chapter2.tex` (Secções 2.2.2 e 2.2.4): o OpenFaaS chega às fontes de eventos nativas só
+    através de conectores; o Temporal e o Synapse correm num *runtime* próprio, alojado pelo
+    utilizador ou oferecido como serviço gerido à parte; "Serverless Multicloud" passa a "the
+    multi-cloud library of Zhao et al." (o artigo não lhe dá nome), também na Tabela 2.1.
+  - `chapter5.tex` (Secção 4, Cloud Run functions): o *endpoint* `cloudfunctions.net` existe nas
+    funções criadas pela API Cloud Functions v2, não em toda a 2.ª geração.
+  - `chapter7.tex` (S1): em vez de "consistent with the original QuickFaaS evaluation", a
+    comparação dá os números do artigo (16 KB no GCP e 20 KB no Azure).
+  - `bibliography.bib`: URLs atualizados para os destinos atuais (Workflows e Cloud Run functions
+    em `docs.cloud.google.com`, Compose em `kotlinlang.org`, Consul em `use-case/`, e o Serverless
+    Workflow, agora Open Workflow Specification); removida a entrada `dora2022`, que não era
+    citada.
 

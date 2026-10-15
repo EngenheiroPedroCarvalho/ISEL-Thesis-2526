@@ -227,7 +227,7 @@ together with more recent work, in five groups.
 
 \subsection{Infrastructure-as-Code and Deployment-Oriented Tooling}
 
-\textbf{AWS CloudFormation}~\cite{awsCloudFormation} models AWS resources only.
+\textbf{AWS CloudFormation}~\cite{awsCloudFormation} is tied to AWS.
 \textbf{Terraform}~\cite{terraform} manages many providers with one tool, but function packaging,
 permissions and event bindings are still written with provider-specific parameters. The
 \textbf{Serverless Framework}~\cite{serverlessFramework} describes applications in YAML, but still
@@ -258,7 +258,7 @@ workflow~\cite{awsCloudFormationDependsOn,terraformReferences}, and Pulumi order
 way~\cite{pulumiInputsOutputs}. This is the static binding of the resolution sequence
 (Section~\ref{sec:resolution-cascade}), and these tools also update changed functions, which this
 work does not. But they bind only functions declared in the same configuration, or, in Terraform
-and Pulumi, named explicitly through a data source in the configured
+and Pulumi, named explicitly through a data source in a single
 region~\cite{terraformLambdaDataSource,pulumiLambdaGetFunction}. The resolution sequence searches the
 provider's regions for a function given only by name, and deploys it when absent. Above all, none
 of these tools offers a provider-independent workflow: the state machine is written in the Amazon
@@ -268,7 +268,8 @@ States Language, and a GCP workflow would be a separate definition.
 
 \textbf{OpenFaaS}~\cite{openFaaS} runs functions on container orchestration platforms, with
 language templates~\cite{openFaaSTemplates} and triggers~\cite{openFaaSTriggers}. It is portable,
-but it is a parallel FaaS platform with limited access to provider-native event sources.
+but it is a parallel FaaS platform, with provider-native event sources reachable only through
+connectors.
 Spillner~\cite{spillner2017pythonfaas} (with the \textit{Lambada} tool) and Spillner and
 Dorodko~\cite{spillnerDorodko2017javaLambda} transform Python and Java code into FaaS functions,
 but target one platform (e.g., AWS Lambda) and can add execution overhead. Neither approach keeps
@@ -300,11 +301,11 @@ xAFCL's middleware rather than on Step Functions or Cloud Workflows.
 \textbf{Serverless Workflow}~\cite{serverlessWorkflowSpec} is a vendor-neutral workflow
 specification, with \textbf{Synapse}~\cite{serverlessworkflowSynapse} as a runtime, and
 \textbf{Temporal}~\cite{temporalPlatform} executes \textit{workflows-as-code} on its own cluster.
-Both run workflows on a dedicated runtime that must be operated, instead of a provider-native
-service. \textbf{FaaSr}~\cite{park2024faasr} composes R functions into DAGs for scientific
-workflows, coordinated through object storage rather than a workflow engine. \textbf{Serverless
-Multicloud}~\cite{zhao2022supporting} abstracts serverless services across vendors behind a
-library, with a cost and performance evaluation component, rather than translating a workflow DSL.
+Both run workflows on a dedicated runtime, self-hosted or offered as a separate managed service,
+instead of a provider-native service. \textbf{FaaSr}~\cite{park2024faasr} composes R functions into DAGs for scientific
+workflows, coordinated through object storage rather than a workflow engine. The \textbf{multi-cloud
+library} of Zhao et al.~\cite{zhao2022supporting} abstracts serverless services across vendors,
+with a cost and performance evaluation component, rather than translating a workflow DSL.
 
 \subsection{Service Registries}
 
@@ -372,7 +373,7 @@ project, with no shared registry.
     \hline
     FaaSr~\cite{park2024faasr}                          & P & P & Y & -- & -- & -- \\
     \hline
-    Serverless Multicloud~\cite{zhao2022supporting}     & -- & Y & P & -- & -- & -- \\
+    Multi-cloud library (Zhao et al.)~\cite{zhao2022supporting} & -- & Y & P & -- & -- & -- \\
     \hline
     AWS Cloud Map / Consul~\cite{awsCloudMap,consulServiceDiscovery} & -- & -- & -- & -- & Y & -- \\
     \hline

@@ -221,7 +221,7 @@ equivalent \texttt{gcloud} command). It returns the URL and, as \texttt{serviceN
 full resource name, which Level~1 validates.
 
 Every registry hit is validated against Cloud Run, since a URL does not reveal the generation: a
-second-generation function also keeps a \texttt{cloudfunctions.net}
+function created through the Cloud Functions~v2 API also keeps a \texttt{cloudfunctions.net}
 endpoint~\cite{gcpFunctionsVersionComparison}. First-generation functions created outside the
 integration are therefore not supported: discovery and the bootstrap do not list them, and an entry
 pointing to one fails validation like a deleted service.

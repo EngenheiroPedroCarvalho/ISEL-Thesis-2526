@@ -427,8 +427,9 @@ change, so the saving grows with the number of functions and deployment targets
 Packaging a Lambda through QuickFaaS's provider-agnostic layer (hook, \texttt{AwsHttpTemplate} and
 \texttt{aws-lambda-java-core}) adds 905 bytes, about 0.9\,KB or 6.6\% of a trivial bundle, to an
 equivalent native \texttt{RequestHandler} (Table~\ref{tab:eval-s1}), and proportionally less for a
-function with real dependencies. This is consistent with the original QuickFaaS evaluation for GCP
-and Azure~\cite{rodrigues2022quickfaas}.
+function with real dependencies. The overhead is smaller than in the original QuickFaaS evaluation,
+where the libraries added 16\,KB to the ZIP on GCP and 20\,KB on Azure, with almost no effect on
+deployment time~\cite{rodrigues2022quickfaas}.
 
 \begin{table}[!htbp]
   \centering
