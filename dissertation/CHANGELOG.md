@@ -32,4 +32,6 @@ este ficheiro.)
   *workflows* nativos do fornecedor desta dissertação.
 - `chapter2.tex` (Tabela 2.1): o FaaSFlow passa de "P" a "--" em *Workflow portab.*; o artigo
   trata só da eficiência de execução e não fala de portabilidade.
+- `bibliography.bib`: nomes de autores como nas fontes: "García López" sem hífen (Triggerflow),
+  "Sasko" Ristov no AFCL e no xAFCL (no CODE assina "Sashko") e "Serhii" Dorodko.
 
