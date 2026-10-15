@@ -30,4 +30,6 @@ este ficheiro.)
   Terraform; face ao Serverless Framework o artigo dá 8,44×. O trabalho futuro do CODE passa a ser
   descrito como o artigo o enuncia (um *middleware* para workflows AFCL), em contraste com os
   *workflows* nativos do fornecedor desta dissertação.
+- `chapter2.tex` (Tabela 2.1): o FaaSFlow passa de "P" a "--" em *Workflow portab.*; o artigo
+  trata só da eficiência de execução e não fala de portabilidade.
 
