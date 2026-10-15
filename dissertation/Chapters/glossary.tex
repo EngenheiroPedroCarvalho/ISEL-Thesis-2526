@@ -91,6 +91,16 @@
 	Function Registry.}
 }
 
+\newglossaryentry{federatedfaas}{
+	name={Federated FaaS},
+	description={Use of the FaaS platforms of several regions and providers as one, so that the
+	functions of a single workflow can run in any of them, to get around per-region limits such as
+	concurrency, to survive regional failures, or to run closer to the data. It needs each function
+	deployed in several regions and providers (as CODE does) and an orchestrator independent of any
+	provider (as xAFCL is). This work is multi-cloud only in the sense of portability: each
+	deployment targets a single provider.}
+}
+
 \newglossaryentry{firstgen}{
 	name={First-generation Cloud Function},
 	description={GCP function created through the first-generation Cloud Functions API, with a URL

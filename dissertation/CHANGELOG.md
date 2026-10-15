@@ -1,55 +1,13 @@
 # Alterações aos capítulos da dissertação
 
-Só alterações ainda não enviadas (push). Base: `8126f3c` (último commit em
+Só alterações ainda não enviadas (push). Base: `aaabe48` (último commit em
 `origin/claude/progress-report-compliance-e4damf`). Depois de um push, o registo recomeça vazio.
 
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
 este ficheiro.)
 
-## 2026-10-15 — Validação da bibliografia contra as fontes
+## 2026-10-15 — Glossário: *federated FaaS*
 
-- `chapter1.tex` (Secção 1.1): os desafios em aberto (armazenamento de estado, *cold starts*,
-  desempenho imprevisível) passam a ser atribuídos a Jonas et al., que os enumera na sua Secção 3;
-  o *survey* de Shafiei et al. não os trata como tópicos.
-- `chapter2.tex` (Secção 2.1.1): a frase sobre o fornecedor que gere recursos, aplica *patches* ao
-  sistema operativo e escala passa a citar também Jonas et al. (o *survey* não fala de *patches*).
-  "cannot directly call another" passa a "direct communication between functions is hard to do
-  efficiently", porque o *survey* diz que as funções se chamam umas às outras, com dificuldade.
-- `chapter2.tex` (Secção 2.1.2): a frase sobre controlo, dados e erros do *workflow* cita também
-  a página de conceitos do Step Functions (erros, *Wait*, *Choice*, *Parallel*), que o SeBS-Flow
-  não cobre.
-- `chapter2.tex` (Secção 2.1.4): os quatro componentes do OmniFlow passam a citar Costa (Secção
-  3.1), em vez de Silva, que descreve três.
-- `chapter2.tex` (Secção 2.2.1): o Cloud Framework e o `@pulumi/cloud` da Pulumi passam a ser
-  descritos como uma *preview* cuja última versão é de 2023.
-- `bibliography.bib`: o terceiro autor do SEAPORT é Ayhan Kaplan (não "Avshalom"); o SeBS-Flow
-  passa a citar a versão publicada no EuroSys '25 (DOI `10.1145/3689031.3717465`), mantendo a
-  chave `sebsflow_arxiv`; o URL do Cloud Framework, que dava 404, passa a uma cópia do Wayback
-  Machine de 14 de maio de 2023.
-- `chapter2.tex` (Secção 2.2.1, CODE): o máximo de 9,23× menos linhas de código é face ao
-  Terraform; face ao Serverless Framework o artigo dá 8,44×. O trabalho futuro do CODE passa a ser
-  descrito como o artigo o enuncia (um *middleware* para workflows AFCL), em contraste com os
-  *workflows* nativos do fornecedor desta dissertação.
-- `chapter2.tex` (Tabela 2.1): o FaaSFlow passa de "P" a "--" em *Workflow portab.*; o artigo
-  trata só da eficiência de execução e não fala de portabilidade.
-- `bibliography.bib`: nomes de autores como nas fontes: "García López" sem hífen (Triggerflow),
-  "Sasko" Ristov no AFCL e no xAFCL (no CODE assina "Sashko") e "Serhii" Dorodko.
-- Imprecisões menores face às fontes:
-  - `chapter1.tex` (Secção 1): o EC2 tornou a *cloud* "commercially viable", não "the dominant
-    commercial model", que Armbrust et al. não afirmam.
-  - `chapter2.tex` (Secção 2.2.1): o CloudFormation "is tied to AWS" (gere também recursos de
-    terceiros publicados no Registry); a procura por nome no Terraform e no Pulumi é feita "in a
-    single region" (o argumento `region` é opcional).
-  - `chapter2.tex` (Secções 2.2.2 e 2.2.4): o OpenFaaS chega às fontes de eventos nativas só
-    através de conectores; o Temporal e o Synapse correm num *runtime* próprio, alojado pelo
-    utilizador ou oferecido como serviço gerido à parte; "Serverless Multicloud" passa a "the
-    multi-cloud library of Zhao et al." (o artigo não lhe dá nome), também na Tabela 2.1.
-  - `chapter5.tex` (Secção 4, Cloud Run functions): o *endpoint* `cloudfunctions.net` existe nas
-    funções criadas pela API Cloud Functions v2, não em toda a 2.ª geração.
-  - `chapter7.tex` (S1): em vez de "consistent with the original QuickFaaS evaluation", a
-    comparação dá os números do artigo (16 KB no GCP e 20 KB no Azure).
-  - `bibliography.bib`: URLs atualizados para os destinos atuais (Workflows e Cloud Run functions
-    em `docs.cloud.google.com`, Compose em `kotlinlang.org`, Consul em `use-case/`, e o Serverless
-    Workflow, agora Open Workflow Specification); removida a entrada `dora2022`, que não era
-    citada.
-
+- `glossary.tex`: nova entrada "Federated FaaS" (usar as plataformas FaaS de várias regiões e
+  fornecedores como uma só, como no CODE e no xAFCL), com a nota de que este trabalho é multi-cloud
+  só no sentido da portabilidade.
