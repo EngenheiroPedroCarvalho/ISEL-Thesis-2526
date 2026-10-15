@@ -1,56 +1,26 @@
 # Alterações aos capítulos da dissertação
 
-Só alterações ainda não enviadas (push). Base: `3c68bb2` (último commit em
+Só alterações ainda não enviadas (push). Base: `c3a66af` (último commit em
 `origin/claude/progress-report-compliance-e4damf`). Depois de um push, o registo recomeça vazio.
 
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
 este ficheiro.)
 
-## 2026-10-15 — Conformidade com as normas do TFM (`template.tex`)
+## 2026-10-15 — Agradecimentos: último parágrafo na terceira pessoa
 
-- Parágrafos indentados 16 pt (`16bp`), incluindo o primeiro depois de cada título
-  (`indentfirst`) (n.º 15).
-- Subsecções (x.y.z) a 11 pt em vez de 10,5 pt (n.º 13).
-- Texto todo a preto: `linkscolor=black` (citações, remissões e URLs) e listagens sem cores de
-  sintaxe (n.º 10).
-- Retirada a página de copyright entre a declaração de integridade e o Resumo
-  (`\printcopyrightpage` vazio), para seguir a ordem dos n.º 4 a 7. O PDF passa de 100 para
-  99 páginas.
+- `acknowledgments.tex`: o parágrafo dedicado à namorada passa todo para a terceira pessoa ("what
+  she is to me, how she changes me, how she influences me", "the immense impact she has", "Having
+  her by my side", "without her", "and to her I can only say thank you").
 
-## 2026-10-15 — Resumo abaixo das 300 palavras (n.º 6)
+## 2026-10-15 — Agradecimentos: reduzidos a uma página
 
-- `abstract-pt.tex`: o Resumo passa de cerca de 321 para 295 palavras, sem mudar o conteúdo.
-  Ficou mais conciso o 1.º parágrafo (o *endpoint* e a cópia manual) e foram reformulados o suporte
-  para o AWS Lambda, o caso de estudo ("foi executado no AWS e no Google Cloud"), as medições e a
-  frase final ("que demora minutos").
-
-## 2026-10-15 — Subcapa: designações do júri (n.º 3, Anexo II EN)
-
-- `template.tex`: "Examination Committee" passa a "Jury" e "Raporteurs" (com erro ortográfico)
-  passa a "Members of the Committee", como no Anexo II em inglês. "Chairperson" fica igual. O
-  comentário dos tamanhos dos títulos foi corrigido para "subsections 11 pt".
-
-## 2026-10-15 — Capa e subcapa: tamanhos de letra (n.º 2-3, Anexos I e II)
-
-- `template.tex`: os itens da capa e da subcapa foram redefinidos com os tamanhos dos anexos,
-  sem mexer em `defaults.clo`. Ficam: título a 17 pt; nome e grau a 12 pt (o nome na subcapa
-  estava a 14 pt e o grau a 13 pt); texto do grau, orientadores, júri e data a 9 pt (estavam
-  entre 11 e 13 pt). As posições e os espaçamentos não mudam.
-- Só o título e a data ficam a bold, como nos anexos. O nome, "SUPERVISORS", "JURY",
-  "Chairperson" e "Members of the Committee" passam a peso normal.
-
-## 2026-10-15 — Dedicatória numerada (n.º 9)
-
-- `template.tex`: `\dedicatory` foi redefinido sem `\thispagestyle{empty}`, pelo que a dedicatória
-  passa a ter o número "i" no rodapé, como as outras páginas iniciais. Só a capa e a subcapa ficam
-  sem número.
-
-## 2026-10-15 — Espaçamento de 1,5 linhas como no Word (n.º 10)
-
-- `template.tex`: `\setSpacing{1.474}` dá 20 pt entre linhas no texto a Verdana 11, o mesmo que
-  "1,5 linhas" no Word (antes eram 16,4 pt). A bibliografia, os apêndices e os anexos mantêm o
-  espaçamento simples. No índice, a caixa dos números de página foi alargada
-  (`\setpnumwidth`, `\setrmarg`) para caber "xviii".
-- O PDF passa de 99 para 108 páginas: o corpo do texto vai de 49 para 55 páginas e os
-  agradecimentos ocupam agora duas páginas. O Resumo e o Abstract continuam a caber numa página,
-  com as palavras-chave.
+- `acknowledgments.tex`: o texto ocupava duas páginas e passa a caber numa (o PDF passa de 108
+  para 107 páginas). Cortes, sem mudar o sentido: "This is far from the end; it is only one more
+  journey… I want to use this space to honour" → "This is only one more journey… I want to
+  honour"; "this institution a place where it is a pleasure and a source of pride" → "it a place
+  where it is a pleasure and a pride"; "these years of the master's" → "the master's"; o
+  agradecimento ao Santander condensado em "I thank them for the excellent welcome and for all
+  the support they have given me"; amigos: "who will never let me down and who will always be by
+  my side" → "always by my side"; família: retirado "that give me strength"; namorada: "I do not
+  know which words are best to express what she is to me, how she changes me, how she influences
+  me, they are small words that cannot describe" → "Words are too small to describe".
