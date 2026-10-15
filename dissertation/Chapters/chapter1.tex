@@ -16,10 +16,10 @@ provider, and serverless computing, the paradigm this dissertation addresses, go
 
 Serverless platforms run fine-grained units of execution, called \textit{functions}, on demand,
 without the developer managing servers or runtimes. The provider scales them with demand and
-charges only for the time they run. Open challenges remain, among them state management, cold
-starts and unpredictable performance~\cite{serverlessComputing}, and Jonas et al.\ identify the
+charges only for the time they run. Open challenges remain: Jonas et al.\ identify the
 limitations serverless computing must overcome to become the default way of programming the
-cloud~\cite{jonas2019cloudProgramming}. Another is vendor lock-in: each provider exposes its own
+cloud, among them inadequate storage for state, cold starts and unpredictable
+performance~\cite{jonas2019cloudProgramming}. Another is vendor lock-in: each provider exposes its own
 function and workflow services, so an application built for one does not deploy unchanged to
 another~\cite{rodrigues2022quickfaas,costa2023omniflow}. In this dissertation, multi-cloud means
 that the same workflow definition can be deployed to more than one provider, not that a single

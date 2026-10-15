@@ -15,7 +15,7 @@ this work addresses.
 \label{sec:serverless_computing_faas}
 In serverless computing, the provider allocates resources, patches the operating system and
 scales the infrastructure, and users pay only for the time their code
-runs~\cite{serverlessComputing}. Function-as-a-Service (FaaS) is its main form: developers deploy
+runs~\cite{serverlessComputing,jonas2019cloudProgramming}. Function-as-a-Service (FaaS) is its main form: developers deploy
 single-purpose, stateless functions triggered by events such as HTTP requests. Because FaaS is not
 standardised across providers (AWS Lambda, Google Cloud Functions, Azure Functions), function code
 becomes coupled to provider-specific SDKs and deployment artifacts~\cite{rodrigues2022quickfaas}.
@@ -25,9 +25,9 @@ defines its own function signature and request/response types. The \emph{packagi
 deployment}: providers accept code through different mechanisms, with different naming, permission
 and trigger conventions. QuickFaaS addresses both (Section~\ref{sec:background_quickfaas}).
 
-Since a function holds no state between invocations and cannot directly call another, applications
-move their control flow and data flow into an external orchestrator, the workflow
-layer~\cite{serverlessComputing}.
+Since a function holds no state between invocations and direct communication between functions is
+hard to do efficiently, applications move their control flow and data flow into an external
+orchestrator, the workflow layer~\cite{serverlessComputing}.
 
 \subsection{Workflows and Orchestration}
 \label{sec:workflows}
@@ -36,8 +36,8 @@ A \textit{workflow} describes a process as a sequence of steps. In the cloud, wo
 commonly modelled as \textit{state machines}, where each state performs work, makes a decision or
 controls the flow, and passes data to the next~\cite{aws_stepfunctions_concepts}. The workflow
 holds the control flow, data flow and error handling of a multi-function
-application~\cite{sebsflow_arxiv}: sequencing, branching, parallelism, retries and waits; data
-passed and transformed between steps; and execution tracking.
+application~\cite{sebsflow_arxiv,aws_stepfunctions_concepts}: sequencing, branching, parallelism,
+retries and waits; data passed and transformed between steps; and execution tracking.
 
 AWS Step Functions and Google Cloud Workflows provide this as managed
 services~\cite{aws_stepfunctions_concepts,gcp_workflows_overview}. Each binds the workflow to its
@@ -147,7 +147,7 @@ which reduces orchestration-level lock-in~\cite{costa2023omniflow,silva2025advan
 
 \subsubsection{Components Overview}
 OmniFlow is a client-side library with four components that run in
-sequence~\cite{silva2025advanced}:
+sequence~\cite{costa2023omniflow}:
 
 \begin{enumerate}
 	\item \textbf{DSL:} the developer defines workflows with Kotlin \emph{type-safe
@@ -232,19 +232,21 @@ together with more recent work, in five groups.
 permissions and event bindings are still written with provider-specific parameters. The
 \textbf{Serverless Framework}~\cite{serverlessFramework} describes applications in YAML, but still
 in terms of provider-specific services, and its portability depends on per-provider plugins.
-\textbf{Pulumi}~\cite{pulumi} uses general-purpose languages and offers serverless abstractions
-(\textit{Magic Functions}~\cite{pulumiMagicFunctions}, the \textit{Cloud
-Framework}~\cite{pulumiCloudFramework} and \texttt{@pulumi/cloud}~\cite{pulumiCloudPkg}), limited by
-provider coverage and by triggers and permissions that remain provider-specific. The \textbf{AWS
+\textbf{Pulumi}~\cite{pulumi} uses general-purpose languages and has offered serverless
+abstractions (\textit{Magic Functions}~\cite{pulumiMagicFunctions}, and the \textit{Cloud
+Framework}~\cite{pulumiCloudFramework} with its \texttt{@pulumi/cloud}
+package~\cite{pulumiCloudPkg}, a preview whose last release dates from 2023), limited by provider
+coverage and by triggers and permissions that remain provider-specific. The \textbf{AWS
 Cloud Development Kit (CDK)}~\cite{awsCdk}, closest in style to OmniFlow's Kotlin DSL, is
 synthesised into a CloudFormation template and is therefore limited to AWS.
 
 \textbf{CODE}~\cite{ristov2024code} targets \emph{federated FaaS}: one DSL declaration deploys a
 function to several regions of AWS and GCP, with up to 9.23$\times$ fewer lines of code than
-Terraform or the Serverless Framework, backed by a storage library that moves deployment packages
-between the two providers. CODE addresses the \textit{function} half of this work's problem, on the
-same providers, but not the workflow: its authors list the deployment of workflows on top of CODE
-as future work. That step is what this dissertation addresses.
+Terraform (8.44$\times$ than the Serverless Framework), backed by a storage library that moves
+deployment packages between the two providers. CODE addresses the \textit{function} half of this
+work's problem, on the same providers, but not the workflow: its authors plan middleware to deploy
+AFCL workflows on top of CODE, whereas this dissertation binds functions to provider-native
+workflows.
 
 These tools already bind workflows to functions at deployment time. In AWS SAM, a state machine's
 \texttt{DefinitionSubstitutions} can map a placeholder to \texttt{!GetAtt MyFunction.Arn}, the ARN

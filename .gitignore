@@ -12,3 +12,6 @@ main.pdf
 
 # Reviewed PDFs dropped in by the supervisors (for corrections)
 revisoes-orientadores/
+
+# PDFs of cited papers, used to check the bibliography (some are not open access)
+References/
