@@ -1,26 +1,51 @@
 # Alterações aos capítulos da dissertação
 
-Só alterações ainda não enviadas (push). Base: `c3a66af` (último commit em
+Só alterações ainda não enviadas (push). Base: `ff13abf` (último commit em
 `origin/claude/progress-report-compliance-e4damf`). Depois de um push, o registo recomeça vazio.
 
 (`changelog.txt`, nesta pasta, é o histórico do template `iselthesis` e não tem nada a ver com
 este ficheiro.)
 
-## 2026-10-15 — Agradecimentos: último parágrafo na terceira pessoa
+## 2026-10-16 — Portabilidade das funções no AWS
 
-- `acknowledgments.tex`: o parágrafo dedicado à namorada passa todo para a terceira pessoa ("what
-  she is to me, how she changes me, how she influences me", "the immense impact she has", "Having
-  her by my side", "without her", "and to her I can only say thank you").
+- `chapter2.tex` (Cap. 2, Related Work): a frase de posicionamento deixa de dizer que este trabalho
+  usa "functions written against a provider-agnostic model"; passa a falar de funções implantadas
+  por uma ferramenta portável e acrescenta aos limites que o código das funções é portável entre
+  GCP e Azure, mas não para o AWS. Na Tabela 2.1, a coluna "Func. portab." deste trabalho passa de
+  Y para P, e a nota (a) explica porquê.
+- `chapter5.tex` (Cap. 4): o parágrafo do provider AWS do QuickFaaS diz que o `AwsHttpTemplate`,
+  ao contrário dos templates GCP e Azure, não usa um adaptador para `HttpRequestQf`/`HttpResponseQf`,
+  pelo que o hook AWS tem assinatura própria.
+- `chapter8.tex` (Cap. 7, Future Work): novo item, um adaptador AWS para os tipos genéricos do
+  QuickFaaS sobre o payload do `lambda:invoke` (um hook para todos os fornecedores e body nas
+  chamadas internas no AWS).
+- `../article/article.tex`: a mesma frase de posicionamento, FP = P com nota (c) na tabela, e o
+  adaptador AWS no trabalho futuro.
 
-## 2026-10-15 — Agradecimentos: reduzidos a uma página
+## 2026-10-16 — Afirmações técnicas alinhadas com a implementação
 
-- `acknowledgments.tex`: o texto ocupava duas páginas e passa a caber numa (o PDF passa de 108
-  para 107 páginas). Cortes, sem mudar o sentido: "This is far from the end; it is only one more
-  journey… I want to use this space to honour" → "This is only one more journey… I want to
-  honour"; "this institution a place where it is a pleasure and a source of pride" → "it a place
-  where it is a pleasure and a pride"; "these years of the master's" → "the master's"; o
-  agradecimento ao Santander condensado em "I thank them for the excellent welcome and for all
-  the support they have given me"; amigos: "who will never let me down and who will always be by
-  my side" → "always by my side"; família: retirado "that give me strength"; namorada: "I do not
-  know which words are best to express what she is to me, how she changes me, how she influences
-  me, they are small words that cannot describe" → "Words are too small to describe".
+Revisão do texto contra o código atual; só texto, o código não mudou.
+
+- `chapter3.tex` (Cap. 3): o parágrafo do descritor diz que `function.location` fixa a região só no
+  GCP (no AWS manda a região do bucket S3); o Nível 1 diz que a redescoberta procura só na região
+  de uma referência `"region/functionRef"`; "observable" passa a dizer o que é de facto
+  reportado (descoberta e deployment na consola, entrada atualizada com aviso, acerto sem
+  alterações só em debug).
+- `chapter5.tex` (Cap. 4): o `AwsHttpTemplate` é "the AWS template" (não "provider-agnostic") e
+  passa os query parameters ao hook como mapa; o `AwsLambdaDeployer` recebe uma região e o role do
+  Step Functions, que ainda não usa; a permissão de invocação é uma resource-based policy para
+  `states.amazonaws.com`, não restrita à state machine nem ao role.
+- `chapter6.tex` (Cap. 5): o limite 1 diz que a referência sem região só aborta se a função não for
+  encontrada nas regiões acessíveis.
+- `chapter7.tex` (Cap. 6): na Tabela 6.1, a entrada stale não procura noutras regiões com uma
+  referência `region/name`; o S1 fala de "QuickFaaS layer" em vez de "provider-agnostic layer"
+  (texto, legenda e linhas da tabela S1, e o item do âmbito).
+- `chapter8.tex` (Cap. 7): "provider-agnostic layer" → "QuickFaaS layer".
+- `glossary.tex`: *Hook function* e *Template function* distinguem GCP/Azure (tipos genéricos do
+  QuickFaaS) de AWS (mapa de query parameters); *Stale entry* ressalva a referência com região.
+- `abstract-en.tex` / `abstract-pt.tex`: "tens of microseconds" → "tens to hundreds of
+  microseconds" ("dezenas a centenas de microssegundos"), porque o resolver GCP leva 199 µs; no
+  Resumo saem "assim" e "mínimo," para manter o limite de palavras.
+- `../article/article.tex`: "AWS template `AwsHttpTemplate`" e "QuickFaaS layer", como na
+  dissertação.
+

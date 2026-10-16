@@ -195,8 +195,8 @@ both providers, choosing the steps from the descriptor's \texttt{cloudProvider}.
 
 Keeping one deployer per provider has three advantages. The tested GCP deployer was not modified
 when AWS was added, so the AWS work could not break it. Each deployer takes only the configuration
-its provider needs (a project and service account on GCP, the Step Functions role on AWS), and the
-compiler checks that it is supplied. And each entry-point deployer is wired to its own deployer,
+its provider needs (a project and service account on GCP, a region and the Step Functions role on
+AWS, though the role is not yet used), and the compiler checks that it is supplied. And each entry-point deployer is wired to its own deployer,
 so supporting a further provider, such as Azure, which QuickFaaS already targets, means adding one
 class that implements \texttt{Internal\allowbreak Function\allowbreak Deployer}, alongside its
 resolver, without changing the existing ones.
@@ -278,9 +278,13 @@ The AWS provider implements QuickFaaS's \texttt{CloudProvider}, \texttt{Cloud\al
 and \texttt{CloudRequests} abstractions with the same ZIP strategy used for GCP and Azure. Its core,
 \texttt{Aws\allowbreak Lambda\allowbreak Function.\allowbreak deployZip}, uploads the archive to the descriptor's S3 bucket, checks
 whether the function exists (\texttt{GetFunction}), creates it (\texttt{CreateFunction}) or updates
-its code (\texttt{UpdateFunctionCode}), and waits until it is active. The handler is the
-provider-agnostic template \texttt{AwsHttpTemplate}, and the runtimes are \texttt{java11} and
-\texttt{java17}. The Lambda client is pinned to the bucket's region, read with
+its code (\texttt{UpdateFunctionCode}), and waits until it is active. The handler is the AWS
+template \texttt{AwsHttpTemplate}, which passes the event's query parameters to the hook as a map,
+and the runtimes are \texttt{java11} and \texttt{java17}. Unlike the GCP and Azure templates, it
+does not wrap the event in an adapter that implements QuickFaaS's generic
+\texttt{HttpRequestQf} and \texttt{HttpResponseQf}, so an AWS hook has its own signature
+(\texttt{handleRequest(Map<String,\allowbreak String>, Context)}, returning its result) and a
+hook written for GCP does not run on AWS (Section~\ref{sec:case-discussion}). The Lambda client is pinned to the bucket's region, read with
 \texttt{GetBucketLocation}. Finally, the provider creates (or reuses) a Lambda \emph{Function URL}
 with \texttt{AuthType = AWS\_IAM}.
 
@@ -294,7 +298,8 @@ it. It writes the role ARN into a temporary copy of the descriptor, takes the re
 bucket and runs QuickFaaS. If Lambda cannot yet assume a new role, it retries after 20 seconds, up to
 three attempts, to absorb IAM eventual consistency. It then polls \texttt{GetFunction} until the
 function is \texttt{Active} (at most 180 seconds), reads the ARN and grants Step Functions permission
-to invoke the function.
+to invoke the function: a resource-based policy for the service principal
+\texttt{states.amazonaws.com}, not restricted to the workflow's state machine or role.
 
 The deployer stores the ARN, not the Function URL, because internal calls use the native
 \texttt{lambda:invoke} integration, described below. The AWS descriptor

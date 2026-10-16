@@ -46,7 +46,7 @@ drive both deployments (Chapters~\ref{ch:proposed_solution} and~\ref{cha:impl}).
 prototype resolves a workflow's internal functions on both providers, and deploys the missing ones,
 without endpoints being copied by hand. QuickFaaS was extended to AWS Lambda with a new provider,
 and OmniFlow with an \texttt{AwsLambdaDeployer} (Section~\ref{subsec:aws-lambda-deployment}); the
-provider-agnostic layer adds about 0.9\,KB to a Lambda bundle (Table~\ref{tab:eval-s1}). The
+QuickFaaS layer adds about 0.9\,KB to a Lambda bundle (Table~\ref{tab:eval-s1}). The
 evaluation of feasibility and overhead is the objective met only in part. Apart from the case
 study's deployments (Section~\ref{sec:case-artifacts}), the correctness checks simulate the
 provider, and the benchmarks ran on a laptop. End-to-end deployment times were not measured, since
@@ -102,6 +102,10 @@ From the smallest change with the clearest payoff to the larger ones:
   \item \textbf{Harden the registry:} an access-controlled backend (database or parameter store)
   behind the current interface, with locking, per-entry integrity, caching and an attributable
   write history.
+  \item \textbf{An AWS adapter for QuickFaaS's generic types:} an implementation of
+  \texttt{HttpRequestQf} and \texttt{HttpResponseQf} over the \texttt{lambda:invoke} payload, as
+  GCP and Azure have, so that one hook runs on every provider and an internal call on AWS can carry
+  a body.
   \item \textbf{Invoke QuickFaaS in-process} as a library instead of a subprocess
   (Section~\ref{sec:design-rationale}).
   \item \textbf{Least-privilege IAM:} pre-provisioned roles and a dry-run mode that reports IAM

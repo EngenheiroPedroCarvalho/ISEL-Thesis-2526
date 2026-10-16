@@ -129,8 +129,10 @@
 
 \newglossaryentry{hook}{
 	name={Hook function},
-	description={Cloud-agnostic function in which the developer writes the business logic, using
-	the generic QuickFaaS request and response types instead of a provider SDK.}
+	description={Function in which the developer writes the business logic, called by the QuickFaaS
+	template. On GCP and Azure it uses the generic QuickFaaS request and response types instead of a
+	provider SDK; on AWS it receives the query parameters as a map and returns its result, with the
+	Lambda \texttt{Context}.}
 }
 
 \newglossaryentry{internalcall}{
@@ -221,7 +223,7 @@
 \newglossaryentry{stale}{
 	name={Stale entry},
 	description={Registry entry whose function no longer exists where the entry says. The function
-	is looked for in the other regions: if it is found, the entry is replaced; otherwise the entry is
+	is looked for in the other regions (unless the reference names a region): if it is found, the entry is replaced; otherwise the entry is
 	removed and the deployment aborts, even when a deployment descriptor is present.}
 }
 
@@ -242,8 +244,8 @@
 \newglossaryentry{template}{
 	name={Template function},
 	description={Provider-specific wrapper maintained by QuickFaaS that is the entry point invoked
-	by the provider. It adapts the provider's request to the generic format and calls the hook
-	function.}
+	by the provider. It adapts the provider's request to the hook's input (the generic QuickFaaS
+	types on GCP and Azure, a map of query parameters on AWS) and calls the hook function.}
 }
 
 \newglossaryentry{testdouble}{

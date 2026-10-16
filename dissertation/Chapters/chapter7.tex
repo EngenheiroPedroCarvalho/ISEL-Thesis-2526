@@ -33,8 +33,8 @@ without this integration, and is non-deterministic. Each question is answered as
   \item \textbf{RQ2, requests sent to the provider:} an analytical count, derived from the code
   path by path through the sequence, since the benchmarks run without a network
   (Section~\ref{sec:eval-api-calls}).
-  \item \textbf{Manual steps removed and cost of portability on AWS:} a procedural comparison of
-  developer actions, and the Lambda bundle size, provider-agnostic vs.\ native
+  \item \textbf{Manual steps removed and cost of the QuickFaaS layer on AWS:} a procedural comparison
+  of developer actions, and the Lambda bundle size, built through QuickFaaS vs.\ native
   (Section~\ref{sec:eval-manual-effort}).
 \end{itemize}
 
@@ -90,8 +90,8 @@ happens:
     The entry is updated, and the call is bound to the current endpoint \\
     \hline
     1 & The registry has an entry, but the function no longer exists in that region (stale
-    entry) & The other regions are searched: if the function is found, the entry is replaced and
-    the call bound to it; if not, the entry is removed and resolution aborts, even with a
+    entry) & The other regions are searched (none for a \texttt{region/name} reference): if the
+    function is found, the entry is replaced and the call bound to it; if not, the entry is removed and resolution aborts, even with a
     descriptor \\
     \hline
     1 & The provider refuses access when the entry is validated & Resolution aborts; the entry is
@@ -424,7 +424,7 @@ change, so the saving grows with the number of functions and deployment targets
 (Chapter~\ref{cha:case-study}).
 
 \paragraph{Packaging overhead on AWS (S1).}
-Packaging a Lambda through QuickFaaS's provider-agnostic layer (hook, \texttt{AwsHttpTemplate} and
+Packaging a Lambda through QuickFaaS (hook, \texttt{AwsHttpTemplate} and
 \texttt{aws-lambda-java-core}) adds 905 bytes, about 0.9\,KB or 6.6\% of a trivial bundle, to an
 equivalent native \texttt{RequestHandler} (Table~\ref{tab:eval-s1}), and proportionally less for a
 function with real dependencies. The overhead is smaller than in the original QuickFaaS evaluation,
@@ -435,17 +435,17 @@ deployment time~\cite{rodrigues2022quickfaas}.
   \centering
   \captionsetup{belowskip=0pt}
   \small
-  \caption{S1: Lambda bundle size, provider-agnostic layer vs.\ native implementation.}
+  \caption{S1: Lambda bundle size, QuickFaaS layer vs.\ native implementation.}
   \label{tab:eval-s1}
   \begin{tabular}{|>{\raggedright\arraybackslash}p{0.68\textwidth}|r|}
     \hline
     \textbf{Bundle} & \textbf{Size} \\
     \hline
-    Provider-agnostic (QuickFaaS hook + \texttt{AwsHttpTemplate} + \texttt{aws-lambda-java-core}) & 14\,552 bytes \\
+    QuickFaaS (hook + \texttt{AwsHttpTemplate} + \texttt{aws-lambda-java-core}) & 14\,552 bytes \\
     \hline
     AWS native (single \texttt{RequestHandler}, same logic) & 13\,647 bytes \\
     \hline
-    \textbf{Delta (provider-agnostic layer overhead)} & \textbf{905 bytes} \\
+    \textbf{Delta (QuickFaaS layer overhead)} & \textbf{905 bytes} \\
     \hline
   \end{tabular}
 \end{table}

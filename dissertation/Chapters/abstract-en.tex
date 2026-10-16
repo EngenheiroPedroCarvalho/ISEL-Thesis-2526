@@ -23,7 +23,7 @@ clouds OmniFlow targets.
 
 Forty-six unit tests cover every path the sequence can take on both providers, and a case study was
 deployed and run on AWS and on Google Cloud. Benchmarks show that the local work of resolving a workflow of two
-hundred internal calls costs tens of microseconds, growing linearly with the number of calls, and
+hundred internal calls costs tens to hundreds of microseconds, growing linearly with the number of calls, and
 resolution sends one request to the provider per internal call when the registry is current.
 Deploying a serverless application from a single definition is therefore feasible, at a cost that is
 minimal and far below that of the cloud deployment itself, which takes minutes.

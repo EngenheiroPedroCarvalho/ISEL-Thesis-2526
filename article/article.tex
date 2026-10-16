@@ -197,8 +197,8 @@ and the workflow is run by the xAFCL engine rather than by a provider-native ser
 map logical names to endpoints, but they are consulted at run time by the caller and deploy nothing.
 
 Table~\ref{tab:related} summarises the comparison. No surveyed work combines deployment-time
-binding with a workflow definition that deploys to more than one provider-native engine, functions
-written against a provider-agnostic model, and on-demand deployment of missing functions.
+binding with a workflow definition that deploys to more than one provider-native engine and
+on-demand deployment of missing functions through a portable deployment tool.
 
 \begin{table}[t]
   \centering
@@ -234,11 +234,13 @@ written against a provider-agnostic model, and on-demand deployment of missing f
     \hline
     Cloud Map, Consul            & -- & -- & -- & -- & Y & -- \\
     \hline
-    \textbf{This work}           & Y & Y  & P\textsuperscript{a} & Y & P\textsuperscript{b} & Y \\
+    \textbf{This work}           & Y & P\textsuperscript{c} & P\textsuperscript{a} & Y & P\textsuperscript{b} & Y \\
     \hline
   \end{tabular}\\[2pt]
   \parbox{\columnwidth}{\scriptsize \textsuperscript{a}Two providers (AWS, GCP).
-  \textsuperscript{b}Across the regions of one account or project; no shared registry.}
+  \textsuperscript{b}Across the regions of one account or project; no shared registry.
+  \textsuperscript{c}Hooks are portable between GCP and Azure; the AWS template does not implement
+  QuickFaaS's generic types.}
 \end{table}
 
 % =====================================================================
@@ -393,7 +395,7 @@ registers the full resource name and the URL.
 \subsection{AWS Lambda Support}
 The QuickFaaS \texttt{AwsProvider} implements the existing provider abstractions. It uploads the
 ZIP to the S3 bucket named in the descriptor, creates the function (or updates its code), with the
-provider-agnostic \texttt{AwsHttpTemplate} as handler, and waits until it is active. A Lambda must
+AWS template \texttt{AwsHttpTemplate} as handler, and waits until it is active. A Lambda must
 live in the region of its code bucket, so the provider reads that region
 (\texttt{GetBucketLocation}) and pins its client to it.
 
@@ -632,7 +634,7 @@ four actions (write the descriptor, the function, the workflow, and deploy) and 
 by hand, since credentials come from the environment and the endpoint goes from the provider to the
 registry and into the rendered workflow. The integration relocates configuration rather than
 removing it, and the saving grows with the number of functions and deployment targets. Finally,
-the provider-agnostic layer adds 905 bytes to a Lambda bundle compared with a native
+the QuickFaaS layer adds 905 bytes to a Lambda bundle compared with a native
 \texttt{RequestHandler} (14\,552 vs.\ 13\,647 bytes), consistent with the original QuickFaaS
 evaluation.
 
@@ -681,7 +683,8 @@ creates and mutates IAM roles automatically, and QuickFaaS opens GCP functions t
 QuickFaaS is driven through a subprocess; and the cloud-calling code has no automated tests. Future
 work, in order of increasing effort, includes an update path that redeploys a function when the hash
 of its source changes; an access-controlled, locked and auditable registry backend;
-in-process invocation of QuickFaaS; least-privilege IAM with a dry-run mode; testable cloud
+an AWS adapter for QuickFaaS's generic request and response types, so that one hook runs on
+every provider; in-process invocation of QuickFaaS; least-privilege IAM with a dry-run mode; testable cloud
 adapters; validation of every ladder level on live providers, beyond the single workflow of the
 case study; and Azure Functions,
 already a QuickFaaS target, as a third provider.

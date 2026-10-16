@@ -262,8 +262,9 @@ region-qualified references and the external calls had to be adapted for each pr
 \paragraph{Limits found on the live providers.}
 \begin{enumerate}
   \item A bare reference assumes that every region can be queried. If a policy closes some
-  regions, the lookup aborts. The region-qualified form avoids this, but region names differ
-  between providers, so the definition no longer deploys unchanged to the other provider.
+  regions and the function is not found in the others, the lookup aborts instead of reaching
+  Level~3. The region-qualified form avoids this, but region names differ between providers, so
+  the definition no longer deploys unchanged to the other provider.
   \item OmniFlow's deployers only create workflows, so a redeployment must delete the workflow
   first.
   \item The renderers expect a literal host in different forms (with a scheme for Cloud Workflows,

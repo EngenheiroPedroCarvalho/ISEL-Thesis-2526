@@ -326,10 +326,11 @@ marks whether a function deployed by other means can be bound by name alone. Dep
 (IaC) does not make workflows portable, and the tools that do (Serverless Workflow, Temporal,
 Triggerflow, xAFCL) run workflows on their own runtime. Deployment-time binding exists in the IaC
 tools, and name-to-endpoint mapping in service registries, at run time. No surveyed work combines
-deployment-time binding, a workflow deployable to more than one provider-native service, functions
-written against a provider-agnostic model, and on-demand deployment of missing functions. The
-table also marks this work's limits: two providers, and discovery confined to one account or
-project, with no shared registry.
+deployment-time binding, a workflow deployable to more than one provider-native service, and
+on-demand deployment of missing functions, with functions deployed through a portable tool. The
+table also marks this work's limits: two providers, functions whose source is portable between GCP
+and Azure but not to AWS, and discovery confined to one account or project, with no shared
+registry.
 
 \begin{table}[tbp]
   \centering
@@ -377,14 +378,16 @@ project, with no shared registry.
     \hline
     AWS Cloud Map / Consul~\cite{awsCloudMap,consulServiceDiscovery} & -- & -- & -- & -- & Y & -- \\
     \hline
-    \textbf{OmniFlow + QuickFaaS (this work)}           & Y & Y\textsuperscript{a} & P\textsuperscript{a} & Y & P\textsuperscript{b} & Y \\
+    \textbf{OmniFlow + QuickFaaS (this work)}           & Y & P\textsuperscript{a} & P\textsuperscript{a} & Y & P\textsuperscript{b} & Y \\
     \hline
   \end{tabular}
 
   \smallskip
   \parbox{\textwidth}{\footnotesize \textsuperscript{a}\,Inherited from QuickFaaS (function
-  portability) and OmniFlow (workflow portability). Workflow portability is partial because the
-  integration covers two providers, AWS and GCP.
+  portability) and OmniFlow (workflow portability). Function portability is partial because the AWS
+  template does not implement QuickFaaS's generic request and response types, so a hook is written
+  once for GCP and Azure and again for AWS. Workflow portability is partial because the integration
+  covers two providers, AWS and GCP.
   \textsuperscript{b}\,A function is found by name across the regions of one account or project,
   on GCP only among Cloud Run services. There is no shared registry.}
 \end{table}

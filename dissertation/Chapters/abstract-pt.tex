@@ -19,14 +19,14 @@ por um identificador lógico estável, que o OmniFlow liga a um \emph{endpoint} 
 do \emph{workflow} através de uma sequência de três níveis: um registo de funções validado contra a
 função existente, uma procura nas regiões do fornecedor e, só com a ausência confirmada, o
 \emph{deployment} da função pelo QuickFaaS. O QuickFaaS, antes limitado ao Google Cloud e ao Azure,
-passou também a suportar o AWS Lambda, cobrindo assim as duas \emph{clouds} do OmniFlow.
+passou também a suportar o AWS Lambda, cobrindo as duas \emph{clouds} do OmniFlow.
 
 Quarenta e seis testes unitários cobrem todos os caminhos da sequência nos dois fornecedores, e um
 caso de estudo foi executado no AWS e no Google Cloud. As medições mostram que resolver localmente
-um \emph{workflow} com duzentas chamadas internas custa dezenas de microssegundos, com crescimento
+um \emph{workflow} com duzentas chamadas internas custa dezenas a centenas de microssegundos, com crescimento
 linear no número de chamadas, e que, com o registo atualizado, a resolução envia ao fornecedor um
 pedido por chamada interna. É, assim, exequível fazer o \emph{deployment} da aplicação a partir de
-uma única definição, a um custo mínimo, muito inferior ao do \emph{deployment} na \emph{cloud}, que
+uma única definição, a um custo muito inferior ao do \emph{deployment} na \emph{cloud}, que
 demora minutos.
 % Palavras-chave do resumo em Português
 \begin{keywords}

@@ -142,8 +142,9 @@ step {
 An internal function is deployed from the QuickFaaS descriptor of
 Listing~\ref{lst:quickfaas_json_config} and the code file named in its \texttt{functionFile}. Two
 fields matter beyond deployment: \texttt{function.name} must equal the \texttt{functionRef}, since
-the resolver looks the deployed function up by that reference (Section~\ref{sec:walkthrough}); and
-\texttt{function.location} fixes the region the registry entry points at. The AWS variant adds an
+the resolver looks the deployed function up by that reference (Section~\ref{sec:walkthrough}); and,
+on GCP, \texttt{function.location} fixes the region the registry entry points at (on AWS, the region
+of the descriptor's S3 bucket does; Section~\ref{sec:resolution-cascade}). The AWS variant adds an
 \texttt{iamRoleArn} field for the Lambda execution role (Listing~\ref{lst:aws-descriptor}).
 
 \section{The Resolution Sequence}
@@ -158,8 +159,9 @@ that succeeds. The cheapest, least intrusive action comes first; a deployment is
   function on AWS) where the entry records it. A changed endpoint refreshes the entry. If the
   function no longer exists where the entry records it, it may have been recreated in another region
   (for instance, redeployed by hand closer to its users), so it is searched for in every region
-  before the entry is declared stale: if found, the entry is replaced; if not, the
-  entry is removed and the deployment aborts.
+  (or only in the region a \texttt{"region/functionRef"} reference names) before the entry is
+  declared stale: if found, the entry is replaced; if not, the entry is removed and the deployment
+  aborts.
   \item \textbf{Level~2 (Provider discovery).} On a registry miss, the function is looked up on
   the provider: across the project's Cloud Run regions on GCP, and across every region enabled for
   the account on AWS (\texttt{GetFunction}). A \texttt{"region/functionRef"} reference takes a
@@ -176,9 +178,10 @@ The sequence is \emph{idempotent}: re-deploying a workflow resolves from the reg
 and never redeploys an existing function. It is \emph{safe by default}: validation and discovery
 never change the provider, and a deployment requires an explicit descriptor and confirmed absence
 (a deployment also grants invocation permissions and, on AWS, sets up an execution role;
-Section~\ref{subsec:omniflow-aws-deployer}). And it is \emph{observable}: each level reports whether
-a call was served from the registry, discovered or deployed. Chapter~\ref{cha:impl} describes the
-implementation.
+Section~\ref{subsec:omniflow-aws-deployer}). And it is \emph{observable} where it acts: a discovery
+or a deployment is reported on the console with the function and its endpoint, and a refreshed
+entry with a warning, while a hit that validates unchanged is logged only at debug level.
+Chapter~\ref{cha:impl} describes the implementation.
 
 \paragraph{Static binding.}
 The sequence runs only at deployment. The resolved endpoint is written into the rendered workflow
