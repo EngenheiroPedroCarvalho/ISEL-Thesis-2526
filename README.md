@@ -155,7 +155,7 @@ A deployment descriptor (`func-deployment.json`) next to the function's source:
   "accessToken": "",
   "project": "<gcp-project-id>",
   "function": {
-    "name": "fraud-check",
+    "name": "hello",
     "location": "europe-west1",
     "bucket": "<staging-bucket>",
     "runtime": "java17",
@@ -172,7 +172,7 @@ On AWS, set `"cloudProvider": "aws"`, the account ID as `project`, an S3 bucket,
 ### 2. Define the workflow
 
 Internal calls use `internalFunction(name, descriptorPath)` instead of `host`/`path`. The name
-can be qualified with a region (`"europe-west1/fraud-check"`) to restrict discovery to that
+can be qualified with a region (`"europe-west1/hello"`) to restrict discovery to that
 region. Without a descriptor, the function must already exist (Levels 1 and 2 only).
 
 ```kotlin
@@ -180,29 +180,27 @@ import costaber.com.github.omniflow.dsl.*
 import costaber.com.github.omniflow.model.HttpMethod.*
 
 val wf = workflow {
-  name("RiskCheck")
-  description("Scores a transaction with an internal function")
-  params("transaction")                       // execution input
+  name("hello-workflow")
+  description("Calls one internal function")
   steps(
     step {
-      name("risk-score")
-      description("Score the transaction")
+      name("say-hello")
+      description("Call the hello function")
       context(call {
-        method(POST)
-        internalFunction("risk-score", "./functions/risk-score/func-deployment.json")
-        query("amount" to variable("transaction.amount"))
-        result("riskResult")
+        method(GET)
+        internalFunction("hello", "./functions/hello/func-deployment.json")
+        result("greeting")
       })
     }
   )
-  result("riskResult")                        // workflow output
+  result("greeting")
 }
 ```
 
-At deployment, `internalFunction("risk-score", ...)` is replaced by the endpoint of the function
-(a `run.app` URL on GCP, a Lambda ARN on AWS); if the function does not exist yet, QuickFaaS
-deploys it from `functions/risk-score/` using the descriptor. On AWS, internal calls take query
-parameters only (no `body(...)`).
+When this workflow is deployed, `internalFunction("hello", ...)` becomes the endpoint of the
+`hello` function: a `run.app` URL on GCP, a Lambda ARN on AWS. If `hello` does not exist yet,
+QuickFaaS first deploys it, using the descriptor in `functions/hello/`.
+On AWS, internal calls take query parameters only (`query(...)`, no `body(...)`).
 
 A full example, with branching and an external call, is the case study in
 [`case-study-gcp/Case.kt`](case-study-gcp/Case.kt).
@@ -221,8 +219,8 @@ GoogleCloudDeployer.Builder()
   .deploy(wf, GoogleDeployContext(
     projectId = "<project>", zone = "europe-west1",
     serviceAccount = "projects/<project>/serviceAccounts/<sa>@<project>.iam.gserviceaccount.com",
-    workflowId = "payment-authorization",
-    workflowDescription = "Case study", workflowLabels = mapOf("app" to "omni-flow")))
+    workflowId = "hello-workflow",
+    workflowDescription = "Hello workflow", workflowLabels = mapOf("app" to "omni-flow")))
 ```
 
 AWS (Step Functions + Lambda):
@@ -234,7 +232,7 @@ AmazonCloudDeployer.Builder()
     region = "eu-west-1", roleArn = "<step-functions-role-arn>"))
   .build()
   .deploy(wf, AmazonDeployContext(
-    stateMachineName = "PaymentAuthorization", roleArn = "<step-functions-role-arn>",
+    stateMachineName = "hello-workflow", roleArn = "<step-functions-role-arn>",
     region = "eu-west-1", tags = mapOf("app" to "omni-flow")))
 ```
 
