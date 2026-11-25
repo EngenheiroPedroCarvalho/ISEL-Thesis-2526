@@ -1,7 +1,6 @@
 # Unified Orchestration of Multi-Cloud Serverless Workflows using QuickFaaS and OmniFlow
 
-This repository holds the code and case-study files of the MSc dissertation *Unified Orchestration
-of Multi-Cloud Serverless Workflows using QuickFaaS and OmniFlow* (ISEL, 2026).
+This repository contains the code and case-study files for the MSc dissertation *Unified Orchestration of Multi-Cloud Serverless Workflows Using QuickFaaS and OmniFlow*, submitted in 2026 to the Master's programme in Computer Science and Engineering (MEIC) at Instituto Superior de Engenharia de Lisboa (ISEL). The work was developed by Pedro Carvalho under the supervision of Prof. Filipe Freitas and Prof. José Simão.
 
 [OmniFlow](omni-flow-main/) is a Kotlin DSL that defines a cloud workflow once and deploys it to
 **AWS Step Functions** or **GCP Cloud Workflows**. [QuickFaaS](omni-flow-main/quickfaas-essentials/QuickFaaS-Deployment/)
